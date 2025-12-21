@@ -4,7 +4,7 @@
 import { track } from "@/lib/analytics";
 
 export default function MonetizeBar() {
-  const donateUrl = "https://ofuse.me/yourname"; // ← OFUSEの自分のURLに差し替え
+  const donateUrl = "https://ofuse.me/52617c2e"; // ← OFUSEの自分のURLに差し替え
 
   const onClick = () => {
     track("monetize_clicked", {
