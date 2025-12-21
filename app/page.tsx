@@ -72,7 +72,12 @@ export default function HomePage() {
 
                 {/* モバイル/非ホバー用：タップで展開 */}
                 <details style={styles.details} className="toolDetails">
-                  <summary style={styles.summary}>説明を表示</summary>
+                  <summary
+                    style={styles.summary}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    説明を表示
+                  </summary>
                   <div style={styles.detailText}>{t.detail}</div>
                 </details>
 

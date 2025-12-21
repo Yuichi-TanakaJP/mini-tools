@@ -1,24 +1,47 @@
 // components/MonetizeBar.tsx
+"use client";
+
+import { track } from "@/lib/analytics";
+
 export default function MonetizeBar() {
-  const donateUrl = "https://www.buymeacoffee.com/xxxx"; // ←差し替え
+  const donateUrl = "https://ofuse.me/yourname"; // ← OFUSEの自分のURLに差し替え
+
+  const onClick = () => {
+    track("monetize_clicked", {
+      service: "ofuse",
+      position: "monetize_bar",
+    });
+  };
 
   return (
-    <div style={{ marginTop: 24, paddingTop: 12, borderTop: "1px solid #ddd" }}>
+    <div
+      style={{
+        marginTop: 24,
+        paddingTop: 12,
+        borderTop: "1px solid rgba(0,0,0,0.12)",
+        textAlign: "center",
+      }}
+    >
       <a
         href={donateUrl}
         target="_blank"
         rel="noopener noreferrer"
+        onClick={onClick}
         style={{
           display: "inline-block",
-          padding: "10px 12px",
-          border: "1px solid #111",
-          borderRadius: 10,
+          padding: "12px 16px",
+          border: "1px solid rgba(0,0,0,0.8)",
+          borderRadius: 12,
+          textDecoration: "none",
+          fontSize: 14,
+          fontWeight: 600,
         }}
       >
-        ☕ 役に立ったらコーヒー1杯お願いします
+        ☕ 役に立ったら、コーヒー1杯分の応援をもらえると嬉しいです
       </a>
-      <div style={{ marginTop: 8, fontSize: 12, opacity: 0.75 }}>
-        ※外部サイトでの支援になります
+
+      <div style={{ marginTop: 8, fontSize: 12, opacity: 0.7 }}>
+        ※ 外部サービス（OFUSE）での匿名支援・100円〜
       </div>
     </div>
   );
