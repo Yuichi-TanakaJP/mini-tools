@@ -2,85 +2,315 @@
 "use client";
 
 import Link from "next/link";
-import { track } from "@/lib/analytics";
-import ShareButtons from "@/components/ShareButtons";
 import MonetizeBar from "@/components/MonetizeBar";
+import ShareButtons from "@/components/ShareButtons";
+import { track } from "@/lib/analytics";
 
 type ToolItem = {
   title: string;
-  description: string;
+  short: string; // カードに常時出す1行
+  detail: string; // ホバーで出す説明
   href: string;
+  icon: string; // 絵文字でOK（将来SVGにしても良い）
 };
 
 const TOOLS: ToolItem[] = [
   {
-    title: "合計計算ツール",
-    description:
-      "数字を1行ずつ貼るだけで合計（カンマ/円/マイナスもOK）。入力は端末内に保存。",
+    title: "合計計算",
+    short: "数字を貼るだけ",
+    detail: "1行ごとに入力 → 合計。カンマ/円/マイナスもOK。入力は端末内保存。",
     href: "/tools/total",
+    icon: "🧮",
   },
 ];
 
 export default function HomePage() {
-  const onClickTool = (href: string) => {
+  const onOpen = (href: string) => {
     track("tool_opened", { href });
   };
 
   return (
-    <main style={{ maxWidth: 860, margin: "0 auto", padding: 20 }}>
-      <header style={{ marginBottom: 16 }}>
-        <h1 style={{ fontSize: 28, marginBottom: 6 }}>mini-tools</h1>
-        <p style={{ marginTop: 0, opacity: 0.8 }}>
-          ちょい便利なミニツール集（サクッと使える / シンプル / 速い）
+    <main style={styles.page}>
+      <section style={styles.hero}>
+        <div style={styles.badge}>mini-tools</div>
+        <h1 style={styles.h1}>サクッと使えるミニツール集</h1>
+        <p style={styles.lead}>
+          数字を貼るだけ。面倒を減らす。シンプルに最短で。
         </p>
-      </header>
+        <p style={styles.note}>
+          ※入力データは基本この端末（ブラウザ）に保存され、サーバーには送信しません。
+        </p>
+      </section>
 
-      <section
-        style={{
-          border: "1px solid #ddd",
-          borderRadius: 14,
-          padding: 14,
-        }}
-      >
-        <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 10 }}>
-          ツール一覧
-        </div>
+      <section style={styles.section}>
+        <div style={styles.sectionTitle}>ツールを選ぶ</div>
 
-        <div style={{ display: "grid", gap: 12 }}>
+        <div style={styles.grid}>
           {TOOLS.map((t) => (
             <Link
               key={t.href}
               href={t.href}
-              onClick={() => onClickTool(t.href)}
-              style={{
-                display: "block",
-                padding: 14,
-                border: "1px solid #111",
-                borderRadius: 14,
-                textDecoration: "none",
-                color: "inherit",
-              }}
+              onClick={() => onOpen(t.href)}
+              style={styles.cardLink}
+              className="toolLink"
             >
-              <div style={{ fontSize: 18, fontWeight: 700 }}>{t.title}</div>
-              <div style={{ marginTop: 6, fontSize: 13, opacity: 0.85 }}>
-                {t.description}
-              </div>
-              <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7 }}>
-                開く →
+              <div style={styles.card} className="toolCard">
+                <div style={styles.cardTop}>
+                  <div style={styles.icon}>{t.icon}</div>
+                  <div style={styles.arrow} aria-hidden>
+                    →
+                  </div>
+                </div>
+
+                <div style={styles.cardTitle}>{t.title}</div>
+                <div style={styles.cardShort}>{t.short}</div>
+
+                {/* ホバーで出る説明（スマホは「タップで見える」ように details を併用） */}
+                <div style={styles.hoverHint} className="hoverHint">
+                  詳細を見る
+                </div>
+
+                {/* モバイル/非ホバー用：タップで展開 */}
+                <details style={styles.details} className="toolDetails">
+                  <summary style={styles.summary}>説明を表示</summary>
+                  <div style={styles.detailText}>{t.detail}</div>
+                </details>
+
+                {/* デスクトップ：ホバーで表示 */}
+                <div className="tooltip" style={styles.tooltip}>
+                  {t.detail}
+                </div>
               </div>
             </Link>
           ))}
         </div>
       </section>
 
-      <section style={{ marginTop: 18 }}>
-        <ShareButtons text="mini-tools：ちょい便利なミニツール集" />
+      <section style={styles.bottom}>
+        <ShareButtons text="mini-tools：サクッと使えるミニツール集" />
         <MonetizeBar />
       </section>
 
-      <footer style={{ marginTop: 24, fontSize: 12, opacity: 0.7 }}>
-        ※入力データは基本この端末内（ブラウザ）に保存されます。サーバーには送信しません。
-      </footer>
+      {/* hover tooltip / card hover をCSSで（inlineだけだと擬似セレクタが書けないため） */}
+      <style>{css}</style>
     </main>
   );
 }
+
+const styles: Record<string, React.CSSProperties> = {
+  page: {
+    maxWidth: 1040,
+    margin: "0 auto",
+    padding: "28px 16px 44px",
+    background:
+      "radial-gradient(1200px 500px at 20% 0%, rgba(0,0,0,0.06), transparent 60%)",
+  },
+
+  hero: {
+    padding: "18px 0 10px",
+  },
+  badge: {
+    display: "inline-block",
+    fontWeight: 700,
+    letterSpacing: 0.2,
+    padding: "6px 10px",
+    borderRadius: 999,
+    border: "1px solid rgba(0,0,0,0.12)",
+    background: "rgba(0,0,0,0.02)",
+    marginBottom: 10,
+  },
+  h1: {
+    fontSize: 34,
+    lineHeight: 1.15,
+    margin: "6px 0 8px",
+    letterSpacing: -0.6,
+  },
+  lead: {
+    margin: 0,
+    opacity: 0.9,
+    fontSize: 16,
+  },
+  note: {
+    marginTop: 10,
+    fontSize: 12,
+    opacity: 0.7,
+  },
+
+  section: {
+    marginTop: 22,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: 700,
+    opacity: 0.85,
+    marginBottom: 12,
+  },
+
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, 200px)",
+    gap: 14,
+    justifyContent: "start", // 左詰め
+  },
+
+  cardLink: {
+    display: "block",
+    width: 200, // ← これが効く
+    textDecoration: "none",
+    color: "inherit",
+  },
+
+  card: {
+    position: "relative",
+    width: 200, // ← anchorと合わせる
+    aspectRatio: "1 / 1",
+    borderRadius: 18,
+    padding: 14,
+    border: "1px solid rgba(0,0,0,0.08)",
+    background: "rgba(255,255,255,0.9)",
+    boxShadow: "0 10px 28px rgba(0,0,0,0.06)",
+    overflow: "hidden",
+  },
+
+  cardTop: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+
+  icon: {
+    fontSize: 28,
+    lineHeight: 1,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(0,0,0,0.04)",
+    border: "1px solid rgba(0,0,0,0.06)",
+  },
+
+  arrow: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    display: "grid",
+    placeItems: "center",
+    border: "1px solid rgba(0,0,0,0.08)",
+    background: "rgba(255,255,255,0.9)",
+    fontSize: 18,
+    opacity: 0.7,
+  },
+
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: 800,
+    letterSpacing: -0.2,
+    marginTop: 4,
+  },
+
+  cardShort: {
+    fontSize: 13,
+    opacity: 0.75,
+    marginTop: 6,
+  },
+
+  hoverHint: {
+    position: "absolute",
+    left: 16,
+    bottom: 16,
+    fontSize: 12,
+    opacity: 0.9,
+    padding: "8px 10px",
+    borderRadius: 12,
+    border: "1px solid rgba(0,0,0,0.10)",
+    background: "rgba(255,255,255,0.92)",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+  },
+
+  // モバイル用（ホバーが無いので）
+  details: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 14,
+    display: "none", // CSS側でモバイル時に表示
+  },
+  summary: {
+    listStyle: "none",
+    cursor: "pointer",
+    fontSize: 12,
+    padding: "8px 10px",
+    borderRadius: 12,
+    border: "1px solid rgba(0,0,0,0.08)",
+    background: "rgba(255,255,255,0.92)",
+  },
+  detailText: {
+    marginTop: 8,
+    fontSize: 12,
+    opacity: 0.85,
+    lineHeight: 1.5,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid rgba(0,0,0,0.08)",
+    background: "rgba(255,255,255,0.92)",
+  },
+
+  // デスクトップホバー表示用 tooltip
+  tooltip: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 14,
+    padding: "10px 12px",
+    borderRadius: 14,
+    border: "1px solid rgba(0,0,0,0.10)",
+    background: "rgba(20,20,20,0.92)",
+    color: "#fff",
+    fontSize: 12,
+    lineHeight: 1.5,
+    opacity: 0,
+    transform: "translateY(6px)",
+    pointerEvents: "none",
+    transition: "opacity .15s ease, transform .15s ease",
+  },
+
+  bottom: {
+    marginTop: 24,
+    paddingTop: 10,
+  },
+};
+
+// hover/レスポンシブ挙動はCSSで
+const css = `
+  /* hover はツールカードリンクだけに限定 */
+  .toolLink > .toolCard {
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .toolLink:hover > .toolCard {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 40px rgba(0,0,0,0.10);
+    }
+
+    .toolLink:hover .arrow { opacity: 1; }
+    .toolLink:hover .tooltip {
+      opacity: 1 !important;
+      transform: translateY(0) !important;
+    }
+
+    .toolDetails { display: none !important; }
+    .hoverHint { display: block !important; }
+    .tooltip { display: block !important; }
+  }
+
+  @media (hover: none) {
+    .tooltip { display: none !important; }
+    .toolDetails { display: block !important; }
+    .hoverHint { display: none !important; }
+  }
+`;

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import ShareButtons from "@/components/ShareButtons";
 import MonetizeBar from "@/components/MonetizeBar";
 import { track } from "@/lib/analytics";
+import Link from "next/link";
 
 const STORAGE_KEY = "mini_tools_total_lines_v1";
 
@@ -68,6 +69,21 @@ export default function TotalToolPage() {
 
   return (
     <main style={{ maxWidth: 760, margin: "0 auto", padding: 16 }}>
+      <div style={{ marginBottom: 12 }}>
+        <Link
+          href="/"
+          onClick={() => track("nav_clicked", { to: "home_from_tool" })}
+          style={{
+            display: "inline-block",
+            padding: "8px 10px",
+            borderRadius: 10,
+            border: "1px solid #999",
+            textDecoration: "none",
+          }}
+        >
+          ← ツール一覧へ
+        </Link>
+      </div>
       <h1 style={{ fontSize: 24, marginBottom: 6 }}>合計計算ツール</h1>
       <p style={{ marginTop: 0, opacity: 0.8 }}>
         数字を1行ずつ入れるだけで合計します（例：1200 / 300 / -50）。
