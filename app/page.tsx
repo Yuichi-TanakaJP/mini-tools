@@ -22,6 +22,14 @@ const TOOLS: ToolItem[] = [
     href: "/tools/total",
     icon: "🧮",
   },
+  {
+    title: "文字数カウント",
+    short: "文章を貼るだけ",
+    detail:
+      "Xやnote下書きを貼って文字数を確認。140/280の残り、スペース/改行除外も表示。入力は端末内保存。",
+    href: "/tools/charcount",
+    icon: "🔤",
+  },
 ];
 
 export default function HomePage() {
@@ -43,7 +51,9 @@ export default function HomePage() {
       </section>
 
       <section style={styles.section}>
-        <div style={styles.sectionTitle}>ツールを選ぶ</div>
+        <div style={styles.toolsHeader} className="toolsHeader">
+          ツールを選ぶ
+        </div>
 
         <div style={styles.grid}>
           {TOOLS.map((t) => (
@@ -92,8 +102,33 @@ export default function HomePage() {
       </section>
 
       <section style={styles.bottom}>
-        <ShareButtons text="mini-tools：サクッと使えるミニツール集" />
-        <MonetizeBar />
+        <div style={styles.bottomHeader}>
+          <div style={styles.bottomTitle}>シェア / 応援</div>
+          <div style={styles.bottomSub}>
+            よければ拡散・応援してもらえると助かります
+          </div>
+        </div>
+
+        <div style={styles.bottomGrid}>
+          <div style={styles.footerActionArea}>
+            <div style={styles.hr} />
+
+            <div style={styles.centerRow}>
+              <ShareButtons
+                text="mini-tools：サクッと使えるミニツール集"
+                methods={["x", "copy", "email", "facebook"]}
+                label={undefined}
+              />
+            </div>
+
+            {/* 分離の余白 */}
+            <div style={{ height: 40 }} />
+
+            <div style={styles.centerCol}>
+              <MonetizeBar />
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* hover tooltip / card hover をCSSで（inlineだけだと擬似セレクタが書けないため） */}
@@ -114,6 +149,20 @@ const styles: Record<string, React.CSSProperties> = {
   hero: {
     padding: "18px 0 10px",
   },
+  toolsHeader: {
+    marginTop: 24,
+    marginBottom: 12,
+    padding: "10px 14px",
+    background: "rgba(0,0,0,0.02)",
+    border: "1px solid rgba(0,0,0,0.06)",
+    borderRadius: 14,
+    fontSize: 13,
+    fontWeight: 800,
+    color: "rgba(0,0,0,0.70)",
+    display: "block",
+    width: "100%",
+    position: "relative",
+  },
   badge: {
     display: "inline-block",
     fontWeight: 700,
@@ -122,6 +171,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 999,
     border: "1px solid rgba(0,0,0,0.12)",
     background: "rgba(0,0,0,0.02)",
+    opacity: 0.85,
     marginBottom: 10,
   },
   h1: {
@@ -153,27 +203,29 @@ const styles: Record<string, React.CSSProperties> = {
 
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, 200px)",
-    gap: 14,
-    justifyContent: "start", // 左詰め
+    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 280px))",
+    gap: 0,
+    justifyContent: "start",
+    alignItems: "start",
   },
 
   cardLink: {
     display: "block",
-    width: 200, // ← これが効く
+    width: "100%", // ← 固定200をやめる
     textDecoration: "none",
     color: "inherit",
   },
 
   card: {
     position: "relative",
-    width: 200, // ← anchorと合わせる
+    width: "100%", // ← 固定200をやめる
     aspectRatio: "1 / 1",
     borderRadius: 18,
     padding: 14,
-    border: "1px solid rgba(0,0,0,0.08)",
+    border: "1px solid rgba(59,130,246,0.15)",
     background: "rgba(255,255,255,0.9)",
-    boxShadow: "0 10px 28px rgba(0,0,0,0.06)",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.10)",
+    transition: "transform .15s ease, box-shadow .15s ease",
     overflow: "hidden",
   },
 
@@ -287,6 +339,74 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 24,
     paddingTop: 10,
   },
+  bottomHeader: {
+    marginTop: 24,
+    marginBottom: 10,
+  },
+  bottomTitle: {
+    fontSize: 14,
+    fontWeight: 800,
+    opacity: 0.85,
+  },
+  bottomSub: {
+    marginTop: 4,
+    fontSize: 12,
+    opacity: 0.65,
+  },
+  bottomGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gap: 12,
+  },
+  bottomPanel: {
+    padding: "14px 14px",
+    borderRadius: 16,
+    border: "1px solid rgba(0,0,0,0.08)",
+    background: "rgba(255,255,255,0.75)",
+    boxShadow: "0 10px 26px rgba(0,0,0,0.06)",
+  },
+  bottomPanelPlain: {
+    padding: 0,
+    border: "none",
+    background: "transparent",
+    boxShadow: "none",
+  },
+  xIconLink: {
+    display: "inline-grid",
+    placeItems: "center",
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    border: "1px solid rgba(0,0,0,0.12)",
+    background: "rgba(255,255,255,0.9)",
+    textDecoration: "none",
+    color: "rgba(0,0,0,0.80)",
+    fontSize: 18,
+    fontWeight: 900,
+  },
+  footerActionArea: {
+    marginTop: 56,
+  },
+
+  hr: {
+    height: 1,
+    background: "rgba(0,0,0,0.10)",
+    width: "100%",
+    marginBottom: 24,
+  },
+
+  centerRow: {
+    display: "flex",
+    justifyContent: "center",
+    width: "100%",
+  },
+
+  centerCol: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    width: "100%",
+  },
 };
 
 // hover/レスポンシブ挙動はCSSで
@@ -317,5 +437,24 @@ const css = `
     .tooltip { display: none !important; }
     .toolDetails { display: block !important; }
     .hoverHint { display: none !important; }
+  }
+  /* 「ツールを選ぶ」を帯っぽく：左にアクセント */
+  .toolsHeader::before {
+    content: "";
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    bottom: 10px;
+    width: 3px;
+    border-radius: 999px;
+    background: rgba(0,0,0,0.18);
+  }
+
+  /* Xアイコンにホバー */
+  @media (hover: hover) and (pointer: fine) {
+    a[aria-label="Xでシェア"]:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 22px rgba(0,0,0,0.10);
+    }
   }
 `;
