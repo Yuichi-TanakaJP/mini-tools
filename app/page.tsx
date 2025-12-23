@@ -65,35 +65,28 @@ export default function HomePage() {
               className="toolLink"
             >
               <div style={styles.card} className="toolCard">
-                <div style={styles.cardTop}>
-                  <div style={styles.icon}>{t.icon}</div>
-                  <div style={styles.arrow} aria-hidden>
-                    →
+                <div style={styles.cardInner} className="toolCardInner">
+                  <div style={styles.cardTop}>
+                    <div style={styles.icon}>{t.icon}</div>
+                    <div style={styles.arrow} className="arrow" aria-hidden>
+                      →
+                    </div>
                   </div>
-                </div>
 
-                <div style={styles.cardTitle}>{t.title}</div>
-                <div style={styles.cardShort}>{t.short}</div>
+                  <div style={styles.cardTitle}>{t.title}</div>
+                  <div style={styles.cardShort}>{t.short}</div>
 
-                {/* ホバーで出る説明（スマホは「タップで見える」ように details を併用） */}
-                <div style={styles.hoverHint} className="hoverHint">
-                  詳細を見る
-                </div>
+                  <div style={styles.hoverHint} className="hoverHint">
+                    詳細を見る
+                  </div>
 
-                {/* モバイル/非ホバー用：タップで展開 */}
-                <details style={styles.details} className="toolDetails">
-                  <summary
-                    style={styles.summary}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    説明を表示
-                  </summary>
-                  <div style={styles.detailText}>{t.detail}</div>
-                </details>
+                  <details style={styles.details} className="toolDetails">
+                    ...
+                  </details>
 
-                {/* デスクトップ：ホバーで表示 */}
-                <div className="tooltip" style={styles.tooltip}>
-                  {t.detail}
+                  <div className="tooltip" style={styles.tooltip}>
+                    {t.detail}
+                  </div>
                 </div>
               </div>
             </Link>
@@ -203,30 +196,36 @@ const styles: Record<string, React.CSSProperties> = {
 
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 280px))",
-    gap: 0,
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 240px))",
+    gap: 14,
     justifyContent: "start",
     alignItems: "start",
   },
 
   cardLink: {
     display: "block",
-    width: "100%", // ← 固定200をやめる
+    width: "100%",
     textDecoration: "none",
     color: "inherit",
   },
 
   card: {
     position: "relative",
-    width: "100%", // ← 固定200をやめる
+    width: "100%",
     aspectRatio: "1 / 1",
+  },
+
+  cardInner: {
+    boxSizing: "border-box",
+    width: "100%",
+    height: "100%",
     borderRadius: 18,
     padding: 14,
-    border: "1px solid rgba(59,130,246,0.15)",
+    border: "3px solid rgba(59,130,246,0.15)",
     background: "rgba(255,255,255,0.9)",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.10)",
-    transition: "transform .15s ease, box-shadow .15s ease",
     overflow: "hidden",
+    transition: "transform 0.15s, box-shadow 0.15s",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.10)", // 常時影を残すならここ
   },
 
   cardTop: {
@@ -412,18 +411,19 @@ const styles: Record<string, React.CSSProperties> = {
 // hover/レスポンシブ挙動はCSSで
 const css = `
   /* hover はツールカードリンクだけに限定 */
-  .toolLink > .toolCard {
+  .toolLink > .toolCard > .toolCardInner {
     transition: transform .15s ease, box-shadow .15s ease;
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .toolLink:hover > .toolCard {
+    .toolLink:hover > .toolCard > .toolCardInner {
       transform: translateY(-2px);
       box-shadow: 0 14px 40px rgba(0,0,0,0.10);
     }
 
     .toolLink:hover .arrow { opacity: 1; }
-    .toolLink:hover .tooltip {
+
+    .toolLink:hover > .toolCard > .toolCardInner .tooltip {
       opacity: 1 !important;
       transform: translateY(0) !important;
     }
