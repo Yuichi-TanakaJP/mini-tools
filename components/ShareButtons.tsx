@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { track } from "@/lib/analytics";
 import { QRCodeCanvas } from "qrcode.react";
 
 type ShareMethod = "x" | "facebook" | "email" | "copy" | "qr";
 
 type Props = {
-  text: string;
+  text?: string;
   url?: string;
   methods?: ShareMethod[];
   size?: number;
@@ -25,16 +26,21 @@ export default function ShareButtons({
   iconsOnly = true,
   label,
 }: Props) {
-  const [currentUrl, setCurrentUrl] = useState<string>("");
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [qrOpen, setQrOpen] = useState(false);
 
-  useEffect(() => {
-    if (url) {
-      setCurrentUrl(url);
-      return;
-    }
-    setCurrentUrl(window.location.href);
-  }, [url]);
+  const currentUrl = useMemo(() => {
+    if (url) return url;
+
+    const qs = searchParams?.toString();
+    const base = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
+
+    // base があるなら絶対URL、なければ相対URLでフォールバック
+    const pathWithQuery = `${pathname}${qs ? `?${qs}` : ""}`;
+    return base ? `${base}${pathWithQuery}` : pathWithQuery;
+  }, [url, pathname, searchParams]);
 
   const shareLinks = useMemo(() => {
     const u = currentUrl || "";

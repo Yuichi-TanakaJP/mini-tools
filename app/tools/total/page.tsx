@@ -24,16 +24,14 @@ function parseNumbers(text: string): number[] {
 }
 
 export default function TotalToolPage() {
-  const [lines, setLines] = useState<string>("");
-
-  useEffect(() => {
+  const [lines, setLines] = useState(() => {
+    if (typeof window === "undefined") return "";
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) setLines(saved);
+      return localStorage.getItem(STORAGE_KEY) ?? "";
     } catch {
-      // ignore
+      return "";
     }
-  }, []);
+  });
 
   const nums = useMemo(() => parseNumbers(lines), [lines]);
   const total = useMemo(() => nums.reduce((a, b) => a + b, 0), [nums]);

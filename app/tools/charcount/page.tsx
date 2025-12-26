@@ -19,16 +19,14 @@ function stripSpacesAndNewlines(text: string): string {
 }
 
 export default function CharCountToolPage() {
-  const [text, setText] = useState<string>("");
-
-  useEffect(() => {
+  const [text, setText] = useState(() => {
+    if (typeof window === "undefined") return "";
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) setText(saved);
+      return localStorage.getItem(STORAGE_KEY) ?? "";
     } catch {
-      // ignore
+      return "";
     }
-  }, []);
+  });
 
   const stats = useMemo(() => {
     const raw = countChars(text);
