@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import ShareButtons from "@/components/ShareButtons";
 
 type HeaderProps = {
   title?: string;
@@ -64,6 +65,9 @@ export default function Header({ title, subtitle }: HeaderProps) {
         </div>
 
         {/* 右側は空でもOK（将来: ダーク/ライト切替やGitHubリンク等を置ける） */}
+        <div>
+          <ShareButtons text="MINI TOOLS" />
+        </div>
         <div />
       </div>
     </header>

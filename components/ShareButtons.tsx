@@ -2,30 +2,20 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { track } from "@/lib/analytics";
+import { QRCodeCanvas } from "qrcode.react";
 
-type ShareMethod = "x" | "facebook" | "email" | "copy";
+type ShareMethod = "x" | "facebook" | "email" | "copy" | "qr";
 
 type Props = {
-  /** ツイート文などに使うテキスト（従来互換） */
   text: string;
-
-  /** 任意：シェアしたいURLを固定したい場合（未指定なら window.location.href） */
   url?: string;
-
-  /** 任意：表示するサービスを絞る */
   methods?: ShareMethod[];
-
-  /** 任意：アイコンのサイズ（px） */
   size?: number;
-
-  /** 任意：アイコンだけ表示したい場合は true */
   iconsOnly?: boolean;
-
-  /** 任意：ラベルの先頭に付ける見出し（例：シェア） */
   label?: string;
 };
 
-const DEFAULT_METHODS: ShareMethod[] = ["x", "facebook", "email", "copy"];
+const DEFAULT_METHODS: ShareMethod[] = ["x", "facebook", "email", "copy", "qr"];
 
 export default function ShareButtons({
   text,
@@ -36,13 +26,13 @@ export default function ShareButtons({
   label,
 }: Props) {
   const [currentUrl, setCurrentUrl] = useState<string>("");
+  const [qrOpen, setQrOpen] = useState(false);
 
   useEffect(() => {
     if (url) {
       setCurrentUrl(url);
       return;
     }
-    // CSR only
     setCurrentUrl(window.location.href);
   }, [url]);
 
@@ -67,8 +57,6 @@ export default function ShareButtons({
     const u = currentUrl || "";
     try {
       await navigator.clipboard.writeText(u);
-      // 軽いフィードバック（alertは好みで外してOK）
-      // 既存の世界観的に控えめにしたいので console でもOK
       alert("リンクをコピーしました！");
     } catch {
       alert("コピーに失敗しました（ブラウザ設定をご確認ください）");
@@ -76,8 +64,6 @@ export default function ShareButtons({
   };
 
   const renderIcon = (m: ShareMethod) => {
-    // シンプルに「それっぽい」SVG（外部ライブラリ不要）
-    // こだわりたくなったら later: react-icons に差し替えもOK
     switch (m) {
       case "x":
         return (
@@ -115,6 +101,15 @@ export default function ShareButtons({
             />
           </svg>
         );
+      case "qr":
+        return (
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path
+              d="M3 3h8v8H3V3Zm2 2v4h4V5H5Zm8-2h8v8h-8V3Zm2 2v4h4V5h-4ZM3 13h8v8H3v-8Zm2 2v4h4v-4H5Zm10-2h2v2h-2v-2Zm-2 2h2v2h-2v-2Zm4 0h2v2h-2v-2Zm2 2h2v6h-6v-2h4v-4Zm-6 0h2v2h-2v-2Zm0 4h2v2h-2v-2Z"
+              fill="currentColor"
+            />
+          </svg>
+        );
     }
   };
 
@@ -128,7 +123,46 @@ export default function ShareButtons({
         return "メール";
       case "copy":
         return "コピー";
+      case "qr":
+        return "QR";
     }
+  };
+
+  const renderQrModal = () => {
+    if (!qrOpen) return null;
+    const u = currentUrl || "";
+    return (
+      <div style={overlayStyle} onClick={() => setQrOpen(false)}>
+        <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
+          <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 10 }}>
+            このページを共有
+          </div>
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <QRCodeCanvas value={u} size={180} />
+          </div>
+
+          <div
+            style={{
+              marginTop: 12,
+              display: "flex",
+              gap: 8,
+              justifyContent: "center",
+            }}
+          >
+            <button type="button" onClick={onCopy} style={modalBtnStyle}>
+              URLコピー
+            </button>
+            <button
+              type="button"
+              onClick={() => setQrOpen(false)}
+              style={modalBtnStyle}
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -167,6 +201,27 @@ export default function ShareButtons({
             );
           }
 
+          if (m === "qr") {
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => {
+                  onShare("qr");
+                  setQrOpen(true);
+                }}
+                aria-label="QRで共有"
+                title="QRで共有"
+                style={iconButtonStyle(size)}
+              >
+                {renderIcon(m)}
+                {!iconsOnly ? (
+                  <span style={labelStyle}>{labelFor(m)}</span>
+                ) : null}
+              </button>
+            );
+          }
+
           const href =
             m === "x"
               ? shareLinks.x
@@ -194,26 +249,22 @@ export default function ShareButtons({
         })}
       </div>
 
+      {renderQrModal()}
+
       <style>{css}</style>
     </div>
   );
 }
 
-const labelStyle: React.CSSProperties = {
-  fontSize: 12,
-  opacity: 0.8,
-};
+const labelStyle: React.CSSProperties = { fontSize: 12, opacity: 0.8 };
 
 function iconButtonStyle(size: number): React.CSSProperties {
   return {
     width: size,
     height: size,
     borderRadius: 999,
-
-    // ★丸枠・背景を消す
     border: "none",
     background: "transparent",
-
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
@@ -221,28 +272,54 @@ function iconButtonStyle(size: number): React.CSSProperties {
     color: "rgba(0,0,0,0.78)",
     cursor: "pointer",
     userSelect: "none",
-
-    // ★“軽い”ホバーだけ
     transition: "transform .12s ease, opacity .12s ease",
     padding: 0,
   };
 }
 
+const overlayStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.55)",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  zIndex: 1000,
+};
+
+const modalStyle: React.CSSProperties = {
+  background: "#fff",
+  padding: 16,
+  borderRadius: 12,
+  width: "min(92vw, 360px)",
+  boxShadow: "0 12px 40px rgba(0,0,0,0.25)",
+  textAlign: "center",
+};
+
+const modalBtnStyle: React.CSSProperties = {
+  border: "1px solid rgba(0,0,0,0.12)",
+  background: "rgba(0,0,0,0.03)",
+  padding: "8px 12px",
+  borderRadius: 10,
+  cursor: "pointer",
+};
+
 const css = `
   @media (hover: hover) and (pointer: fine) {
     a[aria-label*="でシェア"]:hover,
-    button[aria-label*="コピー"]:hover {
+    button[aria-label*="コピー"]:hover,
+    button[aria-label*="QR"]:hover {
       transform: translateY(-1px);
       opacity: 1;
     }
     a[aria-label*="でシェア"]:active,
-    button[aria-label*="コピー"]:active {
+    button[aria-label*="コピー"]:active,
+    button[aria-label*="QR"]:active {
       transform: translateY(0px);
       opacity: 0.85;
     }
   }
 
-  /* ★ ここが重要：aタグ由来の丸・枠・フォーカスを完全に殺す */
   a {
     background: transparent !important;
     border: none !important;
