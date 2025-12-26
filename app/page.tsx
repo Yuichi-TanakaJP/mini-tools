@@ -27,6 +27,14 @@ const TOOLS: ToolItem[] = [
     href: "/tools/charcount",
     icon: "🔤",
   },
+  {
+    title: "株主優待期限帳",
+    short: "優待の期限を管理",
+    detail:
+      "取得した優待の有効期限（使える最終日）を管理。使用済み/未使用、期限が近い順、月別表示・ソート対応。データは端末内に保存。",
+    href: "/tools/yutai-expiry",
+    icon: "🎁",
+  },
 ];
 
 export default function HomePage() {
