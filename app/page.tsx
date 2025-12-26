@@ -1,17 +1,14 @@
 // app/page.tsx
-"use client";
-
-import Link from "next/link";
 import MonetizeBar from "@/components/MonetizeBar";
-import ShareButtons from "@/components/ShareButtons";
-import { track } from "@/lib/analytics";
+import ShareButtons from "@/components/ShareButtonsSuspended";
+import ToolGridClient from "./ToolGridClient";
 
 type ToolItem = {
   title: string;
-  short: string; // カードに常時出す1行
-  detail: string; // ホバーで出す説明
+  short: string;
+  detail: string;
   href: string;
-  icon: string; // 絵文字でOK（将来SVGにしても良い）
+  icon: string;
 };
 
 const TOOLS: ToolItem[] = [
@@ -33,98 +30,36 @@ const TOOLS: ToolItem[] = [
 ];
 
 export default function HomePage() {
-  const onOpen = (href: string) => {
-    track("tool_opened", { href });
-  };
-
   return (
     <main style={styles.page}>
+      {/* ===== ヒーローエリア（そのまま） ===== */}
       <section style={styles.hero}>
-        <div style={styles.badge}>mini-tools</div>
-        <h1 style={styles.h1}>サクッと使えるミニツール集</h1>
-        <p style={styles.lead}>
-          数字を貼るだけ。面倒を減らす。シンプルに最短で。
-        </p>
-        <p style={styles.note}>
-          ※入力データは基本この端末（ブラウザ）に保存され、サーバーには送信しません。
-        </p>
+        <h1 style={styles.h1}>mini-tools</h1>
+        <p style={styles.lead}>サクッと使えるミニツール集</p>
       </section>
 
+      {/* ===== ツール一覧（Clientに分離） ===== */}
       <section style={styles.section}>
-        <div style={styles.toolsHeader} className="toolsHeader">
-          ツールを選ぶ
-        </div>
+        <h2 style={styles.sectionTitle}>ツールを選ぶ</h2>
 
-        <div style={styles.grid}>
-          {TOOLS.map((t) => (
-            <Link
-              key={t.href}
-              href={t.href}
-              onClick={() => onOpen(t.href)}
-              style={styles.cardLink}
-              className="toolLink"
-            >
-              <div style={styles.card} className="toolCard">
-                <div style={styles.cardInner} className="toolCardInner">
-                  <div style={styles.cardTop}>
-                    <div style={styles.icon}>{t.icon}</div>
-                    <div style={styles.arrow} className="arrow" aria-hidden>
-                      →
-                    </div>
-                  </div>
-
-                  <div style={styles.cardTitle}>{t.title}</div>
-                  <div style={styles.cardShort}>{t.short}</div>
-
-                  <div style={styles.hoverHint} className="hoverHint">
-                    詳細を見る
-                  </div>
-
-                  <details style={styles.details} className="toolDetails">
-                    ...
-                  </details>
-
-                  <div className="tooltip" style={styles.tooltip}>
-                    {t.detail}
-                  </div>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+        {/* ★ ここが重要：track() を含むので Client Component */}
+        <ToolGridClient tools={TOOLS} styles={styles} />
       </section>
 
+      {/* ===== 下部エリア ===== */}
       <section style={styles.bottom}>
-        <div style={styles.bottomHeader}>
-          <div style={styles.bottomTitle}>シェア / 応援</div>
-          <div style={styles.bottomSub}>
-            よければ拡散・応援してもらえると助かります
-          </div>
-        </div>
+        {/* ★ useSearchParams を使うので Suspense 必須 */}
+        <ShareButtons
+          text="mini-tools｜サクッと使えるミニツール集"
+          methods={["x", "copy", "email", "facebook"]}
+        />
 
-        <div style={styles.bottomGrid}>
-          <div style={styles.footerActionArea}>
-            <div style={styles.hr} />
+        <div style={{ height: 32 }} />
 
-            <div style={styles.centerRow}>
-              <ShareButtons
-                text="mini-tools：サクッと使えるミニツール集"
-                methods={["x", "copy", "email", "facebook"]}
-                label={undefined}
-              />
-            </div>
-
-            {/* 分離の余白 */}
-            <div style={{ height: 40 }} />
-
-            <div style={styles.centerCol}>
-              <MonetizeBar />
-            </div>
-          </div>
-        </div>
+        <MonetizeBar />
       </section>
 
-      {/* hover tooltip / card hover をCSSで（inlineだけだと擬似セレクタが書けないため） */}
+      {/* styles / css は今まで通り */}
       <style>{css}</style>
     </main>
   );

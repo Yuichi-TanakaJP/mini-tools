@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import ShareButtons from "@/components/ShareButtons";
+import ShareButtons from "@/components/ShareButtonsSuspended";
 import MonetizeBar from "@/components/MonetizeBar";
 import { track } from "@/lib/analytics";
 import Link from "next/link";

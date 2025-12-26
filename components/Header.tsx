@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import ShareButtons from "@/components/ShareButtons";
+import ShareButtons from "@/components/ShareButtonsSuspended";
 
 type HeaderProps = {
   title?: string;
