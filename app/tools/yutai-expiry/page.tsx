@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import ShareButtons from "@/components/ShareButtons";
+import ShareButtons from "@/components/ShareButtonsSuspended";
 import ToolClient from "./ToolClient";
 
 export const metadata: Metadata = {
