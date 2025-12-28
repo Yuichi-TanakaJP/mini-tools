@@ -30,10 +30,10 @@ const LEGACY_KEYS = [
   "mini-tools:benefits",
 ];
 
+type CryptoWithUUID = Crypto & { randomUUID?: () => string };
+
 function safeUUID() {
-  // crypto.randomUUID が無い環境でも落とさない
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const c: any = globalThis.crypto;
+  const c = globalThis.crypto as CryptoWithUUID | undefined;
   if (c?.randomUUID) return c.randomUUID();
   return `id_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
@@ -263,7 +263,9 @@ function validateDraft(d: Draft): { ok: boolean; message?: string } {
 
 export default function ToolClient() {
   // --- state ---
-  const [items, setItems] = useState<BenefitItemV2[]>([]);
+  const [items, setItems] = useState<BenefitItemV2[]>(() =>
+    loadFromLocalStorage()
+  );
   const [tab, setTab] = useState<TabKey>("thisMonth");
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
   const [showUsed, setShowUsed] = useState(false);
@@ -282,15 +284,6 @@ export default function ToolClient() {
 
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
-
-  // --- init load ---
-  useEffect(() => {
-    const loaded = loadFromLocalStorage();
-    setItems(loaded);
-
-    // 旧キーがあっても v2 に保存しておく（移行）
-    if (loaded.length) saveToLocalStorage(loaded);
-  }, []);
 
   // --- persist ---
   useEffect(() => {
