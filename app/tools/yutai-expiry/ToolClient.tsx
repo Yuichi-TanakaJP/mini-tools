@@ -24,6 +24,7 @@ type BenefitItemV2 = {
 };
 
 const STORAGE_KEY_V2 = "mini-tools:benefits:v2";
+const VIEW_MODE_KEY = "mini-tools:benefits:viewMode";
 const LEGACY_KEYS = [
   "benefits-tracker-items-v1",
   "benefits-tracker-items",
@@ -261,13 +262,65 @@ function validateDraft(d: Draft): { ok: boolean; message?: string } {
   return { ok: true };
 }
 
+function readSavedViewMode(): ViewMode | null {
+  if (typeof window === "undefined") return null;
+  const v = window.localStorage.getItem(VIEW_MODE_KEY);
+  return v === "cards" || v === "table" ? (v as ViewMode) : null;
+}
+
+function saveViewMode(mode: ViewMode) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(VIEW_MODE_KEY, mode);
+}
+
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia(query).matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mql = window.matchMedia(query);
+    const onChange = (e: MediaQueryListEvent) => setMatches(e.matches);
+
+    if (mql.addEventListener) mql.addEventListener("change", onChange);
+    else mql.addListener(onChange);
+
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener("change", onChange);
+      else mql.removeListener(onChange);
+    };
+  }, [query]);
+
+  return matches;
+}
+
 export default function ToolClient() {
   // --- state ---
   const [items, setItems] = useState<BenefitItemV2[]>(() =>
     loadFromLocalStorage()
   );
   const [tab, setTab] = useState<TabKey>("thisMonth");
-  const [viewMode, setViewMode] = useState<ViewMode>("cards");
+  const isMobile = useMediaQuery("(max-width: 699px)");
+
+  const [hasManualViewMode, setHasManualViewMode] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return readSavedViewMode() !== null;
+  });
+
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const saved = readSavedViewMode();
+    if (saved) return saved;
+    if (typeof window !== "undefined") {
+      return window.matchMedia("(max-width: 699px)").matches
+        ? "cards"
+        : "table";
+    }
+    return "table";
+  });
+
   const [showUsed, setShowUsed] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("expiryAsc");
   const [query, setQuery] = useState("");
@@ -501,6 +554,8 @@ export default function ToolClient() {
     return "まだデータがありません";
   }, [tab]);
 
+  const effectiveViewMode: ViewMode = isMobile ? "cards" : viewMode;
+
   return (
     <section className={styles.shell}>
       {/* top controls */}
@@ -569,28 +624,38 @@ export default function ToolClient() {
               </select>
             </div>
 
-            <div className={styles.segment}>
-              <button
-                type="button"
-                className={`${styles.segBtn} ${
-                  viewMode === "cards" ? styles.segActive : ""
-                }`}
-                onClick={() => setViewMode("cards")}
-                aria-label="カード表示"
-              >
-                カード
-              </button>
-              <button
-                type="button"
-                className={`${styles.segBtn} ${
-                  viewMode === "table" ? styles.segActive : ""
-                }`}
-                onClick={() => setViewMode("table")}
-                aria-label="表表示"
-              >
-                表
-              </button>
-            </div>
+            {!isMobile && (
+              <div className={styles.segment}>
+                <button
+                  type="button"
+                  className={`${styles.segBtn} ${
+                    effectiveViewMode === "cards" ? styles.segActive : ""
+                  }`}
+                  onClick={() => {
+                    setViewMode("cards");
+                    setHasManualViewMode(true);
+                    saveViewMode("cards");
+                  }}
+                  aria-label="カード表示"
+                >
+                  カード
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.segBtn} ${
+                    effectiveViewMode === "table" ? styles.segActive : ""
+                  }`}
+                  onClick={() => {
+                    setViewMode("table");
+                    setHasManualViewMode(true);
+                    saveViewMode("table");
+                  }}
+                  aria-label="表表示"
+                >
+                  表
+                </button>
+              </div>
+            )}
 
             {/* PC用の追加ボタン */}
             <button
@@ -632,7 +697,7 @@ export default function ToolClient() {
             </button>
           </div>
         </div>
-      ) : viewMode === "cards" ? (
+      ) : effectiveViewMode === "cards" ? (
         <div className={styles.cardGrid}>
           {filtered.map((it) => {
             const badge = dueBadge(it.expiresOn);
