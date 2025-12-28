@@ -1,0 +1,542 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* --- top --- */
+.topBar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tabBtn {
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.7);
+  padding: 10px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.tabActive {
+  border-color: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.countPill {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  opacity: 0.85;
+}
+
+.actionsRow {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.searchWrap {
+  width: 100%;
+}
+
+.search {
+  width: 100%;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.compactRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  opacity: 0.9;
+  user-select: none;
+}
+.toggle input {
+  transform: translateY(1px);
+}
+
+.selectWrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.select {
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 12px;
+  padding: 10px 10px;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.segment {
+  display: inline-flex;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.segBtn {
+  border: none;
+  background: transparent;
+  padding: 10px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.segActive {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.addBtnDesktop {
+  margin-left: auto;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(0, 0, 0, 0.04);
+  padding: 10px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* --- empty --- */
+.empty {
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.emptyTitle {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.emptySub {
+  opacity: 0.8;
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.emptyCtaRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* --- cards --- */
+.cardGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.card {
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  overflow: hidden;
+}
+
+.cardUsed {
+  opacity: 0.65;
+}
+
+.cardTop {
+  padding: 14px 14px 10px;
+}
+
+.cardTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.cardTitle {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.badge {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  white-space: nowrap;
+}
+.badgeMuted {
+  background: rgba(0, 0, 0, 0.04);
+}
+.badgeWarn {
+  background: rgba(255, 215, 0, 0.18);
+}
+.badgeDanger {
+  background: rgba(255, 99, 71, 0.18);
+}
+
+.cardMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  opacity: 0.9;
+}
+
+.company {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.expiry {
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.cardBody {
+  padding: 0 14px 10px;
+}
+
+.kvRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.kv {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.memo {
+  font-size: 13px;
+  opacity: 0.85;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.cardActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px 14px 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* --- table --- */
+.tableWrap {
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 16px;
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px; /* モバイルは横スクロール */
+}
+
+.table th,
+.table td {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 10px 12px;
+  vertical-align: top;
+  font-size: 14px;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  background: rgba(255, 255, 255, 0.95);
+  text-align: left;
+  font-weight: 700;
+}
+
+.rowUsed {
+  opacity: 0.65;
+}
+
+.mono {
+  font-variant-numeric: tabular-nums;
+}
+
+.rowTitle {
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.rowSub {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  opacity: 0.85;
+}
+.rowMemo {
+  font-size: 13px;
+  opacity: 0.85;
+  white-space: pre-wrap;
+}
+.rowBtns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* --- buttons --- */
+.primaryBtn {
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(0, 0, 0, 0.06);
+  padding: 10px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.ghostBtn {
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: transparent;
+  padding: 10px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.smallBtn {
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.dangerBtn {
+  border-color: rgba(255, 0, 0, 0.22);
+}
+
+/* --- bottom bar --- */
+.bottomBar {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  opacity: 0.9;
+}
+
+.hint {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.bottomBtns {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* --- dialogs --- */
+.dialog {
+  border: none;
+  padding: 0;
+  border-radius: 16px;
+  max-width: 560px;
+  width: calc(100% - 24px);
+}
+.dialog::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.dialogInner {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.dialogHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.dialogTitle {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.iconBtn {
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: transparent;
+  border-radius: 12px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.formGrid {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.field span {
+  display: block;
+  font-size: 12px;
+  opacity: 0.8;
+  margin-bottom: 6px;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.help {
+  font-size: 12px;
+  opacity: 0.75;
+  line-height: 1.5;
+}
+
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.toggleLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.error {
+  border: 1px solid rgba(255, 0, 0, 0.22);
+  background: rgba(255, 0, 0, 0.06);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.bigTextarea {
+  width: 100%;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.dialogFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 14px 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* --- toast --- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.78);
+  color: white;
+  padding: 10px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  z-index: 50;
+}
+
+/* --- fab --- */
+.fab {
+  position: fixed;
+  right: 16px;
+  bottom: 18px;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  font-size: 26px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+}
+
+/* --- responsive --- */
+@media (min-width: 880px) {
+  .actionsRow {
+    flex-direction: row;
+    align-items: center;
+  }
+  .searchWrap {
+    flex: 1;
+  }
+  .compactRow {
+    justify-content: flex-end;
+    flex: 0 0 auto;
+  }
+  .cardGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* PCではFABを隠して、追加ボタンを見せる */
+@media (min-width: 700px) {
+  .fab {
+    display: none;
+  }
+}
+
+/* スマホでは desktopボタンを隠す */
+@media (max-width: 699px) {
+  .addBtnDesktop {
+    display: none;
+  }
+  .row2 {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,684 +1,1028 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import styles from "./ToolClient.module.css";
 
-type YutaiItem = {
+type TabKey = "thisMonth" | "later" | "all";
+type ViewMode = "cards" | "table";
+type SortKey = "expiryAsc" | "companyAsc" | "createdDesc";
+
+type BenefitItemV2 = {
   id: string;
-  title: string; // 必須
-  company?: string;
-  expiry?: string; // 任意: YYYY-MM-DD
-  note?: string;
-  used: boolean;
-  createdAt: string;
-  updatedAt: string;
+  title: string; // 優待名
+  company: string; // 企業名
+  expiresOn: string | null; // YYYY-MM-DD or null(期限なし)
+  isUsed: boolean;
+
+  // 任意（ユーザーの要望：隠さない、任意）
+  quantity?: number | null;
+  amountYen?: number | null;
+  memo?: string;
+
+  createdAt: string; // ISO
+  updatedAt: string; // ISO
 };
 
-const STORAGE_KEY = "mini-tools:yutai-expiry:v1";
-const DEFAULT_NEAR_DAYS = 14;
-const NO_EXPIRY_KEY = "__NO_EXPIRY__";
+const STORAGE_KEY_V2 = "mini-tools:benefits:v2";
+const LEGACY_KEYS = [
+  "benefits-tracker-items-v1",
+  "benefits-tracker-items",
+  "mini-tools:benefits",
+];
 
-function uid(): string {
+function safeUUID() {
+  // crypto.randomUUID が無い環境でも落とさない
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const c: any = globalThis.crypto;
   if (c?.randomUUID) return c.randomUUID();
   return `id_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
-function isYmd(s: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(s);
+function todayISODate(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
-function toDate(ymd?: string): Date | null {
-  if (!ymd || !isYmd(ymd)) return null;
-  const [y, m, d] = ymd.split("-").map((n) => Number(n));
-  const dt = new Date(y, (m ?? 1) - 1, d ?? 1);
-  return Number.isNaN(dt.getTime()) ? null : dt;
+function parseLocalDate(yyyy_mm_dd: string): Date {
+  // タイムゾーン事故を避けるためローカル日付として生成
+  return new Date(`${yyyy_mm_dd}T00:00:00`);
 }
 
-function daysUntil(ymd?: string): number | null {
-  const dt = toDate(ymd);
-  if (!dt) return null;
-  const today = new Date();
-  const a = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate()
-  ).getTime();
-  const b = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()).getTime();
-  return Math.round((b - a) / (1000 * 60 * 60 * 24));
+function fmtJPDate(yyyy_mm_dd: string): string {
+  const d = parseLocalDate(yyyy_mm_dd);
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  return `${y}/${m}/${day}`;
 }
 
-function ymKey(ymd?: string): string {
-  if (!ymd || !isYmd(ymd)) return NO_EXPIRY_KEY;
-  return ymd.slice(0, 7); // YYYY-MM
-}
-function ymLabel(ym: string): string {
-  if (ym === NO_EXPIRY_KEY) return "期限未設定";
-  const [y, m] = ym.split("-");
-  return `${y}年${Number(m)}月`;
+function monthKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
 }
 
-function safeParse(raw: string | null): YutaiItem[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter(Boolean)
-      .map((x: any) => ({
-        id: String(x.id ?? ""),
-        title: String(x.title ?? ""),
-        company: x.company ? String(x.company) : undefined,
-        expiry: x.expiry ? String(x.expiry) : undefined,
-        note: x.note ? String(x.note) : undefined,
-        used: Boolean(x.used),
-        createdAt: String(x.createdAt ?? new Date().toISOString()),
-        updatedAt: String(x.updatedAt ?? new Date().toISOString()),
-      }))
-      .filter((x) => x.id && x.title); // titleだけ必須
-  } catch {
-    return [];
+function startOfMonth(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+function startOfNextMonth(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth() + 1, 1);
+}
+
+function isSameMonth(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+}
+
+function toNumberOrNull(v: string): number | null {
+  const t = v.trim();
+  if (!t) return null;
+  const n = Number(t);
+  if (Number.isNaN(n)) return null;
+  return n;
+}
+
+// 旧データ(v1)をできるだけ救う
+// v1: { id,title,company,expiresAt,isUsed,usedAt,quantity,amount,note,createdAt,updatedAt }
+function normalizeLegacyToV2(raw: unknown): BenefitItemV2[] {
+  if (!Array.isArray(raw)) return [];
+
+  const nowIso = new Date().toISOString();
+
+  return raw
+    .map((x) => {
+      if (!x || typeof x !== "object") return null;
+      const obj = x as Record<string, unknown>;
+
+      const id =
+        typeof obj.id === "string" && obj.id.trim() ? obj.id : safeUUID();
+
+      const title = typeof obj.title === "string" ? obj.title : "";
+      const company = typeof obj.company === "string" ? obj.company : "";
+
+      const expiresAt =
+        typeof obj.expiresAt === "string" ? obj.expiresAt : null;
+      // expiresAt が ISO の日付だったりするケースもあるので YYYY-MM-DD に寄せる
+      const expiresOn = expiresAt ? expiresAt.slice(0, 10) : null;
+
+      const isUsed = typeof obj.isUsed === "boolean" ? obj.isUsed : false;
+
+      const quantity = (() => {
+        if (typeof obj.quantity === "number") return obj.quantity;
+        if (typeof obj.quantity === "string")
+          return toNumberOrNull(obj.quantity);
+        return null;
+      })();
+
+      const amountYen = (() => {
+        if (typeof obj.amount === "number") return obj.amount;
+        if (typeof obj.amount === "string") return toNumberOrNull(obj.amount);
+        // v1で amount が "¥1,000" みたいに入ってる可能性を拾う
+        if (typeof obj.amount === "string") {
+          const cleaned = obj.amount.replace(/[^\d.-]/g, "");
+          return toNumberOrNull(cleaned);
+        }
+        return null;
+      })();
+
+      const memo =
+        typeof obj.note === "string"
+          ? obj.note
+          : typeof obj.memo === "string"
+          ? obj.memo
+          : "";
+
+      const createdAt =
+        typeof obj.createdAt === "string" && obj.createdAt
+          ? obj.createdAt
+          : nowIso;
+
+      const updatedAt =
+        typeof obj.updatedAt === "string" && obj.updatedAt
+          ? obj.updatedAt
+          : nowIso;
+
+      return {
+        id,
+        title: title.trim(),
+        company: company.trim(),
+        expiresOn: expiresOn && expiresOn.trim() ? expiresOn.trim() : null,
+        isUsed,
+        quantity: quantity ?? null,
+        amountYen: amountYen ?? null,
+        memo: memo?.toString() ?? "",
+        createdAt,
+        updatedAt,
+      } satisfies BenefitItemV2;
+    })
+    .filter(Boolean) as BenefitItemV2[];
+}
+
+function loadFromLocalStorage(): BenefitItemV2[] {
+  if (typeof window === "undefined") return [];
+
+  // v2 があればそれを優先
+  const v2 = window.localStorage.getItem(STORAGE_KEY_V2);
+  if (v2) {
+    try {
+      const parsed = JSON.parse(v2);
+      if (Array.isArray(parsed)) return parsed as BenefitItemV2[];
+    } catch {
+      // ignore
+    }
   }
+
+  // v1/旧キーを探索して移行
+  for (const k of LEGACY_KEYS) {
+    const s = window.localStorage.getItem(k);
+    if (!s) continue;
+    try {
+      const parsed = JSON.parse(s);
+      const normalized = normalizeLegacyToV2(parsed);
+      if (normalized.length) return normalized;
+    } catch {
+      // ignore
+    }
+  }
+
+  return [];
 }
 
-type FilterMode = "all" | "unused" | "used";
-type SortMode = "expiry_asc" | "expiry_desc" | "created_desc";
+function saveToLocalStorage(items: BenefitItemV2[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(items));
+}
+
+function compareISODesc(a: string, b: string) {
+  if (a === b) return 0;
+  return a > b ? -1 : 1;
+}
+
+function cmpText(a: string, b: string) {
+  return a.localeCompare(b, "ja");
+}
+
+function dueBadge(
+  expiresOn: string | null
+): { label: string; tone: "muted" | "warn" | "danger" } | null {
+  if (!expiresOn) return null;
+  const d = parseLocalDate(expiresOn);
+  const today = parseLocalDate(todayISODate());
+  const diffDays = Math.floor(
+    (d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  if (diffDays < 0) return { label: "期限切れ", tone: "danger" };
+  if (diffDays === 0) return { label: "今日まで", tone: "danger" };
+  if (diffDays <= 7) return { label: `あと${diffDays}日`, tone: "warn" };
+  return { label: "期限あり", tone: "muted" };
+}
+
+type Draft = {
+  id?: string;
+  title: string;
+  company: string;
+  expiresOn: string; // 入力では空文字もあり得る
+  isUsed: boolean;
+  quantity: string;
+  amountYen: string;
+  memo: string;
+};
+
+function toDraft(x?: BenefitItemV2): Draft {
+  return {
+    id: x?.id,
+    title: x?.title ?? "",
+    company: x?.company ?? "",
+    expiresOn: x?.expiresOn ?? "",
+    isUsed: x?.isUsed ?? false,
+    quantity: x?.quantity != null ? String(x.quantity) : "",
+    amountYen: x?.amountYen != null ? String(x.amountYen) : "",
+    memo: x?.memo ?? "",
+  };
+}
+
+function validateDraft(d: Draft): { ok: boolean; message?: string } {
+  if (!d.title.trim())
+    return { ok: false, message: "優待名を入力してください。" };
+  if (!d.company.trim())
+    return { ok: false, message: "企業名を入力してください。" };
+  if (d.expiresOn.trim()) {
+    // YYYY-MM-DD のみ許可
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d.expiresOn.trim())) {
+      return {
+        ok: false,
+        message: "期限は YYYY-MM-DD 形式で入力してください（例: 2026-03-31）。",
+      };
+    }
+  }
+  return { ok: true };
+}
 
 export default function ToolClient() {
-  const [items, setItems] = useState<YutaiItem[]>([]);
-  // 入力行は「IDだけ」親が持つ（入力値は子が保持）→フォーカス飛び根治
-  const [draftIds, setDraftIds] = useState<string[]>([uid()]);
+  // --- state ---
+  const [items, setItems] = useState<BenefitItemV2[]>([]);
+  const [tab, setTab] = useState<TabKey>("thisMonth");
+  const [viewMode, setViewMode] = useState<ViewMode>("cards");
+  const [showUsed, setShowUsed] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("expiryAsc");
+  const [query, setQuery] = useState("");
 
-  const [filter, setFilter] = useState<FilterMode>("unused");
-  const [sort, setSort] = useState<SortMode>("expiry_asc");
-  const [groupByMonth, setGroupByMonth] = useState<boolean>(true);
+  const [toast, setToast] = useState<string | null>(null);
 
-  // load once
+  // dialogs
+  const editDialogRef = useRef<HTMLDialogElement | null>(null);
+  const importDialogRef = useRef<HTMLDialogElement | null>(null);
+
+  const [editMode, setEditMode] = useState<"add" | "edit">("add");
+  const [draft, setDraft] = useState<Draft>(toDraft());
+  const [draftError, setDraftError] = useState<string | null>(null);
+
+  const [importText, setImportText] = useState("");
+  const [importError, setImportError] = useState<string | null>(null);
+
+  // --- init load ---
   useEffect(() => {
-    setItems(safeParse(localStorage.getItem(STORAGE_KEY)));
+    const loaded = loadFromLocalStorage();
+    setItems(loaded);
+
+    // 旧キーがあっても v2 に保存しておく（移行）
+    if (loaded.length) saveToLocalStorage(loaded);
   }, []);
 
-  // save
+  // --- persist ---
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    saveToLocalStorage(items);
   }, [items]);
 
-  const stats = useMemo(() => {
-    const total = items.length;
-    const unused = items.filter((x) => !x.used).length;
-    return { total, unused, used: total - unused };
-  }, [items]);
+  // --- derived ---
+  const now = useMemo(() => new Date(), []);
+  const thisMonthKey = monthKey(now);
+  const nextMonthStart = startOfNextMonth(now);
 
-  const normalized = useMemo(() => {
-    const filtered = items.filter((x) => {
-      if (filter === "all") return true;
-      if (filter === "unused") return !x.used;
-      return x.used;
-    });
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
 
-    const sorted = [...filtered].sort((a, b) => {
-      // 未使用優先
-      if (a.used !== b.used) return a.used ? 1 : -1;
+    const base = items.filter((it) => {
+      if (!showUsed && it.isUsed) return false;
 
-      if (sort === "created_desc") {
-        return (b.createdAt || "").localeCompare(a.createdAt || "");
+      // 検索
+      if (q) {
+        const hay = `${it.title} ${it.company} ${it.memo ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
       }
 
-      const da = toDate(a.expiry)?.getTime();
-      const db = toDate(b.expiry)?.getTime();
+      // タブ
+      if (tab === "thisMonth") {
+        // 期限なしは今月には出さない（ノイズ防止）
+        if (!it.expiresOn) return false;
+        const d = parseLocalDate(it.expiresOn);
+        return monthKey(d) === thisMonthKey;
+      }
 
-      // 期限未設定は下へ
-      if (da == null && db == null) return 0;
-      if (da == null) return 1;
-      if (db == null) return -1;
+      if (tab === "later") {
+        // 期限なしは later にも出さない（期限があるものだけ）
+        if (!it.expiresOn) return false;
+        const d = parseLocalDate(it.expiresOn);
+        return d.getTime() >= nextMonthStart.getTime();
+      }
 
-      if (sort === "expiry_desc") return db - da;
-      return da - db;
+      // all
+      return true;
+    });
+
+    const sorted = [...base].sort((a, b) => {
+      if (sortKey === "createdDesc")
+        return compareISODesc(a.createdAt, b.createdAt);
+      if (sortKey === "companyAsc") return cmpText(a.company, b.company);
+
+      // expiryAsc（期限なしは最後）
+      const ax = a.expiresOn;
+      const bx = b.expiresOn;
+      if (!ax && !bx) return cmpText(a.company, b.company);
+      if (!ax) return 1;
+      if (!bx) return -1;
+      if (ax === bx) return cmpText(a.company, b.company);
+      return ax < bx ? -1 : 1;
     });
 
     return sorted;
-  }, [items, filter, sort]);
+  }, [items, showUsed, query, tab, sortKey, thisMonthKey, nextMonthStart]);
 
-  const grouped = useMemo(() => {
-    if (!groupByMonth) return null;
-    const map = new Map<string, YutaiItem[]>();
-    for (const it of normalized) {
-      const key = ymKey(it.expiry);
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(it);
-    }
-    const keys = Array.from(map.keys()).sort((a, b) => {
-      if (a === NO_EXPIRY_KEY) return 1;
-      if (b === NO_EXPIRY_KEY) return -1;
-      return a.localeCompare(b);
-    });
-    return keys.map((k) => ({ ym: k, items: map.get(k)! }));
-  }, [normalized, groupByMonth]);
+  const thisMonthCount = useMemo(() => {
+    return items.filter((it) => {
+      if (it.isUsed) return false; // “基本表示：未使用だけ” の数字に寄せる
+      if (!it.expiresOn) return false;
+      return isSameMonth(parseLocalDate(it.expiresOn), now);
+    }).length;
+  }, [items, now]);
 
-  function addDraftRow() {
-    setDraftIds((prev) => [...prev, uid()]);
+  const laterCount = useMemo(() => {
+    return items.filter((it) => {
+      if (it.isUsed) return false;
+      if (!it.expiresOn) return false;
+      return parseLocalDate(it.expiresOn).getTime() >= nextMonthStart.getTime();
+    }).length;
+  }, [items, nextMonthStart]);
+
+  const allCount = useMemo(() => {
+    return items.filter((it) => !it.isUsed).length;
+  }, [items]);
+
+  // --- actions ---
+  function openAdd() {
+    setEditMode("add");
+    setDraft(toDraft());
+    setDraftError(null);
+    editDialogRef.current?.showModal();
   }
-  function removeDraftRow(id: string) {
-    setDraftIds((prev) => prev.filter((x) => x !== id));
+
+  function openEdit(it: BenefitItemV2) {
+    setEditMode("edit");
+    setDraft(toDraft(it));
+    setDraftError(null);
+    editDialogRef.current?.showModal();
   }
 
-  function commitDraftRow(data: {
-    title: string;
-    company?: string;
-    expiry?: string;
-    note?: string;
-  }) {
-    const title = data.title.trim();
-    const expiry = (data.expiry ?? "").trim();
-
-    if (!title) {
-      alert("優待名だけ必須です（入力してください）");
+  function upsertFromDraft() {
+    const v = validateDraft(draft);
+    if (!v.ok) {
+      setDraftError(v.message ?? "入力内容を確認してください。");
       return;
     }
-    if (expiry && !isYmd(expiry)) {
-      alert("期限は入力する場合のみ YYYY-MM-DD の日付形式で入力してください");
-      return;
-    }
 
-    const now = new Date().toISOString();
-    const item: YutaiItem = {
-      id: uid(),
-      title,
-      company: data.company?.trim() || undefined,
-      expiry: expiry || undefined,
-      note: data.note?.trim() || undefined,
-      used: false,
-      createdAt: now,
-      updatedAt: now,
+    const nowIso = new Date().toISOString();
+    const expiresOn = draft.expiresOn.trim() ? draft.expiresOn.trim() : null;
+
+    const next: BenefitItemV2 = {
+      id: draft.id ?? safeUUID(),
+      title: draft.title.trim(),
+      company: draft.company.trim(),
+      expiresOn,
+      isUsed: draft.isUsed,
+      quantity: toNumberOrNull(draft.quantity),
+      amountYen: toNumberOrNull(draft.amountYen),
+      memo: draft.memo?.trim() ?? "",
+      createdAt: nowIso,
+      updatedAt: nowIso,
     };
-    setItems((prev) => [item, ...prev]);
-  }
 
-  function updateItem(id: string, patch: Partial<YutaiItem>) {
-    const now = new Date().toISOString();
-    setItems((prev) =>
-      prev.map((x) => (x.id === id ? { ...x, ...patch, updatedAt: now } : x))
-    );
+    setItems((prev) => {
+      const idx = prev.findIndex((p) => p.id === next.id);
+      if (idx === -1) {
+        return [next, ...prev];
+      }
+      const merged: BenefitItemV2 = {
+        ...prev[idx],
+        ...next,
+        createdAt: prev[idx].createdAt,
+        updatedAt: nowIso,
+      };
+      const copy = [...prev];
+      copy[idx] = merged;
+      return copy;
+    });
+
+    editDialogRef.current?.close();
+    setToast(editMode === "add" ? "追加しました" : "更新しました");
   }
 
   function toggleUsed(id: string) {
-    const now = new Date().toISOString();
     setItems((prev) =>
-      prev.map((x) =>
-        x.id === id ? { ...x, used: !x.used, updatedAt: now } : x
+      prev.map((p) =>
+        p.id === id
+          ? { ...p, isUsed: !p.isUsed, updatedAt: new Date().toISOString() }
+          : p
       )
     );
   }
 
   function removeItem(id: string) {
-    if (!confirm("この優待を削除しますか？")) return;
-    setItems((prev) => prev.filter((x) => x.id !== id));
+    const ok = window.confirm("削除しますか？（元に戻せません）");
+    if (!ok) return;
+    setItems((prev) => prev.filter((p) => p.id !== id));
+    setToast("削除しました");
   }
 
-  function clearAll() {
-    if (!confirm("すべて削除しますか？（元に戻せません）")) return;
-    setItems([]);
+  function exportJSON() {
+    const payload = JSON.stringify(items, null, 2);
+    const blob = new Blob([payload], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `benefits_${todayISODate()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
-  // styles
-  const cardStyle: React.CSSProperties = {
-    border: "1px solid rgba(0,0,0,0.12)",
-    borderRadius: 14,
-    padding: 14,
-    background: "rgba(255,255,255,0.6)",
-  };
-
-  const inputStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: "1px solid rgba(0,0,0,0.18)",
-    outline: "none",
-    background: "white",
-  };
-
-  const btnStyle: React.CSSProperties = {
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: "1px solid rgba(0,0,0,0.18)",
-    background: "white",
-    cursor: "pointer",
-  };
-
-  const primaryBtnStyle: React.CSSProperties = {
-    ...btnStyle,
-    background: "black",
-    color: "white",
-    border: "1px solid black",
-  };
-
-  const gridHeader: React.CSSProperties = {
-    display: "grid",
-    gridTemplateColumns: "34px 1.2fr 1fr 220px 1.6fr 170px",
-    gap: 10,
-    padding: "8px 10px",
-    fontSize: 12,
-    opacity: 0.75,
-  };
-
-  const gridRowBase: React.CSSProperties = {
-    display: "grid",
-    gridTemplateColumns: "34px 1.2fr 1fr 220px 1.6fr 170px",
-    gap: 10,
-    alignItems: "center",
-    padding: "10px 10px",
-    borderRadius: 12,
-    border: "1px solid rgba(0,0,0,0.10)",
-    background: "white",
-  };
-
-  function ExpiryBadge({ expiry, used }: { expiry?: string; used: boolean }) {
-    const d = daysUntil(expiry);
-    const isExpired = d !== null && d < 0;
-    const isNear = d !== null && d <= DEFAULT_NEAR_DAYS && d >= 0;
-
-    const badge = used
-      ? "使用済み"
-      : isExpired
-      ? "期限切れ"
-      : isNear
-      ? `あと${d}日`
-      : null;
-    if (!badge) return null;
-
-    return (
-      <span
-        style={{
-          fontSize: 12,
-          padding: "4px 8px",
-          borderRadius: 999,
-          border: "1px solid rgba(0,0,0,0.15)",
-          whiteSpace: "nowrap",
-          opacity: used ? 0.8 : 1,
-          borderColor: isExpired
-            ? "rgba(220,0,0,0.35)"
-            : isNear
-            ? "rgba(255,140,0,0.45)"
-            : "rgba(0,0,0,0.15)",
-        }}
-      >
-        {badge}
-      </span>
-    );
+  function openImport() {
+    setImportText("");
+    setImportError(null);
+    importDialogRef.current?.showModal();
   }
 
-  function ItemRow({ item }: { item: YutaiItem }) {
-    const [title, setTitle] = useState(item.title);
-    const [company, setCompany] = useState(item.company ?? "");
-    const [expiry, setExpiry] = useState(item.expiry ?? "");
-    const [note, setNote] = useState(item.note ?? "");
-
-    // itemが外部更新された時に同期
-    useEffect(() => {
-      setTitle(item.title);
-      setCompany(item.company ?? "");
-      setExpiry(item.expiry ?? "");
-      setNote(item.note ?? "");
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [item.id, item.updatedAt]);
-
-    function commit(patch: Partial<YutaiItem>) {
-      updateItem(item.id, patch); // 既存の updateItem を使う
-    }
-
-    function commitTitle() {
-      const t = title.trim();
-      if (!t) {
-        // titleは必須：空にされたら戻す
-        setTitle(item.title);
-        alert("優待名は必須です");
+  function doImport(merge: boolean) {
+    setImportError(null);
+    try {
+      const parsed = JSON.parse(importText);
+      const normalized = normalizeLegacyToV2(parsed);
+      if (!normalized.length) {
+        setImportError(
+          "読み込めるデータがありませんでした（配列JSONを貼り付けてください）。"
+        );
         return;
       }
-      if (t !== item.title) commit({ title: t });
+
+      setItems((prev) => {
+        if (!merge) return normalized;
+        const byId = new Map<string, BenefitItemV2>();
+        for (const p of prev) byId.set(p.id, p);
+        for (const n of normalized) byId.set(n.id, n);
+        return Array.from(byId.values()).sort((a, b) =>
+          compareISODesc(a.createdAt, b.createdAt)
+        );
+      });
+
+      importDialogRef.current?.close();
+      setToast(
+        merge ? "インポート（統合）しました" : "インポート（置換）しました"
+      );
+    } catch {
+      setImportError("JSONの形式が正しくありません。");
     }
-
-    function commitCompany() {
-      const v = company.trim();
-      const next = v ? v : undefined;
-      if ((item.company ?? undefined) !== next) commit({ company: next });
-    }
-
-    function commitExpiry() {
-      const v = expiry.trim();
-      const next = v ? v : undefined; // date input なので v は '' or 'YYYY-MM-DD' の想定
-      if ((item.expiry ?? undefined) !== next) commit({ expiry: next });
-    }
-
-    function commitNote() {
-      const v = note.trim();
-      const next = v ? v : undefined;
-      if ((item.note ?? undefined) !== next) commit({ note: next });
-    }
-
-    return (
-      <div
-        style={{
-          ...gridRowBase,
-          background: item.used ? "rgba(0,0,0,0.03)" : "white",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <input
-            type="checkbox"
-            checked={item.used}
-            onChange={() => toggleUsed(item.id)}
-            style={{ width: 18, height: 18 }}
-          />
-        </div>
-
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={commitTitle}
-          style={inputStyle}
-        />
-
-        <input
-          value={company}
-          onChange={(e) => setCompany(e.target.value)}
-          onBlur={commitCompany}
-          style={inputStyle}
-          placeholder="（任意）"
-        />
-
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input
-            type="date"
-            value={expiry}
-            onChange={(e) => setExpiry(e.target.value)}
-            onBlur={commitExpiry}
-            style={inputStyle}
-          />
-          <ExpiryBadge expiry={item.expiry} used={item.used} />
-        </div>
-
-        <input
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          onBlur={commitNote}
-          style={inputStyle}
-          placeholder="（任意）"
-        />
-
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-          <button onClick={() => removeItem(item.id)} style={btnStyle}>
-            削除
-          </button>
-        </div>
-      </div>
-    );
   }
 
+  // toast auto clear
+  useEffect(() => {
+    if (!toast) return;
+    const t = window.setTimeout(() => setToast(null), 1600);
+    return () => window.clearTimeout(t);
+  }, [toast]);
+
+  // empty state messages
+  const emptyMessage = useMemo(() => {
+    if (tab === "thisMonth") return "今月の期限はありません";
+    if (tab === "later") return "今後の期限（来月以降）はありません";
+    return "まだデータがありません";
+  }, [tab]);
+
   return (
-    <div style={{ display: "grid", gap: 14 }}>
-      <section style={cardStyle}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            justifyContent: "space-between",
-            gap: 12,
-            flexWrap: "wrap",
-          }}
-        >
-          <div style={{ fontSize: 14, opacity: 0.85 }}>
-            合計 {stats.total} / 未使用 {stats.unused} / 使用済み {stats.used}
-          </div>
-          {items.length > 0 && (
-            <button onClick={clearAll} style={btnStyle}>
-              全削除
-            </button>
-          )}
-        </div>
-        <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7 }}>
-          期限が近い（{DEFAULT_NEAR_DAYS}
-          日以内）ものは強調表示します（期限未設定は対象外）。
-        </div>
-      </section>
-
-      <section style={cardStyle}>
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            flexWrap: "wrap",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{ fontSize: 12, opacity: 0.75 }}>表示：</span>
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value as FilterMode)}
-              style={{ ...inputStyle, width: 160, padding: "8px 10px" }}
-            >
-              <option value="unused">未使用</option>
-              <option value="used">使用済み</option>
-              <option value="all">すべて</option>
-            </select>
-          </div>
-
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{ fontSize: 12, opacity: 0.75 }}>ソート：</span>
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortMode)}
-              style={{ ...inputStyle, width: 200, padding: "8px 10px" }}
-            >
-              <option value="expiry_asc">期限が近い順（未設定は下）</option>
-              <option value="expiry_desc">期限が遠い順（未設定は下）</option>
-              <option value="created_desc">追加が新しい順</option>
-            </select>
-          </div>
-
-          <label
-            style={{
-              display: "flex",
-              gap: 8,
-              alignItems: "center",
-              fontSize: 13,
-            }}
+    <section className={styles.shell}>
+      {/* top controls */}
+      <div className={styles.topBar}>
+        <div className={styles.tabs}>
+          <button
+            className={`${styles.tabBtn} ${
+              tab === "thisMonth" ? styles.tabActive : ""
+            }`}
+            onClick={() => setTab("thisMonth")}
+            type="button"
           >
-            <input
-              type="checkbox"
-              checked={groupByMonth}
-              onChange={(e) => setGroupByMonth(e.target.checked)}
-            />
-            月別表示
-          </label>
-
-          <div style={{ marginLeft: "auto", fontSize: 12, opacity: 0.75 }}>
-            ※ 未使用が上に来るように自動で並べます
-          </div>
-        </div>
-      </section>
-
-      <section style={cardStyle}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            justifyContent: "space-between",
-            gap: 12,
-            flexWrap: "wrap",
-          }}
-        >
-          <h2 style={{ margin: 0, fontSize: 18 }}>
-            一覧（上の空欄に入力して追加）
-          </h2>
-          <button onClick={addDraftRow} style={btnStyle}>
-            ＋入力行を追加
+            今月 <span className={styles.countPill}>{thisMonthCount}</span>
+          </button>
+          <button
+            className={`${styles.tabBtn} ${
+              tab === "later" ? styles.tabActive : ""
+            }`}
+            onClick={() => setTab("later")}
+            type="button"
+          >
+            先の期限 <span className={styles.countPill}>{laterCount}</span>
+          </button>
+          <button
+            className={`${styles.tabBtn} ${
+              tab === "all" ? styles.tabActive : ""
+            }`}
+            onClick={() => setTab("all")}
+            type="button"
+          >
+            すべて <span className={styles.countPill}>{allCount}</span>
           </button>
         </div>
 
-        <div style={{ marginTop: 10 }}>
-          <div style={gridHeader}>
-            <div style={{ textAlign: "center" }}>✓</div>
-            <div>優待名（必須）</div>
-            <div>企業名（任意）</div>
-            <div>期限（任意）</div>
-            <div>メモ（任意）</div>
-            <div style={{ textAlign: "right" }}>操作</div>
+        <div className={styles.actionsRow}>
+          <div className={styles.searchWrap}>
+            <input
+              className={styles.search}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="検索（企業名 / 優待名 / メモ）"
+              aria-label="検索"
+            />
           </div>
 
-          <div style={{ display: "grid", gap: 8 }}>
-            {draftIds.length === 0 ? (
-              <div style={{ opacity: 0.75, padding: "10px 0" }}>
-                入力行がありません。「＋入力行を追加」から作れます。
-              </div>
-            ) : (
-              draftIds.map((id) => (
-                <DraftRowEditor
-                  key={id}
-                  id={id}
-                  gridRowStyle={{
-                    ...gridRowBase,
-                    background: "rgba(0,0,0,0.015)",
-                  }}
-                  inputStyle={inputStyle}
-                  btnStyle={btnStyle}
-                  primaryBtnStyle={primaryBtnStyle}
-                  onCommit={(payload) => commitDraftRow(payload)}
-                  onRemove={() => removeDraftRow(id)}
-                />
-              ))
-            )}
+          <div className={styles.compactRow}>
+            <label className={styles.toggle}>
+              <input
+                type="checkbox"
+                checked={showUsed}
+                onChange={(e) => setShowUsed(e.target.checked)}
+              />
+              <span>完了も表示</span>
+            </label>
 
-            {normalized.length === 0 ? (
-              <div style={{ opacity: 0.75, padding: "10px 0" }}>
-                表示する優待がありません。
-              </div>
-            ) : groupByMonth && grouped ? (
-              <div style={{ display: "grid", gap: 14 }}>
-                {grouped.map((g) => (
-                  <div key={g.ym} style={{ display: "grid", gap: 8 }}>
-                    <div
-                      style={{ fontWeight: 650, opacity: 0.9, marginTop: 4 }}
-                    >
-                      {ymLabel(g.ym)}
-                    </div>
-                    <div style={{ display: "grid", gap: 8 }}>
-                      {g.items.map((it) => (
-                        <ItemRow key={it.id} item={it} />
-                      ))}
+            <div className={styles.selectWrap}>
+              <select
+                className={styles.select}
+                value={sortKey}
+                onChange={(e) => setSortKey(e.target.value as SortKey)}
+                aria-label="並び替え"
+              >
+                <option value="expiryAsc">期限が近い順</option>
+                <option value="companyAsc">企業名（A→Z）</option>
+                <option value="createdDesc">追加が新しい順</option>
+              </select>
+            </div>
+
+            <div className={styles.segment}>
+              <button
+                type="button"
+                className={`${styles.segBtn} ${
+                  viewMode === "cards" ? styles.segActive : ""
+                }`}
+                onClick={() => setViewMode("cards")}
+                aria-label="カード表示"
+              >
+                カード
+              </button>
+              <button
+                type="button"
+                className={`${styles.segBtn} ${
+                  viewMode === "table" ? styles.segActive : ""
+                }`}
+                onClick={() => setViewMode("table")}
+                aria-label="表表示"
+              >
+                表
+              </button>
+            </div>
+
+            {/* PC用の追加ボタン */}
+            <button
+              type="button"
+              className={styles.addBtnDesktop}
+              onClick={openAdd}
+            >
+              ＋ 追加
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* list */}
+      {filtered.length === 0 ? (
+        <div className={styles.empty}>
+          <div className={styles.emptyTitle}>{emptyMessage}</div>
+          <div className={styles.emptySub}>
+            {tab === "thisMonth" ? (
+              <>期限なし（ノイズ防止）は「すべて」にだけ表示されます。</>
+            ) : (
+              <>「＋ 追加」から登録できます。</>
+            )}
+          </div>
+          <div className={styles.emptyCtaRow}>
+            <button
+              type="button"
+              className={styles.primaryBtn}
+              onClick={openAdd}
+            >
+              ＋ 追加
+            </button>
+            <button
+              type="button"
+              className={styles.ghostBtn}
+              onClick={openImport}
+            >
+              インポート
+            </button>
+          </div>
+        </div>
+      ) : viewMode === "cards" ? (
+        <div className={styles.cardGrid}>
+          {filtered.map((it) => {
+            const badge = dueBadge(it.expiresOn);
+            return (
+              <div
+                key={it.id}
+                className={`${styles.card} ${it.isUsed ? styles.cardUsed : ""}`}
+              >
+                <div className={styles.cardTop}>
+                  <div className={styles.cardTitleRow}>
+                    <div className={styles.cardTitle}>{it.title}</div>
+                    {badge ? (
+                      <span
+                        className={`${styles.badge} ${
+                          badge.tone === "danger"
+                            ? styles.badgeDanger
+                            : badge.tone === "warn"
+                            ? styles.badgeWarn
+                            : styles.badgeMuted
+                        }`}
+                      >
+                        {badge.label}
+                      </span>
+                    ) : (
+                      tab === "all" && (
+                        <span
+                          className={`${styles.badge} ${styles.badgeMuted}`}
+                        >
+                          期限なし
+                        </span>
+                      )
+                    )}
+                  </div>
+
+                  <div className={styles.cardMeta}>
+                    <div className={styles.company}>{it.company}</div>
+                    <div className={styles.expiry}>
+                      {it.expiresOn
+                        ? `期限: ${fmtJPDate(it.expiresOn)}`
+                        : "期限: なし"}
                     </div>
                   </div>
-                ))}
+                </div>
+
+                {(it.quantity != null ||
+                  it.amountYen != null ||
+                  (it.memo && it.memo.trim())) && (
+                  <div className={styles.cardBody}>
+                    {(it.quantity != null || it.amountYen != null) && (
+                      <div className={styles.kvRow}>
+                        {it.quantity != null && (
+                          <span className={styles.kv}>
+                            数量: <b>{it.quantity}</b>
+                          </span>
+                        )}
+                        {it.amountYen != null && (
+                          <span className={styles.kv}>
+                            金額: <b>{it.amountYen.toLocaleString()}円</b>
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {it.memo && it.memo.trim() && (
+                      <div className={styles.memo}>{it.memo}</div>
+                    )}
+                  </div>
+                )}
+
+                <div className={styles.cardActions}>
+                  <button
+                    type="button"
+                    className={styles.smallBtn}
+                    onClick={() => toggleUsed(it.id)}
+                  >
+                    {it.isUsed ? "未使用に戻す" : "使用済みにする"}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.smallBtn}
+                    onClick={() => openEdit(it)}
+                  >
+                    編集
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.smallBtn} ${styles.dangerBtn}`}
+                    onClick={() => removeItem(it.id)}
+                  >
+                    削除
+                  </button>
+                </div>
               </div>
-            ) : (
-              normalized.map((it) => <ItemRow key={it.id} item={it} />)
-            )}
-          </div>
+            );
+          })}
         </div>
-      </section>
-
-      <section style={{ fontSize: 12, opacity: 0.7 }}>
-        <div>保存場所：このブラウザの localStorage（端末内）</div>
-        <div>
-          ※
-          ブラウザのデータ削除をすると消えます（将来、JSONエクスポートも追加できます）
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th style={{ width: 120 }}>期限</th>
+                <th>優待</th>
+                <th style={{ width: 180 }}>企業</th>
+                <th style={{ width: 120 }}>状態</th>
+                <th style={{ width: 180 }}>メモ/任意</th>
+                <th style={{ width: 240 }}>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((it) => (
+                <tr key={it.id} className={it.isUsed ? styles.rowUsed : ""}>
+                  <td className={styles.mono}>
+                    {it.expiresOn ? fmtJPDate(it.expiresOn) : "—"}
+                  </td>
+                  <td>
+                    <div className={styles.rowTitle}>{it.title}</div>
+                    {(it.quantity != null || it.amountYen != null) && (
+                      <div className={styles.rowSub}>
+                        {it.quantity != null && (
+                          <span>数量: {it.quantity}</span>
+                        )}
+                        {it.amountYen != null && (
+                          <span>金額: {it.amountYen.toLocaleString()}円</span>
+                        )}
+                      </div>
+                    )}
+                  </td>
+                  <td>{it.company}</td>
+                  <td>{it.isUsed ? "使用済み" : "未使用"}</td>
+                  <td className={styles.rowMemo}>{it.memo ?? ""}</td>
+                  <td>
+                    <div className={styles.rowBtns}>
+                      <button
+                        type="button"
+                        className={styles.smallBtn}
+                        onClick={() => toggleUsed(it.id)}
+                      >
+                        {it.isUsed ? "未使用" : "使用済み"}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.smallBtn}
+                        onClick={() => openEdit(it)}
+                      >
+                        編集
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.smallBtn} ${styles.dangerBtn}`}
+                        onClick={() => removeItem(it.id)}
+                      >
+                        削除
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </section>
-    </div>
-  );
-}
+      )}
 
-function DraftRowEditor(props: {
-  id: string;
-  gridRowStyle: React.CSSProperties;
-  inputStyle: React.CSSProperties;
-  btnStyle: React.CSSProperties;
-  primaryBtnStyle: React.CSSProperties;
-  onCommit: (payload: {
-    title: string;
-    company?: string;
-    expiry?: string;
-    note?: string;
-  }) => void;
-  onRemove: () => void;
-}) {
-  // 親stateに依存しない＝フォーカスが飛ばない
-  const [title, setTitle] = useState("");
-  const [company, setCompany] = useState("");
-  const [expiry, setExpiry] = useState("");
-  const [note, setNote] = useState("");
-
-  const okTitle = title.trim().length > 0;
-  const okExpiry = !expiry.trim() || /^\d{4}-\d{2}-\d{2}$/.test(expiry.trim());
-  const canAdd = okTitle && okExpiry;
-
-  function commit() {
-    props.onCommit({
-      title,
-      company,
-      expiry,
-      note,
-    });
-    // 連続入力
-    setTitle("");
-    setCompany("");
-    setExpiry("");
-    setNote("");
-  }
-
-  return (
-    <div style={props.gridRowStyle}>
-      <div />
-
-      <input
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        style={props.inputStyle}
-        placeholder="優待名（必須）"
-      />
-
-      <input
-        value={company}
-        onChange={(e) => setCompany(e.target.value)}
-        style={props.inputStyle}
-        placeholder="企業名（任意）"
-      />
-
-      <input
-        type="date"
-        value={expiry}
-        onChange={(e) => setExpiry(e.target.value)}
-        style={props.inputStyle}
-        aria-label="期限（任意）"
-      />
-
-      <input
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        style={props.inputStyle}
-        placeholder="メモ（任意）"
-      />
-
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-        <button
-          onClick={commit}
-          style={
-            canAdd
-              ? props.primaryBtnStyle
-              : {
-                  ...props.primaryBtnStyle,
-                  opacity: 0.4,
-                  cursor: "not-allowed",
-                }
-          }
-          disabled={!canAdd}
-        >
-          追加
-        </button>
-        <button onClick={props.onRemove} style={props.btnStyle}>
-          ×
-        </button>
+      {/* bottom utility */}
+      <div className={styles.bottomBar}>
+        <div className={styles.hint}>
+          期限なしは「すべて」にだけ表示（今月/先の期限からは除外）。
+        </div>
+        <div className={styles.bottomBtns}>
+          <button
+            type="button"
+            className={styles.ghostBtn}
+            onClick={exportJSON}
+          >
+            エクスポート
+          </button>
+          <button
+            type="button"
+            className={styles.ghostBtn}
+            onClick={openImport}
+          >
+            インポート
+          </button>
+        </div>
       </div>
-    </div>
+
+      {/* FAB (mobile) */}
+      <button
+        type="button"
+        className={styles.fab}
+        onClick={openAdd}
+        aria-label="追加"
+      >
+        ＋
+      </button>
+
+      {/* Edit/Add dialog */}
+      <dialog ref={editDialogRef} className={styles.dialog}>
+        <form
+          method="dialog"
+          className={styles.dialogInner}
+          onSubmit={(e) => {
+            e.preventDefault();
+            upsertFromDraft();
+          }}
+        >
+          <div className={styles.dialogHeader}>
+            <div className={styles.dialogTitle}>
+              {editMode === "add" ? "追加" : "編集"}
+            </div>
+            <button
+              type="button"
+              className={styles.iconBtn}
+              onClick={() => editDialogRef.current?.close()}
+              aria-label="閉じる"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className={styles.formGrid}>
+            <label className={styles.field}>
+              <span>優待名 *</span>
+              <input
+                value={draft.title}
+                onChange={(e) =>
+                  setDraft((p) => ({ ...p, title: e.target.value }))
+                }
+                placeholder="例：QUOカード / 食事券 / 自社製品"
+                required
+              />
+            </label>
+
+            <label className={styles.field}>
+              <span>企業名 *</span>
+              <input
+                value={draft.company}
+                onChange={(e) =>
+                  setDraft((p) => ({ ...p, company: e.target.value }))
+                }
+                placeholder="例：ビックカメラ"
+                required
+              />
+            </label>
+
+            <label className={styles.field}>
+              <span>期限（任意）</span>
+              <input
+                value={draft.expiresOn}
+                onChange={(e) =>
+                  setDraft((p) => ({ ...p, expiresOn: e.target.value }))
+                }
+                placeholder="YYYY-MM-DD（例：2026-03-31）"
+                inputMode="numeric"
+              />
+              <span className={styles.help}>
+                空なら「期限なし」。今月タブには出ません（ノイズ防止）。
+              </span>
+            </label>
+
+            <div className={styles.row2}>
+              <label className={styles.field}>
+                <span>数量（任意）</span>
+                <input
+                  value={draft.quantity}
+                  onChange={(e) =>
+                    setDraft((p) => ({ ...p, quantity: e.target.value }))
+                  }
+                  placeholder="例：1"
+                  inputMode="numeric"
+                />
+              </label>
+
+              <label className={styles.field}>
+                <span>金額（円・任意）</span>
+                <input
+                  value={draft.amountYen}
+                  onChange={(e) =>
+                    setDraft((p) => ({ ...p, amountYen: e.target.value }))
+                  }
+                  placeholder="例：1000"
+                  inputMode="numeric"
+                />
+              </label>
+            </div>
+
+            <label className={styles.field}>
+              <span>メモ（任意）</span>
+              <textarea
+                value={draft.memo}
+                onChange={(e) =>
+                  setDraft((p) => ({ ...p, memo: e.target.value }))
+                }
+                placeholder="例：店舗限定 / ネット不可 / 家族分"
+                rows={3}
+              />
+            </label>
+
+            <label className={styles.toggleLine}>
+              <input
+                type="checkbox"
+                checked={draft.isUsed}
+                onChange={(e) =>
+                  setDraft((p) => ({ ...p, isUsed: e.target.checked }))
+                }
+              />
+              <span>使用済み</span>
+            </label>
+
+            {draftError && <div className={styles.error}>{draftError}</div>}
+          </div>
+
+          <div className={styles.dialogFooter}>
+            <button
+              type="button"
+              className={styles.ghostBtn}
+              onClick={() => editDialogRef.current?.close()}
+            >
+              キャンセル
+            </button>
+            <button type="submit" className={styles.primaryBtn}>
+              {editMode === "add" ? "追加する" : "更新する"}
+            </button>
+          </div>
+        </form>
+      </dialog>
+
+      {/* Import dialog */}
+      <dialog ref={importDialogRef} className={styles.dialog}>
+        <form method="dialog" className={styles.dialogInner}>
+          <div className={styles.dialogHeader}>
+            <div className={styles.dialogTitle}>インポート</div>
+            <button
+              type="button"
+              className={styles.iconBtn}
+              onClick={() => importDialogRef.current?.close()}
+              aria-label="閉じる"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className={styles.formGrid}>
+            <div className={styles.help}>
+              配列JSONを貼り付けてください。旧バージョン形式も自動で取り込みます。
+            </div>
+            <textarea
+              className={styles.bigTextarea}
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+              placeholder='例：[{ "id":"...", "title":"...", "company":"...", "expiresAt":"2026-03-31", ... }]'
+              rows={10}
+            />
+            {importError && <div className={styles.error}>{importError}</div>}
+          </div>
+
+          <div className={styles.dialogFooter}>
+            <button
+              type="button"
+              className={styles.ghostBtn}
+              onClick={() => importDialogRef.current?.close()}
+            >
+              閉じる
+            </button>
+            <button
+              type="button"
+              className={styles.ghostBtn}
+              onClick={() => doImport(true)}
+            >
+              統合
+            </button>
+            <button
+              type="button"
+              className={styles.primaryBtn}
+              onClick={() => doImport(false)}
+            >
+              置換
+            </button>
+          </div>
+        </form>
+      </dialog>
+
+      {/* toast */}
+      {toast && <div className={styles.toast}>{toast}</div>}
+    </section>
   );
 }
