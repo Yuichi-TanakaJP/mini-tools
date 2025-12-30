@@ -28,7 +28,7 @@ export default function Page() {
       <footer
         style={{ marginTop: 18, display: "flex", justifyContent: "center" }}
       >
-        <ShareButtons text="株主優待期限帳：今月の未使用が一瞬で見える（カード/表切替・完了トグル）" />
+        <ShareButtons text="株主優待期限帳：今月の未使用が一瞬で見える（PC向け：カード/表）" />
       </footer>
     </main>
   );
