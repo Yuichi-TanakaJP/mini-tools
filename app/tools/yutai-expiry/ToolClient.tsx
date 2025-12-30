@@ -22,6 +22,9 @@ import {
   safeUUID,
 } from "./benefits/store";
 
+import EditBenefitDialog from "./components/EditBenefitDialog";
+import ImportBenefitDialog from "./components/ImportBenefitDialog";
+
 type TabKey = "thisMonth" | "later" | "all";
 type ViewMode = "cards" | "table";
 type SortKey = "expiryAsc" | "companyAsc" | "createdDesc";
@@ -91,7 +94,7 @@ function dueBadge(
   return { label: "期限あり", tone: "muted" };
 }
 
-type Draft = {
+export type Draft = {
   id?: string;
   title: string;
   company: string;
@@ -793,190 +796,24 @@ export default function ToolClient() {
       </button>
 
       {/* Edit/Add dialog */}
-      <dialog ref={editDialogRef} className={styles.dialog}>
-        <form
-          method="dialog"
-          className={styles.dialogInner}
-          onSubmit={(e) => {
-            e.preventDefault();
-            upsertFromDraft();
-          }}
-        >
-          <div className={styles.dialogHeader}>
-            <div className={styles.dialogTitle}>
-              {editMode === "add" ? "追加" : "編集"}
-            </div>
-            <button
-              type="button"
-              className={styles.iconBtn}
-              onClick={() => editDialogRef.current?.close()}
-              aria-label="閉じる"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div className={styles.formGrid}>
-            <label className={styles.field}>
-              <span>優待名 *</span>
-              <input
-                value={draft.title}
-                onChange={(e) =>
-                  setDraft((p) => ({ ...p, title: e.target.value }))
-                }
-                placeholder="例：QUOカード / 食事券 / 自社製品"
-                required
-              />
-            </label>
-
-            <label className={styles.field}>
-              <span>企業名 *</span>
-              <input
-                value={draft.company}
-                onChange={(e) =>
-                  setDraft((p) => ({ ...p, company: e.target.value }))
-                }
-                placeholder="例：ビックカメラ"
-                required
-              />
-            </label>
-
-            <label className={styles.field}>
-              <span>期限（任意）</span>
-              <input
-                value={draft.expiresOn}
-                onChange={(e) =>
-                  setDraft((p) => ({ ...p, expiresOn: e.target.value }))
-                }
-                placeholder="YYYY-MM-DD（例：2026-03-31）"
-                inputMode="numeric"
-              />
-              <span className={styles.help}>
-                空なら「期限なし」。今月タブには出ません（ノイズ防止）。
-              </span>
-            </label>
-
-            <div className={styles.row2}>
-              <label className={styles.field}>
-                <span>数量（任意）</span>
-                <input
-                  value={draft.quantity}
-                  onChange={(e) =>
-                    setDraft((p) => ({ ...p, quantity: e.target.value }))
-                  }
-                  placeholder="例：1"
-                  inputMode="numeric"
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>金額（円・任意）</span>
-                <input
-                  value={draft.amountYen}
-                  onChange={(e) =>
-                    setDraft((p) => ({ ...p, amountYen: e.target.value }))
-                  }
-                  placeholder="例：1000"
-                  inputMode="numeric"
-                />
-              </label>
-            </div>
-
-            <label className={styles.field}>
-              <span>メモ（任意）</span>
-              <textarea
-                value={draft.memo}
-                onChange={(e) =>
-                  setDraft((p) => ({ ...p, memo: e.target.value }))
-                }
-                placeholder="例：店舗限定 / ネット不可 / 家族分"
-                rows={3}
-              />
-            </label>
-
-            <label className={styles.toggleLine}>
-              <input
-                type="checkbox"
-                checked={draft.isUsed}
-                onChange={(e) =>
-                  setDraft((p) => ({ ...p, isUsed: e.target.checked }))
-                }
-              />
-              <span>使用済み</span>
-            </label>
-
-            {draftError && <div className={styles.error}>{draftError}</div>}
-          </div>
-
-          <div className={styles.dialogFooter}>
-            <button
-              type="button"
-              className={styles.ghostBtn}
-              onClick={() => editDialogRef.current?.close()}
-            >
-              キャンセル
-            </button>
-            <button type="submit" className={styles.primaryBtn}>
-              {editMode === "add" ? "追加する" : "更新する"}
-            </button>
-          </div>
-        </form>
-      </dialog>
+      <EditBenefitDialog
+        dialogRef={editDialogRef}
+        editMode={editMode}
+        draft={draft}
+        setDraft={setDraft}
+        draftError={draftError}
+        onSubmit={upsertFromDraft}
+      />
 
       {/* Import dialog */}
-      <dialog ref={importDialogRef} className={styles.dialog}>
-        <form method="dialog" className={styles.dialogInner}>
-          <div className={styles.dialogHeader}>
-            <div className={styles.dialogTitle}>インポート</div>
-            <button
-              type="button"
-              className={styles.iconBtn}
-              onClick={() => importDialogRef.current?.close()}
-              aria-label="閉じる"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div className={styles.formGrid}>
-            <div className={styles.help}>
-              配列JSONを貼り付けてください。旧バージョン形式も自動で取り込みます。
-            </div>
-            <textarea
-              className={styles.bigTextarea}
-              value={importText}
-              onChange={(e) => setImportText(e.target.value)}
-              placeholder='例：[{ "id":"...", "title":"...", "company":"...", "expiresAt":"2026-03-31", ... }]'
-              rows={10}
-            />
-            {importError && <div className={styles.error}>{importError}</div>}
-          </div>
-
-          <div className={styles.dialogFooter}>
-            <button
-              type="button"
-              className={styles.ghostBtn}
-              onClick={() => importDialogRef.current?.close()}
-            >
-              閉じる
-            </button>
-            <button
-              type="button"
-              className={styles.ghostBtn}
-              onClick={() => doImport(true)}
-            >
-              統合
-            </button>
-            <button
-              type="button"
-              className={styles.primaryBtn}
-              onClick={() => doImport(false)}
-            >
-              置換
-            </button>
-          </div>
-        </form>
-      </dialog>
+      <ImportBenefitDialog
+        dialogRef={importDialogRef}
+        importText={importText}
+        setImportText={setImportText}
+        importError={importError}
+        onImportReplace={() => doImport(false)}
+        onImportMerge={() => doImport(true)}
+      />
 
       {/* toast */}
       {toast && <div className={styles.toast}>{toast}</div>}
