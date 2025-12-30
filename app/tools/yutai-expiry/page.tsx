@@ -14,21 +14,22 @@ export default function Page() {
       style={{ maxWidth: 980, margin: "0 auto", padding: "24px 16px 96px" }}
     >
       <header style={{ marginBottom: 16 }}>
-        <h1 style={{ fontSize: 26, margin: "0 0 6px" }}>株主優待期限帳</h1>
+        <h1 style={{ fontSize: 26, margin: "0 0 6px" }}>株主優待リスト</h1>
         <p style={{ margin: 0, opacity: 0.8, lineHeight: 1.6 }}>
-          “今月の期限が一瞬で見える” を最優先にした管理ツール。
+          優待の期限を管理するツールです。
           <br />
-          基本は <b>今月の未使用だけ</b> を表示（完了はトグルで出します）。
+          データは自分のPC、スマホに保存されます。
           <br />
-          データは端末内（localStorage）に保存されます。
         </p>
-
-        <div style={{ marginTop: 12 }}>
-          <ShareButtons text="株主優待期限帳：今月の未使用が一瞬で見える（カード/表切替・完了トグル）" />
-        </div>
       </header>
 
       <ToolClient />
+
+      <footer
+        style={{ marginTop: 18, display: "flex", justifyContent: "center" }}
+      >
+        <ShareButtons text="株主優待期限帳：今月の未使用が一瞬で見える（カード/表切替・完了トグル）" />
+      </footer>
     </main>
   );
 }

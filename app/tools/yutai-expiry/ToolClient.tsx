@@ -1,7 +1,15 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import styles from "./ToolClient.module.css";
+import MobileLayout from "./MobileLayout";
+import DesktopLayout from "./DesktopLayout";
 
 type TabKey = "thisMonth" | "later" | "all";
 type ViewMode = "cards" | "table";
@@ -197,6 +205,63 @@ function saveToLocalStorage(items: BenefitItemV2[]) {
   window.localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(items));
 }
 
+const STORAGE_EVENT = "mini-tools:benefits:v2:changed";
+// 参照を固定するためのキャッシュ
+const EMPTY_ITEMS: BenefitItemV2[] = [];
+let cacheRaw: string | null = null;
+let cacheParsed: BenefitItemV2[] = EMPTY_ITEMS;
+
+function subscribeBenefitsStore(onStoreChange: () => void) {
+  if (typeof window === "undefined") return () => {};
+
+  const handler = () => onStoreChange();
+  window.addEventListener("storage", handler);
+  window.addEventListener(STORAGE_EVENT, handler);
+
+  return () => {
+    window.removeEventListener("storage", handler);
+    window.removeEventListener(STORAGE_EVENT, handler);
+  };
+}
+
+// “変わってないなら同じ参照を返す” が超重要
+function getBenefitsSnapshot(): BenefitItemV2[] {
+  if (typeof window === "undefined") return EMPTY_ITEMS;
+
+  const raw = window.localStorage.getItem(STORAGE_KEY_V2) ?? "";
+  if (raw === cacheRaw) return cacheParsed;
+
+  cacheRaw = raw;
+  if (!raw) {
+    cacheParsed = EMPTY_ITEMS;
+    return cacheParsed;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    cacheParsed = Array.isArray(parsed) ? parsed : EMPTY_ITEMS;
+  } catch {
+    cacheParsed = EMPTY_ITEMS;
+  }
+  return cacheParsed;
+}
+
+function getBenefitsServerSnapshot(): BenefitItemV2[] {
+  // ここも “new []” にしない
+  return EMPTY_ITEMS;
+}
+
+function writeBenefits(next: BenefitItemV2[]) {
+  // 保存（あなたの既存関数でもOK）
+  window.localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(next));
+
+  // キャッシュも更新して参照を安定させる
+  cacheRaw = JSON.stringify(next);
+  cacheParsed = next;
+
+  window.dispatchEvent(new Event(STORAGE_EVENT));
+}
+
 function compareISODesc(a: string, b: string) {
   if (a === b) return 0;
   return a > b ? -1 : 1;
@@ -274,34 +339,53 @@ function saveViewMode(mode: ViewMode) {
 }
 
 function useMediaQuery(query: string) {
-  const [matches, setMatches] = useState(() => {
+  const subscribe = (onStoreChange: () => void) => {
+    if (typeof window === "undefined") return () => {};
+    const mql = window.matchMedia(query);
+    mql.addEventListener("change", onStoreChange);
+    return () => mql.removeEventListener("change", onStoreChange);
+  };
+
+  const getSnapshot = () => {
     if (typeof window === "undefined") return false;
     return window.matchMedia(query).matches;
-  });
+  };
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  // SSR/Hydration中は必ず false（= Desktop扱い）で固定する
+  const getServerSnapshot = () => false;
 
-    const mql = window.matchMedia(query);
-    const onChange = (e: MediaQueryListEvent) => setMatches(e.matches);
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
 
-    if (mql.addEventListener) mql.addEventListener("change", onChange);
-    else mql.addListener(onChange);
-
-    return () => {
-      if (mql.removeEventListener) mql.removeEventListener("change", onChange);
-      else mql.removeListener(onChange);
-    };
-  }, [query]);
-
-  return matches;
+function useHydrated() {
+  const subscribe = () => () => {};
+  const getSnapshot = () => true; // クライアントは true
+  const getServerSnapshot = () => false; // サーバは false
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
 export default function ToolClient() {
-  // --- state ---
-  const [items, setItems] = useState<BenefitItemV2[]>(() =>
-    loadFromLocalStorage()
+  const hydrated = useHydrated();
+
+  const itemsStore = useSyncExternalStore(
+    subscribeBenefitsStore,
+    getBenefitsSnapshot,
+    getBenefitsServerSnapshot
   );
+
+  // ★A-2：表示に使うのは hydration 後だけ
+  const items = hydrated ? itemsStore : EMPTY_ITEMS;
+
+  // setItems互換（updater関数もOK）
+  const setItems = (
+    updater: BenefitItemV2[] | ((prev: BenefitItemV2[]) => BenefitItemV2[])
+  ) => {
+    const prev = getBenefitsSnapshot();
+    const next =
+      typeof updater === "function" ? (updater as any)(prev) : updater;
+    writeBenefits(next);
+  };
+
   const [tab, setTab] = useState<TabKey>("thisMonth");
   const isMobile = useMediaQuery("(max-width: 699px)");
 
@@ -310,16 +394,7 @@ export default function ToolClient() {
     return readSavedViewMode() !== null;
   });
 
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    const saved = readSavedViewMode();
-    if (saved) return saved;
-    if (typeof window !== "undefined") {
-      return window.matchMedia("(max-width: 699px)").matches
-        ? "cards"
-        : "table";
-    }
-    return "table";
-  });
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
 
   const [showUsed, setShowUsed] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("expiryAsc");
@@ -337,11 +412,6 @@ export default function ToolClient() {
 
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
-
-  // --- persist ---
-  useEffect(() => {
-    saveToLocalStorage(items);
-  }, [items]);
 
   // --- derived ---
   const now = useMemo(() => new Date(), []);
@@ -554,122 +624,136 @@ export default function ToolClient() {
     return "まだデータがありません";
   }, [tab]);
 
-  const effectiveViewMode: ViewMode = isMobile ? "cards" : viewMode;
+  const savedViewMode: ViewMode | null = hydrated ? readSavedViewMode() : null;
 
-  return (
-    <section className={styles.shell}>
-      {/* top controls */}
-      <div className={styles.topBar}>
-        <div className={styles.tabs}>
-          <button
-            className={`${styles.tabBtn} ${
-              tab === "thisMonth" ? styles.tabActive : ""
-            }`}
-            onClick={() => setTab("thisMonth")}
-            type="button"
-          >
-            今月 <span className={styles.countPill}>{thisMonthCount}</span>
-          </button>
-          <button
-            className={`${styles.tabBtn} ${
-              tab === "later" ? styles.tabActive : ""
-            }`}
-            onClick={() => setTab("later")}
-            type="button"
-          >
-            先の期限 <span className={styles.countPill}>{laterCount}</span>
-          </button>
-          <button
-            className={`${styles.tabBtn} ${
-              tab === "all" ? styles.tabActive : ""
-            }`}
-            onClick={() => setTab("all")}
-            type="button"
-          >
-            すべて <span className={styles.countPill}>{allCount}</span>
-          </button>
-        </div>
+  const effectiveViewMode: ViewMode = !hydrated
+    ? "table"
+    : savedViewMode ?? (isMobile ? "cards" : viewMode);
 
-        <div className={styles.actionsRow}>
-          <div className={styles.searchWrap}>
-            <input
-              className={styles.search}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="検索（企業名 / 優待名 / メモ）"
-              aria-label="検索"
-            />
-          </div>
+  // ===== layout parts =====
+  const header = (
+    <div className={styles.topBar}>
+      <div className={styles.tabs}>
+        <button
+          className={`${styles.tabBtn} ${
+            tab === "thisMonth" ? styles.tabActive : ""
+          }`}
+          onClick={() => setTab("thisMonth")}
+          type="button"
+        >
+          今月
+          <span className={styles.countPill} suppressHydrationWarning>
+            {thisMonthCount}
+          </span>
+        </button>
 
-          <div className={styles.compactRow}>
-            <label className={styles.toggle}>
-              <input
-                type="checkbox"
-                checked={showUsed}
-                onChange={(e) => setShowUsed(e.target.checked)}
-              />
-              <span>完了も表示</span>
-            </label>
+        <button
+          className={`${styles.tabBtn} ${
+            tab === "later" ? styles.tabActive : ""
+          }`}
+          onClick={() => setTab("later")}
+          type="button"
+        >
+          先の期限
+          <span className={styles.countPill} suppressHydrationWarning>
+            {laterCount}
+          </span>
+        </button>
 
-            <div className={styles.selectWrap}>
-              <select
-                className={styles.select}
-                value={sortKey}
-                onChange={(e) => setSortKey(e.target.value as SortKey)}
-                aria-label="並び替え"
-              >
-                <option value="expiryAsc">期限が近い順</option>
-                <option value="companyAsc">企業名（A→Z）</option>
-                <option value="createdDesc">追加が新しい順</option>
-              </select>
-            </div>
-
-            {!isMobile && (
-              <div className={styles.segment}>
-                <button
-                  type="button"
-                  className={`${styles.segBtn} ${
-                    effectiveViewMode === "cards" ? styles.segActive : ""
-                  }`}
-                  onClick={() => {
-                    setViewMode("cards");
-                    setHasManualViewMode(true);
-                    saveViewMode("cards");
-                  }}
-                  aria-label="カード表示"
-                >
-                  カード
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.segBtn} ${
-                    effectiveViewMode === "table" ? styles.segActive : ""
-                  }`}
-                  onClick={() => {
-                    setViewMode("table");
-                    setHasManualViewMode(true);
-                    saveViewMode("table");
-                  }}
-                  aria-label="表表示"
-                >
-                  表
-                </button>
-              </div>
-            )}
-
-            {/* PC用の追加ボタン */}
-            <button
-              type="button"
-              className={styles.addBtnDesktop}
-              onClick={openAdd}
-            >
-              ＋ 追加
-            </button>
-          </div>
-        </div>
+        <button
+          className={`${styles.tabBtn} ${
+            tab === "all" ? styles.tabActive : ""
+          }`}
+          onClick={() => setTab("all")}
+          type="button"
+        >
+          すべて
+          <span className={styles.countPill} suppressHydrationWarning>
+            {allCount}
+          </span>
+        </button>
       </div>
 
-      {/* list */}
+      <div className={styles.actionsRow}>
+        <div className={styles.searchWrap}>
+          <input
+            className={styles.search}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="検索（企業名 / 優待名 / メモ）"
+            aria-label="検索"
+          />
+        </div>
+
+        <div className={styles.compactRow}>
+          <label className={styles.toggle}>
+            <input
+              type="checkbox"
+              checked={showUsed}
+              onChange={(e) => setShowUsed(e.target.checked)}
+            />
+            <span>完了も表示</span>
+          </label>
+
+          <div className={styles.selectWrap}>
+            <select
+              className={styles.select}
+              value={sortKey}
+              onChange={(e) => setSortKey(e.target.value as SortKey)}
+              aria-label="並び替え"
+            >
+              <option value="expiryAsc">期限が近い順</option>
+              <option value="companyAsc">企業名（A→Z）</option>
+              <option value="createdDesc">追加が新しい順</option>
+            </select>
+          </div>
+
+          <div className={`${styles.segment} ${styles.desktopOnly}`}>
+            <button
+              type="button"
+              className={`${styles.segBtn} ${
+                effectiveViewMode === "cards" ? styles.segActive : ""
+              }`}
+              onClick={() => {
+                setViewMode("cards");
+                setHasManualViewMode(true);
+                saveViewMode("cards");
+              }}
+              aria-label="カード表示"
+            >
+              カード
+            </button>
+            <button
+              type="button"
+              className={`${styles.segBtn} ${
+                effectiveViewMode === "table" ? styles.segActive : ""
+              }`}
+              onClick={() => {
+                setViewMode("table");
+                setHasManualViewMode(true);
+                saveViewMode("table");
+              }}
+              aria-label="表表示"
+            >
+              リスト
+            </button>
+          </div>
+
+          {/* PC用の追加ボタン */}
+          <button
+            type="button"
+            className={`${styles.addBtnDesktop} ${styles.desktopOnly}`}
+            onClick={openAdd}
+          >
+            追加
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const list = (
+    <>
       {filtered.length === 0 ? (
         <div className={styles.empty}>
           <div className={styles.emptyTitle}>{emptyMessage}</div>
@@ -686,7 +770,7 @@ export default function ToolClient() {
               className={styles.primaryBtn}
               onClick={openAdd}
             >
-              ＋ 追加
+              追加
             </button>
             <button
               type="button"
@@ -802,7 +886,7 @@ export default function ToolClient() {
                 <th>優待</th>
                 <th style={{ width: 180 }}>企業</th>
                 <th style={{ width: 120 }}>状態</th>
-                <th style={{ width: 180 }}>メモ/任意</th>
+                <th style={{ width: 180 }}>メモ</th>
                 <th style={{ width: 240 }}>操作</th>
               </tr>
             </thead>
@@ -859,7 +943,11 @@ export default function ToolClient() {
           </table>
         </div>
       )}
+    </>
+  );
 
+  const footer = (
+    <>
       {/* bottom utility */}
       <div className={styles.bottomBar}>
         <div className={styles.hint}>
@@ -886,7 +974,7 @@ export default function ToolClient() {
       {/* FAB (mobile) */}
       <button
         type="button"
-        className={styles.fab}
+        className={`${styles.fab} ${styles.mobileOnly}`}
         onClick={openAdd}
         aria-label="追加"
       >
@@ -1081,6 +1169,14 @@ export default function ToolClient() {
 
       {/* toast */}
       {toast && <div className={styles.toast}>{toast}</div>}
-    </section>
+    </>
+  );
+
+  const showMobile = hydrated && isMobile;
+
+  return showMobile ? (
+    <MobileLayout header={header} list={list} footer={footer} />
+  ) : (
+    <DesktopLayout header={header} list={list} footer={footer} />
   );
 }

@@ -305,10 +305,18 @@
   opacity: 0.85;
   white-space: pre-wrap;
 }
+/* 操作列：3ボタンの横位置を揃える */
 .rowBtns {
-  display: flex;
+  display: grid;
+  grid-template-columns: 112px 72px 72px; /* 1つ目だけ広めに固定 */
   gap: 8px;
-  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ボタンを各セルいっぱいに（見た目も揃う） */
+.rowBtns > button {
+  width: 100%;
+  justify-content: center;
 }
 
 /* --- buttons --- */
@@ -511,16 +519,24 @@
   .actionsRow {
     flex-direction: row;
     align-items: center;
+
+    /* これが重要：足りないときは折り返す（重なり防止） */
+    flex-wrap: wrap;
+    gap: 12px;
   }
+
+  /* PCでは width:100% を解除して、flexで伸び縮みさせる */
   .searchWrap {
-    flex: 1;
+    width: auto;
+    flex: 1 1 420px; /* 最低これくらい確保しつつ伸縮 */
+    min-width: 260px; /* 極端に潰れない */
   }
+
+  /* 右側も「縮める余地」を持たせる（0 0 auto だと固すぎる） */
   .compactRow {
+    flex: 0 1 auto;
     justify-content: flex-end;
-    flex: 0 0 auto;
-  }
-  .cardGrid {
-    grid-template-columns: 1fr 1fr;
+    gap: 10px;
   }
 }
 
@@ -538,5 +554,129 @@
   }
   .row2 {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ===== PC controls fix (search/toggle/select/segment/add height & layout) ===== */
+
+/* コントロール共通高さ */
+:root {
+  --ctl-h: 40px;
+}
+
+/* 高さ統一 */
+.search {
+  height: var(--ctl-h);
+  padding: 0 12px;
+}
+
+.select {
+  height: var(--ctl-h);
+  padding: 0 10px;
+}
+
+.segment {
+  height: var(--ctl-h);
+  align-items: stretch;
+}
+
+.segBtn {
+  height: var(--ctl-h);
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* 「完了も表示」を“ボタン風”にして高さ合わせ */
+.toggle {
+  height: var(--ctl-h);
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.toggle input {
+  transform: none; /* translateYがズレの原因になる */
+}
+
+/* 追加ボタンも高さ合わせ + margin-left:auto を無効化（崩れ防止） */
+.addBtnDesktop {
+  height: var(--ctl-h);
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0; /* ← ここ重要 */
+}
+
+/* PC時：検索(左) / 操作群(右) を2カラム固定にして被りを防ぐ */
+@media (min-width: 880px) {
+  .actionsRow {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    column-gap: 12px;
+  }
+
+  .searchWrap {
+    flex: unset; /* 既存flex指定の影響を消す */
+    width: auto;
+    min-width: 320px;
+  }
+
+  .compactRow {
+    flex: unset; /* 既存flex指定の影響を消す */
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+  }
+}
+
+/* ===== Fix: search input overlaps controls (PC) ===== */
+.searchWrap {
+  min-width: 0; /* flex/grid内で縮められるようにする */
+}
+
+.search {
+  box-sizing: border-box; /* padding/border込みで幅を計算 */
+  width: 100%;
+  max-width: 100%;
+  min-width: 0; /* これがないと“縮めない”挙動になることがある */
+}
+
+/* ===== spacing: PC first ===== */
+@media (min-width: 880px) {
+  .topBar {
+    margin-bottom: 18px; /* 操作 → 結果 */
+  }
+
+  .bottomBar {
+    margin-top: 18px; /* 結果 → フッター */
+  }
+}
+
+@media (max-width: 600px) {
+  .onlyDesktop {
+    display: none !important;
+  }
+}
+@media (min-width: 601px) {
+  .onlyMobile {
+    display: none !important;
+  }
+}
+
+.desktopOnly {
+  display: block;
+}
+.mobileOnly {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .desktopOnly {
+    display: none;
+  }
+  .mobileOnly {
+    display: block;
   }
 }
