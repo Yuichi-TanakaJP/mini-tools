@@ -308,7 +308,7 @@
 /* 操作列：3ボタンの横位置を揃える */
 .rowBtns {
   display: grid;
-  grid-template-columns: 112px 72px 72px; /* 1つ目だけ広めに固定 */
+  grid-template-columns: 80px 48px 48px; /* 1つ目だけ広めに固定 */
   gap: 8px;
   align-items: center;
 }
@@ -498,20 +498,38 @@
 /* --- fab --- */
 .fab {
   position: fixed;
-  right: 16px;
-  bottom: 18px;
+  right: 30px;
+  bottom: 42px;
   width: 52px;
   height: 52px;
   border-radius: 999px;
   border: 1px solid rgba(0, 0, 0, 0.14);
   background: rgba(0, 0, 0, 0.06);
   cursor: pointer;
-  font-size: 26px;
+  font-size: 32px;
   line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   z-index: 40;
+}
+
+.fabBtn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 0px solid #2563eb;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
+}
+
+.fabBtn:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.22);
+}
+
+.fabBtn:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.18);
 }
 
 /* --- responsive --- */
@@ -679,4 +697,89 @@
   .mobileOnly {
     display: block;
   }
+}
+
+/* ====== Table view (YutaiTable) ====== */
+
+.tableWrap {
+  margin-top: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.kpiRow {
+  padding: 10px 12px;
+  font-weight: 800;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.yutaiTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.yutaiTable thead th {
+  text-align: left;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 10px 12px;
+  background: #fafafa;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.yutaiTable tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+  font-size: 14px;
+}
+
+.yutaiTable tbody tr:hover {
+  background: #fcfcfc;
+}
+
+.cellRight {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.parentRow {
+  cursor: pointer;
+}
+
+.childRow td {
+  font-size: 13px;
+  color: #475569;
+}
+
+.childIndent {
+  padding-left: 28px !important;
+  opacity: 0.95;
+}
+
+.summary {
+  font-size: 12px;
+  opacity: 0.65;
+  margin-top: 2px;
+}
+
+.opCell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.opBtn {
+  width: 32px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background: #fff;
+}
+
+.opBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
