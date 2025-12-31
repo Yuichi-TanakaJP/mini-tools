@@ -24,6 +24,7 @@ import {
 
 import EditBenefitDialog from "./components/EditBenefitDialog";
 import ImportBenefitDialog from "./components/ImportBenefitDialog";
+import { YutaiTable } from "./components/YutaiTable";
 
 type TabKey = "thisMonth" | "later" | "all";
 type ViewMode = "cards" | "table";
@@ -202,7 +203,7 @@ export default function ToolClient() {
     writeBenefits(next);
   };
 
-  const [tab, setTab] = useState<TabKey>("thisMonth");
+  const [tab, setTab] = useState<TabKey>("all");
   const isMobile = useMediaQuery("(max-width: 699px)");
 
   const [hasManualViewMode, setHasManualViewMode] = useState(() => {
@@ -212,7 +213,7 @@ export default function ToolClient() {
 
   const [viewMode, setViewMode] = useState<ViewMode>("table");
 
-  const [showUsed, setShowUsed] = useState(false);
+  const [showUsed, setShowUsed] = useState(true);
   const [sortKey, setSortKey] = useState<SortKey>("expiryAsc");
   const [query, setQuery] = useState("");
 
@@ -452,6 +453,19 @@ export default function ToolClient() {
       <div className={styles.tabs}>
         <button
           className={`${styles.tabBtn} ${
+            tab === "all" ? styles.tabActive : ""
+          }`}
+          onClick={() => setTab("all")}
+          type="button"
+        >
+          すべて
+          <span className={styles.countPill} suppressHydrationWarning>
+            {allCount}
+          </span>
+        </button>
+
+        <button
+          className={`${styles.tabBtn} ${
             tab === "thisMonth" ? styles.tabActive : ""
           }`}
           onClick={() => setTab("thisMonth")}
@@ -475,19 +489,6 @@ export default function ToolClient() {
             {laterCount}
           </span>
         </button>
-
-        <button
-          className={`${styles.tabBtn} ${
-            tab === "all" ? styles.tabActive : ""
-          }`}
-          onClick={() => setTab("all")}
-          type="button"
-        >
-          すべて
-          <span className={styles.countPill} suppressHydrationWarning>
-            {allCount}
-          </span>
-        </button>
       </div>
 
       <div className={styles.actionsRow}>
@@ -508,7 +509,7 @@ export default function ToolClient() {
               checked={showUsed}
               onChange={(e) => setShowUsed(e.target.checked)}
             />
-            <span>完了も表示</span>
+            <span>使用済表示</span>
           </label>
 
           <div className={styles.selectWrap}>
@@ -672,7 +673,7 @@ export default function ToolClient() {
                     className={styles.smallBtn}
                     onClick={() => toggleUsed(it.id)}
                   >
-                    {it.isUsed ? "未使用に戻す" : "使用済みにする"}
+                    {it.isUsed ? "使用済" : "未使用"}
                   </button>
                   <button
                     type="button"
@@ -695,68 +696,25 @@ export default function ToolClient() {
         </div>
       ) : (
         <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th style={{ width: 120 }}>期限</th>
-                <th>優待</th>
-                <th style={{ width: 180 }}>企業</th>
-                <th style={{ width: 120 }}>状態</th>
-                <th style={{ width: 180 }}>メモ</th>
-                <th style={{ width: 240 }}>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((it) => (
-                <tr key={it.id} className={it.isUsed ? styles.rowUsed : ""}>
-                  <td className={styles.mono}>
-                    {it.expiresOn ? fmtJPDate(it.expiresOn) : "—"}
-                  </td>
-                  <td>
-                    <div className={styles.rowTitle}>{it.title}</div>
-                    {(it.quantity != null || it.amountYen != null) && (
-                      <div className={styles.rowSub}>
-                        {it.quantity != null && (
-                          <span>数量: {it.quantity}</span>
-                        )}
-                        {it.amountYen != null && (
-                          <span>金額: {it.amountYen.toLocaleString()}円</span>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                  <td>{it.company}</td>
-                  <td>{it.isUsed ? "使用済み" : "未使用"}</td>
-                  <td className={styles.rowMemo}>{it.memo ?? ""}</td>
-                  <td>
-                    <div className={styles.rowBtns}>
-                      <button
-                        type="button"
-                        className={styles.smallBtn}
-                        onClick={() => toggleUsed(it.id)}
-                      >
-                        {it.isUsed ? "未使用" : "使用済み"}
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.smallBtn}
-                        onClick={() => openEdit(it)}
-                      >
-                        編集
-                      </button>
-                      <button
-                        type="button"
-                        className={`${styles.smallBtn} ${styles.dangerBtn}`}
-                        onClick={() => removeItem(it.id)}
-                      >
-                        削除
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <YutaiTable
+            items={filtered}
+            onDelta={(key, unitValue, delta) => {
+              // filteredじゃなく “元の items” を更新する必要があるので、
+              // setItems(updater) を使う（あなたのToolClientにもうあるはず）
+              setItems((prev) =>
+                prev.map((it) => {
+                  const sameKey = `${it.company}__${it.title}` === key;
+                  const sameUnit = (it.amountYen ?? null) === unitValue;
+
+                  if (!sameKey || !sameUnit) return it;
+
+                  const cur = it.quantity ?? 0;
+                  const next = Math.max(0, cur + delta);
+                  return { ...it, quantity: next };
+                })
+              );
+            }}
+          />
         </div>
       )}
     </>
@@ -788,7 +746,7 @@ export default function ToolClient() {
       {/* FAB (mobile) */}
       <button
         type="button"
-        className={`${styles.fab} ${styles.mobileOnly}`}
+        className={`${styles.fab} ${styles.fabBtn} ${styles.mobileOnly}`}
         onClick={openAdd}
         aria-label="追加"
       >
