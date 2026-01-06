@@ -1,0 +1,120 @@
+/* app/tools/yutai-memo/ToolClient.module.css */
+.wrap {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 16px;
+}
+.h1 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+}
+.select {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: #fff;
+}
+.btn {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: #fff;
+}
+.btnPrimary {
+  padding: 10px 12px;
+  border: 1px solid #111;
+  border-radius: 10px;
+  background: #111;
+  color: #fff;
+}
+.card {
+  border: 1px solid #eee;
+  border-radius: 14px;
+  padding: 12px;
+  background: #fff;
+}
+.list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #ddd;
+  background: #fff;
+  font-size: 12px;
+}
+.chipOn {
+  border-color: #111;
+}
+.meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.small {
+  font-size: 12px;
+  color: #555;
+}
+.hr {
+  height: 1px;
+  background: #eee;
+  margin: 12px 0;
+  border: 0;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.months {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+.monthBtn {
+  padding: 8px 0;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background: #fff;
+}
+.monthOn {
+  border-color: #111;
+  background: #f6f6f6;
+}
+.stars {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.starBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background: #fff;
+}
+.starOn {
+  border-color: #111;
+  background: #f6f6f6;
+}
