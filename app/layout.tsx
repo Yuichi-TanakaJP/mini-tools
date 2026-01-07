@@ -4,6 +4,11 @@ import Header from "@/components/Header";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
+export const metadata = {
+  manifest: "/manifest.webmanifest",
+  themeColor: "#ffffff",
+};
+
 export default function RootLayout({
   children,
 }: {
