@@ -5,6 +5,10 @@ node_modules/
 .next/
 out/
 
+# next-pwa generated files
+public/sw.js
+public/workbox-*.js
+
 # production build
 dist/
 
@@ -24,3 +28,5 @@ pnpm-debug.log*
 Thumbs.db
 .vscode/
 .env.local
+
+
