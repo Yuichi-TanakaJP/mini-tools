@@ -39,7 +39,7 @@ const emptyDraft = (): Draft => ({
 });
 
 export default function ToolClient() {
-  const [items, setItems] = useState<MemoItem[]>([]);
+  const [items, setItems] = useState<MemoItem[]>(() => loadItems());
   const [q, setQ] = useState("");
   const [monthFilter, setMonthFilter] = useState<number | "all">("all");
   const [tagFilter, setTagFilter] = useState<TagKey | "all">("all");
@@ -48,9 +48,6 @@ export default function ToolClient() {
   const [mode, setMode] = useState<"list" | "edit">("list");
 
   // load
-  useEffect(() => {
-    setItems(loadItems());
-  }, []);
 
   // persist
   useEffect(() => {
