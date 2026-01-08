@@ -6,6 +6,9 @@ const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
 export const metadata = {
   manifest: "/manifest.webmanifest",
+};
+
+export const viewport = {
   themeColor: "#ffffff",
 };
 
