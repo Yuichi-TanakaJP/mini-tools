@@ -40,7 +40,7 @@ const TOOLS: ToolItem[] = [
     short: "早取り/長期1株/任期注意/失敗ログを保存",
     detail: "早取り/長期1株/任期注意/失敗ログを保存",
     href: "/tools/yutai-memo",
-    icon: "🎁",
+    icon: "📝",
   },
 ];
 
