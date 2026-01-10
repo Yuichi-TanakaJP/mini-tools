@@ -35,6 +35,13 @@ const TOOLS: ToolItem[] = [
     href: "/tools/yutai-expiry",
     icon: "🎁",
   },
+  {
+    title: "優待銘柄メモ帳",
+    short: "早取り/長期1株/任期注意/失敗ログを保存",
+    detail: "早取り/長期1株/任期注意/失敗ログを保存",
+    href: "/tools/yutai-memo",
+    icon: "🎁",
+  },
 ];
 
 export default function HomePage() {
