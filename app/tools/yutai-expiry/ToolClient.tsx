@@ -202,7 +202,7 @@ export default function ToolClient() {
     writeBenefits(next);
   };
 
-  const [tab, setTab] = useState<TabKey>("thisMonth");
+  const [tab, setTab] = useState<TabKey>("all");
   const isMobile = useMediaQuery("(max-width: 699px)");
 
   const [hasManualViewMode, setHasManualViewMode] = useState(() => {
@@ -212,7 +212,7 @@ export default function ToolClient() {
 
   const [viewMode, setViewMode] = useState<ViewMode>("table");
 
-  const [showUsed, setShowUsed] = useState(false);
+  const [showUsed, setShowUsed] = useState(true);
   const [sortKey, setSortKey] = useState<SortKey>("expiryAsc");
   const [query, setQuery] = useState("");
 
@@ -452,6 +452,19 @@ export default function ToolClient() {
       <div className={styles.tabs}>
         <button
           className={`${styles.tabBtn} ${
+            tab === "all" ? styles.tabActive : ""
+          }`}
+          onClick={() => setTab("all")}
+          type="button"
+        >
+          すべて
+          <span className={styles.countPill} suppressHydrationWarning>
+            {allCount}
+          </span>
+        </button>
+
+        <button
+          className={`${styles.tabBtn} ${
             tab === "thisMonth" ? styles.tabActive : ""
           }`}
           onClick={() => setTab("thisMonth")}
@@ -475,19 +488,6 @@ export default function ToolClient() {
             {laterCount}
           </span>
         </button>
-
-        <button
-          className={`${styles.tabBtn} ${
-            tab === "all" ? styles.tabActive : ""
-          }`}
-          onClick={() => setTab("all")}
-          type="button"
-        >
-          すべて
-          <span className={styles.countPill} suppressHydrationWarning>
-            {allCount}
-          </span>
-        </button>
       </div>
 
       <div className={styles.actionsRow}>
@@ -508,7 +508,7 @@ export default function ToolClient() {
               checked={showUsed}
               onChange={(e) => setShowUsed(e.target.checked)}
             />
-            <span>完了も表示</span>
+            <span>使用済含む</span>
           </label>
 
           <div className={styles.selectWrap}>
@@ -672,7 +672,7 @@ export default function ToolClient() {
                     className={styles.smallBtn}
                     onClick={() => toggleUsed(it.id)}
                   >
-                    {it.isUsed ? "未使用に戻す" : "使用済みにする"}
+                    {it.isUsed ? "使用済" : "未使用"}
                   </button>
                   <button
                     type="button"
@@ -788,7 +788,7 @@ export default function ToolClient() {
       {/* FAB (mobile) */}
       <button
         type="button"
-        className={`${styles.fab} ${styles.mobileOnly}`}
+        className={`${styles.fab} ${styles.fabBtn} ${styles.mobileOnly}`}
         onClick={openAdd}
         aria-label="追加"
       >
