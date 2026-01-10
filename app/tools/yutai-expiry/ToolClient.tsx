@@ -24,7 +24,6 @@ import {
 
 import EditBenefitDialog from "./components/EditBenefitDialog";
 import ImportBenefitDialog from "./components/ImportBenefitDialog";
-import { YutaiTable } from "./components/YutaiTable";
 
 type TabKey = "thisMonth" | "later" | "all";
 type ViewMode = "cards" | "table";
@@ -696,25 +695,68 @@ export default function ToolClient() {
         </div>
       ) : (
         <div className={styles.tableWrap}>
-          <YutaiTable
-            items={filtered}
-            onDelta={(key, unitValue, delta) => {
-              // filteredじゃなく “元の items” を更新する必要があるので、
-              // setItems(updater) を使う（あなたのToolClientにもうあるはず）
-              setItems((prev) =>
-                prev.map((it) => {
-                  const sameKey = `${it.company}__${it.title}` === key;
-                  const sameUnit = (it.amountYen ?? null) === unitValue;
-
-                  if (!sameKey || !sameUnit) return it;
-
-                  const cur = it.quantity ?? 0;
-                  const next = Math.max(0, cur + delta);
-                  return { ...it, quantity: next };
-                })
-              );
-            }}
-          />
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th style={{ width: 120 }}>期限</th>
+                <th>優待</th>
+                <th style={{ width: 180 }}>企業</th>
+                <th style={{ width: 120 }}>状態</th>
+                <th style={{ width: 180 }}>メモ</th>
+                <th style={{ width: 240 }}>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((it) => (
+                <tr key={it.id} className={it.isUsed ? styles.rowUsed : ""}>
+                  <td className={styles.mono}>
+                    {it.expiresOn ? fmtJPDate(it.expiresOn) : "—"}
+                  </td>
+                  <td>
+                    <div className={styles.rowTitle}>{it.title}</div>
+                    {(it.quantity != null || it.amountYen != null) && (
+                      <div className={styles.rowSub}>
+                        {it.quantity != null && (
+                          <span>数量: {it.quantity}</span>
+                        )}
+                        {it.amountYen != null && (
+                          <span>金額: {it.amountYen.toLocaleString()}円</span>
+                        )}
+                      </div>
+                    )}
+                  </td>
+                  <td>{it.company}</td>
+                  <td>{it.isUsed ? "使用済み" : "未使用"}</td>
+                  <td className={styles.rowMemo}>{it.memo ?? ""}</td>
+                  <td>
+                    <div className={styles.rowBtns}>
+                      <button
+                        type="button"
+                        className={styles.smallBtn}
+                        onClick={() => toggleUsed(it.id)}
+                      >
+                        {it.isUsed ? "未使用" : "使用済み"}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.smallBtn}
+                        onClick={() => openEdit(it)}
+                      >
+                        編集
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.smallBtn} ${styles.dangerBtn}`}
+                        onClick={() => removeItem(it.id)}
+                      >
+                        削除
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </>
