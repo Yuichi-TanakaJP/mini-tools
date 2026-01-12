@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { track } from "@/lib/analytics";
 import { QRCodeCanvas } from "qrcode.react";
+import { createPortal } from "react-dom";
 
 type ShareMethod = "x" | "facebook" | "email" | "copy" | "qr";
 
@@ -42,27 +43,48 @@ export default function ShareButtons({
     return base ? `${base}${pathWithQuery}` : pathWithQuery;
   }, [url, pathname, searchParams]);
 
+  type ShareUrlMode = "public" | "current";
+
+  const getShareUrl = useCallback(
+    (mode: ShareUrlMode = "public") => {
+      // public: 共有用（本番URL優先）
+      if (mode === "public") {
+        try {
+          // NEXT_PUBLIC_SITE_URL があればそれを優先
+          const base =
+            process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+          return new URL(currentUrl || "", base).href;
+        } catch {
+          return process.env.NEXT_PUBLIC_SITE_URL || window.location.href;
+        }
+      }
+
+      // current: 今見ているURL（開発・検証向け）
+      return window.location.href;
+    },
+    [currentUrl]
+  );
+
   const shareLinks = useMemo(() => {
-    const u = currentUrl || "";
+    const u = getShareUrl();
     const encUrl = encodeURIComponent(u);
-    const encText = encodeURIComponent(text);
+    const encText = encodeURIComponent(text ?? "");
 
     return {
       x: `https://x.com/intent/tweet?text=${encText}&url=${encUrl}`,
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${encUrl}`,
       email: `mailto:?subject=${encText}&body=${encUrl}`,
     };
-  }, [currentUrl, text]);
+  }, [getShareUrl, text]);
 
   const onShare = (method: ShareMethod) => {
     track("share_clicked", { method });
   };
 
-  const onCopy = async () => {
+  const onCopy = async (url: string) => {
     onShare("copy");
-    const u = currentUrl || "";
     try {
-      await navigator.clipboard.writeText(u);
+      await navigator.clipboard.writeText(url);
       alert("リンクをコピーしました！");
     } catch {
       alert("コピーに失敗しました（ブラウザ設定をご確認ください）");
@@ -136,13 +158,26 @@ export default function ShareButtons({
 
   const renderQrModal = () => {
     if (!qrOpen) return null;
-    const u = currentUrl || "";
-    return (
+    if (typeof document === "undefined") return null; // ★ これが肝
+
+    const raw = currentUrl || "";
+    let u = raw;
+
+    try {
+      // rawが相対でも絶対でもOK。最終的に絶対URLへ正規化
+      u = new URL(raw, window.location.origin).href;
+    } catch {
+      // 念のためフォールバック
+      u = window.location.href;
+    }
+
+    return createPortal(
       <div style={overlayStyle} onClick={() => setQrOpen(false)}>
         <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
           <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 10 }}>
             このページを共有
           </div>
+
           <div style={{ display: "flex", justifyContent: "center" }}>
             <QRCodeCanvas value={u} size={180} />
           </div>
@@ -155,7 +190,11 @@ export default function ShareButtons({
               justifyContent: "center",
             }}
           >
-            <button type="button" onClick={onCopy} style={modalBtnStyle}>
+            <button
+              type="button"
+              onClick={() => onCopy(u)}
+              style={modalBtnStyle}
+            >
               URLコピー
             </button>
             <button
@@ -167,7 +206,8 @@ export default function ShareButtons({
             </button>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   };
 
@@ -194,7 +234,7 @@ export default function ShareButtons({
               <button
                 key={m}
                 type="button"
-                onClick={onCopy}
+                onClick={() => onCopy(getShareUrl())}
                 aria-label="リンクをコピー"
                 title="リンクをコピー"
                 style={iconButtonStyle(size)}
@@ -289,7 +329,12 @@ const overlayStyle: React.CSSProperties = {
   background: "rgba(0,0,0,0.55)",
   display: "flex",
   justifyContent: "center",
-  alignItems: "center",
+  alignItems: "flex-start", // center → flex-start
+  paddingTop: "var(--header-h, 88px)",
+  paddingLeft: "16px",
+  paddingRight: "16px",
+  paddingBottom: "16px",
+  overflowY: "auto", // 低い画面でも操作できる
   zIndex: 1000,
 };
 
