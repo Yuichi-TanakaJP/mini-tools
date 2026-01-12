@@ -16,6 +16,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
         position: "sticky",
         top: 0,
         zIndex: 10,
+        height: 88,
         backdropFilter: "blur(10px)",
         background: "rgba(16,16,16,0.85)",
         borderBottom: "1px solid rgba(255,255,255,0.10)",
@@ -66,9 +67,8 @@ export default function Header({ title, subtitle }: HeaderProps) {
 
         {/* 右側は空でもOK（将来: ダーク/ライト切替やGitHubリンク等を置ける） */}
         <div>
-          <ShareButtons text="MINI TOOLS" />
+          <ShareButtons text="mini-tools" methods={["qr"]} />
         </div>
-        <div />
       </div>
     </header>
   );
