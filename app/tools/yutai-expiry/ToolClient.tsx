@@ -155,6 +155,23 @@ function validateDraft(d: Draft): { ok: boolean; message?: string } {
   return { ok: true };
 }
 
+function displayHost(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function readSavedViewMode(): ViewMode | null {
   if (typeof window === "undefined") return null;
   const v = window.localStorage.getItem(VIEW_MODE_KEY);
@@ -519,7 +536,7 @@ export default function ToolClient() {
             className={styles.search}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="検索（企業名 / 優待名 / メモ）"
+            placeholder="検索（企業名 / 優待名 / メモ / リンク）"
             aria-label="検索"
           />
         </div>
@@ -689,6 +706,37 @@ export default function ToolClient() {
                   </div>
                 )}
 
+                {it.link && (
+                  <div className={styles.cardBody} style={{ paddingTop: 0 }}>
+                    <div className={styles.kvRow}>
+                      <a
+                        href={it.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.mono}
+                        title={it.link}
+                        style={{ textDecoration: "underline" }}
+                      >
+                        🔗 {displayHost(it.link)}
+                      </a>
+                      <button
+                        type="button"
+                        className={styles.smallBtn}
+                        onClick={async () => {
+                          const ok = await copyToClipboard(it.link!);
+                          setToast(
+                            ok
+                              ? "リンクをコピーしました"
+                              : "コピーに失敗しました"
+                          );
+                        }}
+                      >
+                        コピー
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className={styles.cardActions}>
                   <button
                     type="button"
@@ -745,6 +793,36 @@ export default function ToolClient() {
                         {it.amountYen != null && (
                           <span>金額: {it.amountYen.toLocaleString()}円</span>
                         )}
+                      </div>
+                    )}
+
+                    {it.link && (
+                      <div className={styles.rowSub}>
+                        <a
+                          href={it.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={styles.mono}
+                          title={it.link}
+                          style={{ textDecoration: "underline" }}
+                        >
+                          🔗 {displayHost(it.link)}
+                        </a>
+                        <button
+                          type="button"
+                          className={styles.smallBtn}
+                          onClick={async () => {
+                            const ok = await copyToClipboard(it.link!);
+                            setToast(
+                              ok
+                                ? "リンクをコピーしました"
+                                : "コピーに失敗しました"
+                            );
+                          }}
+                          style={{ marginLeft: 8 }}
+                        >
+                          コピー
+                        </button>
                       </div>
                     )}
                   </td>
