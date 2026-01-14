@@ -715,7 +715,6 @@ export default function ToolClient() {
                         rel="noopener noreferrer"
                         className={styles.link}
                         title={it.link}
-                        style={{ textDecoration: "underline" }}
                       >
                         🔗 {displayHost(it.link)}
                       </a>
