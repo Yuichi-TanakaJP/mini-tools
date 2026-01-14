@@ -85,6 +85,19 @@ export default function EditBenefitDialog({
             </label>
           </div>
 
+          <label className={styles.field}>
+            <span>リンク（任意）</span>
+            <input
+              type="url"
+              value={draft.link}
+              onChange={(e) => setDraft({ ...draft, link: e.target.value })}
+              placeholder="例：https://example.com"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+          </label>
+
           <div className={styles.row2}>
             <label className={styles.field}>
               <span>数量</span>

@@ -13,6 +13,9 @@ export type BenefitItemV2 = {
   amountYen?: number | null;
   memo?: string;
 
+  // ✅ 追加：任意URL
+  link?: string;
+
   createdAt: string; // ISO
   updatedAt: string; // ISO
 };
@@ -104,6 +107,13 @@ export function normalizeLegacyToV2(raw: unknown): BenefitItemV2[] {
           ? obj.updatedAt
           : nowIso;
 
+      const link =
+        typeof obj.link === "string"
+          ? obj.link
+          : typeof obj.url === "string"
+          ? obj.url
+          : "";
+
       return {
         id,
         title: title.trim(),
@@ -113,6 +123,7 @@ export function normalizeLegacyToV2(raw: unknown): BenefitItemV2[] {
         quantity: quantity ?? null,
         amountYen: amountYen ?? null,
         memo: memo?.toString() ?? "",
+        link: link.trim() ? link.trim() : undefined,
         createdAt,
         updatedAt,
       } satisfies BenefitItemV2;

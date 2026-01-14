@@ -103,6 +103,7 @@ export type Draft = {
   quantity: string;
   amountYen: string;
   memo: string;
+  link: string; // URL（任意）
 };
 
 function toDraft(x?: BenefitItemV2): Draft {
@@ -115,7 +116,22 @@ function toDraft(x?: BenefitItemV2): Draft {
     quantity: x?.quantity != null ? String(x.quantity) : "",
     amountYen: x?.amountYen != null ? String(x.amountYen) : "",
     memo: x?.memo ?? "",
+    link: x?.link ?? "",
   };
+}
+
+function validateHttpUrl(v: string): string | null {
+  const s = v.trim();
+  if (!s) return null; // 未入力OK
+  try {
+    const u = new URL(s);
+    if (u.protocol !== "http:" && u.protocol !== "https:") {
+      return "リンクは http:// または https:// のURLのみ保存できます。";
+    }
+    return null;
+  } catch {
+    return "リンクURLの形式が正しくありません（例: https://example.com）。";
+  }
 }
 
 function validateDraft(d: Draft): { ok: boolean; message?: string } {
@@ -132,7 +148,28 @@ function validateDraft(d: Draft): { ok: boolean; message?: string } {
       };
     }
   }
+
+  const linkErr = validateHttpUrl(d.link);
+  if (linkErr) return { ok: false, message: linkErr };
+
   return { ok: true };
+}
+
+function displayHost(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function readSavedViewMode(): ViewMode | null {
@@ -242,7 +279,9 @@ export default function ToolClient() {
 
       // 検索
       if (q) {
-        const hay = `${it.title} ${it.company} ${it.memo ?? ""}`.toLowerCase();
+        const hay = `${it.title} ${it.company} ${it.memo ?? ""} ${
+          it.link ?? ""
+        }`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
 
@@ -337,6 +376,7 @@ export default function ToolClient() {
       quantity: parseNumberOrNull(draft.quantity),
       amountYen: parseNumberOrNull(draft.amountYen),
       memo: draft.memo?.trim() ?? "",
+      link: draft.link.trim() ? draft.link.trim() : undefined,
       createdAt: nowIso,
       updatedAt: nowIso,
     };
@@ -496,7 +536,7 @@ export default function ToolClient() {
             className={styles.search}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="検索（企業名 / 優待名 / メモ）"
+            placeholder="検索（企業名 / 優待名 / メモ / リンク）"
             aria-label="検索"
           />
         </div>
@@ -666,6 +706,37 @@ export default function ToolClient() {
                   </div>
                 )}
 
+                {it.link && (
+                  <div className={styles.cardBody} style={{ paddingTop: 0 }}>
+                    <div className={styles.linkRow}>
+                      <a
+                        href={it.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.link}
+                        title={it.link}
+                        style={{ textDecoration: "underline" }}
+                      >
+                        🔗 {displayHost(it.link)}
+                      </a>
+                      <button
+                        type="button"
+                        className={styles.smallBtn}
+                        onClick={async () => {
+                          const ok = await copyToClipboard(it.link!);
+                          setToast(
+                            ok
+                              ? "リンクをコピーしました"
+                              : "コピーに失敗しました"
+                          );
+                        }}
+                      >
+                        コピー
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className={styles.cardActions}>
                   <button
                     type="button"
@@ -722,6 +793,36 @@ export default function ToolClient() {
                         {it.amountYen != null && (
                           <span>金額: {it.amountYen.toLocaleString()}円</span>
                         )}
+                      </div>
+                    )}
+
+                    {it.link && (
+                      <div className={styles.rowSub}>
+                        <a
+                          href={it.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={styles.mono}
+                          title={it.link}
+                          style={{ textDecoration: "underline" }}
+                        >
+                          🔗 {displayHost(it.link)}
+                        </a>
+                        <button
+                          type="button"
+                          className={styles.smallBtn}
+                          onClick={async () => {
+                            const ok = await copyToClipboard(it.link!);
+                            setToast(
+                              ok
+                                ? "リンクをコピーしました"
+                                : "コピーに失敗しました"
+                            );
+                          }}
+                          style={{ marginLeft: 8 }}
+                        >
+                          コピー
+                        </button>
                       </div>
                     )}
                   </td>
