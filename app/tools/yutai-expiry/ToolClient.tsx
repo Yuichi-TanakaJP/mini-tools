@@ -103,6 +103,7 @@ export type Draft = {
   quantity: string;
   amountYen: string;
   memo: string;
+  link: string; // URL（任意）
 };
 
 function toDraft(x?: BenefitItemV2): Draft {
@@ -115,7 +116,22 @@ function toDraft(x?: BenefitItemV2): Draft {
     quantity: x?.quantity != null ? String(x.quantity) : "",
     amountYen: x?.amountYen != null ? String(x.amountYen) : "",
     memo: x?.memo ?? "",
+    link: x?.link ?? "",
   };
+}
+
+function validateHttpUrl(v: string): string | null {
+  const s = v.trim();
+  if (!s) return null; // 未入力OK
+  try {
+    const u = new URL(s);
+    if (u.protocol !== "http:" && u.protocol !== "https:") {
+      return "リンクは http:// または https:// のURLのみ保存できます。";
+    }
+    return null;
+  } catch {
+    return "リンクURLの形式が正しくありません（例: https://example.com）。";
+  }
 }
 
 function validateDraft(d: Draft): { ok: boolean; message?: string } {
@@ -132,6 +148,10 @@ function validateDraft(d: Draft): { ok: boolean; message?: string } {
       };
     }
   }
+
+  const linkErr = validateHttpUrl(d.link);
+  if (linkErr) return { ok: false, message: linkErr };
+
   return { ok: true };
 }
 
@@ -242,7 +262,9 @@ export default function ToolClient() {
 
       // 検索
       if (q) {
-        const hay = `${it.title} ${it.company} ${it.memo ?? ""}`.toLowerCase();
+        const hay = `${it.title} ${it.company} ${it.memo ?? ""} ${
+          it.link ?? ""
+        }`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
 
@@ -337,6 +359,7 @@ export default function ToolClient() {
       quantity: parseNumberOrNull(draft.quantity),
       amountYen: parseNumberOrNull(draft.amountYen),
       memo: draft.memo?.trim() ?? "",
+      link: draft.link.trim() ? draft.link.trim() : undefined,
       createdAt: nowIso,
       updatedAt: nowIso,
     };
