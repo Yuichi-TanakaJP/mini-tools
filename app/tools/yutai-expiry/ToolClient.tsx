@@ -708,12 +708,12 @@ export default function ToolClient() {
 
                 {it.link && (
                   <div className={styles.cardBody} style={{ paddingTop: 0 }}>
-                    <div className={styles.kvRow}>
+                    <div className={styles.linkRow}>
                       <a
                         href={it.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={styles.mono}
+                        className={styles.link}
                         title={it.link}
                         style={{ textDecoration: "underline" }}
                       >
