@@ -2,23 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react";
 import styles from "./ToolClient.module.css";
-import type { MemoItem, TagKey } from "./types";
-import { TAG_LABEL } from "./types";
-import { loadItems, saveItems } from "./storage";
+import type { MemoItem, Tag } from "./types";
+import { DEFAULT_TAGS } from "./types";
+import { loadItems, saveItems, loadTags, saveTags } from "./storage";
 
 function uid() {
   // 十分実用（uuid不要ならこれでOK）
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-const TAGS: TagKey[] = ["early", "one_share", "tenure", "failure", "must"];
-
 type Draft = {
   id?: string;
   name: string;
   code: string;
   months: number[];
-  tags: TagKey[];
+  tagIds: string[];
   entryTiming: string;
   tenureRule: string;
   oneShareHold: boolean;
@@ -30,7 +28,7 @@ const emptyDraft = (): Draft => ({
   name: "",
   code: "",
   months: [],
-  tags: [],
+  tagIds: [],
   entryTiming: "",
   tenureRule: "",
   oneShareHold: false,
@@ -40,12 +38,21 @@ const emptyDraft = (): Draft => ({
 
 export default function ToolClient() {
   const [items, setItems] = useState<MemoItem[]>(() => loadItems());
+
+  const [tags, setTags] = useState<Tag[]>(() => {
+    const t = loadTags();
+    return t.length ? t : DEFAULT_TAGS;
+  });
+
   const [q, setQ] = useState("");
   const [monthFilter, setMonthFilter] = useState<number | "all">("all");
-  const [tagFilter, setTagFilter] = useState<TagKey | "all">("all");
+  const [tagFilter, setTagFilter] = useState<string | "all">("all");
 
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [mode, setMode] = useState<"list" | "edit">("list");
+
+  const [tagManagerOpen, setTagManagerOpen] = useState(false);
+  const [newTagName, setNewTagName] = useState("");
 
   // load
 
@@ -54,13 +61,23 @@ export default function ToolClient() {
     saveItems(items);
   }, [items]);
 
+  useEffect(() => {
+    saveTags(tags);
+  }, [tags]);
+
+  const tagNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const t of tags) m.set(t.id, t.name);
+    return m;
+  }, [tags]);
+
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
     return items
       .filter((it) => {
         if (monthFilter !== "all" && !it.months.includes(monthFilter))
           return false;
-        if (tagFilter !== "all" && !it.tags.includes(tagFilter)) return false;
+        if (tagFilter !== "all" && !it.tagIds.includes(tagFilter)) return false;
 
         if (!qq) return true;
         const hay = [
@@ -70,14 +87,14 @@ export default function ToolClient() {
           it.entryTiming ?? "",
           it.tenureRule ?? "",
           it.months.join(","),
-          it.tags.join(","),
+          (it.tagIds ?? []).map((id) => tagNameById.get(id) ?? id).join(","),
         ]
           .join(" ")
           .toLowerCase();
         return hay.includes(qq);
       })
       .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
-  }, [items, q, monthFilter, tagFilter]);
+  }, [items, q, monthFilter, tagFilter, tagNameById]);
 
   function openNew() {
     setDraft(emptyDraft());
@@ -90,7 +107,7 @@ export default function ToolClient() {
       name: it.name,
       code: it.code ?? "",
       months: it.months,
-      tags: it.tags,
+      tagIds: it.tagIds ?? [],
       entryTiming: it.entryTiming ?? "",
       tenureRule: it.tenureRule ?? "",
       oneShareHold: it.oneShareHold,
@@ -109,11 +126,11 @@ export default function ToolClient() {
     });
   }
 
-  function toggleTag(t: TagKey) {
+  function toggleTag(id: string) {
     setDraft((d) => {
-      const has = d.tags.includes(t);
-      const tags = has ? d.tags.filter((x) => x !== t) : [...d.tags, t];
-      return { ...d, tags };
+      const has = d.tagIds.includes(id);
+      const tagIds = has ? d.tagIds.filter((x) => x !== id) : [...d.tagIds, id];
+      return { ...d, tagIds };
     });
   }
 
@@ -140,7 +157,7 @@ export default function ToolClient() {
         name: draft.name.trim(),
         code: draft.code.trim() || undefined,
         months: draft.months,
-        tags: draft.tags,
+        tagIds: draft.tagIds,
         entryTiming: draft.entryTiming.trim() || undefined,
         tenureRule: draft.tenureRule.trim() || undefined,
         oneShareHold: draft.oneShareHold,
@@ -163,6 +180,35 @@ export default function ToolClient() {
     if (!confirm("削除しますか？")) return;
     setItems((prev) => prev.filter((x) => x.id !== draft.id));
     setMode("list");
+  }
+
+  function addTag() {
+    const name = newTagName.trim();
+    if (!name) return;
+    const id = uid();
+    setTags((prev) => [{ id, name, createdAt: Date.now() }, ...prev]);
+    setNewTagName("");
+  }
+
+  function renameTag(id: string, name: string) {
+    const n = name.trim();
+    if (!n) return;
+    setTags((prev) => prev.map((t) => (t.id === id ? { ...t, name: n } : t)));
+  }
+
+  function deleteTag(id: string) {
+    if (
+      !confirm("このタグを削除しますか？（付与済みメモからは自動で外れます）")
+    )
+      return;
+    setTags((prev) => prev.filter((t) => t.id !== id));
+    setItems((prev) =>
+      prev.map((m) => ({ ...m, tagIds: m.tagIds.filter((x) => x !== id) }))
+    );
+    // フィルタ中なら解除
+    setTagFilter((f) => (f === id ? "all" : f));
+    // 編集中のdraftからも外す
+    setDraft((d) => ({ ...d, tagIds: d.tagIds.filter((x) => x !== id) }));
   }
 
   return (
@@ -196,22 +242,27 @@ export default function ToolClient() {
                 </option>
               ))}
             </select>
-
             <select
               className={styles.select}
               value={tagFilter}
               onChange={(e) => setTagFilter(e.target.value as any)}
             >
               <option value="all">タグ: すべて</option>
-              {TAGS.map((t) => (
-                <option key={t} value={t}>
-                  {TAG_LABEL[t]}
+              {tags.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
                 </option>
               ))}
             </select>
-
             <button className={styles.btnPrimary} onClick={openNew}>
               + 追加
+            </button>
+            <button
+              className={styles.btn}
+              type="button"
+              onClick={() => setTagManagerOpen(true)}
+            >
+              タグ管理
             </button>
           </div>
 
@@ -248,9 +299,9 @@ export default function ToolClient() {
                     <span className={styles.chip}>
                       {it.months.join("/") + "月"}
                     </span>
-                    {it.tags.map((t) => (
-                      <span key={t} className={styles.chip}>
-                        {TAG_LABEL[t]}
+                    {it.tagIds.map((id) => (
+                      <span key={id} className={styles.chip}>
+                        {tagNameById.get(id) ?? "（不明タグ）"}
                       </span>
                     ))}
                     {it.oneShareHold ? (
@@ -272,6 +323,73 @@ export default function ToolClient() {
               ))
             )}
           </div>
+
+          {tagManagerOpen ? (
+            <div
+              className={styles.overlay}
+              onClick={() => setTagManagerOpen(false)}
+            >
+              <div
+                className={styles.dialog}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className={styles.dialogTitle}>タグ管理</div>
+
+                <div className={styles.row} style={{ gap: 8 }}>
+                  <input
+                    className={styles.input}
+                    placeholder="新しいタグ名"
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                  />
+                  <button
+                    className={styles.btnPrimary}
+                    type="button"
+                    onClick={addTag}
+                  >
+                    追加
+                  </button>
+                </div>
+
+                <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                  {tags.length === 0 ? (
+                    <div className={styles.small}>タグがありません</div>
+                  ) : (
+                    tags.map((t) => (
+                      <div
+                        key={t.id}
+                        className={styles.row}
+                        style={{ gap: 8, alignItems: "center" }}
+                      >
+                        <input
+                          className={styles.input}
+                          value={t.name}
+                          onChange={(e) => renameTag(t.id, e.target.value)}
+                        />
+                        <button
+                          className={styles.btn}
+                          type="button"
+                          onClick={() => deleteTag(t.id)}
+                        >
+                          削除
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className={styles.actions} style={{ marginTop: 12 }}>
+                  <button
+                    className={styles.btn}
+                    type="button"
+                    onClick={() => setTagManagerOpen(false)}
+                  >
+                    閉じる
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </>
       ) : (
         <>
@@ -324,17 +442,18 @@ export default function ToolClient() {
             <div className={styles.small} style={{ marginBottom: 6 }}>
               タグ
             </div>
+
             <div className={styles.chips}>
-              {TAGS.map((t) => {
-                const on = draft.tags.includes(t);
+              {tags.map((t) => {
+                const on = draft.tagIds.includes(t.id);
                 return (
                   <button
-                    key={t}
+                    key={t.id}
                     type="button"
                     className={`${styles.chip} ${on ? styles.chipOn : ""}`}
-                    onClick={() => toggleTag(t)}
+                    onClick={() => toggleTag(t.id)}
                   >
-                    {TAG_LABEL[t]}
+                    {t.name}
                   </button>
                 );
               })}
