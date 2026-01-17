@@ -43,8 +43,10 @@
 .card {
   border: 1px solid #eee;
   border-radius: 14px;
-  padding: 12px;
+  padding: 8px 10px;
   background: #fff;
+  display: block; /* ★保険 */
+  width: 100%; /* ★保険 */
 }
 .list {
   display: grid;
@@ -129,6 +131,7 @@
   align-items: center;
   justify-content: center;
   z-index: 50;
+  padding: 12px;
 }
 
 .dialog {
@@ -137,9 +140,21 @@
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  max-height: min(560px, calc(100vh - 24px));
+  display: flex;
+  flex-direction: column;
 }
 
 .dialogTitle {
   font-weight: 700;
   margin-bottom: 12px;
+}
+
+.dialogBody {
+  overflow: auto;
+  min-height: 0;
+}
+
+.dialogFooter {
+  margin-top: 12px;
 }
