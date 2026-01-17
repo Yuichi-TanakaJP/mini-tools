@@ -335,50 +335,52 @@ export default function ToolClient() {
               >
                 <div className={styles.dialogTitle}>タグ管理</div>
 
-                <div className={styles.row} style={{ gap: 8 }}>
-                  <input
-                    className={styles.input}
-                    placeholder="新しいタグ名"
-                    value={newTagName}
-                    onChange={(e) => setNewTagName(e.target.value)}
-                  />
-                  <button
-                    className={styles.btnPrimary}
-                    type="button"
-                    onClick={addTag}
-                  >
-                    追加
-                  </button>
-                </div>
+                <div className={styles.dialogBody}>
+                  <div className={styles.row} style={{ gap: 8 }}>
+                    <input
+                      className={styles.input}
+                      placeholder="新しいタグ名"
+                      value={newTagName}
+                      onChange={(e) => setNewTagName(e.target.value)}
+                    />
+                    <button
+                      className={styles.btnPrimary}
+                      type="button"
+                      onClick={addTag}
+                    >
+                      追加
+                    </button>
+                  </div>
 
-                <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-                  {tags.length === 0 ? (
-                    <div className={styles.small}>タグがありません</div>
-                  ) : (
-                    tags.map((t) => (
-                      <div
-                        key={t.id}
-                        className={styles.row}
-                        style={{ gap: 8, alignItems: "center" }}
-                      >
-                        <input
-                          className={styles.input}
-                          value={t.name}
-                          onChange={(e) => renameTag(t.id, e.target.value)}
-                        />
-                        <button
-                          className={styles.btn}
-                          type="button"
-                          onClick={() => deleteTag(t.id)}
+                  <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                    {tags.length === 0 ? (
+                      <div className={styles.small}>タグがありません</div>
+                    ) : (
+                      tags.map((t) => (
+                        <div
+                          key={t.id}
+                          className={styles.row}
+                          style={{ gap: 8, alignItems: "center" }}
                         >
-                          削除
-                        </button>
-                      </div>
-                    ))
-                  )}
+                          <input
+                            className={styles.input}
+                            value={t.name}
+                            onChange={(e) => renameTag(t.id, e.target.value)}
+                          />
+                          <button
+                            className={styles.btn}
+                            type="button"
+                            onClick={() => deleteTag(t.id)}
+                          >
+                            削除
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
 
-                <div className={styles.actions} style={{ marginTop: 12 }}>
+                <div className={`${styles.actions} ${styles.dialogFooter}`}>
                   <button
                     className={styles.btn}
                     type="button"
