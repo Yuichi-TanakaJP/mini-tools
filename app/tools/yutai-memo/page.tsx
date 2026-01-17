@@ -1,6 +1,8 @@
 // app/tools/yutai-memo/page.tsx
-import ToolClient from "./ToolClient";
+import ClientOnly from "./ClientOnly";
 
 export default function Page() {
-  return <ToolClient />;
+  return <ClientOnly />;
 }
+
+
