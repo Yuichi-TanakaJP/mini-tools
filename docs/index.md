@@ -10,7 +10,7 @@
 設計・方針・トレードオフの判断理由を記録します。
 
 - [2026-01-11 QR 共有モーダル実装の設計判断](./decision-log/2026-01-11-qr-share-modal.md)
-- [2026-01-10 cherry-pick 分割判断](./decision-log/2026-01-10-cherry-pick-split.md)
+- [2026-01-10 cherry-pick 分割判断](./decision-log/2026-01-10_cherry-pick-split.md)
 
 ---
 
@@ -19,7 +19,7 @@
 日々の開発作業や試行錯誤の記録です。
 
 - [2026-01-11 QR 共有 UI 改善ログ](./devlog/2026-01-11-qr-share-ui-improvement.md)
-- [2026-01-10 Git 学習ログ](./devlog/2026-01-10-git-learning-log.md)
+- [2026-01-10 Git 学習ログ](./devlog/2026-01-10_git-learning-log.md)
 
 ---
 
