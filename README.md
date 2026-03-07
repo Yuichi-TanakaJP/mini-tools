@@ -49,6 +49,11 @@ npm run dev
 
 参照: `package.json`
 
+## 実行環境の基準（確認済み）
+
+- CI（GitHub Actions）は `Node.js 20` を使用
+- 参照: `.github/workflows/ci.yml`
+
 ## 環境変数
 
 コード上で参照している公開環境変数:
@@ -96,23 +101,13 @@ npm run dev
 ## docs
 
 - docs 全体案内: `docs/index.md`
-- QR共有URL仕様: `docs/README.md`
+- QR共有URL仕様: `docs/share-url-spec.md`
 - 意思決定ログ: `docs/decision-log/`
 - 作業ログ: `docs/devlog/`
 
 ## To verify
 
-### Dependencies
-
-- 推奨 Node.js / npm バージョン
-  - 確認先: `package.json` の `engines`（未定義のため運用方針要確認）
-
 ### Entry points / CLI behavior
 
-- 本番運用で使用している起動コマンド（`npm run start` 以外の運用有無）
+- ホスティング環境での実運用コマンド（`npm run start` を使うか、プラットフォーム既定か）
   - 確認先: デプロイ設定（ホスティング側設定）
-
-### Docs consistency
-
-- `.env.local.example` の注釈（optional の表現）を日本語に統一するか
-  - 確認先: ドキュメント表記ルール
