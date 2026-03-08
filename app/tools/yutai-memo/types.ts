@@ -9,6 +9,7 @@ export type MemoItem = {
   id: string;
   name: string;
   code?: string;
+  createdAt: string; // ISO
   months: number[]; // 1-12 (複数可)
   tagIds: string[]; // ★ tags -> tagIds
   entryTiming?: string; // 早打ち目安
