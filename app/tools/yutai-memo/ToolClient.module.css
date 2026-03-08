@@ -53,6 +53,25 @@
   gap: 10px;
   margin-top: 12px;
 }
+.bulkBar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 10px;
+}
+.cardRow {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.selectBox {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 42px;
+}
 .chips {
   display: flex;
   gap: 8px;
