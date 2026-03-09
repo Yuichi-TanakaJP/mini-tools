@@ -323,7 +323,10 @@ export default function ToolClient() {
               className={styles.input}
               placeholder="検索（銘柄/コード/メモ/任期/早打ち目安）"
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(e) => {
+                clearSelection();
+                setQ(e.target.value);
+              }}
             />
           </div>
 
@@ -332,6 +335,7 @@ export default function ToolClient() {
               className={styles.select}
               value={monthFilter}
               onChange={(e) => {
+                clearSelection();
                 const v = e.target.value;
                 setMonthFilter(v === "all" ? "all" : Number(v));
               }}
@@ -346,7 +350,10 @@ export default function ToolClient() {
             <select
               className={styles.select}
               value={tagFilter}
-              onChange={(e) => setTagFilter(e.target.value as any)}
+              onChange={(e) => {
+                clearSelection();
+                setTagFilter(e.target.value as any);
+              }}
             >
               <option value="all">タグ: すべて</option>
               {tags.map((t) => (
