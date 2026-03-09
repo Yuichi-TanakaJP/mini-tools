@@ -72,6 +72,17 @@
   align-items: center;
   min-height: 42px;
 }
+.stateToggle {
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+}
+.stateOn {
+  border-color: #111;
+  background: #f6f6f6;
+}
 .chips {
   display: flex;
   gap: 8px;
