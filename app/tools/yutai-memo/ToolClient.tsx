@@ -464,6 +464,7 @@ export default function ToolClient() {
                     style={{ textAlign: "left", cursor: "pointer" }}
                     onClick={() => openEdit(it)}
                     onKeyDown={(e) => {
+                      if (e.currentTarget !== e.target) return;
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
                         openEdit(it);
