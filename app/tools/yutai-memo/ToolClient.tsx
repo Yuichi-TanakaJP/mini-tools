@@ -310,6 +310,14 @@ export default function ToolClient() {
     clearSelection();
   }
 
+  function toggleAcquired(id: string) {
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === id ? { ...it, acquired: !it.acquired } : it
+      )
+    );
+  }
+
   const selectedCount = selectedIds.size;
 
   return (
@@ -449,24 +457,45 @@ export default function ToolClient() {
                       onChange={() => toggleSelect(it.id)}
                     />
                   </label>
-                  <button
+                  <div
                     className={styles.card}
+                    role="button"
+                    tabIndex={0}
                     style={{ textAlign: "left", cursor: "pointer" }}
                     onClick={() => openEdit(it)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openEdit(it);
+                      }
+                    }}
                   >
                   <div
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
                       gap: 10,
+                      alignItems: "center",
                     }}
                   >
                     <div style={{ fontWeight: 700 }}>
                       {it.name}
                       {it.code ? `（${it.code}）` : ""}
                     </div>
-                    <div className={styles.small}>
-                      {it.acquired ? "取得済み / " : "未取得 / "}★{it.priority}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <button
+                        type="button"
+                        className={`${styles.stateToggle} ${
+                          it.acquired ? styles.stateOn : ""
+                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleAcquired(it.id);
+                        }}
+                      >
+                        {it.acquired ? "取得済み" : "未取得"}
+                      </button>
+                      <div className={styles.small}>★{it.priority}</div>
                     </div>
                   </div>
 
@@ -494,7 +523,7 @@ export default function ToolClient() {
                       ? it.memo.slice(0, 60) + (it.memo.length > 60 ? "…" : "")
                       : "（メモなし）"}
                   </div>
-                  </button>
+                  </div>
                 </div>
               ))
             )}
