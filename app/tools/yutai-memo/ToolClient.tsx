@@ -25,6 +25,7 @@ type Draft = {
   tagIds: string[];
   entryTiming: string;
   tenureRule: string;
+  acquired: boolean;
   oneShareHold: boolean;
   priority: 1 | 2 | 3;
   memo: string;
@@ -37,6 +38,7 @@ const emptyDraft = (): Draft => ({
   tagIds: [],
   entryTiming: "",
   tenureRule: "",
+  acquired: false,
   oneShareHold: false,
   priority: 2,
   memo: "",
@@ -82,6 +84,7 @@ export default function ToolClient() {
 
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [newTagName, setNewTagName] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // load
 
@@ -166,6 +169,7 @@ export default function ToolClient() {
       tagIds: it.tagIds ?? [],
       entryTiming: it.entryTiming ?? "",
       tenureRule: it.tenureRule ?? "",
+      acquired: it.acquired,
       oneShareHold: it.oneShareHold,
       priority: it.priority,
       memo: it.memo,
@@ -217,6 +221,7 @@ export default function ToolClient() {
         tagIds: draft.tagIds,
         entryTiming: draft.entryTiming.trim() || undefined,
         tenureRule: draft.tenureRule.trim() || undefined,
+        acquired: draft.acquired,
         oneShareHold: draft.oneShareHold,
         priority: draft.priority,
         memo: draft.memo.trim(),
@@ -236,6 +241,11 @@ export default function ToolClient() {
     }
     if (!confirm("削除しますか？")) return;
     setItems((prev) => prev.filter((x) => x.id !== draft.id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(draft.id as string);
+      return next;
+    });
     setMode("list");
   }
 
@@ -268,6 +278,40 @@ export default function ToolClient() {
     setDraft((d) => ({ ...d, tagIds: d.tagIds.filter((x) => x !== id) }));
   }
 
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function selectAllVisible() {
+    setSelectedIds(new Set(filtered.map((it) => it.id)));
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
+
+  function bulkRemoveSelected() {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`選択中の ${selectedIds.size} 件を削除しますか？`)) return;
+    setItems((prev) => prev.filter((it) => !selectedIds.has(it.id)));
+    clearSelection();
+  }
+
+  function bulkSetAcquired(acquired: boolean) {
+    if (selectedIds.size === 0) return;
+    setItems((prev) =>
+      prev.map((it) => (selectedIds.has(it.id) ? { ...it, acquired } : it))
+    );
+    clearSelection();
+  }
+
+  const selectedCount = selectedIds.size;
+
   return (
     <div className={styles.wrap}>
       <div className={styles.h1}>優待銘柄メモ帳</div>
@@ -279,7 +323,10 @@ export default function ToolClient() {
               className={styles.input}
               placeholder="検索（銘柄/コード/メモ/任期/早打ち目安）"
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(e) => {
+                clearSelection();
+                setQ(e.target.value);
+              }}
             />
           </div>
 
@@ -288,6 +335,7 @@ export default function ToolClient() {
               className={styles.select}
               value={monthFilter}
               onChange={(e) => {
+                clearSelection();
                 const v = e.target.value;
                 setMonthFilter(v === "all" ? "all" : Number(v));
               }}
@@ -302,7 +350,10 @@ export default function ToolClient() {
             <select
               className={styles.select}
               value={tagFilter}
-              onChange={(e) => setTagFilter(e.target.value as any)}
+              onChange={(e) => {
+                clearSelection();
+                setTagFilter(e.target.value as any);
+              }}
             >
               <option value="all">タグ: すべて</option>
               {tags.map((t) => (
@@ -347,6 +398,40 @@ export default function ToolClient() {
             </button>
           </div>
 
+          <div className={styles.bulkBar}>
+            <div className={styles.small}>{selectedCount}件選択中</div>
+            <button className={styles.btn} type="button" onClick={selectAllVisible}>
+              全選択
+            </button>
+            <button className={styles.btn} type="button" onClick={clearSelection}>
+              全解除
+            </button>
+            <button
+              className={styles.btn}
+              type="button"
+              onClick={() => bulkSetAcquired(true)}
+              disabled={selectedCount === 0}
+            >
+              取得済みにする
+            </button>
+            <button
+              className={styles.btn}
+              type="button"
+              onClick={() => bulkSetAcquired(false)}
+              disabled={selectedCount === 0}
+            >
+              未取得に戻す
+            </button>
+            <button
+              className={styles.btn}
+              type="button"
+              onClick={bulkRemoveSelected}
+              disabled={selectedCount === 0}
+            >
+              削除
+            </button>
+          </div>
+
           <div className={styles.list}>
             {filtered.length === 0 ? (
               <div className={styles.card}>
@@ -356,12 +441,19 @@ export default function ToolClient() {
               </div>
             ) : (
               filtered.map((it) => (
-                <button
-                  key={it.id}
-                  className={styles.card}
-                  style={{ textAlign: "left", cursor: "pointer" }}
-                  onClick={() => openEdit(it)}
-                >
+                <div key={it.id} className={styles.cardRow}>
+                  <label className={styles.selectBox}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(it.id)}
+                      onChange={() => toggleSelect(it.id)}
+                    />
+                  </label>
+                  <button
+                    className={styles.card}
+                    style={{ textAlign: "left", cursor: "pointer" }}
+                    onClick={() => openEdit(it)}
+                  >
                   <div
                     style={{
                       display: "flex",
@@ -373,7 +465,9 @@ export default function ToolClient() {
                       {it.name}
                       {it.code ? `（${it.code}）` : ""}
                     </div>
-                    <div className={styles.small}>★{it.priority}</div>
+                    <div className={styles.small}>
+                      {it.acquired ? "取得済み / " : "未取得 / "}★{it.priority}
+                    </div>
                   </div>
 
                   <div className={styles.meta}>
@@ -400,7 +494,8 @@ export default function ToolClient() {
                       ? it.memo.slice(0, 60) + (it.memo.length > 60 ? "…" : "")
                       : "（メモなし）"}
                   </div>
-                </button>
+                  </button>
+                </div>
               ))
             )}
           </div>
@@ -570,19 +665,34 @@ export default function ToolClient() {
               className={styles.row}
               style={{ marginTop: 10, justifyContent: "space-between" }}
             >
-              <label
-                className={styles.small}
-                style={{ display: "flex", gap: 8, alignItems: "center" }}
-              >
-                <input
-                  type="checkbox"
-                  checked={draft.oneShareHold}
-                  onChange={(e) =>
-                    setDraft((d) => ({ ...d, oneShareHold: e.target.checked }))
-                  }
-                />
-                1株保有中（長期優遇用）
-              </label>
+              <div className={styles.row}>
+                <label
+                  className={styles.small}
+                  style={{ display: "flex", gap: 8, alignItems: "center" }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={draft.acquired}
+                    onChange={(e) =>
+                      setDraft((d) => ({ ...d, acquired: e.target.checked }))
+                    }
+                  />
+                  取得済み
+                </label>
+                <label
+                  className={styles.small}
+                  style={{ display: "flex", gap: 8, alignItems: "center" }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={draft.oneShareHold}
+                    onChange={(e) =>
+                      setDraft((d) => ({ ...d, oneShareHold: e.target.checked }))
+                    }
+                  />
+                  1株保有中（長期優遇用）
+                </label>
+              </div>
 
               <div className={styles.stars}>
                 <span className={styles.small}>重要度</span>

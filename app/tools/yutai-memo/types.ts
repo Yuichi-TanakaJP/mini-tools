@@ -14,6 +14,7 @@ export type MemoItem = {
   tagIds: string[]; // ★ tags -> tagIds
   entryTiming?: string; // 早打ち目安
   tenureRule?: string; // 任期条件
+  acquired: boolean; // 取得済みか
   oneShareHold: boolean;
   priority: 1 | 2 | 3;
   memo: string;
