@@ -11,8 +11,14 @@ function uid() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+type SortKey = "createdAt" | "code" | "name";
+type SortOrder = "asc" | "desc";
+type SortState = { key: SortKey; order: SortOrder };
+const SORT_KEY = "yutai_memo_sort_v1";
+
 type Draft = {
   id?: string;
+  createdAt?: string;
   name: string;
   code: string;
   months: number[];
@@ -36,6 +42,28 @@ const emptyDraft = (): Draft => ({
   memo: "",
 });
 
+function loadSortState(): SortState {
+  if (typeof window === "undefined") return { key: "createdAt", order: "desc" };
+  try {
+    const raw = localStorage.getItem(SORT_KEY);
+    if (!raw) return { key: "createdAt", order: "desc" };
+    const parsed = JSON.parse(raw) as Partial<SortState>;
+    const key: SortKey =
+      parsed.key === "code" || parsed.key === "name" || parsed.key === "createdAt"
+        ? parsed.key
+        : "createdAt";
+    const order: SortOrder = parsed.order === "asc" ? "asc" : "desc";
+    return { key, order };
+  } catch {
+    return { key: "createdAt", order: "desc" };
+  }
+}
+
+function saveSortState(state: SortState) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(SORT_KEY, JSON.stringify(state));
+}
+
 export default function ToolClient() {
   const [items, setItems] = useState<MemoItem[]>(() => loadItems());
 
@@ -47,6 +75,7 @@ export default function ToolClient() {
   const [q, setQ] = useState("");
   const [monthFilter, setMonthFilter] = useState<number | "all">("all");
   const [tagFilter, setTagFilter] = useState<string | "all">("all");
+  const [sortState, setSortState] = useState<SortState>(() => loadSortState());
 
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [mode, setMode] = useState<"list" | "edit">("list");
@@ -64,6 +93,9 @@ export default function ToolClient() {
   useEffect(() => {
     saveTags(tags);
   }, [tags]);
+  useEffect(() => {
+    saveSortState(sortState);
+  }, [sortState]);
 
   const tagNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -73,6 +105,28 @@ export default function ToolClient() {
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
+    const collator = new Intl.Collator("ja", { numeric: true, sensitivity: "base" });
+    const toMs = (iso: string) => {
+      const t = Date.parse(iso);
+      return Number.isNaN(t) ? 0 : t;
+    };
+    const compare = (a: MemoItem, b: MemoItem) => {
+      let base = 0;
+      if (sortState.key === "createdAt") {
+        base = toMs(a.createdAt) - toMs(b.createdAt);
+      } else if (sortState.key === "code") {
+        base = collator.compare(a.code ?? "", b.code ?? "");
+      } else {
+        base = collator.compare(a.name, b.name);
+      }
+
+      if (base !== 0) return sortState.order === "asc" ? base : -base;
+
+      const byCreatedDesc = toMs(b.createdAt) - toMs(a.createdAt);
+      if (byCreatedDesc !== 0) return byCreatedDesc;
+      return collator.compare(a.id, b.id);
+    };
+
     return items
       .filter((it) => {
         if (monthFilter !== "all" && !it.months.includes(monthFilter))
@@ -93,8 +147,9 @@ export default function ToolClient() {
           .toLowerCase();
         return hay.includes(qq);
       })
-      .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
-  }, [items, q, monthFilter, tagFilter, tagNameById]);
+      .slice()
+      .sort(compare);
+  }, [items, q, monthFilter, tagFilter, tagNameById, sortState]);
 
   function openNew() {
     setDraft(emptyDraft());
@@ -104,6 +159,7 @@ export default function ToolClient() {
   function openEdit(it: MemoItem) {
     setDraft({
       id: it.id,
+      createdAt: it.createdAt,
       name: it.name,
       code: it.code ?? "",
       months: it.months,
@@ -156,6 +212,7 @@ export default function ToolClient() {
         id: draft.id ?? uid(),
         name: draft.name.trim(),
         code: draft.code.trim() || undefined,
+        createdAt: draft.createdAt ?? now,
         months: draft.months,
         tagIds: draft.tagIds,
         entryTiming: draft.entryTiming.trim() || undefined,
@@ -253,6 +310,30 @@ export default function ToolClient() {
                   {t.name}
                 </option>
               ))}
+            </select>
+            <select
+              className={styles.select}
+              value={sortState.key}
+              onChange={(e) =>
+                setSortState((s) => ({ ...s, key: e.target.value as SortKey }))
+              }
+            >
+              <option value="createdAt">並び替え: 作成日</option>
+              <option value="code">並び替え: 銘柄コード</option>
+              <option value="name">並び替え: 銘柄名</option>
+            </select>
+            <select
+              className={styles.select}
+              value={sortState.order}
+              onChange={(e) =>
+                setSortState((s) => ({
+                  ...s,
+                  order: e.target.value as SortOrder,
+                }))
+              }
+            >
+              <option value="desc">順序: 降順</option>
+              <option value="asc">順序: 昇順</option>
             </select>
             <button className={styles.btnPrimary} onClick={openNew}>
               + 追加

@@ -42,7 +42,14 @@ export function loadItems(): MemoItem[] {
     const raw = localStorage.getItem(ITEMS_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as MemoItem[];
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    const normalized = parsed.map((it) =>
+      it && typeof it === "object" && "id" in it
+        ? ({ ...it, createdAt: (it as any).createdAt ?? it.updatedAt } as MemoItem)
+        : it
+    );
+    localStorage.setItem(ITEMS_KEY, JSON.stringify(normalized));
+    return normalized;
   } catch {
     return [];
   }
@@ -101,6 +108,7 @@ function migrateIfNeeded() {
     const { tags, ...rest } = it as any;
     return {
       ...rest,
+      createdAt: rest.updatedAt,
       tagIds: (tags ?? []) as string[],
     };
   });
