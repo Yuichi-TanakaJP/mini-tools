@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import ShareButtons from "@/components/ShareButtonsSuspended";
-import ToolClient from "./ToolClient";
+import ClientOnly from "./ClientOnly";
 
 export const metadata: Metadata = {
   title: "株主優待期限帳 | mini-tools",
@@ -23,7 +23,7 @@ export default function Page() {
         </p>
       </header>
 
-      <ToolClient />
+      <ClientOnly />
 
       <footer
         style={{ marginTop: 18, display: "flex", justifyContent: "center" }}
