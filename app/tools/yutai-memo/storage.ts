@@ -1,9 +1,10 @@
 // app/tools/yutai-memo/storage.ts
-import type { MemoItem, Tag } from "./types";
+import type { ArchivedMemoItem, MemoItem, Tag } from "./types";
 import { DEFAULT_TAGS } from "./types";
 
 const ITEMS_KEY = "yutai_memo_items_v1";
 const TAGS_KEY = "yutai_memo_tags_v1";
+const ARCHIVES_KEY = "yutai_memo_archives_v1";
 const MIGRATED_KEY = "yutai_memo_migrated_tags_v1";
 
 type LegacyTagKey = "early" | "one_share" | "tenure" | "failure" | "must";
@@ -62,6 +63,34 @@ export function loadItems(): MemoItem[] {
 export function saveItems(items: MemoItem[]) {
   if (typeof window === "undefined") return;
   localStorage.setItem(ITEMS_KEY, JSON.stringify(items));
+}
+
+export function loadArchivedItems(): ArchivedMemoItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(ARCHIVES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as ArchivedMemoItem[];
+    if (!Array.isArray(parsed)) return [];
+    const normalized = parsed.filter(
+      (it) =>
+        it &&
+        typeof it === "object" &&
+        typeof (it as any).id === "string" &&
+        typeof (it as any).memoId === "string" &&
+        typeof (it as any).name === "string" &&
+        typeof (it as any).acquiredAt === "string"
+    );
+    localStorage.setItem(ARCHIVES_KEY, JSON.stringify(normalized));
+    return normalized;
+  } catch {
+    return [];
+  }
+}
+
+export function saveArchivedItems(items: ArchivedMemoItem[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(ARCHIVES_KEY, JSON.stringify(items));
 }
 
 function migrateIfNeeded() {
