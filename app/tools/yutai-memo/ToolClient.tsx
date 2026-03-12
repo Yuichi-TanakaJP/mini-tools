@@ -2,9 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import styles from "./ToolClient.module.css";
-import type { MemoItem, Tag } from "./types";
+import type { ArchivedMemoItem, MemoItem, Tag } from "./types";
 import { DEFAULT_TAGS } from "./types";
-import { loadItems, saveItems, loadTags, saveTags } from "./storage";
+import {
+  loadArchivedItems,
+  loadItems,
+  loadTags,
+  saveArchivedItems,
+  saveItems,
+  saveTags,
+} from "./storage";
 
 function uid() {
   // 十分実用（uuid不要ならこれでOK）
@@ -66,8 +73,17 @@ function saveSortState(state: SortState) {
   localStorage.setItem(SORT_KEY, JSON.stringify(state));
 }
 
+function formatArchiveDate(iso: string): string {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return iso;
+  return new Date(t).toLocaleString("ja-JP");
+}
+
 export default function ToolClient() {
   const [items, setItems] = useState<MemoItem[]>(() => loadItems());
+  const [archives, setArchives] = useState<ArchivedMemoItem[]>(() =>
+    loadArchivedItems()
+  );
 
   const [tags, setTags] = useState<Tag[]>(() => {
     const t = loadTags();
@@ -92,6 +108,10 @@ export default function ToolClient() {
   useEffect(() => {
     saveItems(items);
   }, [items]);
+
+  useEffect(() => {
+    saveArchivedItems(archives);
+  }, [archives]);
 
   useEffect(() => {
     saveTags(tags);
@@ -318,6 +338,38 @@ export default function ToolClient() {
     );
   }
 
+  function archiveMemo(id: string) {
+    const target = items.find((it) => it.id === id);
+    if (!target) return;
+    if (
+      !confirm(
+        "取得リストに追加し、メモを未取得に戻します。よろしいですか？"
+      )
+    )
+      return;
+
+    const now = new Date().toISOString();
+    setArchives((prev) => [
+      {
+        id: uid(),
+        memoId: target.id,
+        code: target.code,
+        name: target.name,
+        acquiredAt: now,
+        note: target.memo?.trim() || undefined,
+      },
+      ...prev,
+    ]);
+
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === id ? { ...it, acquired: false, updatedAt: now } : it
+      )
+    );
+
+    alert("アーカイブしました（取得リストに追加・未取得へ戻しました）。");
+  }
+
   const selectedCount = selectedIds.size;
 
   return (
@@ -496,6 +548,18 @@ export default function ToolClient() {
                       >
                         {it.acquired ? "取得済み" : "未取得"}
                       </button>
+                      <button
+                        type="button"
+                        className={styles.archiveBtn}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          archiveMemo(it.id);
+                        }}
+                        disabled={!it.acquired}
+                        title={it.acquired ? "取得履歴へ移動" : "取得済みのメモのみ対応"}
+                      >
+                        アーカイブ
+                      </button>
                       <div className={styles.small}>★{it.priority}</div>
                     </div>
                   </div>
@@ -527,6 +591,38 @@ export default function ToolClient() {
                   </div>
                 </div>
               ))
+            )}
+          </div>
+
+          <div className={styles.archivePanel}>
+            <div className={styles.archiveTitle}>
+              取得リスト（履歴）
+              <span className={styles.small} style={{ marginLeft: 8 }}>
+                {archives.length}件
+              </span>
+            </div>
+            {archives.length === 0 ? (
+              <div className={styles.small}>まだ履歴はありません。</div>
+            ) : (
+              <div className={styles.archiveList}>
+                {archives.slice(0, 20).map((a) => (
+                  <div key={a.id} className={styles.archiveRow}>
+                    <div style={{ fontWeight: 600 }}>
+                      {a.name}
+                      {a.code ? `（${a.code}）` : ""}
+                    </div>
+                    <div className={styles.small}>
+                      取得日: {formatArchiveDate(a.acquiredAt)}
+                    </div>
+                    {a.note ? (
+                      <div className={styles.small}>
+                        {a.note.slice(0, 80)}
+                        {a.note.length > 80 ? "…" : ""}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 

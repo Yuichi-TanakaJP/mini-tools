@@ -83,6 +83,17 @@
   border-color: #111;
   background: #f6f6f6;
 }
+.archiveBtn {
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+}
+.archiveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .chips {
   display: flex;
   gap: 8px;
@@ -187,4 +198,25 @@
 
 .dialogFooter {
   margin-top: 12px;
+}
+
+.archivePanel {
+  margin-top: 16px;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+}
+.archiveTitle {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.archiveList {
+  display: grid;
+  gap: 8px;
+}
+.archiveRow {
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  padding: 8px 10px;
 }

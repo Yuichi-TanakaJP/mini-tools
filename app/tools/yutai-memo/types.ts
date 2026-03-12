@@ -21,6 +21,15 @@ export type MemoItem = {
   updatedAt: string; // ISO
 };
 
+export type ArchivedMemoItem = {
+  id: string;
+  memoId: string;
+  code?: string;
+  name: string;
+  acquiredAt: string; // ISO
+  note?: string;
+};
+
 export const DEFAULT_TAGS: Tag[] = [
   { id: "early", name: "早取り", createdAt: 0 },
   { id: "one_share", name: "長期1株", createdAt: 0 },
