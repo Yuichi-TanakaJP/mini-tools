@@ -83,6 +83,7 @@ gh pr merge <PR番号> --merge --delete-branch=false
 
 - 積み上げ PR は必ず順番を守る（下位PR -> 上位PR）。
 - マージ後に状態確認する。
+- マージ後は、必ず「8. ローカル同期」→「9. ブランチ削除」まで続けて実施する。
 
 ```powershell
 gh pr view <PR番号> --json number,state,mergedAt,url
