@@ -79,6 +79,15 @@ function formatArchiveDate(iso: string): string {
   return new Date(t).toLocaleString("ja-JP");
 }
 
+function getArchiveMonthKey(iso: string): string | null {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return null;
+  const d = new Date(t);
+  const y = d.getFullYear();
+  const m = `${d.getMonth() + 1}`.padStart(2, "0");
+  return `${y}-${m}`;
+}
+
 export default function ToolClient() {
   const [items, setItems] = useState<MemoItem[]>(() => loadItems());
   const [archives, setArchives] = useState<ArchivedMemoItem[]>(() =>
@@ -101,6 +110,9 @@ export default function ToolClient() {
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [openArchiveMonths, setOpenArchiveMonths] = useState<Set<string>>(
+    new Set()
+  );
 
   // load
 
@@ -371,6 +383,57 @@ export default function ToolClient() {
   }
 
   const selectedCount = selectedIds.size;
+  const archiveGroups = useMemo(() => {
+    const byMonth = new Map<string, ArchivedMemoItem[]>();
+    const unknown: ArchivedMemoItem[] = [];
+    const toMs = (iso: string) => {
+      const t = Date.parse(iso);
+      return Number.isNaN(t) ? 0 : t;
+    };
+    const sortByDateDesc = (a: ArchivedMemoItem, b: ArchivedMemoItem) => {
+      const diff = toMs(b.acquiredAt) - toMs(a.acquiredAt);
+      if (diff !== 0) return diff;
+      return b.id.localeCompare(a.id);
+    };
+
+    for (const a of archives) {
+      const key = getArchiveMonthKey(a.acquiredAt);
+      if (!key) {
+        unknown.push(a);
+        continue;
+      }
+      const list = byMonth.get(key);
+      if (list) list.push(a);
+      else byMonth.set(key, [a]);
+    }
+
+    const groups = Array.from(byMonth.entries())
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([month, list]) => ({
+        key: month,
+        label: month,
+        items: list.slice().sort(sortByDateDesc),
+      }));
+
+    if (unknown.length > 0) {
+      groups.push({
+        key: "unknown",
+        label: "不明",
+        items: unknown.slice().sort(sortByDateDesc),
+      });
+    }
+
+    return groups;
+  }, [archives]);
+
+  function toggleArchiveMonth(month: string) {
+    setOpenArchiveMonths((prev) => {
+      const next = new Set(prev);
+      if (next.has(month)) next.delete(month);
+      else next.add(month);
+      return next;
+    });
+  }
 
   return (
     <div className={styles.wrap}>
@@ -605,23 +668,51 @@ export default function ToolClient() {
               <div className={styles.small}>まだ履歴はありません。</div>
             ) : (
               <div className={styles.archiveList}>
-                {archives.slice(0, 20).map((a) => (
-                  <div key={a.id} className={styles.archiveRow}>
-                    <div style={{ fontWeight: 600 }}>
-                      {a.name}
-                      {a.code ? `（${a.code}）` : ""}
+                {archiveGroups.map((g) => {
+                  const isOpen = openArchiveMonths.has(g.key);
+                  return (
+                    <div key={g.key} className={styles.archiveGroup}>
+                      <button
+                        type="button"
+                        className={styles.archiveGroupHeader}
+                        onClick={() => toggleArchiveMonth(g.key)}
+                      >
+                        <span style={{ fontWeight: 700 }}>
+                          {g.label} ({g.items.length}件)
+                        </span>
+                        <span
+                          className={`${styles.archiveChevron} ${
+                            isOpen ? styles.archiveChevronOpen : ""
+                          }`}
+                          aria-hidden="true"
+                        >
+                          ▼
+                        </span>
+                      </button>
+                      {isOpen ? (
+                        <div className={styles.archiveGroupBody}>
+                          {g.items.map((a) => (
+                            <div key={a.id} className={styles.archiveRow}>
+                              <div style={{ fontWeight: 600 }}>
+                                {a.name}
+                                {a.code ? `（${a.code}）` : ""}
+                              </div>
+                              <div className={styles.small}>
+                                取得日: {formatArchiveDate(a.acquiredAt)}
+                              </div>
+                              {a.note ? (
+                                <div className={styles.small}>
+                                  {a.note.slice(0, 80)}
+                                  {a.note.length > 80 ? "…" : ""}
+                                </div>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
-                    <div className={styles.small}>
-                      取得日: {formatArchiveDate(a.acquiredAt)}
-                    </div>
-                    {a.note ? (
-                      <div className={styles.small}>
-                        {a.note.slice(0, 80)}
-                        {a.note.length > 80 ? "…" : ""}
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

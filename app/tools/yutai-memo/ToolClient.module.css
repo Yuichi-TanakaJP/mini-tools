@@ -215,6 +215,35 @@
   display: grid;
   gap: 8px;
 }
+.archiveGroup {
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  background: #fff;
+}
+.archiveGroupHeader {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  text-align: left;
+}
+.archiveGroupBody {
+  display: grid;
+  gap: 8px;
+  padding: 0 8px 8px;
+}
+.archiveChevron {
+  font-size: 11px;
+  color: #555;
+  transition: transform 0.15s ease;
+}
+.archiveChevronOpen {
+  transform: rotate(180deg);
+}
 .archiveRow {
   border: 1px solid #f0f0f0;
   border-radius: 10px;
