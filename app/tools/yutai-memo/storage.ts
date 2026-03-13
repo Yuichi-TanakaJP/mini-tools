@@ -72,15 +72,23 @@ export function loadArchivedItems(): ArchivedMemoItem[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw) as ArchivedMemoItem[];
     if (!Array.isArray(parsed)) return [];
-    const normalized = parsed.filter(
-      (it) =>
-        it &&
-        typeof it === "object" &&
-        typeof (it as any).id === "string" &&
-        typeof (it as any).memoId === "string" &&
-        typeof (it as any).name === "string" &&
-        typeof (it as any).acquiredAt === "string"
-    );
+    const normalized = parsed
+      .filter(
+        (it) =>
+          it &&
+          typeof it === "object" &&
+          typeof (it as any).id === "string" &&
+          typeof (it as any).memoId === "string" &&
+          typeof (it as any).name === "string" &&
+          typeof (it as any).acquiredAt === "string"
+      )
+      .map((it) => ({
+        ...it,
+        entitlementMonthKey:
+          typeof (it as any).entitlementMonthKey === "string"
+            ? (it as any).entitlementMonthKey
+            : undefined,
+      }));
     localStorage.setItem(ARCHIVES_KEY, JSON.stringify(normalized));
     return normalized;
   } catch {

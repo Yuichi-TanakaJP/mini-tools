@@ -27,6 +27,7 @@ export type ArchivedMemoItem = {
   code?: string;
   name: string;
   acquiredAt: string; // ISO
+  entitlementMonthKey?: string; // YYYY-MM (権利月ベース)
   note?: string;
 };
 

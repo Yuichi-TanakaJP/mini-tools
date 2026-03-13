@@ -22,6 +22,7 @@ type SortKey = "createdAt" | "code" | "name";
 type SortOrder = "asc" | "desc";
 type SortState = { key: SortKey; order: SortOrder };
 const SORT_KEY = "yutai_memo_sort_v1";
+const LAST_SEEN_MONTH_KEY = "yutai_memo_last_seen_month_v1";
 
 type Draft = {
   id?: string;
@@ -79,13 +80,46 @@ function formatArchiveDate(iso: string): string {
   return new Date(t).toLocaleString("ja-JP");
 }
 
-function getArchiveMonthKey(iso: string): string | null {
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return null;
-  const d = new Date(t);
+function toMonthKeyFromDate(d: Date): string {
   const y = d.getFullYear();
   const m = `${d.getMonth() + 1}`.padStart(2, "0");
   return `${y}-${m}`;
+}
+
+function toMonthKeyFromIso(iso: string): string | null {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return null;
+  return toMonthKeyFromDate(new Date(t));
+}
+
+function getArchiveGroupKey(a: ArchivedMemoItem): string | null {
+  if (a.entitlementMonthKey && /^\d{4}-\d{2}$/.test(a.entitlementMonthKey)) {
+    return a.entitlementMonthKey;
+  }
+  return toMonthKeyFromIso(a.acquiredAt);
+}
+
+function resolveEntitlementMonthKey(months: number[], acquiredAt: string): string | null {
+  if (!Array.isArray(months) || months.length === 0) return toMonthKeyFromIso(acquiredAt);
+  const t = Date.parse(acquiredAt);
+  if (Number.isNaN(t)) return null;
+  const d = new Date(t);
+  const currentYear = d.getFullYear();
+  const currentMonth = d.getMonth() + 1;
+  const normalized = Array.from(
+    new Set(
+      months.filter(
+        (m) => Number.isInteger(m) && m >= 1 && m <= 12
+      )
+    )
+  ).sort((a, b) => a - b);
+
+  if (normalized.length === 0) return toMonthKeyFromIso(acquiredAt);
+
+  const candidate = [...normalized].reverse().find((m) => m <= currentMonth);
+  const targetMonth = candidate ?? normalized[normalized.length - 1];
+  const targetYear = targetMonth <= currentMonth ? currentYear : currentYear - 1;
+  return `${targetYear}-${`${targetMonth}`.padStart(2, "0")}`;
 }
 
 export default function ToolClient() {
@@ -113,6 +147,10 @@ export default function ToolClient() {
   const [openArchiveMonths, setOpenArchiveMonths] = useState<Set<string>>(
     new Set()
   );
+  const [bulkArchiveCandidateIds, setBulkArchiveCandidateIds] = useState<string[]>(
+    []
+  );
+  const [bulkArchivePromptOpen, setBulkArchivePromptOpen] = useState(false);
 
   // load
 
@@ -350,37 +388,94 @@ export default function ToolClient() {
     );
   }
 
+  function createArchiveRecord(target: MemoItem, acquiredAt: string): ArchivedMemoItem {
+    return {
+      id: uid(),
+      memoId: target.id,
+      code: target.code,
+      name: target.name,
+      acquiredAt,
+      entitlementMonthKey: resolveEntitlementMonthKey(target.months, acquiredAt) ?? undefined,
+      note: target.memo?.trim() || undefined,
+    };
+  }
+
+  function archiveTargets(targets: MemoItem[], acquiredAt: string) {
+    if (targets.length === 0) return;
+    const archiveRecords = targets.map((t) => createArchiveRecord(t, acquiredAt));
+    const idSet = new Set(targets.map((t) => t.id));
+    setArchives((prev) => [...archiveRecords, ...prev]);
+    setItems((prev) =>
+      prev.map((it) =>
+        idSet.has(it.id) ? { ...it, acquired: false, updatedAt: acquiredAt } : it
+      )
+    );
+  }
+
   function archiveMemo(id: string) {
     const target = items.find((it) => it.id === id);
     if (!target) return;
-    if (
-      !confirm(
-        "取得リストに追加し、メモを未取得に戻します。よろしいですか？"
-      )
-    )
+    if (!confirm("取得リストに追加し、メモを未取得に戻します。よろしいですか？")) {
       return;
-
+    }
     const now = new Date().toISOString();
-    setArchives((prev) => [
-      {
-        id: uid(),
-        memoId: target.id,
-        code: target.code,
-        name: target.name,
-        acquiredAt: now,
-        note: target.memo?.trim() || undefined,
-      },
-      ...prev,
-    ]);
-
-    setItems((prev) =>
-      prev.map((it) =>
-        it.id === id ? { ...it, acquired: false, updatedAt: now } : it
-      )
-    );
-
+    archiveTargets([target], now);
     alert("アーカイブしました（取得リストに追加・未取得へ戻しました）。");
   }
+
+  function runBulkArchiveByIds(ids: string[]) {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const targets = items.filter((it) => idSet.has(it.id) && it.acquired);
+    if (targets.length === 0) return;
+    const now = new Date().toISOString();
+    archiveTargets(targets, now);
+    alert(`${targets.length}件を一括アーカイブしました。`);
+  }
+
+  function handleBulkArchiveExecute() {
+    if (bulkArchiveCandidateIds.length === 0) {
+      setBulkArchivePromptOpen(false);
+      return;
+    }
+    if (!confirm(`取得済み ${bulkArchiveCandidateIds.length} 件を一括アーカイブします。よろしいですか？`)) {
+      return;
+    }
+    runBulkArchiveByIds(bulkArchiveCandidateIds);
+    setBulkArchivePromptOpen(false);
+    setBulkArchiveCandidateIds([]);
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const now = new Date();
+    const currentMonth = toMonthKeyFromDate(now);
+    const lastSeen = localStorage.getItem(LAST_SEEN_MONTH_KEY);
+
+    if (!lastSeen) {
+      localStorage.setItem(LAST_SEEN_MONTH_KEY, currentMonth);
+      return;
+    }
+    if (lastSeen === currentMonth) return;
+
+    const nowIso = now.toISOString();
+    const candidates = items.filter((it) => {
+      if (!it.acquired) return false;
+      const monthKey = resolveEntitlementMonthKey(it.months, nowIso);
+      if (!monthKey) return false;
+      return !archives.some(
+        (a) => a.memoId === it.id && getArchiveGroupKey(a) === monthKey
+      );
+    });
+    const nextIds = candidates.map((it) => it.id);
+    const timer = window.setTimeout(() => {
+      setBulkArchiveCandidateIds(nextIds);
+      setBulkArchivePromptOpen(nextIds.length > 0);
+    }, 0);
+    localStorage.setItem(LAST_SEEN_MONTH_KEY, currentMonth);
+    return () => window.clearTimeout(timer);
+  // items / archives の更新後に同月で再表示しないため、lastSeen でガードする。
+  }, [items, archives]);
 
   const selectedCount = selectedIds.size;
   const archiveGroups = useMemo(() => {
@@ -397,7 +492,7 @@ export default function ToolClient() {
     };
 
     for (const a of archives) {
-      const key = getArchiveMonthKey(a.acquiredAt);
+      const key = getArchiveGroupKey(a);
       if (!key) {
         unknown.push(a);
         continue;
@@ -716,6 +811,44 @@ export default function ToolClient() {
               </div>
             )}
           </div>
+
+          {bulkArchivePromptOpen ? (
+            <div
+              className={styles.overlay}
+              onClick={() => setBulkArchivePromptOpen(false)}
+            >
+              <div
+                className={styles.dialog}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className={styles.dialogTitle}>月替わりの一括アーカイブ提案</div>
+                <div className={styles.dialogBody}>
+                  <div className={styles.small} style={{ fontSize: 14, color: "#333" }}>
+                    取得済みのメモが {bulkArchiveCandidateIds.length} 件あります。
+                  </div>
+                  <div className={styles.small} style={{ marginTop: 8 }}>
+                    月替わりのため、まとめて取得リストへ移動しますか？
+                  </div>
+                </div>
+                <div className={`${styles.actions} ${styles.dialogFooter}`}>
+                  <button
+                    className={styles.btn}
+                    type="button"
+                    onClick={() => setBulkArchivePromptOpen(false)}
+                  >
+                    今回は表示しない
+                  </button>
+                  <button
+                    className={styles.btnPrimary}
+                    type="button"
+                    onClick={handleBulkArchiveExecute}
+                  >
+                    実行
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           {tagManagerOpen ? (
             <div
