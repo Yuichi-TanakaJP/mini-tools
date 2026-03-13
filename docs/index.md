@@ -9,6 +9,7 @@
 
 設計・方針・トレードオフの判断理由を記録します。
 
+- [2026-03-13 yutai-memo 取得リスト年月アコーディオン設計](./decision-log/2026-03-13-yutai-memo-acquired-list-accordion-design.md)
 - [2026-03-12 SSR / Hydration / localStorage 運用ガイド](./decision-log/2026-03-12-ssr-localstorage-hydration-guidelines.md)
 - [2026-01-17 yutai-memo タグ対応と hydration 問題](./decision-log/2026-01-17-yutai-memo-user-tags-and-hydration.md)
 - [2026-01-11 QR 共有モーダル実装の設計判断](./decision-log/2026-01-11-qr-share-modal.md)
