@@ -39,6 +39,13 @@ type Draft = {
   memo: string;
 };
 
+type BulkArchiveDraft = {
+  memoId: string;
+  name: string;
+  code?: string;
+  targetYM: string;
+};
+
 const emptyDraft = (): Draft => ({
   name: "",
   code: "",
@@ -80,10 +87,21 @@ function formatArchiveDate(iso: string): string {
   return new Date(t).toLocaleString("ja-JP");
 }
 
+function toJstYearMonth(d: Date): { year: number; month: number } {
+  const fmt = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+  });
+  const parts = fmt.formatToParts(d);
+  const year = Number(parts.find((p) => p.type === "year")?.value ?? "0");
+  const month = Number(parts.find((p) => p.type === "month")?.value ?? "0");
+  return { year, month };
+}
+
 function toMonthKeyFromDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = `${d.getMonth() + 1}`.padStart(2, "0");
-  return `${y}-${m}`;
+  const ym = toJstYearMonth(d);
+  return `${ym.year}-${`${ym.month}`.padStart(2, "0")}`;
 }
 
 function toMonthKeyFromIso(iso: string): string | null {
@@ -103,9 +121,9 @@ function resolveEntitlementMonthKey(months: number[], acquiredAt: string): strin
   if (!Array.isArray(months) || months.length === 0) return toMonthKeyFromIso(acquiredAt);
   const t = Date.parse(acquiredAt);
   if (Number.isNaN(t)) return null;
-  const d = new Date(t);
-  const currentYear = d.getFullYear();
-  const currentMonth = d.getMonth() + 1;
+  const ym = toJstYearMonth(new Date(t));
+  const currentYear = ym.year;
+  const currentMonth = ym.month;
   const normalized = Array.from(
     new Set(
       months.filter(
@@ -147,9 +165,7 @@ export default function ToolClient() {
   const [openArchiveMonths, setOpenArchiveMonths] = useState<Set<string>>(
     new Set()
   );
-  const [bulkArchiveCandidateIds, setBulkArchiveCandidateIds] = useState<string[]>(
-    []
-  );
+  const [bulkArchiveDrafts, setBulkArchiveDrafts] = useState<BulkArchiveDraft[]>([]);
   const [bulkArchivePromptOpen, setBulkArchivePromptOpen] = useState(false);
 
   // load
@@ -388,21 +404,34 @@ export default function ToolClient() {
     );
   }
 
-  function createArchiveRecord(target: MemoItem, acquiredAt: string): ArchivedMemoItem {
+  function createArchiveRecord(
+    target: MemoItem,
+    acquiredAt: string,
+    entitlementMonthKey?: string
+  ): ArchivedMemoItem {
     return {
       id: uid(),
       memoId: target.id,
       code: target.code,
       name: target.name,
       acquiredAt,
-      entitlementMonthKey: resolveEntitlementMonthKey(target.months, acquiredAt) ?? undefined,
+      entitlementMonthKey:
+        entitlementMonthKey ??
+        resolveEntitlementMonthKey(target.months, acquiredAt) ??
+        undefined,
       note: target.memo?.trim() || undefined,
     };
   }
 
-  function archiveTargets(targets: MemoItem[], acquiredAt: string) {
+  function archiveTargets(
+    targets: MemoItem[],
+    acquiredAt: string,
+    entitlementByMemoId?: Map<string, string>
+  ) {
     if (targets.length === 0) return;
-    const archiveRecords = targets.map((t) => createArchiveRecord(t, acquiredAt));
+    const archiveRecords = targets.map((t) =>
+      createArchiveRecord(t, acquiredAt, entitlementByMemoId?.get(t.id))
+    );
     const idSet = new Set(targets.map((t) => t.id));
     setArchives((prev) => [...archiveRecords, ...prev]);
     setItems((prev) =>
@@ -423,27 +452,40 @@ export default function ToolClient() {
     alert("アーカイブしました（取得リストに追加・未取得へ戻しました）。");
   }
 
-  function runBulkArchiveByIds(ids: string[]) {
-    if (ids.length === 0) return;
-    const idSet = new Set(ids);
+  function runBulkArchiveWithDrafts(drafts: BulkArchiveDraft[]) {
+    if (drafts.length === 0) return;
+    const idSet = new Set(drafts.map((d) => d.memoId));
+    const targetYmMap = new Map(drafts.map((d) => [d.memoId, d.targetYM]));
     const targets = items.filter((it) => idSet.has(it.id) && it.acquired);
     if (targets.length === 0) return;
     const now = new Date().toISOString();
-    archiveTargets(targets, now);
+    archiveTargets(targets, now, targetYmMap);
     alert(`${targets.length}件を一括アーカイブしました。`);
   }
 
   function handleBulkArchiveExecute() {
-    if (bulkArchiveCandidateIds.length === 0) {
+    if (bulkArchiveDrafts.length === 0) {
       setBulkArchivePromptOpen(false);
       return;
     }
-    if (!confirm(`取得済み ${bulkArchiveCandidateIds.length} 件を一括アーカイブします。よろしいですか？`)) {
+    const ymPattern = /^\d{4}-(0[1-9]|1[0-2])$/;
+    const invalid = bulkArchiveDrafts.find((d) => !ymPattern.test(d.targetYM));
+    if (invalid) {
+      alert(`取得年月の形式が不正です: ${invalid.name} (${invalid.targetYM})`);
       return;
     }
-    runBulkArchiveByIds(bulkArchiveCandidateIds);
+    if (!confirm(`取得済み ${bulkArchiveDrafts.length} 件を一括アーカイブします。よろしいですか？`)) {
+      return;
+    }
+    runBulkArchiveWithDrafts(bulkArchiveDrafts);
     setBulkArchivePromptOpen(false);
-    setBulkArchiveCandidateIds([]);
+    setBulkArchiveDrafts([]);
+  }
+
+  function updateBulkArchiveTargetYM(memoId: string, value: string) {
+    setBulkArchiveDrafts((prev) =>
+      prev.map((d) => (d.memoId === memoId ? { ...d, targetYM: value } : d))
+    );
   }
 
   useEffect(() => {
@@ -467,10 +509,15 @@ export default function ToolClient() {
         (a) => a.memoId === it.id && getArchiveGroupKey(a) === monthKey
       );
     });
-    const nextIds = candidates.map((it) => it.id);
+    const nextDrafts: BulkArchiveDraft[] = candidates.map((it) => ({
+      memoId: it.id,
+      name: it.name,
+      code: it.code,
+      targetYM: resolveEntitlementMonthKey(it.months, nowIso) ?? toMonthKeyFromDate(now),
+    }));
     const timer = window.setTimeout(() => {
-      setBulkArchiveCandidateIds(nextIds);
-      setBulkArchivePromptOpen(nextIds.length > 0);
+      setBulkArchiveDrafts(nextDrafts);
+      setBulkArchivePromptOpen(nextDrafts.length > 0);
     }, 0);
     localStorage.setItem(LAST_SEEN_MONTH_KEY, currentMonth);
     return () => window.clearTimeout(timer);
@@ -824,10 +871,29 @@ export default function ToolClient() {
                 <div className={styles.dialogTitle}>月替わりの一括アーカイブ提案</div>
                 <div className={styles.dialogBody}>
                   <div className={styles.small} style={{ fontSize: 14, color: "#333" }}>
-                    取得済みのメモが {bulkArchiveCandidateIds.length} 件あります。
+                    取得済みのメモが {bulkArchiveDrafts.length} 件あります。
                   </div>
                   <div className={styles.small} style={{ marginTop: 8 }}>
                     月替わりのため、まとめて取得リストへ移動しますか？
+                  </div>
+                  <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                    {bulkArchiveDrafts.map((d) => (
+                      <div key={d.memoId} className={styles.row}>
+                        <div className={styles.small} style={{ minWidth: 160 }}>
+                          {d.name}
+                          {d.code ? `（${d.code}）` : ""}
+                        </div>
+                        <input
+                          className={styles.input}
+                          style={{ maxWidth: 160 }}
+                          value={d.targetYM}
+                          onChange={(e) =>
+                            updateBulkArchiveTargetYM(d.memoId, e.target.value)
+                          }
+                          placeholder="YYYY-MM"
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
                 <div className={`${styles.actions} ${styles.dialogFooter}`}>
