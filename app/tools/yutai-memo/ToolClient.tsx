@@ -165,6 +165,7 @@ export default function ToolClient() {
   );
   const [bulkArchiveDrafts, setBulkArchiveDrafts] = useState<BulkArchiveDraft[]>([]);
   const [bulkArchivePromptOpen, setBulkArchivePromptOpen] = useState(false);
+  const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
 
   // load
 
@@ -484,7 +485,7 @@ export default function ToolClient() {
         (a) => a.memoId === target.id && getArchiveGroupKey(a) === targetYm
       )
     ) {
-      alert("同じ取得年月で既にアーカイブ済みです。重複登録はしません。");
+      setNoticeMessage("同じ取得年月で既にアーカイブ済みです。重複登録はしません。");
       return;
     }
     if (!confirm("取得リストに追加し、メモを未取得に戻します。よろしいですか？")) {
@@ -509,11 +510,11 @@ export default function ToolClient() {
     const now = new Date().toISOString();
     const result = archiveTargets(targets, now, targetYmMap);
     if (result.archivedCount === 0) {
-      alert("対象はすべて重複のため、アーカイブされませんでした。");
+      setNoticeMessage("対象はすべて重複のため、アーカイブされませんでした。");
       return;
     }
     if (result.skippedCount > 0) {
-      alert(
+      setNoticeMessage(
         `${result.archivedCount}件を一括アーカイブしました（重複 ${result.skippedCount} 件はスキップ）。`
       );
       return;
@@ -524,12 +525,6 @@ export default function ToolClient() {
   function handleBulkArchiveExecute() {
     if (bulkArchiveDrafts.length === 0) {
       setBulkArchivePromptOpen(false);
-      return;
-    }
-    const ymPattern = /^\d{4}-(0[1-9]|1[0-2])$/;
-    const invalid = bulkArchiveDrafts.find((d) => !ymPattern.test(d.targetYM));
-    if (invalid) {
-      alert(`取得年月の形式が不正です: ${invalid.name} (${invalid.targetYM})`);
       return;
     }
     if (!confirm(`取得済み ${bulkArchiveDrafts.length} 件を一括アーカイブします。よろしいですか？`)) {
@@ -565,14 +560,25 @@ export default function ToolClient() {
       memoId: it.id,
       targetYM: resolveEntitlementMonthKey(it.months, nowIso) ?? toMonthKeyFromDate(now),
     }));
+    const acquiredCount = items.filter((it) => it.acquired).length;
     const timer = window.setTimeout(() => {
       setBulkArchiveDrafts(nextDrafts);
       setBulkArchivePromptOpen(nextDrafts.length > 0);
+      if (nextDrafts.length === 0 && acquiredCount > 0) {
+        setNoticeMessage(
+          "今月分の取得候補は既に登録済みです。重複防止のため一括アーカイブ提案は表示しません。"
+        );
+      }
     }, 0);
     localStorage.setItem(LAST_SEEN_MONTH_KEY, currentMonth);
     return () => window.clearTimeout(timer);
   // items / archives の更新後に同月で再表示しないため、lastSeen でガードする。
   }, [items, archives]);
+
+  function removeArchive(id: string) {
+    if (!confirm("この履歴を削除しますか？")) return;
+    setArchives((prev) => prev.filter((a) => a.id !== id));
+  }
 
   const selectedCount = selectedIds.size;
   const archiveGroups = useMemo(() => {
@@ -885,9 +891,18 @@ export default function ToolClient() {
                         <div className={styles.archiveGroupBody}>
                           {g.items.map((a) => (
                             <div key={a.id} className={styles.archiveRow}>
-                              <div style={{ fontWeight: 600 }}>
-                                {a.name}
-                                {a.code ? `（${a.code}）` : ""}
+                              <div className={styles.archiveRowHead}>
+                                <div style={{ fontWeight: 600 }}>
+                                  {a.name}
+                                  {a.code ? `（${a.code}）` : ""}
+                                </div>
+                                <button
+                                  type="button"
+                                  className={styles.archiveDeleteBtn}
+                                  onClick={() => removeArchive(a.id)}
+                                >
+                                  削除
+                                </button>
                               </div>
                               <div className={styles.small}>
                                 取得日: {formatArchiveDate(a.acquiredAt)}
@@ -944,6 +959,28 @@ export default function ToolClient() {
                     onClick={handleBulkArchiveExecute}
                   >
                     実行
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {noticeMessage ? (
+            <div className={styles.overlay} onClick={() => setNoticeMessage(null)}>
+              <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
+                <div className={styles.dialogTitle}>お知らせ</div>
+                <div className={styles.dialogBody}>
+                  <div className={styles.small} style={{ fontSize: 14, color: "#333" }}>
+                    {noticeMessage}
+                  </div>
+                </div>
+                <div className={`${styles.actions} ${styles.dialogFooter}`}>
+                  <button
+                    className={styles.btnPrimary}
+                    type="button"
+                    onClick={() => setNoticeMessage(null)}
+                  >
+                    閉じる
                   </button>
                 </div>
               </div>
