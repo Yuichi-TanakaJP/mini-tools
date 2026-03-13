@@ -41,8 +41,6 @@ type Draft = {
 
 type BulkArchiveDraft = {
   memoId: string;
-  name: string;
-  code?: string;
   targetYM: string;
 };
 
@@ -428,28 +426,78 @@ export default function ToolClient() {
     acquiredAt: string,
     entitlementByMemoId?: Map<string, string>
   ) {
-    if (targets.length === 0) return;
-    const archiveRecords = targets.map((t) =>
-      createArchiveRecord(t, acquiredAt, entitlementByMemoId?.get(t.id))
+    if (targets.length === 0) return { archivedCount: 0, skippedCount: 0 };
+    const existing = new Set(
+      archives
+        .map((a) => {
+          const key = getArchiveGroupKey(a);
+          return key ? `${a.memoId}::${key}` : null;
+        })
+        .filter((v): v is string => Boolean(v))
     );
-    const idSet = new Set(targets.map((t) => t.id));
+
+    const archiveRecords: ArchivedMemoItem[] = [];
+    const archivedIds = new Set<string>();
+    let skippedCount = 0;
+
+    for (const t of targets) {
+      const resolvedYm =
+        entitlementByMemoId?.get(t.id) ??
+        resolveEntitlementMonthKey(t.months, acquiredAt);
+      if (!resolvedYm) {
+        skippedCount += 1;
+        continue;
+      }
+      const dedupKey = `${t.id}::${resolvedYm}`;
+      if (existing.has(dedupKey)) {
+        skippedCount += 1;
+        continue;
+      }
+      archiveRecords.push(createArchiveRecord(t, acquiredAt, resolvedYm));
+      archivedIds.add(t.id);
+      existing.add(dedupKey);
+    }
+
+    if (archiveRecords.length === 0) {
+      return { archivedCount: 0, skippedCount };
+    }
+
     setArchives((prev) => [...archiveRecords, ...prev]);
     setItems((prev) =>
       prev.map((it) =>
-        idSet.has(it.id) ? { ...it, acquired: false, updatedAt: acquiredAt } : it
+        archivedIds.has(it.id)
+          ? { ...it, acquired: false, updatedAt: acquiredAt }
+          : it
       )
     );
+    return { archivedCount: archiveRecords.length, skippedCount };
   }
 
   function archiveMemo(id: string) {
     const target = items.find((it) => it.id === id);
     if (!target) return;
+    const now = new Date().toISOString();
+    const targetYm = resolveEntitlementMonthKey(target.months, now);
+    if (
+      targetYm &&
+      archives.some(
+        (a) => a.memoId === target.id && getArchiveGroupKey(a) === targetYm
+      )
+    ) {
+      alert("同じ取得年月で既にアーカイブ済みです。重複登録はしません。");
+      return;
+    }
     if (!confirm("取得リストに追加し、メモを未取得に戻します。よろしいですか？")) {
       return;
     }
-    const now = new Date().toISOString();
-    archiveTargets([target], now);
-    alert("アーカイブしました（取得リストに追加・未取得へ戻しました）。");
+    const result = archiveTargets(
+      [target],
+      now,
+      targetYm ? new Map([[target.id, targetYm]]) : undefined
+    );
+    if (result.archivedCount > 0) {
+      alert("アーカイブしました（取得リストに追加・未取得へ戻しました）。");
+    }
   }
 
   function runBulkArchiveWithDrafts(drafts: BulkArchiveDraft[]) {
@@ -459,8 +507,18 @@ export default function ToolClient() {
     const targets = items.filter((it) => idSet.has(it.id) && it.acquired);
     if (targets.length === 0) return;
     const now = new Date().toISOString();
-    archiveTargets(targets, now, targetYmMap);
-    alert(`${targets.length}件を一括アーカイブしました。`);
+    const result = archiveTargets(targets, now, targetYmMap);
+    if (result.archivedCount === 0) {
+      alert("対象はすべて重複のため、アーカイブされませんでした。");
+      return;
+    }
+    if (result.skippedCount > 0) {
+      alert(
+        `${result.archivedCount}件を一括アーカイブしました（重複 ${result.skippedCount} 件はスキップ）。`
+      );
+      return;
+    }
+    alert(`${result.archivedCount}件を一括アーカイブしました。`);
   }
 
   function handleBulkArchiveExecute() {
@@ -480,12 +538,6 @@ export default function ToolClient() {
     runBulkArchiveWithDrafts(bulkArchiveDrafts);
     setBulkArchivePromptOpen(false);
     setBulkArchiveDrafts([]);
-  }
-
-  function updateBulkArchiveTargetYM(memoId: string, value: string) {
-    setBulkArchiveDrafts((prev) =>
-      prev.map((d) => (d.memoId === memoId ? { ...d, targetYM: value } : d))
-    );
   }
 
   useEffect(() => {
@@ -511,8 +563,6 @@ export default function ToolClient() {
     });
     const nextDrafts: BulkArchiveDraft[] = candidates.map((it) => ({
       memoId: it.id,
-      name: it.name,
-      code: it.code,
       targetYM: resolveEntitlementMonthKey(it.months, nowIso) ?? toMonthKeyFromDate(now),
     }));
     const timer = window.setTimeout(() => {
@@ -876,24 +926,8 @@ export default function ToolClient() {
                   <div className={styles.small} style={{ marginTop: 8 }}>
                     月替わりのため、まとめて取得リストへ移動しますか？
                   </div>
-                  <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-                    {bulkArchiveDrafts.map((d) => (
-                      <div key={d.memoId} className={styles.row}>
-                        <div className={styles.small} style={{ minWidth: 160 }}>
-                          {d.name}
-                          {d.code ? `（${d.code}）` : ""}
-                        </div>
-                        <input
-                          className={styles.input}
-                          style={{ maxWidth: 160 }}
-                          value={d.targetYM}
-                          onChange={(e) =>
-                            updateBulkArchiveTargetYM(d.memoId, e.target.value)
-                          }
-                          placeholder="YYYY-MM"
-                        />
-                      </div>
-                    ))}
+                  <div className={styles.small} style={{ marginTop: 8 }}>
+                    取得年月は権利月ルールで自動判定します（手修正は一時停止中）。
                   </div>
                 </div>
                 <div className={`${styles.actions} ${styles.dialogFooter}`}>
