@@ -48,6 +48,12 @@
   display: block; /* ★保険 */
   width: 100%; /* ★保険 */
 }
+.cardCurrentMonth {
+  border-color: #d7b351;
+  background:
+    linear-gradient(180deg, rgba(255, 249, 228, 0.95), rgba(255, 255, 255, 1) 64%);
+  box-shadow: 0 0 0 1px rgba(215, 179, 81, 0.16);
+}
 .cardHeader {
   display: flex;
   justify-content: space-between;

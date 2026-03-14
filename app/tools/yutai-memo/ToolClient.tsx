@@ -159,6 +159,11 @@ function getNextCrossType(current?: CrossType): CrossType {
   return CROSS_TYPES[(index + 1) % CROSS_TYPES.length];
 }
 
+function isCurrentEntitlementMonth(months: number[]): boolean {
+  const currentMonth = toJstYearMonth(new Date()).month;
+  return months.includes(currentMonth);
+}
+
 export default function ToolClient() {
   const [items, setItems] = useState<MemoItem[]>(() => loadItems());
   const [archives, setArchives] = useState<ArchivedMemoItem[]>(() =>
@@ -822,8 +827,8 @@ export default function ToolClient() {
                 </div>
               </div>
             ) : (
-              filtered.map((it) => (
-                <div key={it.id} className={styles.cardRow}>
+                filtered.map((it) => (
+                  <div key={it.id} className={styles.cardRow}>
                   <label className={styles.selectBox}>
                     <input
                       type="checkbox"
@@ -831,7 +836,11 @@ export default function ToolClient() {
                       onChange={() => toggleSelect(it.id)}
                     />
                   </label>
-                  <div className={styles.card}>
+                  <div
+                    className={`${styles.card} ${
+                      isCurrentEntitlementMonth(it.months) ? styles.cardCurrentMonth : ""
+                    }`}
+                  >
                     <div className={styles.cardHeader}>
                       <div
                         className={styles.cardMain}
