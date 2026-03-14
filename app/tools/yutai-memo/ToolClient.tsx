@@ -153,6 +153,12 @@ function formatOneShareStartedLabel(value?: string): string {
   return `${m[1]}/${m[2]}`;
 }
 
+function getNextCrossType(current?: CrossType): CrossType {
+  const index = CROSS_TYPES.indexOf(current ?? "単発クロス");
+  if (index < 0) return "単発クロス";
+  return CROSS_TYPES[(index + 1) % CROSS_TYPES.length];
+}
+
 export default function ToolClient() {
   const [items, setItems] = useState<MemoItem[]>(() => loadItems());
   const [archives, setArchives] = useState<ArchivedMemoItem[]>(() =>
@@ -425,13 +431,29 @@ export default function ToolClient() {
 
   function toggleOneSharePosition(id: string) {
     const startedAt = toMonthKeyFromDate(new Date());
+    const updatedAt = new Date().toISOString();
     setItems((prev) =>
       prev.map((it) =>
         it.id === id
           ? {
               ...it,
               oneShareStartedAt: hasOneSharePosition(it) ? undefined : startedAt,
-              updatedAt: new Date().toISOString(),
+              updatedAt,
+            }
+          : it
+      )
+    );
+  }
+
+  function cycleCrossType(id: string) {
+    const updatedAt = new Date().toISOString();
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === id
+          ? {
+              ...it,
+              crossType: getNextCrossType(it.crossType),
+              updatedAt,
             }
           : it
       )
@@ -849,9 +871,14 @@ export default function ToolClient() {
                         </div>
 
                         <div className={styles.statusRow}>
-                          <span className={styles.strategyBadge}>
+                          <button
+                            type="button"
+                            className={styles.strategyBadge}
+                            onClick={() => cycleCrossType(it.id)}
+                            title="タップで戦略タイプを切り替え"
+                          >
                             {it.crossType ?? "単発クロス"}
-                          </span>
+                          </button>
                           <button
                             type="button"
                             className={`${styles.oneShareToggle} ${
