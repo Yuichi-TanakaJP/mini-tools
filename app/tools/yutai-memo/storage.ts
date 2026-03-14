@@ -10,6 +10,68 @@ const MIGRATED_KEY = "yutai_memo_migrated_tags_v1";
 type LegacyTagKey = "early" | "one_share" | "tenure" | "failure" | "must";
 type LegacyMemoItem = Omit<MemoItem, "tagIds"> & { tags: LegacyTagKey[] };
 
+function toJstYearMonth(d: Date): { year: number; month: number } {
+  const fmt = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+  });
+  const parts = fmt.formatToParts(d);
+  const year = Number(parts.find((p) => p.type === "year")?.value ?? "0");
+  const month = Number(parts.find((p) => p.type === "month")?.value ?? "0");
+  return { year, month };
+}
+
+function toMonthKeyFromIso(iso: string): string | null {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return null;
+  const ym = toJstYearMonth(new Date(t));
+  return `${ym.year}-${`${ym.month}`.padStart(2, "0")}`;
+}
+
+function resolveEntitlementMonthKey(months: number[], acquiredAt: string): string | null {
+  if (!Array.isArray(months) || months.length === 0) return toMonthKeyFromIso(acquiredAt);
+  const t = Date.parse(acquiredAt);
+  if (Number.isNaN(t)) return null;
+  const ym = toJstYearMonth(new Date(t));
+  const normalized = Array.from(
+    new Set(months.filter((m) => Number.isInteger(m) && m >= 1 && m <= 12))
+  ).sort((a, b) => a - b);
+
+  if (normalized.length === 0) return toMonthKeyFromIso(acquiredAt);
+
+  const candidate = [...normalized].reverse().find((m) => m <= ym.month);
+  const targetMonth = candidate ?? normalized[normalized.length - 1];
+  const targetYear = targetMonth <= ym.month ? ym.year : ym.year - 1;
+  return `${targetYear}-${`${targetMonth}`.padStart(2, "0")}`;
+}
+
+function loadItemMonthsById(): Map<string, number[]> {
+  const map = new Map<string, number[]>();
+  const raw = localStorage.getItem(ITEMS_KEY);
+  if (!raw) return map;
+
+  try {
+    const parsed = JSON.parse(raw) as MemoItem[];
+    if (!Array.isArray(parsed)) return map;
+
+    for (const it of parsed) {
+      if (
+        it &&
+        typeof it === "object" &&
+        typeof (it as any).id === "string" &&
+        Array.isArray((it as any).months)
+      ) {
+        map.set((it as any).id, (it as any).months as number[]);
+      }
+    }
+  } catch {
+    return map;
+  }
+
+  return map;
+}
+
 export function loadTags(): Tag[] {
   if (typeof window === "undefined") return [];
   try {
@@ -72,15 +134,27 @@ export function loadArchivedItems(): ArchivedMemoItem[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw) as ArchivedMemoItem[];
     if (!Array.isArray(parsed)) return [];
-    const normalized = parsed.filter(
-      (it) =>
-        it &&
-        typeof it === "object" &&
-        typeof (it as any).id === "string" &&
-        typeof (it as any).memoId === "string" &&
-        typeof (it as any).name === "string" &&
-        typeof (it as any).acquiredAt === "string"
-    );
+    const monthsByMemoId = loadItemMonthsById();
+    const normalized = parsed
+      .filter(
+        (it) =>
+          it &&
+          typeof it === "object" &&
+          typeof (it as any).id === "string" &&
+          typeof (it as any).memoId === "string" &&
+          typeof (it as any).name === "string" &&
+          typeof (it as any).acquiredAt === "string"
+      )
+      .map((it) => ({
+        ...it,
+        entitlementMonthKey:
+          typeof (it as any).entitlementMonthKey === "string"
+            ? (it as any).entitlementMonthKey
+            : resolveEntitlementMonthKey(
+                monthsByMemoId.get((it as any).memoId) ?? [],
+                (it as any).acquiredAt
+              ) ?? undefined,
+      }));
     localStorage.setItem(ARCHIVES_KEY, JSON.stringify(normalized));
     return normalized;
   } catch {

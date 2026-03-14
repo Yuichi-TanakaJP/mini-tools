@@ -249,3 +249,16 @@
   border-radius: 10px;
   padding: 8px 10px;
 }
+.archiveRowHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.archiveDeleteBtn {
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 12px;
+}
