@@ -303,10 +303,6 @@ export default function ToolClient() {
     });
   }
 
-  function setPriority(p: 1 | 2 | 3) {
-    setDraft((d) => ({ ...d, priority: p }));
-  }
-
   function validate(d: Draft): string | null {
     if (!d.name.trim()) return "銘柄名は必須です";
     if (d.months.length === 0) return "権利月は1つ以上選んでください";
@@ -863,11 +859,10 @@ export default function ToolClient() {
                             className={styles.archiveBtn}
                             onClick={() => archiveMemo(it.id)}
                             disabled={!it.acquired}
-                            title={it.acquired ? "取得履歴へ移動" : "取得済みのメモのみ対応"}
+                        title={it.acquired ? "取得履歴へ移動" : "取得済みのメモのみ対応"}
                           >
                             アーカイブ
                           </button>
-                          <div className={styles.small}>★{it.priority}</div>
                         </div>
 
                         <div className={styles.statusRow}>
@@ -1267,23 +1262,6 @@ export default function ToolClient() {
                   />
                   取得済み
                 </label>
-              </div>
-
-              <div className={styles.stars}>
-                <span className={styles.small}>重要度</span>
-                {[1, 2, 3].map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    className={`${styles.starBtn} ${
-                      draft.priority === p ? styles.starOn : ""
-                    }`}
-                    onClick={() => setPriority(p as 1 | 2 | 3)}
-                    aria-label={`priority ${p}`}
-                  >
-                    ★{p}
-                  </button>
-                ))}
               </div>
             </div>
 

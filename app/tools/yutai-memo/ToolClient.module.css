@@ -211,23 +211,6 @@
   border-color: #111;
   background: #f6f6f6;
 }
-.stars {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-.starBtn {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  border: 1px solid #ddd;
-  background: #fff;
-}
-.starOn {
-  border-color: #111;
-  background: #f6f6f6;
-}
-
 /* ===== Tag Manager Modal ===== */
 
 .overlay {
