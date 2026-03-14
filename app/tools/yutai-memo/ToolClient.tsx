@@ -852,6 +852,11 @@ export default function ToolClient() {
                         </div>
                       </div>
                       <div className={styles.cardSide}>
+                        <div className={styles.monthPriorityRow}>
+                          <span className={styles.monthPriorityBadge}>
+                            {it.months.join("/") + "月"}
+                          </span>
+                        </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <button
                             type="button"
@@ -899,9 +904,6 @@ export default function ToolClient() {
                     </div>
 
                     <div className={styles.meta}>
-                      <span className={styles.chip}>
-                        {it.months.join("/") + "月"}
-                      </span>
                       {it.tagIds.map((id) => (
                         <span key={id} className={styles.chip}>
                           {tagNameById.get(id) ?? "（不明タグ）"}

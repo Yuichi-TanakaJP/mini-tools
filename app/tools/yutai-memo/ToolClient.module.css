@@ -66,6 +66,21 @@
   align-items: flex-end;
   gap: 8px;
 }
+.monthPriorityRow {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+.monthPriorityBadge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid #111;
+  background: #fffaf0;
+  color: #111;
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 700;
+}
 .list {
   display: grid;
   gap: 10px;
@@ -175,6 +190,10 @@
   .cardSide {
     width: 100%;
     align-items: flex-end;
+  }
+
+  .monthPriorityRow {
+    justify-content: flex-end;
   }
 
   .statusRow {
