@@ -134,13 +134,14 @@
   margin-top: 6px;
 }
 .strategyBadge {
-  padding: 6px 10px;
-  border-radius: 10px;
+  padding: 4px 8px;
+  border-radius: 999px;
   border: 1px solid #d6c8a7;
   background: #fbf5e8;
   color: #5c4720;
   font-size: 12px;
-  font-weight: 700;
+  line-height: 1.2;
+  font-weight: 600;
 }
 .statusRow {
   display: flex;
