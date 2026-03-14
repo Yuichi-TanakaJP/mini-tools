@@ -6,11 +6,11 @@ export type Tag = {
 };
 
 export const CROSS_TYPES = [
-  "単発クロス",
-  "連続クロス型",
-  "来期必須（先行投資）型",
-  "1株放置（年数稼ぎ）型",
-  "空クロス必須型",
+  "長期：設定がない",
+  "長期：単発クロス",
+  "長期：連続クロス",
+  "長期：選考クロス",
+  "長期：1株放置中",
 ] as const;
 
 export type CrossType = (typeof CROSS_TYPES)[number];

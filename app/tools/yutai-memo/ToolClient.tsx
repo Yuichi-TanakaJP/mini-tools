@@ -50,7 +50,7 @@ const emptyDraft = (): Draft => ({
   code: "",
   months: [],
   tagIds: [],
-  crossType: "単発クロス",
+  crossType: "長期：設定がない",
   entryTiming: "",
   tenureRule: "",
   acquired: false,
@@ -154,8 +154,8 @@ function formatOneShareStartedLabel(value?: string): string {
 }
 
 function getNextCrossType(current?: CrossType): CrossType {
-  const index = CROSS_TYPES.indexOf(current ?? "単発クロス");
-  if (index < 0) return "単発クロス";
+  const index = CROSS_TYPES.indexOf(current ?? "長期：設定がない");
+  if (index < 0) return "長期：設定がない";
   return CROSS_TYPES[(index + 1) % CROSS_TYPES.length];
 }
 
@@ -275,7 +275,7 @@ export default function ToolClient() {
       code: it.code ?? "",
       months: it.months,
       tagIds: it.tagIds ?? [],
-      crossType: it.crossType ?? "単発クロス",
+      crossType: it.crossType ?? "長期：設定がない",
       entryTiming: it.entryTiming ?? "",
       tenureRule: it.tenureRule ?? "",
       acquired: it.acquired,
@@ -877,7 +877,7 @@ export default function ToolClient() {
                             onClick={() => cycleCrossType(it.id)}
                             title="タップで戦略タイプを切り替え"
                           >
-                            {it.crossType ?? "単発クロス"}
+                            {it.crossType ?? "長期：設定がない"}
                           </button>
                           <button
                             type="button"

@@ -10,6 +10,28 @@ const MIGRATED_KEY = "yutai_memo_migrated_tags_v1";
 type LegacyTagKey = "early" | "one_share" | "tenure" | "failure" | "must";
 type LegacyMemoItem = Omit<MemoItem, "tagIds"> & { tags: LegacyTagKey[] };
 
+function normalizeCrossType(value: unknown): MemoItem["crossType"] {
+  switch (value) {
+    case "長期：設定がない":
+    case "長期：単発クロス":
+    case "長期：連続クロス":
+    case "長期：選考クロス":
+    case "長期：1株放置中":
+      return value;
+    case "単発クロス":
+      return "長期：単発クロス";
+    case "連続クロス型":
+      return "長期：連続クロス";
+    case "来期必須（先行投資）型":
+    case "空クロス必須型":
+      return "長期：選考クロス";
+    case "1株放置（年数稼ぎ）型":
+      return "長期：1株放置中";
+    default:
+      return "長期：設定がない";
+  }
+}
+
 function toJstYearMonth(d: Date): { year: number; month: number } {
   const fmt = new Intl.DateTimeFormat("ja-JP", {
     timeZone: "Asia/Tokyo",
@@ -112,9 +134,7 @@ export function loadItems(): MemoItem[] {
             ...it,
             createdAt: (it as any).createdAt ?? it.updatedAt,
             acquired: (it as any).acquired ?? false,
-            crossType: CROSS_TYPES.includes((it as any).crossType)
-              ? (it as any).crossType
-              : "単発クロス",
+            crossType: normalizeCrossType((it as any).crossType),
             oneShareStartedAt:
               typeof (it as any).oneShareStartedAt === "string"
                 ? (it as any).oneShareStartedAt
