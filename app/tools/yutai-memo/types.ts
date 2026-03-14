@@ -5,6 +5,16 @@ export type Tag = {
   createdAt: number;
 };
 
+export const CROSS_TYPES = [
+  "単発クロス",
+  "連続クロス型",
+  "来期必須（先行投資）型",
+  "1株放置（年数稼ぎ）型",
+  "空クロス必須型",
+] as const;
+
+export type CrossType = (typeof CROSS_TYPES)[number];
+
 export type MemoItem = {
   id: string;
   name: string;
@@ -12,10 +22,12 @@ export type MemoItem = {
   createdAt: string; // ISO
   months: number[]; // 1-12 (複数可)
   tagIds: string[]; // ★ tags -> tagIds
+  crossType: CrossType;
   entryTiming?: string; // 早打ち目安
   tenureRule?: string; // 任期条件
   acquired: boolean; // 取得済みか
-  oneShareHold: boolean;
+  oneShareStartedAt?: string; // YYYY-MM or freeform when legacy start month is unknown
+  oneShareHold?: boolean; // legacy compatibility
   priority: 1 | 2 | 3;
   memo: string;
   updatedAt: string; // ISO

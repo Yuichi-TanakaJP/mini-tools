@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import styles from "./ToolClient.module.css";
-import type { ArchivedMemoItem, MemoItem, Tag } from "./types";
-import { DEFAULT_TAGS } from "./types";
+import type { ArchivedMemoItem, CrossType, MemoItem, Tag } from "./types";
+import { CROSS_TYPES, DEFAULT_TAGS } from "./types";
 import {
   loadArchivedItems,
   loadItems,
@@ -31,10 +31,11 @@ type Draft = {
   code: string;
   months: number[];
   tagIds: string[];
+  crossType: CrossType;
   entryTiming: string;
   tenureRule: string;
   acquired: boolean;
-  oneShareHold: boolean;
+  oneShareStartedAt: string;
   priority: 1 | 2 | 3;
   memo: string;
 };
@@ -49,10 +50,11 @@ const emptyDraft = (): Draft => ({
   code: "",
   months: [],
   tagIds: [],
+  crossType: "単発クロス",
   entryTiming: "",
   tenureRule: "",
   acquired: false,
-  oneShareHold: false,
+  oneShareStartedAt: "",
   priority: 2,
   memo: "",
 });
@@ -136,6 +138,10 @@ function resolveEntitlementMonthKey(months: number[], acquiredAt: string): strin
   const targetMonth = candidate ?? normalized[normalized.length - 1];
   const targetYear = targetMonth <= currentMonth ? currentYear : currentYear - 1;
   return `${targetYear}-${`${targetMonth}`.padStart(2, "0")}`;
+}
+
+function hasOneSharePosition(item: Pick<MemoItem, "oneShareStartedAt" | "oneShareHold">): boolean {
+  return Boolean(item.oneShareStartedAt?.trim() || item.oneShareHold);
 }
 
 export default function ToolClient() {
@@ -226,8 +232,10 @@ export default function ToolClient() {
           it.name,
           it.code ?? "",
           it.memo ?? "",
+          it.crossType ?? "",
           it.entryTiming ?? "",
           it.tenureRule ?? "",
+          it.oneShareStartedAt ?? "",
           it.months.join(","),
           (it.tagIds ?? []).map((id) => tagNameById.get(id) ?? id).join(","),
         ]
@@ -252,10 +260,11 @@ export default function ToolClient() {
       code: it.code ?? "",
       months: it.months,
       tagIds: it.tagIds ?? [],
+      crossType: it.crossType ?? "単発クロス",
       entryTiming: it.entryTiming ?? "",
       tenureRule: it.tenureRule ?? "",
       acquired: it.acquired,
-      oneShareHold: it.oneShareHold,
+      oneShareStartedAt: it.oneShareStartedAt ?? "",
       priority: it.priority,
       memo: it.memo,
     });
@@ -286,6 +295,7 @@ export default function ToolClient() {
   function validate(d: Draft): string | null {
     if (!d.name.trim()) return "銘柄名は必須です";
     if (d.months.length === 0) return "権利月は1つ以上選んでください";
+    if (!CROSS_TYPES.includes(d.crossType)) return "戦略タイプを選択してください";
     return null;
   }
 
@@ -304,10 +314,11 @@ export default function ToolClient() {
         createdAt: draft.createdAt ?? now,
         months: draft.months,
         tagIds: draft.tagIds,
+        crossType: draft.crossType,
         entryTiming: draft.entryTiming.trim() || undefined,
         tenureRule: draft.tenureRule.trim() || undefined,
         acquired: draft.acquired,
-        oneShareHold: draft.oneShareHold,
+        oneShareStartedAt: draft.oneShareStartedAt.trim() || undefined,
         priority: draft.priority,
         memo: draft.memo.trim(),
         updatedAt: now,
@@ -826,6 +837,9 @@ export default function ToolClient() {
                   </div>
 
                   <div className={styles.meta}>
+                    <span className={styles.strategyBadge}>
+                      {it.crossType ?? "単発クロス"}
+                    </span>
                     <span className={styles.chip}>
                       {it.months.join("/") + "月"}
                     </span>
@@ -834,10 +848,16 @@ export default function ToolClient() {
                         {tagNameById.get(id) ?? "（不明タグ）"}
                       </span>
                     ))}
-                    {it.oneShareHold ? (
-                      <span className={styles.chip}>1株保有中</span>
-                    ) : null}
                   </div>
+
+                  {hasOneSharePosition(it) ? (
+                    <div className={styles.oneShareRow}>
+                      <span className={styles.oneShareLabel}>1株保有</span>
+                      <span className={styles.small}>
+                        開始: {it.oneShareStartedAt?.trim() || "開始時期未設定"}
+                      </span>
+                    </div>
+                  ) : null}
 
                   <div className={styles.small} style={{ marginTop: 6 }}>
                     {it.entryTiming ? `早打ち目安: ${it.entryTiming} / ` : ""}
@@ -1126,6 +1146,40 @@ export default function ToolClient() {
 
             <hr className={styles.hr} />
 
+            <div className={styles.small} style={{ marginBottom: 6 }}>
+              戦略タイプ
+            </div>
+            <select
+              className={styles.select}
+              value={draft.crossType}
+              onChange={(e) =>
+                setDraft((d) => ({
+                  ...d,
+                  crossType: e.target.value as CrossType,
+                }))
+              }
+            >
+              {CROSS_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+
+            <div className={styles.small} style={{ marginTop: 8 }}>
+              1株保有開始時期
+            </div>
+            <input
+              className={styles.input}
+              placeholder="YYYY-MM / 例: 2024-08"
+              value={draft.oneShareStartedAt}
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, oneShareStartedAt: e.target.value }))
+              }
+            />
+
+            <hr className={styles.hr} />
+
             <div className={styles.row}>
               <input
                 className={styles.input}
@@ -1165,19 +1219,6 @@ export default function ToolClient() {
                     }
                   />
                   取得済み
-                </label>
-                <label
-                  className={styles.small}
-                  style={{ display: "flex", gap: 8, alignItems: "center" }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={draft.oneShareHold}
-                    onChange={(e) =>
-                      setDraft((d) => ({ ...d, oneShareHold: e.target.checked }))
-                    }
-                  />
-                  1株保有中（長期優遇用）
                 </label>
               </div>
 

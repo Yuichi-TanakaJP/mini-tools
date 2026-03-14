@@ -1,6 +1,6 @@
 // app/tools/yutai-memo/storage.ts
 import type { ArchivedMemoItem, MemoItem, Tag } from "./types";
-import { DEFAULT_TAGS } from "./types";
+import { CROSS_TYPES, DEFAULT_TAGS } from "./types";
 
 const ITEMS_KEY = "yutai_memo_items_v1";
 const TAGS_KEY = "yutai_memo_tags_v1";
@@ -112,6 +112,15 @@ export function loadItems(): MemoItem[] {
             ...it,
             createdAt: (it as any).createdAt ?? it.updatedAt,
             acquired: (it as any).acquired ?? false,
+            crossType: CROSS_TYPES.includes((it as any).crossType)
+              ? (it as any).crossType
+              : "単発クロス",
+            oneShareStartedAt:
+              typeof (it as any).oneShareStartedAt === "string"
+                ? (it as any).oneShareStartedAt
+                : (it as any).oneShareHold
+                  ? "開始時期未設定"
+                  : undefined,
           } as MemoItem)
         : it
     );
