@@ -170,11 +170,11 @@
 
   .cardSide {
     width: 100%;
-    align-items: flex-start;
+    align-items: flex-end;
   }
 
   .statusRow {
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 }
 .small {
