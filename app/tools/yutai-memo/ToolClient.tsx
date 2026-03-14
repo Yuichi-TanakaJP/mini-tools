@@ -159,9 +159,8 @@ function getNextCrossType(current?: CrossType): CrossType {
   return CROSS_TYPES[(index + 1) % CROSS_TYPES.length];
 }
 
-function isCurrentEntitlementMonth(months: number[]): boolean {
-  const currentMonth = toJstYearMonth(new Date()).month;
-  return months.includes(currentMonth);
+function isCurrentEntitlementMonth(month: number): boolean {
+  return toJstYearMonth(new Date()).month === month;
 }
 
 export default function ToolClient() {
@@ -836,11 +835,7 @@ export default function ToolClient() {
                       onChange={() => toggleSelect(it.id)}
                     />
                   </label>
-                  <div
-                    className={`${styles.card} ${
-                      isCurrentEntitlementMonth(it.months) ? styles.cardCurrentMonth : ""
-                    }`}
-                  >
+                  <div className={styles.card}>
                     <div className={styles.cardHeader}>
                       <div
                         className={styles.cardMain}
@@ -860,12 +855,21 @@ export default function ToolClient() {
                           {it.code ? `（${it.code}）` : ""}
                         </div>
                       </div>
-                      <div className={styles.cardSide}>
-                        <div className={styles.monthPriorityRow}>
-                          <span className={styles.monthPriorityBadge}>
-                            {it.months.join("/") + "月"}
-                          </span>
-                        </div>
+                        <div className={styles.cardSide}>
+                          <div className={styles.monthPriorityRow}>
+                            {it.months.map((month) => (
+                              <span
+                                key={`${it.id}-${month}`}
+                                className={`${styles.monthPriorityBadge} ${
+                                  isCurrentEntitlementMonth(month)
+                                    ? styles.monthPriorityBadgeCurrent
+                                    : ""
+                                }`}
+                              >
+                                {month}月
+                              </span>
+                            ))}
+                          </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <button
                             type="button"
