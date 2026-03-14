@@ -805,103 +805,90 @@ export default function ToolClient() {
                       onChange={() => toggleSelect(it.id)}
                     />
                   </label>
-                  <div
-                    className={styles.card}
-                    role="button"
-                    tabIndex={0}
-                    style={{ textAlign: "left", cursor: "pointer" }}
-                    onClick={() => openEdit(it)}
-                    onKeyDown={(e) => {
-                      if (e.currentTarget !== e.target) return;
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        openEdit(it);
-                      }
-                    }}
-                  >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 10,
-                      alignItems: "center",
-                    }}
-                  >
-                    <div style={{ fontWeight: 700 }}>
-                      {it.name}
-                      {it.code ? `（${it.code}）` : ""}
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <button
-                        type="button"
-                        className={`${styles.stateToggle} ${
-                          it.acquired ? styles.stateOn : ""
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleAcquired(it.id);
+                  <div className={styles.card}>
+                    <div className={styles.cardHeader}>
+                      <div
+                        className={styles.cardMain}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openEdit(it)}
+                        onKeyDown={(e) => {
+                          if (e.currentTarget !== e.target) return;
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openEdit(it);
+                          }
                         }}
                       >
-                        {it.acquired ? "取得済み" : "未取得"}
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.archiveBtn}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          archiveMemo(it.id);
-                        }}
-                        disabled={!it.acquired}
-                        title={it.acquired ? "取得履歴へ移動" : "取得済みのメモのみ対応"}
-                      >
-                        アーカイブ
-                      </button>
-                      <div className={styles.small}>★{it.priority}</div>
+                        <div style={{ fontWeight: 700 }}>
+                          {it.name}
+                          {it.code ? `（${it.code}）` : ""}
+                        </div>
+                      </div>
+                      <div className={styles.cardSide}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <button
+                            type="button"
+                            className={`${styles.stateToggle} ${
+                              it.acquired ? styles.stateOn : ""
+                            }`}
+                            onClick={() => toggleAcquired(it.id)}
+                          >
+                            {it.acquired ? "取得済み" : "未取得"}
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.archiveBtn}
+                            onClick={() => archiveMemo(it.id)}
+                            disabled={!it.acquired}
+                            title={it.acquired ? "取得履歴へ移動" : "取得済みのメモのみ対応"}
+                          >
+                            アーカイブ
+                          </button>
+                          <div className={styles.small}>★{it.priority}</div>
+                        </div>
+
+                        <div className={styles.statusRow}>
+                          <span className={styles.strategyBadge}>
+                            {it.crossType ?? "単発クロス"}
+                          </span>
+                          <button
+                            type="button"
+                            className={`${styles.oneShareToggle} ${
+                              hasOneSharePosition(it) ? styles.oneShareToggleOn : ""
+                            }`}
+                            onClick={() => toggleOneSharePosition(it.id)}
+                          >
+                            1株保有:{" "}
+                            {hasOneSharePosition(it)
+                              ? formatOneShareStartedLabel(it.oneShareStartedAt)
+                              : "未設定"}
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className={styles.statusRow}>
-                    <span className={styles.strategyBadge}>
-                      {it.crossType ?? "単発クロス"}
-                    </span>
-                    <button
-                      type="button"
-                      className={`${styles.oneShareToggle} ${
-                        hasOneSharePosition(it) ? styles.oneShareToggleOn : ""
-                      }`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleOneSharePosition(it.id);
-                      }}
-                    >
-                      1株保有:{" "}
-                      {hasOneSharePosition(it)
-                        ? formatOneShareStartedLabel(it.oneShareStartedAt)
-                        : "未設定"}
-                    </button>
-                  </div>
-
-                  <div className={styles.meta}>
-                    <span className={styles.chip}>
-                      {it.months.join("/") + "月"}
-                    </span>
-                    {it.tagIds.map((id) => (
-                      <span key={id} className={styles.chip}>
-                        {tagNameById.get(id) ?? "（不明タグ）"}
+                    <div className={styles.meta}>
+                      <span className={styles.chip}>
+                        {it.months.join("/") + "月"}
                       </span>
-                    ))}
-                  </div>
+                      {it.tagIds.map((id) => (
+                        <span key={id} className={styles.chip}>
+                          {tagNameById.get(id) ?? "（不明タグ）"}
+                        </span>
+                      ))}
+                    </div>
 
-                  <div className={styles.small} style={{ marginTop: 6 }}>
-                    {it.entryTiming ? `早打ち目安: ${it.entryTiming} / ` : ""}
-                    {it.tenureRule ? `任期: ${it.tenureRule}` : ""}
-                  </div>
+                    <div className={styles.small} style={{ marginTop: 6 }}>
+                      {it.entryTiming ? `早打ち目安: ${it.entryTiming} / ` : ""}
+                      {it.tenureRule ? `任期: ${it.tenureRule}` : ""}
+                    </div>
 
-                  <div className={styles.small} style={{ marginTop: 6 }}>
-                    {it.memo
-                      ? it.memo.slice(0, 60) + (it.memo.length > 60 ? "…" : "")
-                      : "（メモなし）"}
-                  </div>
+                    <div className={styles.small} style={{ marginTop: 6 }}>
+                      {it.memo
+                        ? it.memo.slice(0, 60) + (it.memo.length > 60 ? "…" : "")
+                        : "（メモなし）"}
+                    </div>
                   </div>
                 </div>
               ))

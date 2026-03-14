@@ -48,6 +48,24 @@
   display: block; /* ★保険 */
   width: 100%; /* ★保険 */
 }
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.cardMain {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  cursor: pointer;
+}
+.cardSide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
 .list {
   display: grid;
   gap: 10px;
@@ -128,8 +146,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 6px;
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .oneShareToggle {
   padding: 6px 10px;
@@ -143,6 +161,21 @@
 .oneShareToggleOn {
   border-color: #6fa3d9;
   background: #eaf4ff;
+}
+
+@media (max-width: 640px) {
+  .cardHeader {
+    flex-direction: column;
+  }
+
+  .cardSide {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .statusRow {
+    justify-content: flex-start;
+  }
 }
 .small {
   font-size: 12px;
