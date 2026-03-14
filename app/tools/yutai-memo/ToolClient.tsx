@@ -144,6 +144,15 @@ function hasOneSharePosition(item: Pick<MemoItem, "oneShareStartedAt" | "oneShar
   return Boolean(item.oneShareStartedAt?.trim() || item.oneShareHold);
 }
 
+function formatOneShareStartedLabel(value?: string): string {
+  const v = value?.trim();
+  if (!v || v === "開始時期未設定") return "未設定";
+  const m = v.match(/^(\d{4})-(\d{2})(?:-(\d{2}))?$/);
+  if (!m) return v;
+  if (m[3]) return `${m[1]}/${m[2]}/${m[3]}`;
+  return `${m[1]}/${m[2]}`;
+}
+
 export default function ToolClient() {
   const [items, setItems] = useState<MemoItem[]>(() => loadItems());
   const [archives, setArchives] = useState<ArchivedMemoItem[]>(() =>
@@ -410,6 +419,21 @@ export default function ToolClient() {
     setItems((prev) =>
       prev.map((it) =>
         it.id === id ? { ...it, acquired: !it.acquired } : it
+      )
+    );
+  }
+
+  function toggleOneSharePosition(id: string) {
+    const startedAt = toMonthKeyFromDate(new Date());
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === id
+          ? {
+              ...it,
+              oneShareStartedAt: hasOneSharePosition(it) ? undefined : startedAt,
+              updatedAt: new Date().toISOString(),
+            }
+          : it
       )
     );
   }
@@ -836,10 +860,28 @@ export default function ToolClient() {
                     </div>
                   </div>
 
-                  <div className={styles.meta}>
+                  <div className={styles.statusRow}>
                     <span className={styles.strategyBadge}>
                       {it.crossType ?? "単発クロス"}
                     </span>
+                    <button
+                      type="button"
+                      className={`${styles.oneShareToggle} ${
+                        hasOneSharePosition(it) ? styles.oneShareToggleOn : ""
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleOneSharePosition(it.id);
+                      }}
+                    >
+                      1株保有:{" "}
+                      {hasOneSharePosition(it)
+                        ? formatOneShareStartedLabel(it.oneShareStartedAt)
+                        : "未設定"}
+                    </button>
+                  </div>
+
+                  <div className={styles.meta}>
                     <span className={styles.chip}>
                       {it.months.join("/") + "月"}
                     </span>
@@ -849,15 +891,6 @@ export default function ToolClient() {
                       </span>
                     ))}
                   </div>
-
-                  {hasOneSharePosition(it) ? (
-                    <div className={styles.oneShareRow}>
-                      <span className={styles.oneShareLabel}>1株保有</span>
-                      <span className={styles.small}>
-                        開始: {it.oneShareStartedAt?.trim() || "開始時期未設定"}
-                      </span>
-                    </div>
-                  ) : null}
 
                   <div className={styles.small} style={{ marginTop: 6 }}>
                     {it.entryTiming ? `早打ち目安: ${it.entryTiming} / ` : ""}

@@ -124,19 +124,25 @@
   font-size: 12px;
   font-weight: 700;
 }
-.oneShareRow {
+.statusRow {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-top: 6px;
+  flex-wrap: wrap;
 }
-.oneShareLabel {
-  padding: 4px 8px;
+.oneShareToggle {
+  padding: 6px 10px;
   border-radius: 999px;
-  background: #eef5ff;
-  color: #1d4f8c;
-  font-size: 11px;
+  border: 1px solid #cfdceb;
+  background: #f7fbff;
+  color: #295d98;
+  font-size: 12px;
   font-weight: 700;
+}
+.oneShareToggleOn {
+  border-color: #6fa3d9;
+  background: #eaf4ff;
 }
 .small {
   font-size: 12px;
