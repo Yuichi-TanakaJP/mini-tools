@@ -69,6 +69,8 @@
 .monthPriorityRow {
   display: flex;
   justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
   width: 100%;
 }
 .monthPriorityBadge {
@@ -80,6 +82,12 @@
   font-size: 12px;
   line-height: 1.2;
   font-weight: 700;
+}
+.monthPriorityBadgeCurrent {
+  border-color: #c78b18;
+  background: #fff0c7;
+  color: #7a4f00;
+  box-shadow: 0 0 0 1px rgba(199, 139, 24, 0.12);
 }
 .list {
   display: grid;

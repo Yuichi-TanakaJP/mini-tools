@@ -159,6 +159,10 @@ function getNextCrossType(current?: CrossType): CrossType {
   return CROSS_TYPES[(index + 1) % CROSS_TYPES.length];
 }
 
+function isCurrentEntitlementMonth(month: number): boolean {
+  return toJstYearMonth(new Date()).month === month;
+}
+
 export default function ToolClient() {
   const [items, setItems] = useState<MemoItem[]>(() => loadItems());
   const [archives, setArchives] = useState<ArchivedMemoItem[]>(() =>
@@ -822,8 +826,8 @@ export default function ToolClient() {
                 </div>
               </div>
             ) : (
-              filtered.map((it) => (
-                <div key={it.id} className={styles.cardRow}>
+                filtered.map((it) => (
+                  <div key={it.id} className={styles.cardRow}>
                   <label className={styles.selectBox}>
                     <input
                       type="checkbox"
@@ -851,12 +855,21 @@ export default function ToolClient() {
                           {it.code ? `（${it.code}）` : ""}
                         </div>
                       </div>
-                      <div className={styles.cardSide}>
-                        <div className={styles.monthPriorityRow}>
-                          <span className={styles.monthPriorityBadge}>
-                            {it.months.join("/") + "月"}
-                          </span>
-                        </div>
+                        <div className={styles.cardSide}>
+                          <div className={styles.monthPriorityRow}>
+                            {it.months.map((month) => (
+                              <span
+                                key={`${it.id}-${month}`}
+                                className={`${styles.monthPriorityBadge} ${
+                                  isCurrentEntitlementMonth(month)
+                                    ? styles.monthPriorityBadgeCurrent
+                                    : ""
+                                }`}
+                              >
+                                {month}月
+                              </span>
+                            ))}
+                          </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <button
                             type="button"
