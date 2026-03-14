@@ -151,13 +151,14 @@
   justify-content: flex-end;
 }
 .oneShareToggle {
-  padding: 6px 10px;
+  padding: 4px 8px;
   border-radius: 999px;
   border: 1px solid #cfdceb;
   background: #f7fbff;
   color: #295d98;
   font-size: 12px;
-  font-weight: 700;
+  line-height: 1.2;
+  font-weight: 600;
 }
 .oneShareToggleOn {
   border-color: #6fa3d9;
