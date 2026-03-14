@@ -431,11 +431,19 @@ export default function ToolClient() {
     setItems((prev) =>
       prev.map((it) =>
         it.id === id
-          ? {
-              ...it,
-              oneShareStartedAt: hasOneSharePosition(it) ? undefined : startedAt,
-              updatedAt,
-            }
+          ? hasOneSharePosition(it)
+            ? {
+                ...it,
+                oneShareStartedAt: undefined,
+                oneShareHold: false,
+                updatedAt,
+              }
+            : {
+                ...it,
+                oneShareStartedAt: startedAt,
+                oneShareHold: false,
+                updatedAt,
+              }
           : it
       )
     );
