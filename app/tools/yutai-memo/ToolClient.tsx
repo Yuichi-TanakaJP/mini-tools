@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import styles from "./ToolClient.module.css";
-import type { ArchivedMemoItem, MemoItem, Tag } from "./types";
-import { DEFAULT_TAGS } from "./types";
+import type { ArchivedMemoItem, CrossType, MemoItem, Tag } from "./types";
+import { CROSS_TYPES, DEFAULT_TAGS } from "./types";
 import {
   loadArchivedItems,
   loadItems,
@@ -31,10 +31,11 @@ type Draft = {
   code: string;
   months: number[];
   tagIds: string[];
+  crossType: CrossType;
   entryTiming: string;
   tenureRule: string;
   acquired: boolean;
-  oneShareHold: boolean;
+  oneShareStartedAt: string;
   priority: 1 | 2 | 3;
   memo: string;
 };
@@ -49,10 +50,11 @@ const emptyDraft = (): Draft => ({
   code: "",
   months: [],
   tagIds: [],
+  crossType: "長期：設定がない",
   entryTiming: "",
   tenureRule: "",
   acquired: false,
-  oneShareHold: false,
+  oneShareStartedAt: "",
   priority: 2,
   memo: "",
 });
@@ -136,6 +138,25 @@ function resolveEntitlementMonthKey(months: number[], acquiredAt: string): strin
   const targetMonth = candidate ?? normalized[normalized.length - 1];
   const targetYear = targetMonth <= currentMonth ? currentYear : currentYear - 1;
   return `${targetYear}-${`${targetMonth}`.padStart(2, "0")}`;
+}
+
+function hasOneSharePosition(item: Pick<MemoItem, "oneShareStartedAt" | "oneShareHold">): boolean {
+  return Boolean(item.oneShareStartedAt?.trim() || item.oneShareHold);
+}
+
+function formatOneShareStartedLabel(value?: string): string {
+  const v = value?.trim();
+  if (!v || v === "開始時期未設定") return "未設定";
+  const m = v.match(/^(\d{4})-(\d{2})(?:-(\d{2}))?$/);
+  if (!m) return v;
+  if (m[3]) return `${m[1]}/${m[2]}/${m[3]}`;
+  return `${m[1]}/${m[2]}`;
+}
+
+function getNextCrossType(current?: CrossType): CrossType {
+  const index = CROSS_TYPES.indexOf(current ?? "長期：設定がない");
+  if (index < 0) return "長期：設定がない";
+  return CROSS_TYPES[(index + 1) % CROSS_TYPES.length];
 }
 
 export default function ToolClient() {
@@ -226,8 +247,10 @@ export default function ToolClient() {
           it.name,
           it.code ?? "",
           it.memo ?? "",
+          it.crossType ?? "",
           it.entryTiming ?? "",
           it.tenureRule ?? "",
+          it.oneShareStartedAt ?? "",
           it.months.join(","),
           (it.tagIds ?? []).map((id) => tagNameById.get(id) ?? id).join(","),
         ]
@@ -252,10 +275,11 @@ export default function ToolClient() {
       code: it.code ?? "",
       months: it.months,
       tagIds: it.tagIds ?? [],
+      crossType: it.crossType ?? "長期：設定がない",
       entryTiming: it.entryTiming ?? "",
       tenureRule: it.tenureRule ?? "",
       acquired: it.acquired,
-      oneShareHold: it.oneShareHold,
+      oneShareStartedAt: it.oneShareStartedAt ?? "",
       priority: it.priority,
       memo: it.memo,
     });
@@ -279,13 +303,10 @@ export default function ToolClient() {
     });
   }
 
-  function setPriority(p: 1 | 2 | 3) {
-    setDraft((d) => ({ ...d, priority: p }));
-  }
-
   function validate(d: Draft): string | null {
     if (!d.name.trim()) return "銘柄名は必須です";
     if (d.months.length === 0) return "権利月は1つ以上選んでください";
+    if (!CROSS_TYPES.includes(d.crossType)) return "戦略タイプを選択してください";
     return null;
   }
 
@@ -304,10 +325,11 @@ export default function ToolClient() {
         createdAt: draft.createdAt ?? now,
         months: draft.months,
         tagIds: draft.tagIds,
+        crossType: draft.crossType,
         entryTiming: draft.entryTiming.trim() || undefined,
         tenureRule: draft.tenureRule.trim() || undefined,
         acquired: draft.acquired,
-        oneShareHold: draft.oneShareHold,
+        oneShareStartedAt: draft.oneShareStartedAt.trim() || undefined,
         priority: draft.priority,
         memo: draft.memo.trim(),
         updatedAt: now,
@@ -399,6 +421,45 @@ export default function ToolClient() {
     setItems((prev) =>
       prev.map((it) =>
         it.id === id ? { ...it, acquired: !it.acquired } : it
+      )
+    );
+  }
+
+  function toggleOneSharePosition(id: string) {
+    const startedAt = toMonthKeyFromDate(new Date());
+    const updatedAt = new Date().toISOString();
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === id
+          ? hasOneSharePosition(it)
+            ? {
+                ...it,
+                oneShareStartedAt: undefined,
+                oneShareHold: false,
+                updatedAt,
+              }
+            : {
+                ...it,
+                oneShareStartedAt: startedAt,
+                oneShareHold: false,
+                updatedAt,
+              }
+          : it
+      )
+    );
+  }
+
+  function cycleCrossType(id: string) {
+    const updatedAt = new Date().toISOString();
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === id
+          ? {
+              ...it,
+              crossType: getNextCrossType(it.crossType),
+              updatedAt,
+            }
+          : it
       )
     );
   }
@@ -770,85 +831,94 @@ export default function ToolClient() {
                       onChange={() => toggleSelect(it.id)}
                     />
                   </label>
-                  <div
-                    className={styles.card}
-                    role="button"
-                    tabIndex={0}
-                    style={{ textAlign: "left", cursor: "pointer" }}
-                    onClick={() => openEdit(it)}
-                    onKeyDown={(e) => {
-                      if (e.currentTarget !== e.target) return;
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        openEdit(it);
-                      }
-                    }}
-                  >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 10,
-                      alignItems: "center",
-                    }}
-                  >
-                    <div style={{ fontWeight: 700 }}>
-                      {it.name}
-                      {it.code ? `（${it.code}）` : ""}
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <button
-                        type="button"
-                        className={`${styles.stateToggle} ${
-                          it.acquired ? styles.stateOn : ""
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleAcquired(it.id);
+                  <div className={styles.card}>
+                    <div className={styles.cardHeader}>
+                      <div
+                        className={styles.cardMain}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openEdit(it)}
+                        onKeyDown={(e) => {
+                          if (e.currentTarget !== e.target) return;
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openEdit(it);
+                          }
                         }}
                       >
-                        {it.acquired ? "取得済み" : "未取得"}
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.archiveBtn}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          archiveMemo(it.id);
-                        }}
-                        disabled={!it.acquired}
+                        <div style={{ fontWeight: 700 }}>
+                          {it.name}
+                          {it.code ? `（${it.code}）` : ""}
+                        </div>
+                      </div>
+                      <div className={styles.cardSide}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <button
+                            type="button"
+                            className={`${styles.stateToggle} ${
+                              it.acquired ? styles.stateOn : ""
+                            }`}
+                            onClick={() => toggleAcquired(it.id)}
+                          >
+                            {it.acquired ? "取得済み" : "未取得"}
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.archiveBtn}
+                            onClick={() => archiveMemo(it.id)}
+                            disabled={!it.acquired}
                         title={it.acquired ? "取得履歴へ移動" : "取得済みのメモのみ対応"}
-                      >
-                        アーカイブ
-                      </button>
-                      <div className={styles.small}>★{it.priority}</div>
+                          >
+                            アーカイブ
+                          </button>
+                        </div>
+
+                        <div className={styles.statusRow}>
+                          <button
+                            type="button"
+                            className={styles.strategyBadge}
+                            onClick={() => cycleCrossType(it.id)}
+                            title="タップで戦略タイプを切り替え"
+                          >
+                            {it.crossType ?? "長期：設定がない"}
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.oneShareToggle} ${
+                              hasOneSharePosition(it) ? styles.oneShareToggleOn : ""
+                            }`}
+                            onClick={() => toggleOneSharePosition(it.id)}
+                          >
+                            1株保有:{" "}
+                            {hasOneSharePosition(it)
+                              ? formatOneShareStartedLabel(it.oneShareStartedAt)
+                              : "未設定"}
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className={styles.meta}>
-                    <span className={styles.chip}>
-                      {it.months.join("/") + "月"}
-                    </span>
-                    {it.tagIds.map((id) => (
-                      <span key={id} className={styles.chip}>
-                        {tagNameById.get(id) ?? "（不明タグ）"}
+                    <div className={styles.meta}>
+                      <span className={styles.chip}>
+                        {it.months.join("/") + "月"}
                       </span>
-                    ))}
-                    {it.oneShareHold ? (
-                      <span className={styles.chip}>1株保有中</span>
-                    ) : null}
-                  </div>
+                      {it.tagIds.map((id) => (
+                        <span key={id} className={styles.chip}>
+                          {tagNameById.get(id) ?? "（不明タグ）"}
+                        </span>
+                      ))}
+                    </div>
 
-                  <div className={styles.small} style={{ marginTop: 6 }}>
-                    {it.entryTiming ? `早打ち目安: ${it.entryTiming} / ` : ""}
-                    {it.tenureRule ? `任期: ${it.tenureRule}` : ""}
-                  </div>
+                    <div className={styles.small} style={{ marginTop: 6 }}>
+                      {it.entryTiming ? `早打ち目安: ${it.entryTiming} / ` : ""}
+                      {it.tenureRule ? `任期: ${it.tenureRule}` : ""}
+                    </div>
 
-                  <div className={styles.small} style={{ marginTop: 6 }}>
-                    {it.memo
-                      ? it.memo.slice(0, 60) + (it.memo.length > 60 ? "…" : "")
-                      : "（メモなし）"}
-                  </div>
+                    <div className={styles.small} style={{ marginTop: 6 }}>
+                      {it.memo
+                        ? it.memo.slice(0, 60) + (it.memo.length > 60 ? "…" : "")
+                        : "（メモなし）"}
+                    </div>
                   </div>
                 </div>
               ))
@@ -1126,6 +1196,40 @@ export default function ToolClient() {
 
             <hr className={styles.hr} />
 
+            <div className={styles.small} style={{ marginBottom: 6 }}>
+              戦略タイプ
+            </div>
+            <select
+              className={styles.select}
+              value={draft.crossType}
+              onChange={(e) =>
+                setDraft((d) => ({
+                  ...d,
+                  crossType: e.target.value as CrossType,
+                }))
+              }
+            >
+              {CROSS_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+
+            <div className={styles.small} style={{ marginTop: 8 }}>
+              1株保有開始時期
+            </div>
+            <input
+              className={styles.input}
+              placeholder="YYYY-MM / 例: 2024-08"
+              value={draft.oneShareStartedAt}
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, oneShareStartedAt: e.target.value }))
+              }
+            />
+
+            <hr className={styles.hr} />
+
             <div className={styles.row}>
               <input
                 className={styles.input}
@@ -1166,36 +1270,6 @@ export default function ToolClient() {
                   />
                   取得済み
                 </label>
-                <label
-                  className={styles.small}
-                  style={{ display: "flex", gap: 8, alignItems: "center" }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={draft.oneShareHold}
-                    onChange={(e) =>
-                      setDraft((d) => ({ ...d, oneShareHold: e.target.checked }))
-                    }
-                  />
-                  1株保有中（長期優遇用）
-                </label>
-              </div>
-
-              <div className={styles.stars}>
-                <span className={styles.small}>重要度</span>
-                {[1, 2, 3].map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    className={`${styles.starBtn} ${
-                      draft.priority === p ? styles.starOn : ""
-                    }`}
-                    onClick={() => setPriority(p as 1 | 2 | 3)}
-                    aria-label={`priority ${p}`}
-                  >
-                    ★{p}
-                  </button>
-                ))}
               </div>
             </div>
 

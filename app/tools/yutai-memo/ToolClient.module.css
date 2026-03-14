@@ -48,6 +48,24 @@
   display: block; /* ★保険 */
   width: 100%; /* ★保険 */
 }
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.cardMain {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  cursor: pointer;
+}
+.cardSide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
 .list {
   display: grid;
   gap: 10px;
@@ -115,6 +133,54 @@
   flex-wrap: wrap;
   margin-top: 6px;
 }
+.strategyBadge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid #d6c8a7;
+  background: #fbf5e8;
+  color: #5c4720;
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 600;
+  cursor: pointer;
+}
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.oneShareToggle {
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid #cfdceb;
+  background: #f7fbff;
+  color: #295d98;
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 600;
+  cursor: pointer;
+}
+.oneShareToggleOn {
+  border-color: #6fa3d9;
+  background: #eaf4ff;
+}
+
+@media (max-width: 640px) {
+  .cardHeader {
+    flex-direction: column;
+  }
+
+  .cardSide {
+    width: 100%;
+    align-items: flex-end;
+  }
+
+  .statusRow {
+    justify-content: flex-end;
+  }
+}
 .small {
   font-size: 12px;
   color: #555;
@@ -145,23 +211,6 @@
   border-color: #111;
   background: #f6f6f6;
 }
-.stars {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-.starBtn {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  border: 1px solid #ddd;
-  background: #fff;
-}
-.starOn {
-  border-color: #111;
-  background: #f6f6f6;
-}
-
 /* ===== Tag Manager Modal ===== */
 
 .overlay {

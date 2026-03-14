@@ -1,6 +1,6 @@
 // app/tools/yutai-memo/storage.ts
 import type { ArchivedMemoItem, MemoItem, Tag } from "./types";
-import { DEFAULT_TAGS } from "./types";
+import { CROSS_TYPES, DEFAULT_TAGS } from "./types";
 
 const ITEMS_KEY = "yutai_memo_items_v1";
 const TAGS_KEY = "yutai_memo_tags_v1";
@@ -9,6 +9,28 @@ const MIGRATED_KEY = "yutai_memo_migrated_tags_v1";
 
 type LegacyTagKey = "early" | "one_share" | "tenure" | "failure" | "must";
 type LegacyMemoItem = Omit<MemoItem, "tagIds"> & { tags: LegacyTagKey[] };
+
+function normalizeCrossType(value: unknown): MemoItem["crossType"] {
+  switch (value) {
+    case "長期：設定がない":
+    case "長期：単発クロス":
+    case "長期：連続クロス":
+    case "長期：選考クロス":
+    case "長期：1株放置中":
+      return value;
+    case "単発クロス":
+      return "長期：単発クロス";
+    case "連続クロス型":
+      return "長期：連続クロス";
+    case "来期必須（先行投資）型":
+    case "空クロス必須型":
+      return "長期：選考クロス";
+    case "1株放置（年数稼ぎ）型":
+      return "長期：1株放置中";
+    default:
+      return "長期：設定がない";
+  }
+}
 
 function toJstYearMonth(d: Date): { year: number; month: number } {
   const fmt = new Intl.DateTimeFormat("ja-JP", {
@@ -112,6 +134,13 @@ export function loadItems(): MemoItem[] {
             ...it,
             createdAt: (it as any).createdAt ?? it.updatedAt,
             acquired: (it as any).acquired ?? false,
+            crossType: normalizeCrossType((it as any).crossType),
+            oneShareStartedAt:
+              typeof (it as any).oneShareStartedAt === "string"
+                ? (it as any).oneShareStartedAt
+                : (it as any).oneShareHold
+                  ? "開始時期未設定"
+                  : undefined,
           } as MemoItem)
         : it
     );
