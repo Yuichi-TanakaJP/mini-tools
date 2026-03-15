@@ -889,7 +889,7 @@ export default function ToolClient() {
           <div className={styles.pageHeader}>
             <div className={styles.h1}>優待銘柄メモ帳</div>
             <div className={styles.headerActions}>
-              <button className={styles.btnPrimary} onClick={openNew}>
+              <button className={styles.btnPrimary} onClick={() => openNew()}>
                 + 追加
               </button>
               <button
