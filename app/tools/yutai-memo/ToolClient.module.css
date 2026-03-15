@@ -149,12 +149,46 @@
   gap: 10px;
   margin-top: 12px;
 }
+.bulkBarSection {
+  margin-top: 10px;
+}
+.bulkBarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
 .bulkBar {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
-  margin-top: 10px;
+  margin-top: 8px;
+}
+.bulkBarCount {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  color: #666;
+  line-height: 1.2;
+}
+.bulkBarButton {
+  white-space: nowrap;
+}
+.bulkBarToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: #666;
+  font-size: 12px;
+  line-height: 1.2;
+}
+.bulkBarChevron {
+  font-size: 10px;
+  color: #888;
 }
 .cardRow {
   display: grid;
@@ -270,6 +304,30 @@
   .searchInput {
     flex: 1 1 180px;
     width: auto;
+  }
+
+  .bulkBar {
+    gap: 6px;
+    align-items: flex-start;
+  }
+
+  .bulkBarHeader {
+    align-items: center;
+  }
+
+  .bulkBarCount {
+    font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .bulkBarToggle {
+    font-size: 11px;
+  }
+
+  .bulkBarButton {
+    padding: 8px 10px;
+    font-size: 11px;
+    line-height: 1.2;
   }
 
   .cardHeader {

@@ -184,6 +184,7 @@ export default function ToolClient() {
   const [tagFilter, setTagFilter] = useState<string | "all">("all");
   const [sortState, setSortState] = useState<SortState>(() => loadSortState());
   const [sortControlsOpen, setSortControlsOpen] = useState(false);
+  const [bulkActionsOpen, setBulkActionsOpen] = useState(false);
 
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [mode, setMode] = useState<"list" | "edit">("list");
@@ -847,38 +848,63 @@ export default function ToolClient() {
             </div>
           ) : null}
 
-          <div className={styles.bulkBar}>
-            <div className={styles.small}>{selectedCount}件選択中</div>
-            <button className={styles.btn} type="button" onClick={selectAllVisible}>
-              全選択
-            </button>
-            <button className={styles.btn} type="button" onClick={clearSelection}>
-              全解除
-            </button>
-            <button
-              className={styles.btn}
-              type="button"
-              onClick={() => bulkSetAcquired(true)}
-              disabled={selectedCount === 0}
-            >
-              取得済みにする
-            </button>
-            <button
-              className={styles.btn}
-              type="button"
-              onClick={() => bulkSetAcquired(false)}
-              disabled={selectedCount === 0}
-            >
-              未取得に戻す
-            </button>
-            <button
-              className={styles.btn}
-              type="button"
-              onClick={bulkRemoveSelected}
-              disabled={selectedCount === 0}
-            >
-              削除
-            </button>
+          <div className={styles.bulkBarSection}>
+            <div className={styles.bulkBarHeader}>
+              <div className={styles.bulkBarCount}>{selectedCount}件選択中</div>
+              <button
+                className={styles.bulkBarToggle}
+                type="button"
+                onClick={() => setBulkActionsOpen((prev) => !prev)}
+              >
+                一括操作
+                <span className={styles.bulkBarChevron} aria-hidden="true">
+                  {bulkActionsOpen ? "▲" : "▼"}
+                </span>
+              </button>
+            </div>
+
+            {bulkActionsOpen ? (
+              <div className={styles.bulkBar}>
+                <button
+                  className={`${styles.btn} ${styles.bulkBarButton}`}
+                  type="button"
+                  onClick={selectAllVisible}
+                >
+                  全選択
+                </button>
+                <button
+                  className={`${styles.btn} ${styles.bulkBarButton}`}
+                  type="button"
+                  onClick={clearSelection}
+                >
+                  全解除
+                </button>
+                <button
+                  className={`${styles.btn} ${styles.bulkBarButton}`}
+                  type="button"
+                  onClick={() => bulkSetAcquired(true)}
+                  disabled={selectedCount === 0}
+                >
+                  取得済みにする
+                </button>
+                <button
+                  className={`${styles.btn} ${styles.bulkBarButton}`}
+                  type="button"
+                  onClick={() => bulkSetAcquired(false)}
+                  disabled={selectedCount === 0}
+                >
+                  未取得に戻す
+                </button>
+                <button
+                  className={`${styles.btn} ${styles.bulkBarButton}`}
+                  type="button"
+                  onClick={bulkRemoveSelected}
+                  disabled={selectedCount === 0}
+                >
+                  削除
+                </button>
+              </div>
+            ) : null}
           </div>
 
           <div className={styles.list}>
