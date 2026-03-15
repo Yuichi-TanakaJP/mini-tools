@@ -743,13 +743,27 @@ export default function ToolClient() {
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.h1}>優待銘柄メモ帳</div>
-
       {mode === "list" ? (
         <>
-          <div className={styles.row}>
+          <div className={styles.pageHeader}>
+            <div className={styles.h1}>優待銘柄メモ帳</div>
+            <div className={styles.headerActions}>
+              <button className={styles.btnPrimary} onClick={openNew}>
+                + 追加
+              </button>
+              <button
+                className={styles.btn}
+                type="button"
+                onClick={openTagManager}
+              >
+                タグ管理
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.searchGroup}>
             <input
-              className={styles.input}
+              className={`${styles.input} ${styles.searchInput}`}
               placeholder="検索（銘柄/コード/メモ/任期/早打ち目安）"
               value={q}
               onChange={(e) => {
@@ -757,9 +771,6 @@ export default function ToolClient() {
                 setQ(e.target.value);
               }}
             />
-          </div>
-
-          <div className={styles.row} style={{ marginTop: 10 }}>
             <select
               className={styles.select}
               value={monthFilter}
@@ -791,6 +802,9 @@ export default function ToolClient() {
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className={styles.sortGroup}>
             <select
               className={styles.select}
               value={sortState.key}
@@ -815,16 +829,6 @@ export default function ToolClient() {
               <option value="desc">順序: 降順</option>
               <option value="asc">順序: 昇順</option>
             </select>
-            <button className={styles.btnPrimary} onClick={openNew}>
-              + 追加
-            </button>
-            <button
-              className={styles.btn}
-              type="button"
-              onClick={openTagManager}
-            >
-              タグ管理
-            </button>
           </div>
 
           <div className={styles.bulkBar}>
