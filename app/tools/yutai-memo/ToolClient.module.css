@@ -131,6 +131,14 @@
   background: #fff;
   font-size: 12px;
 }
+.listDeleteBtn {
+  padding: 4px 8px;
+  border: 1px solid #e4c4c4;
+  border-radius: 999px;
+  background: #fff8f8;
+  color: #8a3131;
+  font-size: 12px;
+}
 .archiveBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;

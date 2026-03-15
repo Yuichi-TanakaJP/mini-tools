@@ -45,6 +45,11 @@ type BulkArchiveDraft = {
   targetYM: string;
 };
 
+type DeleteTarget = {
+  id: string;
+  name: string;
+};
+
 const emptyDraft = (): Draft => ({
   name: "",
   code: "",
@@ -191,6 +196,7 @@ export default function ToolClient() {
   const [bulkArchiveDrafts, setBulkArchiveDrafts] = useState<BulkArchiveDraft[]>([]);
   const [bulkArchivePromptOpen, setBulkArchivePromptOpen] = useState(false);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
   // load
 
@@ -345,18 +351,23 @@ export default function ToolClient() {
     setMode("list");
   }
 
-  function remove() {
-    if (!draft.id) {
-      setMode("list");
-      return;
-    }
-    if (!confirm("削除しますか？")) return;
-    setItems((prev) => prev.filter((x) => x.id !== draft.id));
+  function deleteMemo(id: string) {
+    setItems((prev) => prev.filter((x) => x.id !== id));
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      next.delete(draft.id as string);
+      next.delete(id);
       return next;
     });
+  }
+
+  function openDeleteDialog(item: MemoItem) {
+    setDeleteTarget({ id: item.id, name: item.name });
+  }
+
+  function confirmDeleteTarget() {
+    if (!deleteTarget) return;
+    deleteMemo(deleteTarget.id);
+    setDeleteTarget(null);
     setMode("list");
   }
 
@@ -885,9 +896,16 @@ export default function ToolClient() {
                             className={styles.archiveBtn}
                             onClick={() => archiveMemo(it.id)}
                             disabled={!it.acquired}
-                        title={it.acquired ? "取得履歴へ移動" : "取得済みのメモのみ対応"}
+                            title={it.acquired ? "取得履歴へ移動" : "取得済みのメモのみ対応"}
                           >
                             アーカイブ
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.listDeleteBtn}
+                            onClick={() => openDeleteDialog(it)}
+                          >
+                            削除
                           </button>
                         </div>
 
@@ -1066,6 +1084,38 @@ export default function ToolClient() {
                     onClick={() => setNoticeMessage(null)}
                   >
                     閉じる
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {deleteTarget ? (
+            <div className={styles.overlay} onClick={() => setDeleteTarget(null)}>
+              <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
+                <div className={styles.dialogTitle}>メモを削除しますか？</div>
+                <div className={styles.dialogBody}>
+                  <div className={styles.small} style={{ fontSize: 14, color: "#333" }}>
+                    {deleteTarget.name} を削除します。
+                  </div>
+                  <div className={styles.small} style={{ marginTop: 8 }}>
+                    この操作は元に戻せません。
+                  </div>
+                </div>
+                <div className={`${styles.actions} ${styles.dialogFooter}`}>
+                  <button
+                    className={styles.btn}
+                    type="button"
+                    onClick={() => setDeleteTarget(null)}
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    className={styles.btnPrimary}
+                    type="button"
+                    onClick={confirmDeleteTarget}
+                  >
+                    削除する
                   </button>
                 </div>
               </div>
@@ -1314,9 +1364,6 @@ export default function ToolClient() {
                 type="button"
               >
                 保存
-              </button>
-              <button className={styles.btn} onClick={remove} type="button">
-                削除
               </button>
             </div>
           </div>
