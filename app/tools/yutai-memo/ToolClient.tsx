@@ -783,12 +783,12 @@ export default function ToolClient() {
     });
   }
 
-  const tickerCandidates = useMemo(() => {
+  const tickerSearchResult = useMemo(() => {
     const query = normalizeTickerSearch(q);
-    if (!query) return [];
+    if (!query) return { items: [] as TickerMasterItem[], total: 0 };
     const isCodeSearch = /^[0-9a-z]+$/i.test(query);
     const minLength = isCodeSearch ? 3 : 2;
-    if (query.length < minLength) return [];
+    if (query.length < minLength) return { items: [] as TickerMasterItem[], total: 0 };
 
     const scored = tickerMaster
       .map((item) => {
@@ -808,14 +808,35 @@ export default function ToolClient() {
         return a.item.code.localeCompare(b.item.code, "ja", { numeric: true });
       });
 
-    return scored.slice(0, 10).map((v) => v.item);
+    return {
+      items: scored.slice(0, 10).map((v) => v.item),
+      total: scored.length,
+    };
   }, [q, tickerMaster]);
+  const tickerCandidates = tickerSearchResult.items;
+  const tickerCandidateTotal = tickerSearchResult.total;
+  const normalizedTickerQuery = normalizeTickerSearch(q);
+  const tickerQueryIsCodeLike = /^[0-9a-z]+$/i.test(normalizedTickerQuery);
+  const tickerQueryHasText = normalizedTickerQuery.length > 0;
+  const tickerQueryNeedsMoreChars =
+    tickerQueryHasText &&
+    ((tickerQueryIsCodeLike && normalizedTickerQuery.length < 4) ||
+      (!tickerQueryIsCodeLike && normalizedTickerQuery.length < 2));
+  const tickerQueryIsFourCharCode =
+    tickerQueryIsCodeLike && normalizedTickerQuery.length === 4;
+  const exactTickerCandidate =
+    tickerCandidates.find(
+      (item) => normalizeTickerSearch(item.code) === normalizedTickerQuery
+    ) ?? null;
+  const preferredTickerCandidate =
+    exactTickerCandidate ?? (tickerCandidates.length === 1 ? tickerCandidates[0] : null);
 
   function openNewFromSearch(item?: TickerMasterItem) {
-    if (item) {
+    const selected = item ?? preferredTickerCandidate;
+    if (selected) {
       openNew({
-        name: item.name,
-        code: item.code,
+        name: selected.name,
+        code: selected.code,
       });
       setQ("");
       return;
@@ -834,6 +855,8 @@ export default function ToolClient() {
   }
 
   const showTickerAssist = mode === "list" && q.trim().length > 0 && filtered.length === 0;
+  const showTickerSearchHint =
+    mode === "list" && filtered.length === 0 && tickerQueryNeedsMoreChars;
 
   function selectTickerCandidate(item: TickerMasterItem) {
     openNewFromSearch(item);
@@ -841,7 +864,23 @@ export default function ToolClient() {
 
   const tickerAssistMessage = tickerMasterError
     ? tickerMasterError
-    : "該当するメモがありません。候補から追加できます。";
+    : tickerCandidateTotal > tickerCandidates.length
+      ? `候補が ${tickerCandidateTotal} 件あります。上位 ${tickerCandidates.length} 件を表示しています。もう少し絞り込むと選びやすくなります。`
+    : tickerQueryIsFourCharCode && tickerCandidates.length === 0
+      ? "銘柄マスタに候補がありません。コードだけで追加するか、入力内容を見直してください。"
+      : preferredTickerCandidate
+        ? "銘柄マスタに候補が見つかりました。追加すると銘柄名も自動で入ります。"
+        : "該当するメモがありません。候補から追加できます。";
+
+  const tickerAssistActionLabel = preferredTickerCandidate
+    ? `${preferredTickerCandidate.code} ${preferredTickerCandidate.name} を追加`
+    : tickerQueryIsFourCharCode && q.trim()
+      ? `コード ${q.trim()} で追加`
+      : "この条件で追加";
+
+  const tickerSearchHintMessage = tickerQueryIsCodeLike
+    ? "コード検索は4文字以上で候補を表示します。"
+    : "銘柄名検索は2文字以上で候補を表示します。";
 
   return (
     <div className={styles.wrap}>
@@ -906,6 +945,10 @@ export default function ToolClient() {
             </select>
           </div>
 
+          {showTickerSearchHint ? (
+            <div className={styles.small}>{tickerSearchHintMessage}</div>
+          ) : null}
+
           {showTickerAssist ? (
             <div className={styles.tickerAssistPanel}>
               <div className={styles.small}>{tickerAssistMessage}</div>
@@ -931,7 +974,7 @@ export default function ToolClient() {
                   type="button"
                   onClick={() => openNewFromSearch()}
                 >
-                  この条件で追加
+                  {tickerAssistActionLabel}
                 </button>
               </div>
             </div>
