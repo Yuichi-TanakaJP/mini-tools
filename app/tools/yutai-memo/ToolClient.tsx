@@ -189,6 +189,7 @@ export default function ToolClient() {
 
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [newTagName, setNewTagName] = useState("");
+  const [tagDrafts, setTagDrafts] = useState<Tag[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [openArchiveMonths, setOpenArchiveMonths] = useState<Set<string>>(
     new Set()
@@ -275,6 +276,18 @@ export default function ToolClient() {
   function openNew() {
     setDraft(emptyDraft());
     setMode("edit");
+  }
+
+  function openTagManager() {
+    setTagDrafts(tags.map((t) => ({ ...t })));
+    setNewTagName("");
+    setTagManagerOpen(true);
+  }
+
+  function closeTagManager() {
+    setTagDrafts([]);
+    setNewTagName("");
+    setTagManagerOpen(false);
   }
 
   function openEdit(it: MemoItem) {
@@ -375,29 +388,48 @@ export default function ToolClient() {
     const name = newTagName.trim();
     if (!name) return;
     const id = uid();
-    setTags((prev) => [{ id, name, createdAt: Date.now() }, ...prev]);
+    setTagDrafts((prev) => [{ id, name, createdAt: Date.now() }, ...prev]);
     setNewTagName("");
   }
 
-  function renameTag(id: string, name: string) {
-    const n = name.trim();
-    if (!n) return;
-    setTags((prev) => prev.map((t) => (t.id === id ? { ...t, name: n } : t)));
+  function updateTagDraftName(id: string, name: string) {
+    setTagDrafts((prev) =>
+      prev.map((tag) => (tag.id === id ? { ...tag, name } : tag))
+    );
+  }
+
+  function saveTagDrafts() {
+    const nextTags = tagDrafts.map((tag) => ({ ...tag, name: tag.name.trim() }));
+    if (nextTags.some((tag) => !tag.name)) {
+        setNoticeMessage("空のタグ名は保存できません。");
+        return;
+    }
+    const nextIds = new Set(nextTags.map((tag) => tag.id));
+    const removedIds = tags
+      .filter((tag) => !nextIds.has(tag.id))
+      .map((tag) => tag.id);
+
+    setTags(nextTags);
+    if (removedIds.length > 0) {
+      setItems((prev) =>
+        prev.map((memo) => ({
+          ...memo,
+          tagIds: memo.tagIds.filter((id) => !removedIds.includes(id)),
+        }))
+      );
+      setDraft((prev) => ({
+        ...prev,
+        tagIds: prev.tagIds.filter((id) => !removedIds.includes(id)),
+      }));
+      setTagFilter((prev) =>
+        prev !== "all" && removedIds.includes(prev) ? "all" : prev
+      );
+    }
+    closeTagManager();
   }
 
   function deleteTag(id: string) {
-    if (
-      !confirm("このタグを削除しますか？（付与済みメモからは自動で外れます）")
-    )
-      return;
-    setTags((prev) => prev.filter((t) => t.id !== id));
-    setItems((prev) =>
-      prev.map((m) => ({ ...m, tagIds: m.tagIds.filter((x) => x !== id) }))
-    );
-    // フィルタ中なら解除
-    setTagFilter((f) => (f === id ? "all" : f));
-    // 編集中のdraftからも外す
-    setDraft((d) => ({ ...d, tagIds: d.tagIds.filter((x) => x !== id) }));
+    setTagDrafts((prev) => prev.filter((tag) => tag.id !== id));
   }
 
   function toggleSelect(id: string) {
@@ -789,7 +821,7 @@ export default function ToolClient() {
             <button
               className={styles.btn}
               type="button"
-              onClick={() => setTagManagerOpen(true)}
+              onClick={openTagManager}
             >
               タグ管理
             </button>
@@ -1125,7 +1157,7 @@ export default function ToolClient() {
           {tagManagerOpen ? (
             <div
               className={styles.overlay}
-              onClick={() => setTagManagerOpen(false)}
+              onClick={closeTagManager}
             >
               <div
                 className={styles.dialog}
@@ -1134,15 +1166,15 @@ export default function ToolClient() {
                 <div className={styles.dialogTitle}>タグ管理</div>
 
                 <div className={styles.dialogBody}>
-                  <div className={styles.row} style={{ gap: 8 }}>
+                  <div className={styles.tagManagerRow}>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} ${styles.tagManagerInput}`}
                       placeholder="新しいタグ名"
                       value={newTagName}
                       onChange={(e) => setNewTagName(e.target.value)}
                     />
                     <button
-                      className={styles.btnPrimary}
+                      className={`${styles.btnPrimary} ${styles.tagManagerButton}`}
                       type="button"
                       onClick={addTag}
                     >
@@ -1150,23 +1182,19 @@ export default function ToolClient() {
                     </button>
                   </div>
 
-                  <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-                    {tags.length === 0 ? (
+                  <div className={styles.tagManagerList}>
+                    {tagDrafts.length === 0 ? (
                       <div className={styles.small}>タグがありません</div>
                     ) : (
-                      tags.map((t) => (
-                        <div
-                          key={t.id}
-                          className={styles.row}
-                          style={{ gap: 8, alignItems: "center" }}
-                        >
+                      tagDrafts.map((t) => (
+                        <div key={t.id} className={styles.tagManagerRow}>
                           <input
-                            className={styles.input}
+                            className={`${styles.input} ${styles.tagManagerInput}`}
                             value={t.name}
-                            onChange={(e) => renameTag(t.id, e.target.value)}
+                            onChange={(e) => updateTagDraftName(t.id, e.target.value)}
                           />
                           <button
-                            className={styles.btn}
+                            className={`${styles.btn} ${styles.tagManagerButton}`}
                             type="button"
                             onClick={() => deleteTag(t.id)}
                           >
@@ -1182,9 +1210,16 @@ export default function ToolClient() {
                   <button
                     className={styles.btn}
                     type="button"
-                    onClick={() => setTagManagerOpen(false)}
+                    onClick={closeTagManager}
                   >
-                    閉じる
+                    キャンセル
+                  </button>
+                  <button
+                    className={styles.btnPrimary}
+                    type="button"
+                    onClick={saveTagDrafts}
+                  >
+                    保存
                   </button>
                 </div>
               </div>
