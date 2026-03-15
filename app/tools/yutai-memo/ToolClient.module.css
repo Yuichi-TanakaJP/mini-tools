@@ -9,11 +9,40 @@
   font-weight: 700;
   margin-bottom: 12px;
 }
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.headerActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
 .row {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
+}
+.searchGroup {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.searchInput {
+  flex: 1 1 320px;
+}
+.sortGroup {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 10px;
 }
 .input {
   width: 100%;
@@ -199,6 +228,23 @@
 }
 
 @media (max-width: 640px) {
+  .pageHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .headerActions {
+    width: 100%;
+  }
+
+  .searchGroup {
+    width: 100%;
+  }
+
+  .searchInput {
+    flex-basis: 100%;
+  }
+
   .cardHeader {
     flex-direction: column;
   }
