@@ -848,15 +848,23 @@ export default function ToolClient() {
           ) : null}
 
           <div className={styles.bulkBar}>
-            <div className={styles.small}>{selectedCount}件選択中</div>
-            <button className={styles.btn} type="button" onClick={selectAllVisible}>
+            <div className={styles.bulkBarCount}>{selectedCount}件選択中</div>
+            <button
+              className={`${styles.btn} ${styles.bulkBarButton}`}
+              type="button"
+              onClick={selectAllVisible}
+            >
               全選択
             </button>
-            <button className={styles.btn} type="button" onClick={clearSelection}>
+            <button
+              className={`${styles.btn} ${styles.bulkBarButton}`}
+              type="button"
+              onClick={clearSelection}
+            >
               全解除
             </button>
             <button
-              className={styles.btn}
+              className={`${styles.btn} ${styles.bulkBarButton}`}
               type="button"
               onClick={() => bulkSetAcquired(true)}
               disabled={selectedCount === 0}
@@ -864,7 +872,7 @@ export default function ToolClient() {
               取得済みにする
             </button>
             <button
-              className={styles.btn}
+              className={`${styles.btn} ${styles.bulkBarButton}`}
               type="button"
               onClick={() => bulkSetAcquired(false)}
               disabled={selectedCount === 0}
@@ -872,7 +880,7 @@ export default function ToolClient() {
               未取得に戻す
             </button>
             <button
-              className={styles.btn}
+              className={`${styles.btn} ${styles.bulkBarButton}`}
               type="button"
               onClick={bulkRemoveSelected}
               disabled={selectedCount === 0}
