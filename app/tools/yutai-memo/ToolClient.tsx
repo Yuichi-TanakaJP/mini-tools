@@ -218,8 +218,6 @@ export default function ToolClient() {
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [tickerMaster, setTickerMaster] = useState<TickerMasterItem[]>([]);
-  const [tickerSearchQuery, setTickerSearchQuery] = useState("");
-  const [debouncedTickerSearchQuery, setDebouncedTickerSearchQuery] = useState("");
   const [tickerMasterError, setTickerMasterError] = useState<string | null>(null);
 
   // load
@@ -244,13 +242,6 @@ export default function ToolClient() {
       active = false;
     };
   }, []);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setDebouncedTickerSearchQuery(tickerSearchQuery);
-    }, 200);
-    return () => window.clearTimeout(timer);
-  }, [tickerSearchQuery]);
 
   // persist
   useEffect(() => {
@@ -324,10 +315,8 @@ export default function ToolClient() {
       .sort(compare);
   }, [items, q, monthFilter, tagFilter, tagNameById, sortState]);
 
-  function openNew() {
-    setDraft(emptyDraft());
-    setTickerSearchQuery("");
-    setDebouncedTickerSearchQuery("");
+  function openNew(seed?: Partial<Draft>) {
+    setDraft({ ...emptyDraft(), ...seed });
     setMode("edit");
   }
 
@@ -359,8 +348,6 @@ export default function ToolClient() {
       priority: it.priority,
       memo: it.memo,
     });
-    setTickerSearchQuery("");
-    setDebouncedTickerSearchQuery("");
     setMode("edit");
   }
 
@@ -797,7 +784,7 @@ export default function ToolClient() {
   }
 
   const tickerCandidates = useMemo(() => {
-    const query = normalizeTickerSearch(debouncedTickerSearchQuery);
+    const query = normalizeTickerSearch(q);
     if (!query) return [];
     const isCodeSearch = /^[0-9a-z]+$/i.test(query);
     const minLength = isCodeSearch ? 3 : 2;
@@ -822,17 +809,39 @@ export default function ToolClient() {
       });
 
     return scored.slice(0, 10).map((v) => v.item);
-  }, [debouncedTickerSearchQuery, tickerMaster]);
+  }, [q, tickerMaster]);
+
+  function openNewFromSearch(item?: TickerMasterItem) {
+    if (item) {
+      openNew({
+        name: item.name,
+        code: item.code,
+      });
+      setQ("");
+      return;
+    }
+    const raw = q.trim();
+    if (!raw) {
+      openNew();
+      return;
+    }
+    const normalized = normalizeTickerSearch(raw);
+    openNew({
+      code: /^[0-9a-z]+$/i.test(normalized) ? raw : "",
+      name: /^[0-9a-z]+$/i.test(normalized) ? "" : raw,
+    });
+    setQ("");
+  }
+
+  const showTickerAssist = mode === "list" && q.trim().length > 0 && filtered.length === 0;
 
   function selectTickerCandidate(item: TickerMasterItem) {
-    setDraft((prev) => ({
-      ...prev,
-      name: item.name,
-      code: item.code,
-    }));
-    setTickerSearchQuery("");
-    setDebouncedTickerSearchQuery("");
+    openNewFromSearch(item);
   }
+
+  const tickerAssistMessage = tickerMasterError
+    ? tickerMasterError
+    : "該当するメモがありません。候補から追加できます。";
 
   return (
     <div className={styles.wrap}>
@@ -896,6 +905,37 @@ export default function ToolClient() {
               ))}
             </select>
           </div>
+
+          {showTickerAssist ? (
+            <div className={styles.tickerAssistPanel}>
+              <div className={styles.small}>{tickerAssistMessage}</div>
+              {tickerCandidates.length > 0 ? (
+                <div className={styles.tickerCandidateList}>
+                  {tickerCandidates.map((item) => (
+                    <button
+                      key={`${item.code}-${item.name}`}
+                      type="button"
+                      className={styles.tickerCandidate}
+                      onClick={() => selectTickerCandidate(item)}
+                    >
+                      <span className={styles.tickerCandidateCode}>{item.code}</span>
+                      <span className={styles.tickerCandidateName}>{item.name}</span>
+                      <span className={styles.tickerCandidateMarket}>{item.market}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <div className={styles.tickerAssistActions}>
+                <button
+                  className={styles.btnPrimary}
+                  type="button"
+                  onClick={() => openNewFromSearch()}
+                >
+                  この条件で追加
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           <div className={styles.sortToggleRow}>
             <button
@@ -1366,41 +1406,6 @@ export default function ToolClient() {
       ) : (
         <>
           <div className={styles.card}>
-            <div className={styles.small} style={{ marginBottom: 6 }}>
-              銘柄検索（コード / 銘柄名）
-            </div>
-            <div className={styles.row}>
-              <input
-                className={styles.input}
-                placeholder="例: 2222 / 極洋"
-                value={tickerSearchQuery}
-                onChange={(e) => setTickerSearchQuery(e.target.value)}
-              />
-            </div>
-            {tickerMasterError ? (
-              <div className={styles.small} style={{ marginTop: 6 }}>
-                {tickerMasterError}
-              </div>
-            ) : null}
-            {tickerCandidates.length > 0 ? (
-              <div className={styles.tickerCandidateList}>
-                {tickerCandidates.map((item) => (
-                  <button
-                    key={`${item.code}-${item.name}`}
-                    type="button"
-                    className={styles.tickerCandidate}
-                    onClick={() => selectTickerCandidate(item)}
-                  >
-                    <span className={styles.tickerCandidateCode}>{item.code}</span>
-                    <span className={styles.tickerCandidateName}>{item.name}</span>
-                    <span className={styles.tickerCandidateMarket}>{item.market}</span>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-
-            <hr className={styles.hr} />
-
             <div className={styles.row}>
               <input
                 className={styles.input}

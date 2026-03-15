@@ -375,6 +375,13 @@
   display: grid;
   gap: 6px;
 }
+.tickerAssistPanel {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid #e3e7ee;
+  border-radius: 14px;
+  background: #fff;
+}
 .tickerCandidate {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
@@ -396,6 +403,11 @@
   grid-column: 2;
   font-size: 12px;
   color: #666;
+}
+.tickerAssistActions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
 }
 .monthBtn {
   padding: 8px 0;
