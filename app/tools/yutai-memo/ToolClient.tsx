@@ -807,12 +807,14 @@ export default function ToolClient() {
 
           <div className={styles.sortToggleRow}>
             <button
-              className={styles.btn}
+              className={styles.sortToggleBtn}
               type="button"
               onClick={() => setSortControlsOpen((prev) => !prev)}
             >
-              並び替え設定
-              {sortControlsOpen ? " ▲" : " ▼"}
+              表示順を変更
+              <span className={styles.sortToggleChevron} aria-hidden="true">
+                {sortControlsOpen ? "▲" : "▼"}
+              </span>
             </button>
           </div>
 

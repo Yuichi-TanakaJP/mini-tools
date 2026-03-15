@@ -52,9 +52,23 @@
 }
 .sortToggleRow {
   display: flex;
-  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+.sortToggleBtn {
+  display: inline-flex;
   align-items: center;
-  margin-top: 10px;
+  gap: 6px;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: #666;
+  font-size: 12px;
+  line-height: 1.2;
+}
+.sortToggleChevron {
+  font-size: 10px;
+  color: #888;
 }
 .input {
   width: 100%;
