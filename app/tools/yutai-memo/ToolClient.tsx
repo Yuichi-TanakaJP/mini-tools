@@ -183,6 +183,7 @@ export default function ToolClient() {
   const [monthFilter, setMonthFilter] = useState<number | "all">("all");
   const [tagFilter, setTagFilter] = useState<string | "all">("all");
   const [sortState, setSortState] = useState<SortState>(() => loadSortState());
+  const [sortControlsOpen, setSortControlsOpen] = useState(false);
 
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [mode, setMode] = useState<"list" | "edit">("list");
@@ -804,32 +805,45 @@ export default function ToolClient() {
             </select>
           </div>
 
-          <div className={styles.sortGroup}>
-            <select
-              className={styles.select}
-              value={sortState.key}
-              onChange={(e) =>
-                setSortState((s) => ({ ...s, key: e.target.value as SortKey }))
-              }
+          <div className={styles.sortToggleRow}>
+            <button
+              className={styles.btn}
+              type="button"
+              onClick={() => setSortControlsOpen((prev) => !prev)}
             >
-              <option value="createdAt">並び替え: 作成日</option>
-              <option value="code">並び替え: 銘柄コード</option>
-              <option value="name">並び替え: 銘柄名</option>
-            </select>
-            <select
-              className={styles.select}
-              value={sortState.order}
-              onChange={(e) =>
-                setSortState((s) => ({
-                  ...s,
-                  order: e.target.value as SortOrder,
-                }))
-              }
-            >
-              <option value="desc">順序: 降順</option>
-              <option value="asc">順序: 昇順</option>
-            </select>
+              並び替え設定
+              {sortControlsOpen ? " ▲" : " ▼"}
+            </button>
           </div>
+
+          {sortControlsOpen ? (
+            <div className={styles.sortGroup}>
+              <select
+                className={styles.select}
+                value={sortState.key}
+                onChange={(e) =>
+                  setSortState((s) => ({ ...s, key: e.target.value as SortKey }))
+                }
+              >
+                <option value="createdAt">並び替え: 作成日</option>
+                <option value="code">並び替え: 銘柄コード</option>
+                <option value="name">並び替え: 銘柄名</option>
+              </select>
+              <select
+                className={styles.select}
+                value={sortState.order}
+                onChange={(e) =>
+                  setSortState((s) => ({
+                    ...s,
+                    order: e.target.value as SortOrder,
+                  }))
+                }
+              >
+                <option value="desc">順序: 降順</option>
+                <option value="asc">順序: 昇順</option>
+              </select>
+            </div>
+          ) : null}
 
           <div className={styles.bulkBar}>
             <div className={styles.small}>{selectedCount}件選択中</div>

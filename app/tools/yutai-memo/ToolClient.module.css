@@ -50,6 +50,12 @@
   align-items: center;
   margin-top: 10px;
 }
+.sortToggleRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
 .input {
   width: 100%;
   padding: 10px 12px;
