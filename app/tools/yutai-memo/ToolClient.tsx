@@ -189,6 +189,7 @@ export default function ToolClient() {
 
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [newTagName, setNewTagName] = useState("");
+  const [tagDraftNames, setTagDraftNames] = useState<Record<string, string>>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [openArchiveMonths, setOpenArchiveMonths] = useState<Set<string>>(
     new Set()
@@ -275,6 +276,11 @@ export default function ToolClient() {
   function openNew() {
     setDraft(emptyDraft());
     setMode("edit");
+  }
+
+  function openTagManager() {
+    setTagDraftNames(Object.fromEntries(tags.map((t) => [t.id, t.name])));
+    setTagManagerOpen(true);
   }
 
   function openEdit(it: MemoItem) {
@@ -376,6 +382,7 @@ export default function ToolClient() {
     if (!name) return;
     const id = uid();
     setTags((prev) => [{ id, name, createdAt: Date.now() }, ...prev]);
+    setTagDraftNames((prev) => ({ ...prev, [id]: name }));
     setNewTagName("");
   }
 
@@ -383,6 +390,15 @@ export default function ToolClient() {
     const n = name.trim();
     if (!n) return;
     setTags((prev) => prev.map((t) => (t.id === id ? { ...t, name: n } : t)));
+    setTagDraftNames((prev) => ({ ...prev, [id]: n }));
+  }
+
+  function updateTagDraftName(id: string, name: string) {
+    setTagDraftNames((prev) => ({ ...prev, [id]: name }));
+  }
+
+  function saveTagName(id: string) {
+    renameTag(id, tagDraftNames[id] ?? "");
   }
 
   function deleteTag(id: string) {
@@ -398,6 +414,11 @@ export default function ToolClient() {
     setTagFilter((f) => (f === id ? "all" : f));
     // 編集中のdraftからも外す
     setDraft((d) => ({ ...d, tagIds: d.tagIds.filter((x) => x !== id) }));
+    setTagDraftNames((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   }
 
   function toggleSelect(id: string) {
@@ -789,7 +810,7 @@ export default function ToolClient() {
             <button
               className={styles.btn}
               type="button"
-              onClick={() => setTagManagerOpen(true)}
+              onClick={openTagManager}
             >
               タグ管理
             </button>
@@ -1158,9 +1179,16 @@ export default function ToolClient() {
                         <div key={t.id} className={styles.tagManagerRow}>
                           <input
                             className={`${styles.input} ${styles.tagManagerInput}`}
-                            value={t.name}
-                            onChange={(e) => renameTag(t.id, e.target.value)}
+                            value={tagDraftNames[t.id] ?? t.name}
+                            onChange={(e) => updateTagDraftName(t.id, e.target.value)}
                           />
+                          <button
+                            className={`${styles.btnPrimary} ${styles.tagManagerButton}`}
+                            type="button"
+                            onClick={() => saveTagName(t.id)}
+                          >
+                            保存
+                          </button>
                           <button
                             className={`${styles.btn} ${styles.tagManagerButton}`}
                             type="button"
