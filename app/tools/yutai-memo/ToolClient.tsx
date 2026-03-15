@@ -280,7 +280,14 @@ export default function ToolClient() {
 
   function openTagManager() {
     setTagDraftNames(Object.fromEntries(tags.map((t) => [t.id, t.name])));
+    setNewTagName("");
     setTagManagerOpen(true);
+  }
+
+  function closeTagManager() {
+    setTagDraftNames(Object.fromEntries(tags.map((t) => [t.id, t.name])));
+    setNewTagName("");
+    setTagManagerOpen(false);
   }
 
   function openEdit(it: MemoItem) {
@@ -397,8 +404,23 @@ export default function ToolClient() {
     setTagDraftNames((prev) => ({ ...prev, [id]: name }));
   }
 
-  function saveTagName(id: string) {
-    renameTag(id, tagDraftNames[id] ?? "");
+  function saveTagDrafts() {
+    const nextNames = new Map<string, string>();
+    for (const tag of tags) {
+      const nextName = (tagDraftNames[tag.id] ?? tag.name).trim();
+      if (!nextName) {
+        setNoticeMessage("空のタグ名は保存できません。");
+        return;
+      }
+      nextNames.set(tag.id, nextName);
+    }
+    setTags((prev) =>
+      prev.map((tag) => ({
+        ...tag,
+        name: nextNames.get(tag.id) ?? tag.name,
+      }))
+    );
+    setTagManagerOpen(false);
   }
 
   function deleteTag(id: string) {
@@ -1146,7 +1168,7 @@ export default function ToolClient() {
           {tagManagerOpen ? (
             <div
               className={styles.overlay}
-              onClick={() => setTagManagerOpen(false)}
+              onClick={closeTagManager}
             >
               <div
                 className={styles.dialog}
@@ -1183,13 +1205,6 @@ export default function ToolClient() {
                             onChange={(e) => updateTagDraftName(t.id, e.target.value)}
                           />
                           <button
-                            className={`${styles.btnPrimary} ${styles.tagManagerButton}`}
-                            type="button"
-                            onClick={() => saveTagName(t.id)}
-                          >
-                            保存
-                          </button>
-                          <button
                             className={`${styles.btn} ${styles.tagManagerButton}`}
                             type="button"
                             onClick={() => deleteTag(t.id)}
@@ -1206,9 +1221,16 @@ export default function ToolClient() {
                   <button
                     className={styles.btn}
                     type="button"
-                    onClick={() => setTagManagerOpen(false)}
+                    onClick={closeTagManager}
                   >
-                    閉じる
+                    キャンセル
+                  </button>
+                  <button
+                    className={styles.btnPrimary}
+                    type="button"
+                    onClick={saveTagDrafts}
+                  >
+                    保存
                   </button>
                 </div>
               </div>
