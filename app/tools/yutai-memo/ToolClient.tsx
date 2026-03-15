@@ -50,6 +50,14 @@ type DeleteTarget = {
   name: string;
 };
 
+type TickerMasterItem = {
+  as_of_date: string;
+  code: string;
+  name: string;
+  market: string;
+  sector: string | null;
+};
+
 const emptyDraft = (): Draft => ({
   name: "",
   code: "",
@@ -168,6 +176,13 @@ function isCurrentEntitlementMonth(month: number): boolean {
   return toJstYearMonth(new Date()).month === month;
 }
 
+function normalizeTickerSearch(value: string): string {
+  return value
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/\s+/g, "");
+}
+
 export default function ToolClient() {
   const [items, setItems] = useState<MemoItem[]>(() => loadItems());
   const [archives, setArchives] = useState<ArchivedMemoItem[]>(() =>
@@ -202,8 +217,31 @@ export default function ToolClient() {
   const [bulkArchivePromptOpen, setBulkArchivePromptOpen] = useState(false);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [tickerMaster, setTickerMaster] = useState<TickerMasterItem[]>([]);
+  const [tickerMasterError, setTickerMasterError] = useState<string | null>(null);
 
   // load
+  useEffect(() => {
+    let active = true;
+    async function loadTickerMaster() {
+      try {
+        const res = await fetch("/data/jpx_listed_companies.json");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as TickerMasterItem[];
+        if (!active) return;
+        setTickerMaster(
+          data.filter((item) => item.market !== "ETF・ETN")
+        );
+      } catch {
+        if (!active) return;
+        setTickerMasterError("銘柄マスタを読み込めませんでした。手入力は引き続き可能です。");
+      }
+    }
+    void loadTickerMaster();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // persist
   useEffect(() => {
@@ -277,8 +315,8 @@ export default function ToolClient() {
       .sort(compare);
   }, [items, q, monthFilter, tagFilter, tagNameById, sortState]);
 
-  function openNew() {
-    setDraft(emptyDraft());
+  function openNew(seed?: Partial<Draft>) {
+    setDraft({ ...emptyDraft(), ...seed });
     setMode("edit");
   }
 
@@ -745,6 +783,105 @@ export default function ToolClient() {
     });
   }
 
+  const tickerSearchResult = useMemo(() => {
+    const query = normalizeTickerSearch(q);
+    if (!query) return { items: [] as TickerMasterItem[], total: 0 };
+    const isCodeSearch = /^[0-9a-z]+$/i.test(query);
+    const minLength = isCodeSearch ? 3 : 2;
+    if (query.length < minLength) return { items: [] as TickerMasterItem[], total: 0 };
+
+    const scored = tickerMaster
+      .map((item) => {
+        const normalizedCode = normalizeTickerSearch(item.code);
+        const normalizedName = normalizeTickerSearch(item.name);
+        let score = -1;
+        if (normalizedCode === query) score = 0;
+        else if (normalizedCode.startsWith(query)) score = 1;
+        else if (normalizedName.startsWith(query)) score = 2;
+        else if (normalizedName.includes(query)) score = 3;
+        if (score < 0) return null;
+        return { item, score };
+      })
+      .filter((v): v is { item: TickerMasterItem; score: number } => Boolean(v))
+      .sort((a, b) => {
+        if (a.score !== b.score) return a.score - b.score;
+        return a.item.code.localeCompare(b.item.code, "ja", { numeric: true });
+      });
+
+    return {
+      items: scored.slice(0, 10).map((v) => v.item),
+      total: scored.length,
+    };
+  }, [q, tickerMaster]);
+  const tickerCandidates = tickerSearchResult.items;
+  const tickerCandidateTotal = tickerSearchResult.total;
+  const normalizedTickerQuery = normalizeTickerSearch(q);
+  const tickerQueryIsCodeLike = /^[0-9a-z]+$/i.test(normalizedTickerQuery);
+  const tickerQueryHasText = normalizedTickerQuery.length > 0;
+  const tickerQueryNeedsMoreChars =
+    tickerQueryHasText &&
+    ((tickerQueryIsCodeLike && normalizedTickerQuery.length < 4) ||
+      (!tickerQueryIsCodeLike && normalizedTickerQuery.length < 2));
+  const tickerQueryIsFourCharCode =
+    tickerQueryIsCodeLike && normalizedTickerQuery.length === 4;
+  const exactTickerCandidate =
+    tickerCandidates.find(
+      (item) => normalizeTickerSearch(item.code) === normalizedTickerQuery
+    ) ?? null;
+  const preferredTickerCandidate =
+    exactTickerCandidate ?? (tickerCandidates.length === 1 ? tickerCandidates[0] : null);
+
+  function openNewFromSearch(item?: TickerMasterItem) {
+    const selected = item ?? preferredTickerCandidate;
+    if (selected) {
+      openNew({
+        name: selected.name,
+        code: selected.code,
+      });
+      setQ("");
+      return;
+    }
+    const raw = q.trim();
+    if (!raw) {
+      openNew();
+      return;
+    }
+    const normalized = normalizeTickerSearch(raw);
+    openNew({
+      code: /^[0-9a-z]+$/i.test(normalized) ? raw : "",
+      name: /^[0-9a-z]+$/i.test(normalized) ? "" : raw,
+    });
+    setQ("");
+  }
+
+  const showTickerAssist = mode === "list" && q.trim().length > 0 && filtered.length === 0;
+  const showTickerSearchHint =
+    mode === "list" && filtered.length === 0 && tickerQueryNeedsMoreChars;
+
+  function selectTickerCandidate(item: TickerMasterItem) {
+    openNewFromSearch(item);
+  }
+
+  const tickerAssistMessage = tickerMasterError
+    ? tickerMasterError
+    : tickerCandidateTotal > tickerCandidates.length
+      ? `候補が ${tickerCandidateTotal} 件あります。上位 ${tickerCandidates.length} 件を表示しています。もう少し絞り込むと選びやすくなります。`
+    : tickerQueryIsFourCharCode && tickerCandidates.length === 0
+      ? "銘柄マスタに候補がありません。コードだけで追加するか、入力内容を見直してください。"
+      : preferredTickerCandidate
+        ? "銘柄マスタに候補が見つかりました。追加すると銘柄名も自動で入ります。"
+        : "該当するメモがありません。候補から追加できます。";
+
+  const tickerAssistActionLabel = preferredTickerCandidate
+    ? `${preferredTickerCandidate.code} ${preferredTickerCandidate.name} を追加`
+    : tickerQueryIsFourCharCode && q.trim()
+      ? `コード ${q.trim()} で追加`
+      : "この条件で追加";
+
+  const tickerSearchHintMessage = tickerQueryIsCodeLike
+    ? "コード検索は4文字以上で候補を表示します。"
+    : "銘柄名検索は2文字以上で候補を表示します。";
+
   return (
     <div className={styles.wrap}>
       {mode === "list" ? (
@@ -752,7 +889,7 @@ export default function ToolClient() {
           <div className={styles.pageHeader}>
             <div className={styles.h1}>優待銘柄メモ帳</div>
             <div className={styles.headerActions}>
-              <button className={styles.btnPrimary} onClick={openNew}>
+              <button className={styles.btnPrimary} onClick={() => openNew()}>
                 + 追加
               </button>
               <button
@@ -807,6 +944,41 @@ export default function ToolClient() {
               ))}
             </select>
           </div>
+
+          {showTickerSearchHint ? (
+            <div className={styles.small}>{tickerSearchHintMessage}</div>
+          ) : null}
+
+          {showTickerAssist ? (
+            <div className={styles.tickerAssistPanel}>
+              <div className={styles.small}>{tickerAssistMessage}</div>
+              {tickerCandidates.length > 0 ? (
+                <div className={styles.tickerCandidateList}>
+                  {tickerCandidates.map((item) => (
+                    <button
+                      key={`${item.code}-${item.name}`}
+                      type="button"
+                      className={styles.tickerCandidate}
+                      onClick={() => selectTickerCandidate(item)}
+                    >
+                      <span className={styles.tickerCandidateCode}>{item.code}</span>
+                      <span className={styles.tickerCandidateName}>{item.name}</span>
+                      <span className={styles.tickerCandidateMarket}>{item.market}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <div className={styles.tickerAssistActions}>
+                <button
+                  className={styles.btnPrimary}
+                  type="button"
+                  onClick={() => openNewFromSearch()}
+                >
+                  {tickerAssistActionLabel}
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           <div className={styles.sortToggleRow}>
             <button
