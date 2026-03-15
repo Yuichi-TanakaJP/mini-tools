@@ -16,6 +16,9 @@
   gap: 12px;
   margin-bottom: 12px;
 }
+.pageHeader .h1 {
+  margin-bottom: 0;
+}
 .headerActions {
   display: flex;
   gap: 8px;
@@ -33,9 +36,12 @@
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
+  margin-top: 10px;
 }
 .searchInput {
-  flex: 1 1 320px;
+  flex: 1 1 260px;
+  min-width: 0;
+  width: auto;
 }
 .sortGroup {
   display: flex;
@@ -229,12 +235,12 @@
 
 @media (max-width: 640px) {
   .pageHeader {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: center;
+    flex-direction: row;
   }
 
   .headerActions {
-    width: 100%;
+    width: auto;
   }
 
   .searchGroup {
@@ -242,7 +248,8 @@
   }
 
   .searchInput {
-    flex-basis: 100%;
+    flex: 1 1 180px;
+    width: auto;
   }
 
   .cardHeader {

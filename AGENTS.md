@@ -8,6 +8,7 @@
 - `main` へ直接コミットしない。必ず feature ブランチで作業する。
 - 1 PR = 1 目的。無関係な差分は混ぜない。
 - 変更前後で `git status --short` を確認する。
+- スクショ確認やレビュー後に追加修正した場合、PRマージ前に `git status --short` を確認し、未コミット差分が残っていないことを必ず確認する。
 - `next-env.d.ts` などの環境起因ファイルは、意図がない限りコミットしない。
 - コミット前に最低 `npm run lint` を実行する。
 
@@ -78,6 +79,7 @@ git push
 ## 7. マージ
 
 ```powershell
+git status --short
 gh pr merge <PR番号> --merge --delete-branch=false
 ```
 
