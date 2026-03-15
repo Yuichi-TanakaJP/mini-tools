@@ -189,7 +189,7 @@ export default function ToolClient() {
 
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [newTagName, setNewTagName] = useState("");
-  const [tagDraftNames, setTagDraftNames] = useState<Record<string, string>>({});
+  const [tagDrafts, setTagDrafts] = useState<Tag[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [openArchiveMonths, setOpenArchiveMonths] = useState<Set<string>>(
     new Set()
@@ -279,13 +279,13 @@ export default function ToolClient() {
   }
 
   function openTagManager() {
-    setTagDraftNames(Object.fromEntries(tags.map((t) => [t.id, t.name])));
+    setTagDrafts(tags.map((t) => ({ ...t })));
     setNewTagName("");
     setTagManagerOpen(true);
   }
 
   function closeTagManager() {
-    setTagDraftNames(Object.fromEntries(tags.map((t) => [t.id, t.name])));
+    setTagDrafts([]);
     setNewTagName("");
     setTagManagerOpen(false);
   }
@@ -388,59 +388,48 @@ export default function ToolClient() {
     const name = newTagName.trim();
     if (!name) return;
     const id = uid();
-    setTags((prev) => [{ id, name, createdAt: Date.now() }, ...prev]);
-    setTagDraftNames((prev) => ({ ...prev, [id]: name }));
+    setTagDrafts((prev) => [{ id, name, createdAt: Date.now() }, ...prev]);
     setNewTagName("");
   }
 
-  function renameTag(id: string, name: string) {
-    const n = name.trim();
-    if (!n) return;
-    setTags((prev) => prev.map((t) => (t.id === id ? { ...t, name: n } : t)));
-    setTagDraftNames((prev) => ({ ...prev, [id]: n }));
-  }
-
   function updateTagDraftName(id: string, name: string) {
-    setTagDraftNames((prev) => ({ ...prev, [id]: name }));
+    setTagDrafts((prev) =>
+      prev.map((tag) => (tag.id === id ? { ...tag, name } : tag))
+    );
   }
 
   function saveTagDrafts() {
-    const nextNames = new Map<string, string>();
-    for (const tag of tags) {
-      const nextName = (tagDraftNames[tag.id] ?? tag.name).trim();
-      if (!nextName) {
+    const nextTags = tagDrafts.map((tag) => ({ ...tag, name: tag.name.trim() }));
+    if (nextTags.some((tag) => !tag.name)) {
         setNoticeMessage("空のタグ名は保存できません。");
         return;
-      }
-      nextNames.set(tag.id, nextName);
     }
-    setTags((prev) =>
-      prev.map((tag) => ({
-        ...tag,
-        name: nextNames.get(tag.id) ?? tag.name,
-      }))
-    );
-    setTagManagerOpen(false);
+    const nextIds = new Set(nextTags.map((tag) => tag.id));
+    const removedIds = tags
+      .filter((tag) => !nextIds.has(tag.id))
+      .map((tag) => tag.id);
+
+    setTags(nextTags);
+    if (removedIds.length > 0) {
+      setItems((prev) =>
+        prev.map((memo) => ({
+          ...memo,
+          tagIds: memo.tagIds.filter((id) => !removedIds.includes(id)),
+        }))
+      );
+      setDraft((prev) => ({
+        ...prev,
+        tagIds: prev.tagIds.filter((id) => !removedIds.includes(id)),
+      }));
+      setTagFilter((prev) =>
+        prev !== "all" && removedIds.includes(prev) ? "all" : prev
+      );
+    }
+    closeTagManager();
   }
 
   function deleteTag(id: string) {
-    if (
-      !confirm("このタグを削除しますか？（付与済みメモからは自動で外れます）")
-    )
-      return;
-    setTags((prev) => prev.filter((t) => t.id !== id));
-    setItems((prev) =>
-      prev.map((m) => ({ ...m, tagIds: m.tagIds.filter((x) => x !== id) }))
-    );
-    // フィルタ中なら解除
-    setTagFilter((f) => (f === id ? "all" : f));
-    // 編集中のdraftからも外す
-    setDraft((d) => ({ ...d, tagIds: d.tagIds.filter((x) => x !== id) }));
-    setTagDraftNames((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
+    setTagDrafts((prev) => prev.filter((tag) => tag.id !== id));
   }
 
   function toggleSelect(id: string) {
@@ -1194,14 +1183,14 @@ export default function ToolClient() {
                   </div>
 
                   <div className={styles.tagManagerList}>
-                    {tags.length === 0 ? (
+                    {tagDrafts.length === 0 ? (
                       <div className={styles.small}>タグがありません</div>
                     ) : (
-                      tags.map((t) => (
+                      tagDrafts.map((t) => (
                         <div key={t.id} className={styles.tagManagerRow}>
                           <input
                             className={`${styles.input} ${styles.tagManagerInput}`}
-                            value={tagDraftNames[t.id] ?? t.name}
+                            value={t.name}
                             onChange={(e) => updateTagDraftName(t.id, e.target.value)}
                           />
                           <button
