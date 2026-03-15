@@ -1134,15 +1134,15 @@ export default function ToolClient() {
                 <div className={styles.dialogTitle}>タグ管理</div>
 
                 <div className={styles.dialogBody}>
-                  <div className={styles.row} style={{ gap: 8 }}>
+                  <div className={styles.tagManagerRow}>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} ${styles.tagManagerInput}`}
                       placeholder="新しいタグ名"
                       value={newTagName}
                       onChange={(e) => setNewTagName(e.target.value)}
                     />
                     <button
-                      className={styles.btnPrimary}
+                      className={`${styles.btnPrimary} ${styles.tagManagerButton}`}
                       type="button"
                       onClick={addTag}
                     >
@@ -1150,23 +1150,19 @@ export default function ToolClient() {
                     </button>
                   </div>
 
-                  <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                  <div className={styles.tagManagerList}>
                     {tags.length === 0 ? (
                       <div className={styles.small}>タグがありません</div>
                     ) : (
                       tags.map((t) => (
-                        <div
-                          key={t.id}
-                          className={styles.row}
-                          style={{ gap: 8, alignItems: "center" }}
-                        >
+                        <div key={t.id} className={styles.tagManagerRow}>
                           <input
-                            className={styles.input}
+                            className={`${styles.input} ${styles.tagManagerInput}`}
                             value={t.name}
                             onChange={(e) => renameTag(t.id, e.target.value)}
                           />
                           <button
-                            className={styles.btn}
+                            className={`${styles.btn} ${styles.tagManagerButton}`}
                             type="button"
                             onClick={() => deleteTag(t.id)}
                           >
