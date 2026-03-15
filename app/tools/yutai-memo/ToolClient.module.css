@@ -370,6 +370,33 @@
   grid-template-columns: repeat(6, 1fr);
   gap: 6px;
 }
+.tickerCandidateList {
+  margin-top: 8px;
+  display: grid;
+  gap: 6px;
+}
+.tickerCandidate {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 4px 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid #e3e7ee;
+  border-radius: 12px;
+  background: #fff;
+  text-align: left;
+}
+.tickerCandidateCode {
+  font-weight: 700;
+}
+.tickerCandidateName {
+  min-width: 0;
+}
+.tickerCandidateMarket {
+  grid-column: 2;
+  font-size: 12px;
+  color: #666;
+}
 .monthBtn {
   padding: 8px 0;
   border-radius: 10px;

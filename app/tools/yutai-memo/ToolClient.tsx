@@ -50,6 +50,14 @@ type DeleteTarget = {
   name: string;
 };
 
+type TickerMasterItem = {
+  as_of_date: string;
+  code: string;
+  name: string;
+  market: string;
+  sector: string | null;
+};
+
 const emptyDraft = (): Draft => ({
   name: "",
   code: "",
@@ -168,6 +176,13 @@ function isCurrentEntitlementMonth(month: number): boolean {
   return toJstYearMonth(new Date()).month === month;
 }
 
+function normalizeTickerSearch(value: string): string {
+  return value
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/\s+/g, "");
+}
+
 export default function ToolClient() {
   const [items, setItems] = useState<MemoItem[]>(() => loadItems());
   const [archives, setArchives] = useState<ArchivedMemoItem[]>(() =>
@@ -202,8 +217,40 @@ export default function ToolClient() {
   const [bulkArchivePromptOpen, setBulkArchivePromptOpen] = useState(false);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [tickerMaster, setTickerMaster] = useState<TickerMasterItem[]>([]);
+  const [tickerSearchQuery, setTickerSearchQuery] = useState("");
+  const [debouncedTickerSearchQuery, setDebouncedTickerSearchQuery] = useState("");
+  const [tickerMasterError, setTickerMasterError] = useState<string | null>(null);
 
   // load
+  useEffect(() => {
+    let active = true;
+    async function loadTickerMaster() {
+      try {
+        const res = await fetch("/data/jpx_listed_companies.json");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as TickerMasterItem[];
+        if (!active) return;
+        setTickerMaster(
+          data.filter((item) => item.market !== "ETF・ETN")
+        );
+      } catch {
+        if (!active) return;
+        setTickerMasterError("銘柄マスタを読み込めませんでした。手入力は引き続き可能です。");
+      }
+    }
+    void loadTickerMaster();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedTickerSearchQuery(tickerSearchQuery);
+    }, 200);
+    return () => window.clearTimeout(timer);
+  }, [tickerSearchQuery]);
 
   // persist
   useEffect(() => {
@@ -279,6 +326,8 @@ export default function ToolClient() {
 
   function openNew() {
     setDraft(emptyDraft());
+    setTickerSearchQuery("");
+    setDebouncedTickerSearchQuery("");
     setMode("edit");
   }
 
@@ -310,6 +359,8 @@ export default function ToolClient() {
       priority: it.priority,
       memo: it.memo,
     });
+    setTickerSearchQuery("");
+    setDebouncedTickerSearchQuery("");
     setMode("edit");
   }
 
@@ -743,6 +794,44 @@ export default function ToolClient() {
       else next.add(month);
       return next;
     });
+  }
+
+  const tickerCandidates = useMemo(() => {
+    const query = normalizeTickerSearch(debouncedTickerSearchQuery);
+    if (!query) return [];
+    const isCodeSearch = /^[0-9a-z]+$/i.test(query);
+    const minLength = isCodeSearch ? 3 : 2;
+    if (query.length < minLength) return [];
+
+    const scored = tickerMaster
+      .map((item) => {
+        const normalizedCode = normalizeTickerSearch(item.code);
+        const normalizedName = normalizeTickerSearch(item.name);
+        let score = -1;
+        if (normalizedCode === query) score = 0;
+        else if (normalizedCode.startsWith(query)) score = 1;
+        else if (normalizedName.startsWith(query)) score = 2;
+        else if (normalizedName.includes(query)) score = 3;
+        if (score < 0) return null;
+        return { item, score };
+      })
+      .filter((v): v is { item: TickerMasterItem; score: number } => Boolean(v))
+      .sort((a, b) => {
+        if (a.score !== b.score) return a.score - b.score;
+        return a.item.code.localeCompare(b.item.code, "ja", { numeric: true });
+      });
+
+    return scored.slice(0, 10).map((v) => v.item);
+  }, [debouncedTickerSearchQuery, tickerMaster]);
+
+  function selectTickerCandidate(item: TickerMasterItem) {
+    setDraft((prev) => ({
+      ...prev,
+      name: item.name,
+      code: item.code,
+    }));
+    setTickerSearchQuery("");
+    setDebouncedTickerSearchQuery("");
   }
 
   return (
@@ -1277,6 +1366,41 @@ export default function ToolClient() {
       ) : (
         <>
           <div className={styles.card}>
+            <div className={styles.small} style={{ marginBottom: 6 }}>
+              銘柄検索（コード / 銘柄名）
+            </div>
+            <div className={styles.row}>
+              <input
+                className={styles.input}
+                placeholder="例: 2222 / 極洋"
+                value={tickerSearchQuery}
+                onChange={(e) => setTickerSearchQuery(e.target.value)}
+              />
+            </div>
+            {tickerMasterError ? (
+              <div className={styles.small} style={{ marginTop: 6 }}>
+                {tickerMasterError}
+              </div>
+            ) : null}
+            {tickerCandidates.length > 0 ? (
+              <div className={styles.tickerCandidateList}>
+                {tickerCandidates.map((item) => (
+                  <button
+                    key={`${item.code}-${item.name}`}
+                    type="button"
+                    className={styles.tickerCandidate}
+                    onClick={() => selectTickerCandidate(item)}
+                  >
+                    <span className={styles.tickerCandidateCode}>{item.code}</span>
+                    <span className={styles.tickerCandidateName}>{item.name}</span>
+                    <span className={styles.tickerCandidateMarket}>{item.market}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            <hr className={styles.hr} />
+
             <div className={styles.row}>
               <input
                 className={styles.input}
