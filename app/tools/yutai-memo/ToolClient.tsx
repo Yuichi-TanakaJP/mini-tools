@@ -180,7 +180,9 @@ export default function ToolClient() {
   });
 
   const [q, setQ] = useState("");
-  const [monthFilter, setMonthFilter] = useState<number | "all">("all");
+  const [monthFilter, setMonthFilter] = useState<number | "all">(
+    () => toJstYearMonth(new Date()).month
+  );
   const [tagFilter, setTagFilter] = useState<string | "all">("all");
   const [sortState, setSortState] = useState<SortState>(() => loadSortState());
   const [sortControlsOpen, setSortControlsOpen] = useState(false);
