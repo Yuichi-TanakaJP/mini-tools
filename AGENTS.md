@@ -10,6 +10,7 @@
 - 変更前後で `git status --short` を確認する。
 - スクショ確認やレビュー後に追加修正した場合、PRマージ前に `git status --short` を確認し、未コミット差分が残っていないことを必ず確認する。
 - Issue はタイトルだけで「どの tool の、何の話か」が分かるように書く（例: `UI(yutai-memo): ...`, `feat(yutai-expiry): ...`, `TOP-UI: ...`）。
+- `gh issue create` / `gh issue comment` / `gh pr create` / `gh pr comment` で複数行本文を渡すときは、CLI の `--body "..."` に直接改行を書かず、本文ファイル（例: 一時 `.md`）を作って `--body-file` で渡す。
 - `next-env.d.ts` などの環境起因ファイルは、意図がない限りコミットしない。
 - コミット前に最低 `npm run lint` を実行する。
 
