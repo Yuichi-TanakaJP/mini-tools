@@ -38,7 +38,7 @@ export default function RootLayout({
         ) : null}
       </head>
 
-      <body>
+      <body style={{ margin: 0 }}>
         <Header />
         {children}
       </body>
