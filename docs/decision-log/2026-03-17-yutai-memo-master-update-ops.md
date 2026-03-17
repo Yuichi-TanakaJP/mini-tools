@@ -50,6 +50,14 @@
    - `yutai-memo` の銘柄候補検索が動くこと
 4. 反映内容を PR に含めてマージする。
 
+### 手動更新で実際にやること
+
+- `market_info` で `latest.json` を更新する
+- `mini-tools/public/data/jpx_listed_companies.json` を差し替える
+- `lint` / `build` を通す
+- `yutai-memo` の銘柄候補検索を軽く確認する
+- データ更新 PR としてマージする
+
 ## 更新漏れの見方
 
 - 月次で `market_info` 更新後に、`mini-tools` 側のマスタ反映が必要か確認する。
@@ -61,6 +69,18 @@
 - `market_info` からの自動同期
 - GitHub Actions での定期更新
 - `mini-tools` 側での更新日表示 UI
+
+### 見送った案をやる場合
+
+- `market_info` からの自動同期
+  - `latest.json` の取り込みを半自動または自動で行う
+  - 手作業ミスは減るが、repo 間の連携方法を新たに保守する必要がある
+- GitHub Actions での定期更新
+  - 定期実行または手動実行でデータ更新 PR を自動生成する
+  - 運用は楽になるが、権限設定や失敗時の通知設計が必要になる
+- `mini-tools` 側での更新日表示 UI
+  - `as_of_date` を画面表示して、データ鮮度を利用者が確認できるようにする
+  - 実装は比較的軽いが、現時点では必須ではない
 
 ## 今後
 
