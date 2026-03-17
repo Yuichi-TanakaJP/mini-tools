@@ -80,11 +80,13 @@
 }
 .input {
   width: 100%;
+  box-sizing: border-box;
   padding: 10px 12px;
   border: 1px solid #ddd;
   border-radius: 10px;
 }
 .select {
+  box-sizing: border-box;
   padding: 10px 12px;
   border: 1px solid #ddd;
   border-radius: 10px;
@@ -317,11 +319,23 @@
 
   .searchGroup {
     width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 88px 112px;
+    gap: 6px;
+    align-items: stretch;
   }
 
   .searchInput {
-    flex: 1 1 180px;
-    width: auto;
+    width: 100%;
+    min-width: 0;
+    flex: none;
+  }
+
+  .searchGroup .select {
+    width: 100%;
+    min-width: 0;
+    padding: 10px 8px;
+    font-size: 14px;
   }
 
   .bulkBar {
