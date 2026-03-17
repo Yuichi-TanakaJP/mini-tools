@@ -33,6 +33,12 @@
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+.formTwoCol {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+}
 .row {
   display: flex;
   gap: 8px;
@@ -403,12 +409,6 @@
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-}
-.formTwoCol {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px;
-  align-items: end;
 }
 .months {
   display: grid;
