@@ -12,23 +12,28 @@ type LegacyMemoItem = Omit<MemoItem, "tagIds"> & { tags: LegacyTagKey[] };
 
 function normalizeCrossType(value: unknown): MemoItem["crossType"] {
   switch (value) {
-    case "長期：設定がない":
-    case "長期：単発クロス":
-    case "長期：連続クロス":
-    case "長期：選考クロス":
-    case "長期：1株放置中":
-      return value;
+    case "長期優遇なし":
     case "単発クロス":
-      return "長期：単発クロス";
+    case "連続クロス":
+    case "先行クロス":
+    case "1株放置中":
+      return value;
+    case "長期：設定がない":
+      return "長期優遇なし";
+    case "長期：単発クロス":
+      return "単発クロス";
     case "連続クロス型":
-      return "長期：連続クロス";
+    case "長期：連続クロス":
+      return "連続クロス";
     case "来期必須（先行投資）型":
     case "空クロス必須型":
-      return "長期：選考クロス";
+    case "長期：選考クロス":
+      return "先行クロス";
     case "1株放置（年数稼ぎ）型":
-      return "長期：1株放置中";
+    case "長期：1株放置中":
+      return "1株放置中";
     default:
-      return "長期：設定がない";
+      return "長期優遇なし";
   }
 }
 
