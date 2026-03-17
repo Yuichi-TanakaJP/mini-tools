@@ -33,6 +33,7 @@ type Draft = {
   tagIds: string[];
   crossType: CrossType;
   entryTiming: string;
+  relatedUrl: string;
   tenureRule: string;
   acquired: boolean;
   oneShareStartedAt: string;
@@ -63,8 +64,9 @@ const emptyDraft = (): Draft => ({
   code: "",
   months: [],
   tagIds: [],
-  crossType: "長期：設定がない",
+  crossType: "長期優遇なし",
   entryTiming: "",
+  relatedUrl: "",
   tenureRule: "",
   acquired: false,
   oneShareStartedAt: "",
@@ -167,8 +169,8 @@ function formatOneShareStartedLabel(value?: string): string {
 }
 
 function getNextCrossType(current?: CrossType): CrossType {
-  const index = CROSS_TYPES.indexOf(current ?? "長期：設定がない");
-  if (index < 0) return "長期：設定がない";
+  const index = CROSS_TYPES.indexOf(current ?? "長期優遇なし");
+  if (index < 0) return "長期優遇なし";
   return CROSS_TYPES[(index + 1) % CROSS_TYPES.length];
 }
 
@@ -184,6 +186,13 @@ function normalizeTickerSearch(value: string): string {
       String.fromCharCode(char.charCodeAt(0) - 0x60)
     )
     .replace(/\s+/g, "");
+}
+
+function toOpenableUrl(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (/^(https?:)?\/\//i.test(trimmed) || /^[a-z]+:/i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
 }
 
 export default function ToolClient() {
@@ -305,6 +314,7 @@ export default function ToolClient() {
           it.memo ?? "",
           it.crossType ?? "",
           it.entryTiming ?? "",
+          it.relatedUrl ?? "",
           it.tenureRule ?? "",
           it.oneShareStartedAt ?? "",
           it.months.join(","),
@@ -343,8 +353,9 @@ export default function ToolClient() {
       code: it.code ?? "",
       months: it.months,
       tagIds: it.tagIds ?? [],
-      crossType: it.crossType ?? "長期：設定がない",
+      crossType: it.crossType ?? "長期優遇なし",
       entryTiming: it.entryTiming ?? "",
+      relatedUrl: it.relatedUrl ?? "",
       tenureRule: it.tenureRule ?? "",
       acquired: it.acquired,
       oneShareStartedAt: it.oneShareStartedAt ?? "",
@@ -395,6 +406,7 @@ export default function ToolClient() {
         tagIds: draft.tagIds,
         crossType: draft.crossType,
         entryTiming: draft.entryTiming.trim() || undefined,
+        relatedUrl: draft.relatedUrl.trim() || undefined,
         tenureRule: draft.tenureRule.trim() || undefined,
         acquired: draft.acquired,
         oneShareStartedAt: draft.oneShareStartedAt.trim() || undefined,
@@ -908,7 +920,7 @@ export default function ToolClient() {
           <div className={styles.searchGroup}>
             <input
               className={`${styles.input} ${styles.searchInput}`}
-              placeholder="検索（銘柄/コード/メモ/任期/早打ち目安）"
+              placeholder="検索（銘柄/コード/メモ/任期/リンク）"
               value={q}
               onChange={(e) => {
                 clearSelection();
@@ -1171,7 +1183,7 @@ export default function ToolClient() {
                             onClick={() => cycleCrossType(it.id)}
                             title="タップで戦略タイプを切り替え"
                           >
-                            {it.crossType ?? "長期：設定がない"}
+                            {it.crossType ?? "長期優遇なし"}
                           </button>
                           <button
                             type="button"
@@ -1198,9 +1210,21 @@ export default function ToolClient() {
                     </div>
 
                     <div className={styles.small} style={{ marginTop: 6 }}>
-                      {it.entryTiming ? `早打ち目安: ${it.entryTiming} / ` : ""}
                       {it.tenureRule ? `任期: ${it.tenureRule}` : ""}
                     </div>
+
+                    {it.relatedUrl ? (
+                      <div className={styles.small} style={{ marginTop: 6 }}>
+                        <a
+                          href={toOpenableUrl(it.relatedUrl)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={styles.memoLink}
+                        >
+                          関連リンクを開く
+                        </a>
+                      </div>
+                    ) : null}
 
                     <div className={styles.small} style={{ marginTop: 6 }}>
                       {it.memo
@@ -1519,37 +1543,43 @@ export default function ToolClient() {
 
             <hr className={styles.hr} />
 
-            <div className={styles.small} style={{ marginBottom: 6 }}>
-              戦略タイプ
-            </div>
-            <select
-              className={styles.select}
-              value={draft.crossType}
-              onChange={(e) =>
-                setDraft((d) => ({
-                  ...d,
-                  crossType: e.target.value as CrossType,
-                }))
-              }
-            >
-              {CROSS_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
+            <div className={styles.formTwoCol}>
+              <div>
+                <div className={styles.small} style={{ marginBottom: 6 }}>
+                  戦略タイプ
+                </div>
+                <select
+                  className={styles.select}
+                  value={draft.crossType}
+                  onChange={(e) =>
+                    setDraft((d) => ({
+                      ...d,
+                      crossType: e.target.value as CrossType,
+                    }))
+                  }
+                >
+                  {CROSS_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div className={styles.small} style={{ marginTop: 8 }}>
-              1株保有開始時期
+              <div>
+                <div className={styles.small} style={{ marginBottom: 6 }}>
+                  1株保有開始時期
+                </div>
+                <input
+                  className={styles.input}
+                  placeholder="YYYY-MM / 例: 2024-08"
+                  value={draft.oneShareStartedAt}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, oneShareStartedAt: e.target.value }))
+                  }
+                />
+              </div>
             </div>
-            <input
-              className={styles.input}
-              placeholder="YYYY-MM / 例: 2024-08"
-              value={draft.oneShareStartedAt}
-              onChange={(e) =>
-                setDraft((d) => ({ ...d, oneShareStartedAt: e.target.value }))
-              }
-            />
 
             <hr className={styles.hr} />
 
@@ -1560,6 +1590,17 @@ export default function ToolClient() {
                 value={draft.entryTiming}
                 onChange={(e) =>
                   setDraft((d) => ({ ...d, entryTiming: e.target.value }))
+                }
+              />
+            </div>
+
+            <div className={styles.row} style={{ marginTop: 8 }}>
+              <input
+                className={styles.input}
+                placeholder="関連リンク（例：公式優待ページ / IR）"
+                value={draft.relatedUrl}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, relatedUrl: e.target.value }))
                 }
               />
             </div>

@@ -6,11 +6,11 @@ export type Tag = {
 };
 
 export const CROSS_TYPES = [
-  "長期：設定がない",
-  "長期：単発クロス",
-  "長期：連続クロス",
-  "長期：選考クロス",
-  "長期：1株放置中",
+  "長期優遇なし",
+  "単発クロス",
+  "連続クロス",
+  "先行クロス",
+  "1株放置中",
 ] as const;
 
 export type CrossType = (typeof CROSS_TYPES)[number];
@@ -24,6 +24,7 @@ export type MemoItem = {
   tagIds: string[]; // ★ tags -> tagIds
   crossType: CrossType;
   entryTiming?: string; // 早打ち目安
+  relatedUrl?: string; // 関連リンク
   tenureRule?: string; // 任期条件
   acquired: boolean; // 取得済みか
   oneShareStartedAt?: string; // YYYY-MM or freeform when legacy start month is unknown
