@@ -36,6 +36,9 @@ git status --short
 ## 3. コミット
 
 ```powershell
+# コミット前に現在ブランチを必ず確認する
+git branch --show-current
+# `main` と表示されたらコミット禁止。feature ブランチへ切り直してからやり直す。
 # 必要ファイルだけ add する（git add . は原則使わない）
 git add <file1> <file2>
 git commit -m "feat(scope): summary"
