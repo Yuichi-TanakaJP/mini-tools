@@ -7,6 +7,14 @@ import MonetizeBar from "@/components/MonetizeBar";
 import { track } from "@/lib/analytics";
 
 const STORAGE_KEY = "mini_tools_charcount_text_v1";
+const X_URL_LENGTH = 23;
+const ZERO_WIDTH_STRIP_RE = /[\u200B\u200C\u2060\uFEFF]/g;
+const URL_RE = /(?:https?:\/\/|www\.)[^\s]+/gi;
+const EMOJI_RE = /\p{Extended_Pictographic}/u;
+const graphemeSegmenter =
+  typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
+    ? new Intl.Segmenter("ja", { granularity: "grapheme" })
+    : null;
 
 // 絵文字などでlengthズレが出ないように Array.from を使う
 function countChars(text: string): number {
@@ -16,6 +24,68 @@ function countChars(text: string): number {
 // スペース/改行/タブ + 全角スペースを除外
 function stripSpacesAndNewlines(text: string): string {
   return text.replace(/[\s\u3000]/g, "");
+}
+
+function normalizeForX(text: string): string {
+  return text.normalize("NFC").replace(/\r\n?/g, "\n").replace(ZERO_WIDTH_STRIP_RE, "");
+}
+
+function isXWeightOne(codePoint: number): boolean {
+  return (
+    (codePoint >= 0x0000 && codePoint <= 0x10ff) ||
+    (codePoint >= 0x2000 && codePoint <= 0x200d) ||
+    (codePoint >= 0x2010 && codePoint <= 0x201f) ||
+    (codePoint >= 0x2032 && codePoint <= 0x2037)
+  );
+}
+
+function splitGraphemes(text: string): string[] {
+  if (graphemeSegmenter) {
+    return Array.from(graphemeSegmenter.segment(text), (part) => part.segment);
+  }
+  return Array.from(text);
+}
+
+function countPlainTextForX(text: string): number {
+  let total = 0;
+
+  for (const grapheme of splitGraphemes(text)) {
+    if (!grapheme) continue;
+
+    if (EMOJI_RE.test(grapheme)) {
+      total += 2;
+      continue;
+    }
+
+    for (const char of grapheme) {
+      const codePoint = char.codePointAt(0);
+      if (codePoint == null) continue;
+      total += isXWeightOne(codePoint) ? 1 : 2;
+    }
+  }
+
+  return total;
+}
+
+function countForX(text: string): number {
+  const normalized = normalizeForX(text);
+  let total = 0;
+  let lastIndex = 0;
+
+  URL_RE.lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = URL_RE.exec(normalized)) !== null) {
+    const start = match.index;
+    const end = start + match[0].length;
+
+    total += countPlainTextForX(normalized.slice(lastIndex, start));
+    total += X_URL_LENGTH;
+    lastIndex = end;
+  }
+
+  total += countPlainTextForX(normalized.slice(lastIndex));
+  return total;
 }
 
 export default function ToolClient() {
@@ -31,11 +101,12 @@ export default function ToolClient() {
   const stats = useMemo(() => {
     const raw = countChars(text);
     const noSpace = countChars(stripSpacesAndNewlines(text));
-    const x140Remaining = 140 - raw;
-    const x280Remaining = 280 - raw;
+    const xEstimated = countForX(text);
+    const x140Remaining = 140 - xEstimated;
+    const x280Remaining = 280 - xEstimated;
     const lines = text.length ? text.split(/\r?\n/).length : 0;
 
-    return { raw, noSpace, x140Remaining, x280Remaining, lines };
+    return { raw, noSpace, xEstimated, x140Remaining, x280Remaining, lines };
   }, [text]);
 
   const onChange = (v: string) => {
@@ -143,7 +214,17 @@ export default function ToolClient() {
           <div
             style={{ padding: 12, border: "1px solid #ddd", borderRadius: 12 }}
           >
-            <div style={{ fontSize: 13, opacity: 0.8 }}>X 140字 残り</div>
+            <div style={{ fontSize: 13, opacity: 0.8 }}>X推定文字数</div>
+            <div style={{ fontSize: 32, fontWeight: 700 }}>{stats.xEstimated}</div>
+            <div style={{ fontSize: 12, opacity: 0.7 }}>
+              URL=23 / 絵文字=2 / CJK=2 の推定
+            </div>
+          </div>
+
+          <div
+            style={{ padding: 12, border: "1px solid #ddd", borderRadius: 12 }}
+          >
+            <div style={{ fontSize: 13, opacity: 0.8 }}>X推定 140字 残り</div>
             <div
               style={{
                 fontSize: 32,
@@ -161,7 +242,7 @@ export default function ToolClient() {
           <div
             style={{ padding: 12, border: "1px solid #ddd", borderRadius: 12 }}
           >
-            <div style={{ fontSize: 13, opacity: 0.8 }}>X 280字 残り</div>
+            <div style={{ fontSize: 13, opacity: 0.8 }}>X推定 280字 残り</div>
             <div
               style={{
                 fontSize: 32,
@@ -200,6 +281,10 @@ export default function ToolClient() {
           >
             クリア
           </button>
+        </div>
+
+        <div style={{ marginTop: 12, fontSize: 12, opacity: 0.75 }}>
+          ※X推定は weighted character counting を参考にした近似です。返信先頭の自動メンションや添付メディア 0カウントは未反映です。
         </div>
       </div>
 
