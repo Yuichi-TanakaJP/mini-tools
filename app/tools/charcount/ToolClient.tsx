@@ -11,6 +11,9 @@ const X_URL_LENGTH = 23;
 const ZERO_WIDTH_STRIP_RE = /[\u200B\u200C\u2060\uFEFF]/g;
 const URL_RE = /(?:https?:\/\/|www\.)[^\s]+/gi;
 const EMOJI_RE = /\p{Extended_Pictographic}/u;
+const REGIONAL_INDICATOR_PAIR_RE = /^[\u{1F1E6}-\u{1F1FF}]{2}$/u;
+const KEYCAP_RE = /^[#*0-9]\uFE0F?\u20E3$/u;
+const TRAILING_URL_PUNCTUATION_RE = /[.,!?;:)\]}]+$/;
 const graphemeSegmenter =
   typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
     ? new Intl.Segmenter("ja", { granularity: "grapheme" })
@@ -46,13 +49,33 @@ function splitGraphemes(text: string): string[] {
   return Array.from(text);
 }
 
+function isEmojiLikeGrapheme(grapheme: string): boolean {
+  return (
+    EMOJI_RE.test(grapheme) ||
+    REGIONAL_INDICATOR_PAIR_RE.test(grapheme) ||
+    KEYCAP_RE.test(grapheme)
+  );
+}
+
+function splitUrlAndTrailingPunctuation(value: string): {
+  urlPart: string;
+  trailingPart: string;
+} {
+  const trimmedTrailing = value.match(TRAILING_URL_PUNCTUATION_RE)?.[0] ?? "";
+  if (!trimmedTrailing) return { urlPart: value, trailingPart: "" };
+  return {
+    urlPart: value.slice(0, value.length - trimmedTrailing.length),
+    trailingPart: trimmedTrailing,
+  };
+}
+
 function countPlainTextForX(text: string): number {
   let total = 0;
 
   for (const grapheme of splitGraphemes(text)) {
     if (!grapheme) continue;
 
-    if (EMOJI_RE.test(grapheme)) {
+    if (isEmojiLikeGrapheme(grapheme)) {
       total += 2;
       continue;
     }
@@ -78,10 +101,17 @@ function countForX(text: string): number {
   while ((match = URL_RE.exec(normalized)) !== null) {
     const start = match.index;
     const end = start + match[0].length;
+    const { urlPart, trailingPart } = splitUrlAndTrailingPunctuation(match[0]);
 
     total += countPlainTextForX(normalized.slice(lastIndex, start));
     total += X_URL_LENGTH;
+    total += countPlainTextForX(trailingPart);
     lastIndex = end;
+
+    if (!urlPart) {
+      total -= X_URL_LENGTH;
+      total += countPlainTextForX(match[0]);
+    }
   }
 
   total += countPlainTextForX(normalized.slice(lastIndex));
