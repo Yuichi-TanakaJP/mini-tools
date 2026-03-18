@@ -195,6 +195,10 @@ function toOpenableUrl(value: string): string {
   return `https://${trimmed}`;
 }
 
+function normalizeDisplayText(value: string): string {
+  return value.normalize("NFKC");
+}
+
 export default function ToolClient() {
   const [items, setItems] = useState<MemoItem[]>(() => loadItems());
   const [archives, setArchives] = useState<ArchivedMemoItem[]>(() =>
@@ -1129,8 +1133,8 @@ export default function ToolClient() {
                         }}
                       >
                         <div style={{ fontWeight: 700 }}>
-                          {it.name}
-                          {it.code ? `（${it.code}）` : ""}
+                          {normalizeDisplayText(it.name)}
+                          {it.code ? ` (${normalizeDisplayText(it.code)})` : ""}
                         </div>
                       </div>
                         <div className={styles.cardSide}>
