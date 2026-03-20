@@ -1421,34 +1421,6 @@ export default function ToolClient() {
             </div>
           ) : null}
 
-          {noticeMessage ? (
-            <div
-              className={`${styles.overlay} ${styles.noticeOverlay}`}
-              onClick={() => setNoticeMessage(null)}
-            >
-              <div
-                className={`${styles.dialog} ${styles.noticeDialog}`}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className={styles.dialogTitle}>お知らせ</div>
-                <div className={styles.dialogBody}>
-                  <div className={styles.small} style={{ fontSize: 14, color: "#333" }}>
-                    {noticeMessage}
-                  </div>
-                </div>
-                <div className={`${styles.actions} ${styles.dialogFooter}`}>
-                  <button
-                    className={styles.btnPrimary}
-                    type="button"
-                    onClick={() => setNoticeMessage(null)}
-                  >
-                    閉じる
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : null}
-
           {deleteTarget ? (
             <div className={styles.overlay} onClick={() => setDeleteTarget(null)}>
               <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
@@ -1781,6 +1753,34 @@ export default function ToolClient() {
           </div>
         </>
       )}
+
+      {noticeMessage ? (
+        <div
+          className={`${styles.overlay} ${styles.noticeOverlay}`}
+          onClick={() => setNoticeMessage(null)}
+        >
+          <div
+            className={`${styles.dialog} ${styles.noticeDialog}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.dialogTitle}>お知らせ</div>
+            <div className={styles.dialogBody}>
+              <div className={styles.small} style={{ fontSize: 14, color: "#333" }}>
+                {noticeMessage}
+              </div>
+            </div>
+            <div className={`${styles.actions} ${styles.dialogFooter}`}>
+              <button
+                className={styles.btnPrimary}
+                type="button"
+                onClick={() => setNoticeMessage(null)}
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
