@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   title: "株主優待期限帳 | mini-tools",
   description:
     "株主優待の有効期限を端末内で管理。今月の未使用を基本表示（完了はトグル）。カード/表の切替対応。",
+  alternates: {
+    canonical: "/tools/yutai-expiry",
+  },
 };
 
 export default function Page() {
