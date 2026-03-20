@@ -418,6 +418,10 @@ export default function ToolClient() {
   function toggleMonth(m: number) {
     setDraft((d) => {
       const has = d.months.includes(m);
+      if (!has && d.months.length >= 4) {
+        setNoticeMessage("権利月は最大4つまで選択できます。");
+        return d;
+      }
       const months = has ? d.months.filter((x) => x !== m) : [...d.months, m];
       months.sort((a, b) => a - b);
       return { ...d, months };
@@ -435,6 +439,7 @@ export default function ToolClient() {
   function validate(d: Draft): string | null {
     if (!d.name.trim()) return "銘柄名は必須です";
     if (d.months.length === 0) return "権利月は1つ以上選んでください";
+    if (d.months.length > 4) return "権利月は最大4つまで選択できます";
     if (!CROSS_TYPES.includes(d.crossType)) return "戦略タイプを選択してください";
     return null;
   }
