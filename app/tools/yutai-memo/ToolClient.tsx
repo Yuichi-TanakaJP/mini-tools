@@ -974,6 +974,9 @@ export default function ToolClient() {
               </button>
             </div>
           </div>
+          <div className={styles.pageSub}>
+            株主優待の銘柄メモや長期条件をスマホやPCに残せます。
+          </div>
 
           <div className={styles.searchGroup}>
             <input

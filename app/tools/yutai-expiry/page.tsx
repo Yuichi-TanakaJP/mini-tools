@@ -17,8 +17,8 @@ export default function Page() {
       style={{ maxWidth: 980, margin: "0 auto", padding: "24px 16px 96px" }}
     >
       <header style={{ marginBottom: 16 }}>
-        <h1 style={{ fontSize: 26, margin: "0 0 6px" }}>株主優待リスト</h1>
-        <p style={{ margin: 0, opacity: 0.8, lineHeight: 1.6 }}>
+        <h1 style={{ fontSize: 24, margin: "0 0 6px" }}>株主優待リスト</h1>
+        <p style={{ margin: 0, fontSize: 13, opacity: 0.72, lineHeight: 1.5 }}>
           優待の期限を管理するツールです。
           <br />
           データは自分のPC、スマホに保存されます。

@@ -82,7 +82,7 @@ export default function ToolClient() {
         </Link>
       </div>
       <h1 style={{ fontSize: 24, marginBottom: 6 }}>合計計算ツール</h1>
-      <p style={{ marginTop: 0, opacity: 0.8 }}>
+      <p style={{ marginTop: 0, fontSize: 13, lineHeight: 1.5, opacity: 0.72 }}>
         数字を1行ずつ入れるだけで合計します（例：1200 / 300 / -50）。
       </p>
 

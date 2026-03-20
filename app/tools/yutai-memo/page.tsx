@@ -12,7 +12,11 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <ClientOnly />;
+  return (
+    <>
+      <ClientOnly />
+    </>
+  );
 }
 
 

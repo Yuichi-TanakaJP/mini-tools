@@ -187,7 +187,7 @@ export default function ToolClient() {
       </div>
 
       <h1 style={{ fontSize: 24, marginBottom: 6 }}>文字数カウント</h1>
-      <p style={{ marginTop: 0, opacity: 0.8 }}>
+      <p style={{ marginTop: 0, fontSize: 13, lineHeight: 1.5, opacity: 0.72 }}>
         文章を貼るだけで文字数を確認できます（X 140/280の残りも表示）。
       </p>
 
