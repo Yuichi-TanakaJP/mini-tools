@@ -1464,9 +1464,6 @@ export default function ToolClient() {
                             onChange={(e) => updateTagDraftName(t.id, e.target.value)}
                             disabled={pendingDeletedTagIds.has(t.id)}
                           />
-                          {pendingDeletedTagIds.has(t.id) ? (
-                            <span className={styles.tagPendingBadge}>削除予定</span>
-                          ) : null}
                           <button
                             className={`${styles.btn} ${styles.tagManagerButton}`}
                             type="button"
