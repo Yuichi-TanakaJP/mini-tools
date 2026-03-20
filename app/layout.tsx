@@ -4,7 +4,8 @@ import Script from "next/script";
 import Header from "@/components/Header";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mini-tools-rho.vercel.app";
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || "https://mini-tools-rho.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
