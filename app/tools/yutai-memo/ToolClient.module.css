@@ -27,6 +27,11 @@
 .pageHeader .h1 {
   margin-bottom: 0;
 }
+.pageSub {
+  margin: -2px 0 10px;
+  font-size: 13px;
+  color: #666;
+}
 .headerActions {
   display: flex;
   gap: 8px;
