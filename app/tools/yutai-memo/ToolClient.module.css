@@ -128,16 +128,31 @@
   width: 100%; /* ★保険 */
 }
 .cardHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  display: grid;
+  gap: 8px;
+}
+.cardHeaderTop {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 12px;
 }
 .cardMain {
-  flex: 1 1 auto;
   min-width: 0;
   text-align: left;
   cursor: pointer;
+}
+.cardTitleText {
+  min-width: 0;
+  font-weight: 700;
+}
+.cardName {
+  min-width: 0;
+}
+.cardCode {
+  margin-left: 4px;
+  color: #444;
+  white-space: nowrap;
 }
 .cardSide {
   display: flex;
@@ -149,11 +164,12 @@
   display: flex;
   justify-content: flex-end;
   gap: 6px;
-  flex-wrap: wrap;
-  width: 100%;
+  flex-wrap: nowrap;
+  width: auto;
 }
 .monthPriorityBadge {
-  padding: 4px 8px;
+  min-width: 36px;
+  padding: 4px 6px;
   border-radius: 999px;
   border: 1px solid #111;
   background: #fffaf0;
@@ -161,6 +177,7 @@
   font-size: 12px;
   line-height: 1.2;
   font-weight: 700;
+  text-align: center;
 }
 .monthPriorityBadgeCurrent {
   border-color: #c78b18;
@@ -382,7 +399,7 @@
   }
 
   .cardHeader {
-    flex-direction: column;
+    gap: 6px;
   }
 
   .formTwoCol {
@@ -395,6 +412,32 @@
     gap: 10px;
   }
 
+  .cardHeaderTop {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .cardTitleText {
+    display: grid;
+    gap: 2px;
+  }
+
+  .cardName {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cardCode {
+    display: block;
+    margin-left: 0;
+    font-size: 12px;
+    line-height: 1.2;
+    color: #666;
+  }
+
   .cardSide {
     width: 100%;
     align-items: flex-end;
@@ -402,6 +445,7 @@
 
   .monthPriorityRow {
     justify-content: flex-end;
+    gap: 4px;
   }
 
   .statusRow {

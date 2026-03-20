@@ -1176,40 +1176,48 @@ export default function ToolClient() {
                   </label>
                   <div className={styles.card}>
                     <div className={styles.cardHeader}>
-                      <div
-                        className={styles.cardMain}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => openEdit(it)}
-                        onKeyDown={(e) => {
-                          if (e.currentTarget !== e.target) return;
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            openEdit(it);
-                          }
-                        }}
-                      >
-                        <div style={{ fontWeight: 700 }}>
-                          {normalizeDisplayText(it.name)}
-                          {it.code ? ` (${normalizeDisplayText(it.code)})` : ""}
+                      <div className={styles.cardHeaderTop}>
+                        <div
+                          className={styles.cardMain}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openEdit(it)}
+                          onKeyDown={(e) => {
+                            if (e.currentTarget !== e.target) return;
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              openEdit(it);
+                            }
+                          }}
+                        >
+                          <div className={styles.cardTitleText}>
+                            <span className={styles.cardName}>
+                              {normalizeDisplayText(it.name)}
+                            </span>
+                            {it.code ? (
+                              <span className={styles.cardCode}>
+                                ({normalizeDisplayText(it.code)})
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                        <div className={styles.monthPriorityRow}>
+                          {it.months.slice(0, 4).map((month) => (
+                            <span
+                              key={`${it.id}-${month}`}
+                              className={`${styles.monthPriorityBadge} ${
+                                isCurrentEntitlementMonth(month)
+                                  ? styles.monthPriorityBadgeCurrent
+                                  : ""
+                              }`}
+                            >
+                              {month}月
+                            </span>
+                          ))}
                         </div>
                       </div>
-                        <div className={styles.cardSide}>
-                          <div className={styles.monthPriorityRow}>
-                            {it.months.map((month) => (
-                              <span
-                                key={`${it.id}-${month}`}
-                                className={`${styles.monthPriorityBadge} ${
-                                  isCurrentEntitlementMonth(month)
-                                    ? styles.monthPriorityBadgeCurrent
-                                    : ""
-                                }`}
-                              >
-                                {month}月
-                              </span>
-                            ))}
-                          </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div className={styles.cardSide}>
+                        <div className={styles.statusRow}>
                           <button
                             type="button"
                             className={`${styles.stateToggle} ${
