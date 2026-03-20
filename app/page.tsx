@@ -1,7 +1,17 @@
 // app/page.tsx
+import type { Metadata } from "next";
 import MonetizeBar from "@/components/MonetizeBar";
 import ShareButtons from "@/components/ShareButtonsSuspended";
 import ToolGridClient from "./ToolGridClient";
+
+export const metadata: Metadata = {
+  title: "mini-tools | 個人投資家向けミニツール集",
+  description:
+    "文字数カウント、合計計算、株主優待期限管理、優待銘柄メモをブラウザで使える無料ミニツール集。インストール不要で使えます。",
+  alternates: {
+    canonical: "/",
+  },
+};
 
 type ToolItem = {
   title: string;
@@ -50,7 +60,10 @@ export default function HomePage() {
       {/* ===== ヒーローエリア（そのまま） ===== */}
       <section style={styles.hero}>
         <h1 style={styles.h1}>mini-tools</h1>
-        <p style={styles.lead}>サクッと使えるミニツール集</p>
+        <p style={styles.lead}>個人投資家向けの無料ミニツール集</p>
+        <p style={styles.note}>
+          文字数カウント、株主優待期限管理、優待メモをブラウザで使えます。データは端末内に保存されます。
+        </p>
       </section>
 
       {/* ===== ツール一覧（Clientに分離） ===== */}
@@ -65,7 +78,7 @@ export default function HomePage() {
       <section style={styles.bottom}>
         {/* ★ useSearchParams を使うので Suspense 必須 */}
         <ShareButtons
-          text="mini-tools｜サクッと使えるミニツール集"
+          text="mini-tools｜個人投資家向けの無料ミニツール集"
           methods={["x", "copy", "email", "facebook"]}
         />
 
