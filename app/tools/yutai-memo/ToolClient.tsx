@@ -221,6 +221,7 @@ export default function ToolClient() {
 
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [mode, setMode] = useState<"list" | "edit">("list");
+  const [listScrollY, setListScrollY] = useState<number | null>(null);
 
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [newTagName, setNewTagName] = useState("");
@@ -277,6 +278,24 @@ export default function ToolClient() {
   useEffect(() => {
     saveSortState(sortState);
   }, [sortState]);
+
+  useEffect(() => {
+    if (mode !== "list" || listScrollY === null || typeof window === "undefined") {
+      return;
+    }
+    let frame1 = 0;
+    let frame2 = 0;
+    frame1 = window.requestAnimationFrame(() => {
+      frame2 = window.requestAnimationFrame(() => {
+        window.scrollTo({ top: listScrollY, behavior: "auto" });
+        setListScrollY(null);
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(frame1);
+      window.cancelAnimationFrame(frame2);
+    };
+  }, [mode, listScrollY]);
 
   const tagNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -336,6 +355,9 @@ export default function ToolClient() {
   }, [items, q, monthFilter, tagFilter, tagNameById, sortState]);
 
   function openNew(seed?: Partial<Draft>) {
+    if (typeof window !== "undefined") {
+      setListScrollY(window.scrollY);
+    }
     setDraft({ ...emptyDraft(), ...seed });
     setMode("edit");
   }
@@ -355,6 +377,9 @@ export default function ToolClient() {
   }
 
   function openEdit(it: MemoItem) {
+    if (typeof window !== "undefined") {
+      setListScrollY(window.scrollY);
+    }
     setDraft({
       id: it.id,
       createdAt: it.createdAt,
