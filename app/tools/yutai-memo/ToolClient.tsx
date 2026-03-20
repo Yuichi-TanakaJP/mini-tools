@@ -418,6 +418,10 @@ export default function ToolClient() {
   function toggleMonth(m: number) {
     setDraft((d) => {
       const has = d.months.includes(m);
+      if (!has && d.months.length >= 4) {
+        setNoticeMessage("権利月は最大4つまで選択できます。");
+        return d;
+      }
       const months = has ? d.months.filter((x) => x !== m) : [...d.months, m];
       months.sort((a, b) => a - b);
       return { ...d, months };
@@ -435,6 +439,7 @@ export default function ToolClient() {
   function validate(d: Draft): string | null {
     if (!d.name.trim()) return "銘柄名は必須です";
     if (d.months.length === 0) return "権利月は1つ以上選んでください";
+    if (d.months.length > 4) return "権利月は最大4つまで選択できます";
     if (!CROSS_TYPES.includes(d.crossType)) return "戦略タイプを選択してください";
     return null;
   }
@@ -1176,40 +1181,48 @@ export default function ToolClient() {
                   </label>
                   <div className={styles.card}>
                     <div className={styles.cardHeader}>
-                      <div
-                        className={styles.cardMain}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => openEdit(it)}
-                        onKeyDown={(e) => {
-                          if (e.currentTarget !== e.target) return;
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            openEdit(it);
-                          }
-                        }}
-                      >
-                        <div style={{ fontWeight: 700 }}>
-                          {normalizeDisplayText(it.name)}
-                          {it.code ? ` (${normalizeDisplayText(it.code)})` : ""}
+                      <div className={styles.cardHeaderTop}>
+                        <div
+                          className={styles.cardMain}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openEdit(it)}
+                          onKeyDown={(e) => {
+                            if (e.currentTarget !== e.target) return;
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              openEdit(it);
+                            }
+                          }}
+                        >
+                          <div className={styles.cardTitleText}>
+                            <span className={styles.cardName}>
+                              {normalizeDisplayText(it.name)}
+                            </span>
+                            {it.code ? (
+                              <span className={styles.cardCode}>
+                                ({normalizeDisplayText(it.code)})
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                        <div className={styles.monthPriorityRow}>
+                          {it.months.slice(0, 4).map((month) => (
+                            <span
+                              key={`${it.id}-${month}`}
+                              className={`${styles.monthPriorityBadge} ${
+                                isCurrentEntitlementMonth(month)
+                                  ? styles.monthPriorityBadgeCurrent
+                                  : ""
+                              }`}
+                            >
+                              {month}月
+                            </span>
+                          ))}
                         </div>
                       </div>
-                        <div className={styles.cardSide}>
-                          <div className={styles.monthPriorityRow}>
-                            {it.months.map((month) => (
-                              <span
-                                key={`${it.id}-${month}`}
-                                className={`${styles.monthPriorityBadge} ${
-                                  isCurrentEntitlementMonth(month)
-                                    ? styles.monthPriorityBadgeCurrent
-                                    : ""
-                                }`}
-                              >
-                                {month}月
-                              </span>
-                            ))}
-                          </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div className={styles.cardSide}>
+                        <div className={styles.statusRow}>
                           <button
                             type="button"
                             className={`${styles.stateToggle} ${
@@ -1402,28 +1415,6 @@ export default function ToolClient() {
                     onClick={handleBulkArchiveExecute}
                   >
                     実行
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {noticeMessage ? (
-            <div className={styles.overlay} onClick={() => setNoticeMessage(null)}>
-              <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
-                <div className={styles.dialogTitle}>お知らせ</div>
-                <div className={styles.dialogBody}>
-                  <div className={styles.small} style={{ fontSize: 14, color: "#333" }}>
-                    {noticeMessage}
-                  </div>
-                </div>
-                <div className={`${styles.actions} ${styles.dialogFooter}`}>
-                  <button
-                    className={styles.btnPrimary}
-                    type="button"
-                    onClick={() => setNoticeMessage(null)}
-                  >
-                    閉じる
                   </button>
                 </div>
               </div>
@@ -1762,6 +1753,34 @@ export default function ToolClient() {
           </div>
         </>
       )}
+
+      {noticeMessage ? (
+        <div
+          className={`${styles.overlay} ${styles.noticeOverlay}`}
+          onClick={() => setNoticeMessage(null)}
+        >
+          <div
+            className={`${styles.dialog} ${styles.noticeDialog}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.dialogTitle}>お知らせ</div>
+            <div className={styles.dialogBody}>
+              <div className={styles.small} style={{ fontSize: 14, color: "#333" }}>
+                {noticeMessage}
+              </div>
+            </div>
+            <div className={`${styles.actions} ${styles.dialogFooter}`}>
+              <button
+                className={styles.btnPrimary}
+                type="button"
+                onClick={() => setNoticeMessage(null)}
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
