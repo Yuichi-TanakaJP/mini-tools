@@ -614,8 +614,7 @@
 }
 
 .noticeOverlay {
-  align-items: flex-start;
-  padding-top: 72px;
+  align-items: center;
 }
 
 .noticeDialog {
