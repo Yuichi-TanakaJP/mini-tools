@@ -613,6 +613,16 @@
   min-height: 0;
 }
 
+.noticeOverlay {
+  align-items: flex-start;
+  padding-top: 72px;
+}
+
+.noticeDialog {
+  width: min(360px, calc(100vw - 24px));
+  padding: 14px 16px;
+}
+
 .tagManagerRow {
   display: flex;
   align-items: center;

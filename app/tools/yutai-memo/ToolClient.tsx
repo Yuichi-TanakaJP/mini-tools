@@ -1422,8 +1422,14 @@ export default function ToolClient() {
           ) : null}
 
           {noticeMessage ? (
-            <div className={styles.overlay} onClick={() => setNoticeMessage(null)}>
-              <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
+            <div
+              className={`${styles.overlay} ${styles.noticeOverlay}`}
+              onClick={() => setNoticeMessage(null)}
+            >
+              <div
+                className={`${styles.dialog} ${styles.noticeDialog}`}
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className={styles.dialogTitle}>お知らせ</div>
                 <div className={styles.dialogBody}>
                   <div className={styles.small} style={{ fontSize: 14, color: "#333" }}>
