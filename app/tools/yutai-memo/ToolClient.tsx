@@ -1642,19 +1642,6 @@ export default function ToolClient() {
                     </option>
                   ))}
                 </select>
-                {strategyHelpOpen ? (
-                  <div className={styles.inlineHelpBox}>
-                    <div className={styles.inlineHelpTitle}>戦略タイプの意味</div>
-                    <ul className={styles.inlineHelpList}>
-                      {CROSS_TYPES.map((type) => (
-                        <li key={type}>
-                          <strong>{type}</strong>
-                          <span>{CROSS_TYPE_DESCRIPTIONS[type]}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
               </div>
 
               <div>
@@ -1671,6 +1658,19 @@ export default function ToolClient() {
                 />
               </div>
             </div>
+            {strategyHelpOpen ? (
+              <div className={styles.inlineHelpBox}>
+                <div className={styles.inlineHelpTitle}>戦略タイプの意味</div>
+                <ul className={styles.inlineHelpList}>
+                  {CROSS_TYPES.map((type) => (
+                    <li key={type}>
+                      <strong>{type}</strong>
+                      <span>{CROSS_TYPE_DESCRIPTIONS[type]}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
 
             <hr className={styles.hr} />
 
