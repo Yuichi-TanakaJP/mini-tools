@@ -307,6 +307,13 @@
   background: #eaf4ff;
 }
 
+.strategyTwoCol {
+  display: grid;
+  grid-template-columns: minmax(0, 180px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
 @media (max-width: 640px) {
   .wrap {
     --selection-col-width: 16px;
@@ -375,6 +382,11 @@
   .formTwoCol {
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+
+  .strategyTwoCol {
+    grid-template-columns: minmax(0, 132px) minmax(0, 1fr);
+    gap: 10px;
   }
 
   .cardSide {

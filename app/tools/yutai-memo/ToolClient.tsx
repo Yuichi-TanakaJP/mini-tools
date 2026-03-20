@@ -1609,7 +1609,7 @@ export default function ToolClient() {
 
             <hr className={styles.hr} />
 
-            <div className={styles.formTwoCol}>
+            <div className={styles.strategyTwoCol}>
               <div>
                 <div
                   className={`${styles.small} ${styles.labelWithInfo}`}
