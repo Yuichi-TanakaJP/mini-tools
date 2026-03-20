@@ -51,6 +51,11 @@ type DeleteTarget = {
   name: string;
 };
 
+type DeleteTagTarget = {
+  id: string;
+  name: string;
+};
+
 type TickerMasterItem = {
   as_of_date: string;
   code: string;
@@ -233,6 +238,7 @@ export default function ToolClient() {
   const [bulkArchivePromptOpen, setBulkArchivePromptOpen] = useState(false);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [deleteTagTarget, setDeleteTagTarget] = useState<DeleteTagTarget | null>(null);
   const [tickerMaster, setTickerMaster] = useState<TickerMasterItem[]>([]);
   const [tickerMasterError, setTickerMasterError] = useState<string | null>(null);
 
@@ -491,6 +497,16 @@ export default function ToolClient() {
 
   function deleteTag(id: string) {
     setTagDrafts((prev) => prev.filter((tag) => tag.id !== id));
+  }
+
+  function openDeleteTagDialog(tag: Tag) {
+    setDeleteTagTarget({ id: tag.id, name: tag.name });
+  }
+
+  function confirmDeleteTagTarget() {
+    if (!deleteTagTarget) return;
+    deleteTag(deleteTagTarget.id);
+    setDeleteTagTarget(null);
   }
 
   function toggleSelect(id: string) {
@@ -1405,6 +1421,38 @@ export default function ToolClient() {
             </div>
           ) : null}
 
+          {deleteTagTarget ? (
+            <div className={styles.overlay} onClick={() => setDeleteTagTarget(null)}>
+              <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
+                <div className={styles.dialogTitle}>タグを削除しますか？</div>
+                <div className={styles.dialogBody}>
+                  <div className={styles.small} style={{ fontSize: 14, color: "#333" }}>
+                    {deleteTagTarget.name} を削除します。
+                  </div>
+                  <div className={styles.small} style={{ marginTop: 8 }}>
+                    保存するまで確定はされませんが、このタグは一覧から外れます。
+                  </div>
+                </div>
+                <div className={`${styles.actions} ${styles.dialogFooter}`}>
+                  <button
+                    className={styles.btn}
+                    type="button"
+                    onClick={() => setDeleteTagTarget(null)}
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    className={styles.btnPrimary}
+                    type="button"
+                    onClick={confirmDeleteTagTarget}
+                  >
+                    削除する
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           {tagManagerOpen ? (
             <div
               className={styles.overlay}
@@ -1447,7 +1495,7 @@ export default function ToolClient() {
                           <button
                             className={`${styles.btn} ${styles.tagManagerButton}`}
                             type="button"
-                            onClick={() => deleteTag(t.id)}
+                            onClick={() => openDeleteTagDialog(t)}
                           >
                             削除
                           </button>
