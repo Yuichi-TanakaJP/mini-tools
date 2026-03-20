@@ -504,20 +504,39 @@
   gap: 8px;
 }
 
+.tagManagerRowPending {
+  opacity: 0.55;
+}
+
 .tagManagerInput {
   flex: 1 1 auto;
   min-width: 0;
 }
 
 .tagManagerButton {
-  flex: 0 0 auto;
+  flex: 0 0 72px;
+  width: 72px;
   white-space: nowrap;
+  text-align: center;
 }
 
 .tagManagerList {
   margin-top: 10px;
   display: grid;
   gap: 8px;
+}
+
+.tagPendingBadge {
+  flex: 0 0 auto;
+  min-width: 62px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: center;
 }
 
 .dialogFooter {

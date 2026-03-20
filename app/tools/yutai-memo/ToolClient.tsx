@@ -51,11 +51,6 @@ type DeleteTarget = {
   name: string;
 };
 
-type DeleteTagTarget = {
-  id: string;
-  name: string;
-};
-
 type TickerMasterItem = {
   as_of_date: string;
   code: string;
@@ -238,7 +233,9 @@ export default function ToolClient() {
   const [bulkArchivePromptOpen, setBulkArchivePromptOpen] = useState(false);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
-  const [deleteTagTarget, setDeleteTagTarget] = useState<DeleteTagTarget | null>(null);
+  const [pendingDeletedTagIds, setPendingDeletedTagIds] = useState<Set<string>>(
+    new Set()
+  );
   const [tickerMaster, setTickerMaster] = useState<TickerMasterItem[]>([]);
   const [tickerMasterError, setTickerMasterError] = useState<string | null>(null);
 
@@ -346,12 +343,14 @@ export default function ToolClient() {
   function openTagManager() {
     setTagDrafts(tags.map((t) => ({ ...t })));
     setNewTagName("");
+    setPendingDeletedTagIds(new Set());
     setTagManagerOpen(true);
   }
 
   function closeTagManager() {
     setTagDrafts([]);
     setNewTagName("");
+    setPendingDeletedTagIds(new Set());
     setTagManagerOpen(false);
   }
 
@@ -466,7 +465,9 @@ export default function ToolClient() {
   }
 
   function saveTagDrafts() {
-    const nextTags = tagDrafts.map((tag) => ({ ...tag, name: tag.name.trim() }));
+    const nextTags = tagDrafts
+      .filter((tag) => !pendingDeletedTagIds.has(tag.id))
+      .map((tag) => ({ ...tag, name: tag.name.trim() }));
     if (nextTags.some((tag) => !tag.name)) {
         setNoticeMessage("空のタグ名は保存できません。");
         return;
@@ -495,18 +496,13 @@ export default function ToolClient() {
     closeTagManager();
   }
 
-  function deleteTag(id: string) {
-    setTagDrafts((prev) => prev.filter((tag) => tag.id !== id));
-  }
-
-  function openDeleteTagDialog(tag: Tag) {
-    setDeleteTagTarget({ id: tag.id, name: tag.name });
-  }
-
-  function confirmDeleteTagTarget() {
-    if (!deleteTagTarget) return;
-    deleteTag(deleteTagTarget.id);
-    setDeleteTagTarget(null);
+  function toggleTagPendingDelete(id: string) {
+    setPendingDeletedTagIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   function toggleSelect(id: string) {
@@ -1421,38 +1417,6 @@ export default function ToolClient() {
             </div>
           ) : null}
 
-          {deleteTagTarget ? (
-            <div className={styles.overlay} onClick={() => setDeleteTagTarget(null)}>
-              <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
-                <div className={styles.dialogTitle}>タグを削除しますか？</div>
-                <div className={styles.dialogBody}>
-                  <div className={styles.small} style={{ fontSize: 14, color: "#333" }}>
-                    {deleteTagTarget.name} を削除します。
-                  </div>
-                  <div className={styles.small} style={{ marginTop: 8 }}>
-                    保存するまで確定はされませんが、このタグは一覧から外れます。
-                  </div>
-                </div>
-                <div className={`${styles.actions} ${styles.dialogFooter}`}>
-                  <button
-                    className={styles.btn}
-                    type="button"
-                    onClick={() => setDeleteTagTarget(null)}
-                  >
-                    キャンセル
-                  </button>
-                  <button
-                    className={styles.btnPrimary}
-                    type="button"
-                    onClick={confirmDeleteTagTarget}
-                  >
-                    削除する
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : null}
-
           {tagManagerOpen ? (
             <div
               className={styles.overlay}
@@ -1486,18 +1450,29 @@ export default function ToolClient() {
                       <div className={styles.small}>タグがありません</div>
                     ) : (
                       tagDrafts.map((t) => (
-                        <div key={t.id} className={styles.tagManagerRow}>
+                        <div
+                          key={t.id}
+                          className={`${styles.tagManagerRow} ${
+                            pendingDeletedTagIds.has(t.id)
+                              ? styles.tagManagerRowPending
+                              : ""
+                          }`}
+                        >
                           <input
                             className={`${styles.input} ${styles.tagManagerInput}`}
                             value={t.name}
                             onChange={(e) => updateTagDraftName(t.id, e.target.value)}
+                            disabled={pendingDeletedTagIds.has(t.id)}
                           />
+                          {pendingDeletedTagIds.has(t.id) ? (
+                            <span className={styles.tagPendingBadge}>削除予定</span>
+                          ) : null}
                           <button
                             className={`${styles.btn} ${styles.tagManagerButton}`}
                             type="button"
-                            onClick={() => openDeleteTagDialog(t)}
+                            onClick={() => toggleTagPendingDelete(t.id)}
                           >
-                            削除
+                            {pendingDeletedTagIds.has(t.id) ? "取消" : "削除"}
                           </button>
                         </div>
                       ))
