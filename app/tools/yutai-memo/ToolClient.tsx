@@ -233,6 +233,9 @@ export default function ToolClient() {
   const [bulkArchivePromptOpen, setBulkArchivePromptOpen] = useState(false);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [pendingDeletedTagIds, setPendingDeletedTagIds] = useState<Set<string>>(
+    new Set()
+  );
   const [tickerMaster, setTickerMaster] = useState<TickerMasterItem[]>([]);
   const [tickerMasterError, setTickerMasterError] = useState<string | null>(null);
 
@@ -340,12 +343,14 @@ export default function ToolClient() {
   function openTagManager() {
     setTagDrafts(tags.map((t) => ({ ...t })));
     setNewTagName("");
+    setPendingDeletedTagIds(new Set());
     setTagManagerOpen(true);
   }
 
   function closeTagManager() {
     setTagDrafts([]);
     setNewTagName("");
+    setPendingDeletedTagIds(new Set());
     setTagManagerOpen(false);
   }
 
@@ -460,7 +465,9 @@ export default function ToolClient() {
   }
 
   function saveTagDrafts() {
-    const nextTags = tagDrafts.map((tag) => ({ ...tag, name: tag.name.trim() }));
+    const nextTags = tagDrafts
+      .filter((tag) => !pendingDeletedTagIds.has(tag.id))
+      .map((tag) => ({ ...tag, name: tag.name.trim() }));
     if (nextTags.some((tag) => !tag.name)) {
         setNoticeMessage("空のタグ名は保存できません。");
         return;
@@ -489,8 +496,13 @@ export default function ToolClient() {
     closeTagManager();
   }
 
-  function deleteTag(id: string) {
-    setTagDrafts((prev) => prev.filter((tag) => tag.id !== id));
+  function toggleTagPendingDelete(id: string) {
+    setPendingDeletedTagIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   function toggleSelect(id: string) {
@@ -1438,18 +1450,26 @@ export default function ToolClient() {
                       <div className={styles.small}>タグがありません</div>
                     ) : (
                       tagDrafts.map((t) => (
-                        <div key={t.id} className={styles.tagManagerRow}>
+                        <div
+                          key={t.id}
+                          className={`${styles.tagManagerRow} ${
+                            pendingDeletedTagIds.has(t.id)
+                              ? styles.tagManagerRowPending
+                              : ""
+                          }`}
+                        >
                           <input
                             className={`${styles.input} ${styles.tagManagerInput}`}
                             value={t.name}
                             onChange={(e) => updateTagDraftName(t.id, e.target.value)}
+                            disabled={pendingDeletedTagIds.has(t.id)}
                           />
                           <button
                             className={`${styles.btn} ${styles.tagManagerButton}`}
                             type="button"
-                            onClick={() => deleteTag(t.id)}
+                            onClick={() => toggleTagPendingDelete(t.id)}
                           >
-                            削除
+                            {pendingDeletedTagIds.has(t.id) ? "取消" : "削除"}
                           </button>
                         </div>
                       ))

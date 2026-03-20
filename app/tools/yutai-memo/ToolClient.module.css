@@ -504,14 +504,20 @@
   gap: 8px;
 }
 
+.tagManagerRowPending {
+  opacity: 0.55;
+}
+
 .tagManagerInput {
   flex: 1 1 auto;
   min-width: 0;
 }
 
 .tagManagerButton {
-  flex: 0 0 auto;
+  flex: 0 0 72px;
+  width: 72px;
   white-space: nowrap;
+  text-align: center;
 }
 
 .tagManagerList {
