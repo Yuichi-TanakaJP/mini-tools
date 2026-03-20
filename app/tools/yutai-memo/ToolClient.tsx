@@ -199,6 +199,19 @@ function normalizeDisplayText(value: string): string {
   return value.normalize("NFKC");
 }
 
+const CROSS_TYPE_DESCRIPTIONS: Record<CrossType, string> = {
+  長期優遇なし:
+    "長期条件を特に気にせず、その都度判断する通常運用です。",
+  単発クロス:
+    "その期だけ狙う前提のクロスです。長期条件は基本的に追いません。",
+  連続クロス:
+    "優待を取りながら、割り増しや長期条件につながる継続保有も意識する運用です。",
+  先行クロス:
+    "制度変更や長期条件に備えて、来期以降を見据えて先に仕込む運用です。",
+  "1株放置":
+    "1株だけ持ち続けて保有年数を積み、将来の長期優待条件を満たすことを狙います。",
+};
+
 export default function ToolClient() {
   const [items, setItems] = useState<MemoItem[]>(() => loadItems());
   const [archives, setArchives] = useState<ArchivedMemoItem[]>(() =>
@@ -237,6 +250,7 @@ export default function ToolClient() {
   const [pendingDeletedTagIds, setPendingDeletedTagIds] = useState<Set<string>>(
     new Set()
   );
+  const [strategyHelpOpen, setStrategyHelpOpen] = useState(false);
   const [tickerMaster, setTickerMaster] = useState<TickerMasterItem[]>([]);
   const [tickerMasterError, setTickerMasterError] = useState<string | null>(null);
 
@@ -358,6 +372,7 @@ export default function ToolClient() {
     if (typeof window !== "undefined") {
       setListScrollY(window.scrollY);
     }
+    setStrategyHelpOpen(false);
     setDraft({ ...emptyDraft(), ...seed });
     setMode("edit");
   }
@@ -380,6 +395,7 @@ export default function ToolClient() {
     if (typeof window !== "undefined") {
       setListScrollY(window.scrollY);
     }
+    setStrategyHelpOpen(false);
     setDraft({
       id: it.id,
       createdAt: it.createdAt,
@@ -452,6 +468,7 @@ export default function ToolClient() {
       if (!draft.id) return [base, ...prev];
       return prev.map((x) => (x.id === draft.id ? base : x));
     });
+    setStrategyHelpOpen(false);
     setMode("list");
   }
 
@@ -1594,8 +1611,20 @@ export default function ToolClient() {
 
             <div className={styles.formTwoCol}>
               <div>
-                <div className={styles.small} style={{ marginBottom: 6 }}>
+                <div
+                  className={`${styles.small} ${styles.labelWithInfo}`}
+                  style={{ marginBottom: 6 }}
+                >
                   戦略タイプ
+                  <button
+                    className={styles.infoButton}
+                    type="button"
+                    onClick={() => setStrategyHelpOpen((prev) => !prev)}
+                    aria-expanded={strategyHelpOpen}
+                    aria-label="戦略タイプの説明を表示"
+                  >
+                    ?
+                  </button>
                 </div>
                 <select
                   className={styles.select}
@@ -1613,6 +1642,19 @@ export default function ToolClient() {
                     </option>
                   ))}
                 </select>
+                {strategyHelpOpen ? (
+                  <div className={styles.inlineHelpBox}>
+                    <div className={styles.inlineHelpTitle}>戦略タイプの意味</div>
+                    <ul className={styles.inlineHelpList}>
+                      {CROSS_TYPES.map((type) => (
+                        <li key={type}>
+                          <strong>{type}</strong>
+                          <span>{CROSS_TYPE_DESCRIPTIONS[type]}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </div>
 
               <div>

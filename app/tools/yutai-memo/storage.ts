@@ -16,7 +16,7 @@ function normalizeCrossType(value: unknown): MemoItem["crossType"] {
     case "単発クロス":
     case "連続クロス":
     case "先行クロス":
-    case "1株放置中":
+    case "1株放置":
       return value;
     case "長期：設定がない":
       return "長期優遇なし";
@@ -31,7 +31,8 @@ function normalizeCrossType(value: unknown): MemoItem["crossType"] {
       return "先行クロス";
     case "1株放置（年数稼ぎ）型":
     case "長期：1株放置中":
-      return "1株放置中";
+    case "1株放置中":
+      return "1株放置";
     default:
       return "長期優遇なし";
   }
