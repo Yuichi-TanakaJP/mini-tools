@@ -10,7 +10,7 @@ export const CROSS_TYPES = [
   "単発クロス",
   "連続クロス",
   "先行クロス",
-  "1株放置中",
+  "1株放置",
 ] as const;
 
 export type CrossType = (typeof CROSS_TYPES)[number];

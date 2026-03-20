@@ -307,6 +307,13 @@
   background: #eaf4ff;
 }
 
+.strategyTwoCol {
+  display: grid;
+  grid-template-columns: minmax(0, 180px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
 @media (max-width: 640px) {
   .wrap {
     --selection-col-width: 16px;
@@ -377,6 +384,11 @@
     gap: 8px;
   }
 
+  .strategyTwoCol {
+    grid-template-columns: minmax(0, 132px) minmax(0, 1fr);
+    gap: 10px;
+  }
+
   .cardSide {
     width: 100%;
     align-items: flex-end;
@@ -393,6 +405,59 @@
 .small {
   font-size: 12px;
   color: #555;
+}
+
+.labelWithInfo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.infoButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid #d8dbe2;
+  border-radius: 999px;
+  background: #fff;
+  color: #666;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.inlineHelpBox {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid #ece7d8;
+  border-radius: 12px;
+  background: #fffaf0;
+}
+
+.inlineHelpTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b5b2d;
+}
+
+.inlineHelpList {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+}
+
+.inlineHelpList li {
+  color: #5a5140;
+  font-size: 12px;
+}
+
+.inlineHelpList strong {
+  display: inline-block;
+  margin-right: 6px;
+  color: #3b3324;
 }
 .memoLink {
   color: #1d4ed8;
