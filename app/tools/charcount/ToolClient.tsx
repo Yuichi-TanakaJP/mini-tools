@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import ShareButtons from "@/components/ShareButtonsSuspended";
 import MonetizeBar from "@/components/MonetizeBar";
 import { track } from "@/lib/analytics";
@@ -133,10 +132,9 @@ export default function ToolClient() {
     const noSpace = countChars(stripSpacesAndNewlines(text));
     const xEstimated = countForX(text);
     const x140Remaining = 140 - xEstimated;
-    const x280Remaining = 280 - xEstimated;
     const lines = text.length ? text.split(/\r?\n/).length : 0;
 
-    return { raw, noSpace, xEstimated, x140Remaining, x280Remaining, lines };
+    return { raw, noSpace, xEstimated, x140Remaining, lines };
   }, [text]);
 
   const onChange = (v: string) => {
@@ -170,25 +168,25 @@ export default function ToolClient() {
 
   return (
     <main style={{ maxWidth: 760, margin: "0 auto", padding: 16 }}>
-      <div style={{ marginBottom: 12 }}>
-        <Link
-          href="/"
-          onClick={() => track("nav_clicked", { to: "home_from_tool" })}
-          style={{
-            display: "inline-block",
-            padding: "8px 10px",
-            borderRadius: 10,
-            border: "1px solid #999",
-            textDecoration: "none",
-          }}
-        >
-          ← ツール一覧へ
-        </Link>
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "4px 10px",
+          borderRadius: 999,
+          background: "#f4f7fb",
+          color: "#345",
+          fontSize: 12,
+          fontWeight: 700,
+        }}
+      >
+        X投稿向け
       </div>
 
-      <h1 style={{ fontSize: 24, marginBottom: 6 }}>文字数カウント</h1>
+      <h1 style={{ fontSize: 24, margin: "10px 0 6px" }}>X投稿文字数カウント</h1>
       <p style={{ marginTop: 0, fontSize: 13, lineHeight: 1.5, opacity: 0.72 }}>
-        文章を貼るだけで文字数を確認できます（X 140/280の残りも表示）。
+        140字に収めたい投稿文を、そのまま貼るだけで確認できます。
       </p>
 
       <div style={{ marginTop: 14 }}>
@@ -196,7 +194,7 @@ export default function ToolClient() {
           value={text}
           onChange={(e) => onChange(e.target.value)}
           placeholder={
-            "例:\n日経平均+1.81%、TOPIX+0.64%...\n#日経平均 #TOPIX ..."
+            "例:\n日経平均は反発。半導体株が支えた一方で、内需は弱め。\n#日経平均 #日本株"
           }
           rows={10}
           style={{
@@ -228,21 +226,12 @@ export default function ToolClient() {
           }}
         >
           <div
-            style={{ padding: 12, border: "1px solid #ddd", borderRadius: 12 }}
-          >
-            <div style={{ fontSize: 13, opacity: 0.8 }}>文字数（そのまま）</div>
-            <div style={{ fontSize: 32, fontWeight: 700 }}>{stats.raw}</div>
-          </div>
-
-          <div
-            style={{ padding: 12, border: "1px solid #ddd", borderRadius: 12 }}
-          >
-            <div style={{ fontSize: 13, opacity: 0.8 }}>スペース/改行除外</div>
-            <div style={{ fontSize: 32, fontWeight: 700 }}>{stats.noSpace}</div>
-          </div>
-
-          <div
-            style={{ padding: 12, border: "1px solid #ddd", borderRadius: 12 }}
+            style={{
+              padding: 12,
+              border: "1px solid #111",
+              borderRadius: 12,
+              background: "#fafafa",
+            }}
           >
             <div style={{ fontSize: 13, opacity: 0.8 }}>X推定文字数</div>
             <div style={{ fontSize: 32, fontWeight: 700 }}>{stats.xEstimated}</div>
@@ -272,19 +261,15 @@ export default function ToolClient() {
           <div
             style={{ padding: 12, border: "1px solid #ddd", borderRadius: 12 }}
           >
-            <div style={{ fontSize: 13, opacity: 0.8 }}>X推定 280字 残り</div>
-            <div
-              style={{
-                fontSize: 32,
-                fontWeight: 700,
-                color: stats.x280Remaining < 0 ? "#b91c1c" : "inherit",
-              }}
-            >
-              {stats.x280Remaining}
-            </div>
-            <div style={{ fontSize: 12, opacity: 0.7 }}>
-              {stats.x280Remaining < 0 ? "オーバーしています" : "OK"}
-            </div>
+            <div style={{ fontSize: 13, opacity: 0.8 }}>文字数（そのまま）</div>
+            <div style={{ fontSize: 32, fontWeight: 700 }}>{stats.raw}</div>
+          </div>
+
+          <div
+            style={{ padding: 12, border: "1px solid #ddd", borderRadius: 12 }}
+          >
+            <div style={{ fontSize: 13, opacity: 0.8 }}>スペース/改行除外</div>
+            <div style={{ fontSize: 32, fontWeight: 700 }}>{stats.noSpace}</div>
           </div>
         </div>
 
@@ -318,7 +303,7 @@ export default function ToolClient() {
         </div>
       </div>
 
-      <ShareButtons text="文字数カウント：文章を貼るだけでX/投稿の文字数を確認できる" />
+      <ShareButtons text="X投稿文字数カウント：140字に収まるかを確認できる" />
       <MonetizeBar />
 
       <div style={{ marginTop: 24, fontSize: 12, opacity: 0.75 }}>
