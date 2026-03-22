@@ -85,7 +85,11 @@ function normalizeTimeLabel(time: string) {
   return time.replace(/\s*\/\s*（?予定）?$/, "").replace(/\s*\/\s*\(予定\)$/, "");
 }
 
-function createEmptyMonth(id: string, updatedAt: string): CalendarMonth {
+function createEmptyMonth(
+  id: string,
+  updatedAt: string,
+  holidayMap: Map<string, JpxMarketClosedDay>,
+): CalendarMonth {
   const [year, month] = id.split("-").map(Number);
   const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -110,14 +114,15 @@ function createEmptyMonth(id: string, updatedAt: string): CalendarMonth {
   }
 
   for (let day = 1; day <= daysInMonth; day += 1) {
+    const key = `${id}-${String(day).padStart(2, "0")}`;
     cells.push({
-      key: `${id}-${String(day).padStart(2, "0")}`,
+      key,
       day,
       count: 0,
       detailStatus: "missing",
       items: [],
-      marketClosed: false,
-      marketClosedLabel: "",
+      marketClosed: holidayMap.get(key)?.market_closed ?? false,
+      marketClosedLabel: holidayMap.get(key)?.label ?? "",
     });
   }
 
@@ -292,7 +297,7 @@ function buildMonths(data: EarningsCalendarPageData): CalendarMonth[] {
         cursor.year < asOfYear || (cursor.year === asOfYear && cursor.month < asOfMonth)
           ? "past"
           : "future";
-      const emptyMonth = createEmptyMonth(id, updatedAt);
+      const emptyMonth = createEmptyMonth(id, updatedAt, holidayMap);
       months.push({ ...emptyMonth, bucket, partial: false });
     }
     cursor = addMonths(cursor.year, cursor.month, 1);
@@ -376,7 +381,8 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
   function moveMonth(direction: -1 | 1) {
     if (months.length <= 1) return;
     setMonthIndex((current) => {
-      const next = (current + direction + months.length) % months.length;
+      const next = Math.min(months.length - 1, Math.max(0, current + direction));
+      if (next === current) return current;
       setSelectedKey(months[next].selectedKey);
       return next;
     });
@@ -399,10 +405,10 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
               type="button"
               style={{
                 ...styles.navBtn,
-                ...(months.length <= 1 ? styles.navBtnDisabled : {}),
+                ...(monthIndex <= 0 ? styles.navBtnDisabled : {}),
               }}
               onClick={() => moveMonth(-1)}
-              disabled={months.length <= 1}
+              disabled={monthIndex <= 0}
               aria-label="前月へ"
             >
               ‹
@@ -412,10 +418,10 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
               type="button"
               style={{
                 ...styles.navBtn,
-                ...(months.length <= 1 ? styles.navBtnDisabled : {}),
+                ...(monthIndex >= months.length - 1 ? styles.navBtnDisabled : {}),
               }}
               onClick={() => moveMonth(1)}
-              disabled={months.length <= 1}
+              disabled={monthIndex >= months.length - 1}
               aria-label="次月へ"
             >
               ›
