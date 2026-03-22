@@ -152,8 +152,10 @@ function buildMonths(data: EarningsCalendarResponse): CalendarMonth[] {
       );
 
       const todayKey = data.as_of_date;
+      const futureOrToday = sortedDays.find((day) => day.date >= todayKey && day.count > 0)?.date;
       const defaultSelectedKey =
-        sortedDays.find((day) => day.date === todayKey && day.count > 0)?.date ??
+        sortedDays.find((day) => day.date === todayKey)?.date ??
+        futureOrToday ??
         sortedDays.find((day) => day.count > 0)?.date ??
         sortedDays[0].date;
 
@@ -246,10 +248,11 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
     return found >= 0 ? found : 0;
   }, [data.as_of_date, months]);
   const [monthIndex, setMonthIndex] = useState(initialMonthIndex);
-  const month = months[monthIndex];
-  const [selectedKey, setSelectedKey] = useState(month.selectedKey);
+  const month = months[monthIndex] ?? null;
+  const [selectedKey, setSelectedKey] = useState(months[initialMonthIndex]?.selectedKey ?? "");
 
   const selectedDay = useMemo(() => {
+    if (!month) return null;
     return (
       month.cells.find((cell) => cell.key === selectedKey) ??
       month.cells.find((cell) => cell.key === month.selectedKey) ??
@@ -258,6 +261,38 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
       month.cells[0]
     );
   }, [month, selectedKey]);
+
+  if (!month || !selectedDay) {
+    return (
+      <main style={styles.page}>
+        <div style={styles.mobileShell}>
+          <header style={styles.headerRow}>
+            <div style={styles.brandRow}>
+              <div style={styles.brandMark} aria-hidden>
+                ■
+              </div>
+              <div style={styles.brandName}>mini-tools</div>
+            </div>
+          </header>
+
+          <section style={styles.heroBlock}>
+            <div style={styles.heroEyebrow}>決算カレンダー beta</div>
+            <h1 style={styles.heroTitle}>日本株の決算予定を日付で見る</h1>
+            <p style={styles.heroNote}>
+              決算データを読み込めなかったため、いまはカレンダーを表示できません。
+            </p>
+          </section>
+
+          <article style={styles.emptyCard}>
+            <div style={styles.emptyTitle}>決算データがまだありません</div>
+            <div style={styles.emptyNote}>
+              market_info 側の出力が空だった場合に備えた空状態です。データが更新されたらここに月間カレンダーが表示されます。
+            </div>
+          </article>
+        </div>
+      </main>
+    );
+  }
 
   const selectedItems = selectedDay.items;
   const selectedCount = selectedDay.count;
