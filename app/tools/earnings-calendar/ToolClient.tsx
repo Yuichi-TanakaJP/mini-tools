@@ -71,7 +71,7 @@ function createEmptyMonth(id: string, updatedAt: string): CalendarMonth {
 
   for (let index = 0; index < firstWeekday; index += 1) {
     const mutedDay = prevMonthLastDay - firstWeekday + index + 1;
-    const prevDate = new Date(Date.UTC(year, month - 1, mutedDay));
+    const prevDate = new Date(Date.UTC(year, month - 2, mutedDay));
     cells.push({
       key: `${prevDate.getUTCFullYear()}-${String(prevDate.getUTCMonth() + 1).padStart(2, "0")}-${String(
         prevDate.getUTCDate(),
@@ -163,7 +163,7 @@ function buildMonths(data: EarningsCalendarResponse): CalendarMonth[] {
 
       for (let index = 0; index < firstWeekday; index += 1) {
         const mutedDay = prevMonthLastDay - firstWeekday + index + 1;
-        const prevDate = new Date(Date.UTC(year, month - 1, mutedDay));
+        const prevDate = new Date(Date.UTC(year, month - 2, mutedDay));
         cells.push({
           key: `${prevDate.getUTCFullYear()}-${String(prevDate.getUTCMonth() + 1).padStart(2, "0")}-${String(
             prevDate.getUTCDate(),
