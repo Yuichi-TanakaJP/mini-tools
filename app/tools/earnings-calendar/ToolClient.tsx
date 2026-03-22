@@ -1,20 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type {
+  EarningsCalendarDay,
+  EarningsCalendarItem,
+  EarningsCalendarResponse,
+} from "./types";
 
-type EarningsItem = {
-  code: string;
-  name: string;
-  market: string;
-  time: string;
-};
-
-type DayCell = {
+type CalendarCell = {
   key: string;
   day: number;
-  count?: number;
+  count: number;
+  detailStatus: EarningsCalendarDay["detail_status"];
+  items: EarningsCalendarItem[];
   muted?: boolean;
-  items?: EarningsItem[];
 };
 
 type CalendarMonth = {
@@ -23,114 +22,15 @@ type CalendarMonth = {
   updatedAt: string;
   totalCount: number;
   selectedKey: string;
-  cells: DayCell[];
+  cells: CalendarCell[];
 };
 
-const APRIL_ITEMS: EarningsItem[] = [
-  { code: "7203", name: "トヨタ自動車", market: "プライム", time: "15:00" },
-  { code: "9984", name: "ソフトバンクグループ", market: "プライム", time: "16:30" },
-  { code: "6758", name: "ソニーグループ", market: "プライム", time: "15:30" },
-  { code: "8306", name: "三菱UFJフィナンシャルG", market: "プライム", time: "15:00" },
-];
-
-const MAY_ITEMS: EarningsItem[] = [
-  { code: "9432", name: "日本電信電話", market: "プライム", time: "15:00" },
-  { code: "6501", name: "日立製作所", market: "プライム", time: "15:30" },
-  { code: "7974", name: "任天堂", market: "プライム", time: "16:00" },
-];
-
-const MONTHS: CalendarMonth[] = [
-  {
-    id: "2024-04",
-    label: "2024年4月",
-    updatedAt: "2024/04/10",
-    totalCount: 352,
-    selectedKey: "2024-04-15",
-    cells: [
-      { key: "2024-03-31", day: 31, muted: true },
-      { key: "2024-04-01", day: 1, count: 8 },
-      { key: "2024-04-02", day: 2, count: 12 },
-      { key: "2024-04-03", day: 3, count: 5 },
-      { key: "2024-04-04", day: 4, count: 15 },
-      { key: "2024-04-05", day: 5, count: 22 },
-      { key: "2024-04-06", day: 6, count: 2 },
-      { key: "2024-04-07", day: 7 },
-      { key: "2024-04-08", day: 8, count: 19 },
-      { key: "2024-04-09", day: 9, count: 4 },
-      { key: "2024-04-10", day: 10, count: 28 },
-      { key: "2024-04-11", day: 11, count: 31 },
-      { key: "2024-04-12", day: 12, count: 45 },
-      { key: "2024-04-13", day: 13 },
-      { key: "2024-04-14", day: 14 },
-      { key: "2024-04-15", day: 15, count: 52, items: APRIL_ITEMS },
-      { key: "2024-04-16", day: 16, count: 18 },
-      { key: "2024-04-17", day: 17, count: 7 },
-      { key: "2024-04-18", day: 18, count: 10 },
-      { key: "2024-04-19", day: 19, count: 24 },
-      { key: "2024-04-20", day: 20 },
-      { key: "2024-04-21", day: 21 },
-      { key: "2024-04-22", day: 22, count: 6 },
-      { key: "2024-04-23", day: 23, count: 11 },
-      { key: "2024-04-24", day: 24, count: 14 },
-      { key: "2024-04-25", day: 25, count: 9 },
-      { key: "2024-04-26", day: 26, count: 18 },
-      { key: "2024-04-27", day: 27, count: 3 },
-      { key: "2024-04-28", day: 28 },
-      { key: "2024-04-29", day: 29, count: 7 },
-      { key: "2024-04-30", day: 30, count: 13 },
-      { key: "2024-05-01", day: 1, muted: true },
-      { key: "2024-05-02", day: 2, muted: true },
-      { key: "2024-05-03", day: 3, muted: true },
-      { key: "2024-05-04", day: 4, muted: true },
-    ],
-  },
-  {
-    id: "2024-05",
-    label: "2024年5月",
-    updatedAt: "2024/05/08",
-    totalCount: 418,
-    selectedKey: "2024-05-14",
-    cells: [
-      { key: "2024-04-28", day: 28, muted: true },
-      { key: "2024-04-29", day: 29, muted: true },
-      { key: "2024-04-30", day: 30, muted: true },
-      { key: "2024-05-01", day: 1, count: 12 },
-      { key: "2024-05-02", day: 2, count: 7 },
-      { key: "2024-05-03", day: 3, count: 1 },
-      { key: "2024-05-04", day: 4 },
-      { key: "2024-05-05", day: 5 },
-      { key: "2024-05-06", day: 6 },
-      { key: "2024-05-07", day: 7, count: 18 },
-      { key: "2024-05-08", day: 8, count: 27 },
-      { key: "2024-05-09", day: 9, count: 41 },
-      { key: "2024-05-10", day: 10, count: 56 },
-      { key: "2024-05-11", day: 11 },
-      { key: "2024-05-12", day: 12 },
-      { key: "2024-05-13", day: 13, count: 32 },
-      { key: "2024-05-14", day: 14, count: 37, items: MAY_ITEMS },
-      { key: "2024-05-15", day: 15, count: 24 },
-      { key: "2024-05-16", day: 16, count: 15 },
-      { key: "2024-05-17", day: 17, count: 9 },
-      { key: "2024-05-18", day: 18 },
-      { key: "2024-05-19", day: 19 },
-      { key: "2024-05-20", day: 20, count: 6 },
-      { key: "2024-05-21", day: 21, count: 8 },
-      { key: "2024-05-22", day: 22, count: 5 },
-      { key: "2024-05-23", day: 23, count: 13 },
-      { key: "2024-05-24", day: 24, count: 21 },
-      { key: "2024-05-25", day: 25 },
-      { key: "2024-05-26", day: 26 },
-      { key: "2024-05-27", day: 27, count: 11 },
-      { key: "2024-05-28", day: 28, count: 7 },
-      { key: "2024-05-29", day: 29, count: 9 },
-      { key: "2024-05-30", day: 30, count: 4 },
-      { key: "2024-05-31", day: 31, count: 2 },
-      { key: "2024-06-01", day: 1, muted: true },
-    ],
-  },
-];
-
 const WEEK_LABELS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
+function parseDateKey(key: string) {
+  const [year, month, day] = key.split("-").map(Number);
+  return { year, month, day };
+}
 
 function getWeekdayJa(year: number, month: number, day: number) {
   return ["日", "月", "火", "水", "木", "金", "土"][
@@ -139,39 +39,269 @@ function getWeekdayJa(year: number, month: number, day: number) {
 }
 
 function formatSelectedLabel(key: string) {
-  const [year, month, day] = key.split("-").map(Number);
-  const weekday = getWeekdayJa(year, month, day);
-  return `${month}/${day}（${weekday}）`;
+  const { year, month, day } = parseDateKey(key);
+  return `${month}/${day}（${getWeekdayJa(year, month, day)}）`;
 }
 
 function formatSelectedTitle(key: string) {
-  const [year, month, day] = key.split("-").map(Number);
-  const weekday = getWeekdayJa(year, month, day);
-  return `${year}年${month}月${day}日（${weekday}）の決算銘柄`;
+  const { year, month, day } = parseDateKey(key);
+  return `${year}年${month}月${day}日（${getWeekdayJa(year, month, day)}）の決算銘柄`;
 }
 
-export default function ToolClient() {
-  const [monthIndex, setMonthIndex] = useState(0);
-  const month = MONTHS[monthIndex];
-  const [selectedKey, setSelectedKey] = useState(month.selectedKey);
+function formatMonthLabel(year: number, month: number) {
+  return `${year}年${month}月`;
+}
+
+function formatUpdatedAt(key: string) {
+  const { year, month, day } = parseDateKey(key);
+  return `${year}/${String(month).padStart(2, "0")}/${String(day).padStart(2, "0")}`;
+}
+
+function normalizeMarket(market: string) {
+  if (market === "TKY") return "東証";
+  return market;
+}
+
+function createEmptyMonth(id: string, updatedAt: string): CalendarMonth {
+  const [year, month] = id.split("-").map(Number);
+  const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const prevMonthLastDay = new Date(Date.UTC(year, month - 1, 0)).getUTCDate();
+  const cells: CalendarCell[] = [];
+
+  for (let index = 0; index < firstWeekday; index += 1) {
+    const mutedDay = prevMonthLastDay - firstWeekday + index + 1;
+    const prevDate = new Date(Date.UTC(year, month - 1, mutedDay));
+    cells.push({
+      key: `${prevDate.getUTCFullYear()}-${String(prevDate.getUTCMonth() + 1).padStart(2, "0")}-${String(
+        prevDate.getUTCDate(),
+      ).padStart(2, "0")}`,
+      day: mutedDay,
+      count: 0,
+      detailStatus: "missing",
+      items: [],
+      muted: true,
+    });
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    cells.push({
+      key: `${id}-${String(day).padStart(2, "0")}`,
+      day,
+      count: 0,
+      detailStatus: "missing",
+      items: [],
+    });
+  }
+
+  const trailingCount = (7 - (cells.length % 7)) % 7;
+  for (let index = 1; index <= trailingCount; index += 1) {
+    const nextDate = new Date(Date.UTC(year, month - 1, daysInMonth + index));
+    cells.push({
+      key: `${nextDate.getUTCFullYear()}-${String(nextDate.getUTCMonth() + 1).padStart(2, "0")}-${String(
+        nextDate.getUTCDate(),
+      ).padStart(2, "0")}`,
+      day: nextDate.getUTCDate(),
+      count: 0,
+      detailStatus: "missing",
+      items: [],
+      muted: true,
+    });
+  }
+
+  return {
+    id,
+    label: formatMonthLabel(year, month),
+    updatedAt,
+    totalCount: 0,
+    selectedKey: `${id}-01`,
+    cells,
+  };
+}
+
+function buildMonths(data: EarningsCalendarResponse): CalendarMonth[] {
+  const grouped = new Map<string, EarningsCalendarDay[]>();
+
+  for (const day of data.calendar) {
+    const key = day.date.slice(0, 7);
+    const bucket = grouped.get(key) ?? [];
+    bucket.push(day);
+    grouped.set(key, bucket);
+  }
+
+  const months = Array.from(grouped.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([id, days]) => {
+      const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
+      const { year, month } = parseDateKey(sortedDays[0].date);
+      const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+      const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+      const prevMonthLastDay = new Date(Date.UTC(year, month - 1, 0)).getUTCDate();
+      const totalCount = sortedDays.reduce((sum, day) => sum + day.count, 0);
+      const dayMap = new Map(
+        sortedDays.map((day) => [
+          day.date,
+          {
+            key: day.date,
+            day: parseDateKey(day.date).day,
+            count: day.count,
+            detailStatus: day.detail_status,
+            items: day.items,
+          } satisfies CalendarCell,
+        ]),
+      );
+
+      const todayKey = data.as_of_date;
+      const futureOrToday = sortedDays.find((day) => day.date >= todayKey && day.count > 0)?.date;
+      const defaultSelectedKey =
+        sortedDays.find((day) => day.date === todayKey)?.date ??
+        futureOrToday ??
+        sortedDays.find((day) => day.count > 0)?.date ??
+        sortedDays[0].date;
+
+      const cells: CalendarCell[] = [];
+
+      for (let index = 0; index < firstWeekday; index += 1) {
+        const mutedDay = prevMonthLastDay - firstWeekday + index + 1;
+        const prevDate = new Date(Date.UTC(year, month - 1, mutedDay));
+        cells.push({
+          key: `${prevDate.getUTCFullYear()}-${String(prevDate.getUTCMonth() + 1).padStart(2, "0")}-${String(
+            prevDate.getUTCDate(),
+          ).padStart(2, "0")}`,
+          day: mutedDay,
+          count: 0,
+          detailStatus: "missing",
+          items: [],
+          muted: true,
+        });
+      }
+
+      for (let day = 1; day <= daysInMonth; day += 1) {
+        const key = `${id}-${String(day).padStart(2, "0")}`;
+        cells.push(
+          dayMap.get(key) ?? {
+            key,
+            day,
+            count: 0,
+            detailStatus: "missing",
+            items: [],
+          },
+        );
+      }
+
+      const trailingCount = (7 - (cells.length % 7)) % 7;
+      for (let index = 1; index <= trailingCount; index += 1) {
+        const nextDate = new Date(Date.UTC(year, month - 1, daysInMonth + index));
+        cells.push({
+          key: `${nextDate.getUTCFullYear()}-${String(nextDate.getUTCMonth() + 1).padStart(2, "0")}-${String(
+            nextDate.getUTCDate(),
+          ).padStart(2, "0")}`,
+          day: nextDate.getUTCDate(),
+          count: 0,
+          detailStatus: "missing",
+          items: [],
+          muted: true,
+        });
+      }
+
+      return {
+        id,
+        label: formatMonthLabel(year, month),
+        updatedAt: formatUpdatedAt(data.as_of_date),
+        totalCount,
+        selectedKey: defaultSelectedKey,
+        cells,
+      };
+    });
+
+  if (months.length === 1) {
+    const [year, month] = months[0].id.split("-").map(Number);
+    const prev = new Date(Date.UTC(year, month - 2, 1));
+    const next = new Date(Date.UTC(year, month, 1));
+    const prevId = `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, "0")}`;
+    const nextId = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}`;
+    return [
+      createEmptyMonth(prevId, months[0].updatedAt),
+      months[0],
+      createEmptyMonth(nextId, months[0].updatedAt),
+    ];
+  }
+
+  return months;
+}
+
+function getEmptyStateMessage(day: CalendarCell) {
+  if (day.detailStatus === "empty") {
+    return "この日は件数だけ反映されていて、詳細一覧はまだ空です。";
+  }
+  if (day.detailStatus === "missing") {
+    return "この日の詳細データはまだ未取得です。";
+  }
+  return "この日の決算予定はまだありません。";
+}
+
+export default function ToolClient({ data }: { data: EarningsCalendarResponse }) {
+  const months = useMemo(() => buildMonths(data), [data]);
+  const initialMonthIndex = useMemo(() => {
+    const targetMonth = data.as_of_date.slice(0, 7);
+    const found = months.findIndex((month) => month.id === targetMonth);
+    return found >= 0 ? found : 0;
+  }, [data.as_of_date, months]);
+  const [monthIndex, setMonthIndex] = useState(initialMonthIndex);
+  const month = months[monthIndex] ?? null;
+  const [selectedKey, setSelectedKey] = useState(months[initialMonthIndex]?.selectedKey ?? "");
 
   const selectedDay = useMemo(() => {
+    if (!month) return null;
     return (
       month.cells.find((cell) => cell.key === selectedKey) ??
       month.cells.find((cell) => cell.key === month.selectedKey) ??
-      month.cells.find((cell) => !cell.muted && cell.count) ??
+      month.cells.find((cell) => !cell.muted && cell.count > 0) ??
       month.cells.find((cell) => !cell.muted) ??
       month.cells[0]
     );
   }, [month, selectedKey]);
 
-  const selectedItems = selectedDay.items ?? [];
-  const selectedCount = selectedDay.count ?? 0;
+  if (!month || !selectedDay) {
+    return (
+      <main style={styles.page}>
+        <div style={styles.mobileShell}>
+          <header style={styles.headerRow}>
+            <div style={styles.brandRow}>
+              <div style={styles.brandMark} aria-hidden>
+                ■
+              </div>
+              <div style={styles.brandName}>mini-tools</div>
+            </div>
+          </header>
+
+          <section style={styles.heroBlock}>
+            <div style={styles.heroEyebrow}>決算カレンダー beta</div>
+            <h1 style={styles.heroTitle}>日本株の決算予定を日付で見る</h1>
+            <p style={styles.heroNote}>
+              決算データを読み込めなかったため、いまはカレンダーを表示できません。
+            </p>
+          </section>
+
+          <article style={styles.emptyCard}>
+            <div style={styles.emptyTitle}>決算データがまだありません</div>
+            <div style={styles.emptyNote}>
+              market_info 側の出力が空だった場合に備えた空状態です。データが更新されたらここに月間カレンダーが表示されます。
+            </div>
+          </article>
+        </div>
+      </main>
+    );
+  }
+
+  const selectedItems = selectedDay.items;
+  const selectedCount = selectedDay.count;
 
   function moveMonth(direction: -1 | 1) {
+    if (months.length <= 1) return;
     setMonthIndex((current) => {
-      const next = (current + direction + MONTHS.length) % MONTHS.length;
-      setSelectedKey(MONTHS[next].selectedKey);
+      const next = (current + direction + months.length) % months.length;
+      setSelectedKey(months[next].selectedKey);
       return next;
     });
   }
@@ -200,17 +330,35 @@ export default function ToolClient() {
           <div style={styles.heroEyebrow}>決算カレンダー beta</div>
           <h1 style={styles.heroTitle}>日本株の決算予定を日付で見る</h1>
           <p style={styles.heroNote}>
-            月ごとの予定感と、その日の決算銘柄をスマホでさっと確認するためのモックです。
+            market_info のデータをもとに、その日の決算予定をスマホでさっと確認できます。
           </p>
         </section>
 
         <section style={styles.calendarCard}>
           <div style={styles.calendarTop}>
-            <button type="button" style={styles.navBtn} onClick={() => moveMonth(-1)}>
+            <button
+              type="button"
+              style={{
+                ...styles.navBtn,
+                ...(months.length <= 1 ? styles.navBtnDisabled : {}),
+              }}
+              onClick={() => moveMonth(-1)}
+              disabled={months.length <= 1}
+              aria-label="前月へ"
+            >
               ‹
             </button>
             <div style={styles.monthLabel}>{month.label}</div>
-            <button type="button" style={styles.navBtn} onClick={() => moveMonth(1)}>
+            <button
+              type="button"
+              style={{
+                ...styles.navBtn,
+                ...(months.length <= 1 ? styles.navBtnDisabled : {}),
+              }}
+              onClick={() => moveMonth(1)}
+              disabled={months.length <= 1}
+              aria-label="次月へ"
+            >
               ›
             </button>
           </div>
@@ -218,7 +366,21 @@ export default function ToolClient() {
           <div style={styles.calendarMeta}>
             <span style={styles.metaChip}>日本株</span>
             <span style={styles.metaChipMuted}>月間ビュー</span>
-            <span style={styles.metaChipMuted}>今月 {month.totalCount}件</span>
+            <span style={styles.metaChipStrong}>今月 {month.totalCount}件</span>
+          </div>
+
+          <div style={styles.calendarHint}>
+            青い件数がある日をタップすると、下の決算一覧を切り替えられます。
+          </div>
+          <div style={styles.legendRow}>
+            <span style={styles.legendItem}>
+              <span style={{ ...styles.legendDot, ...styles.legendDotPrimary }} />
+              詳細あり
+            </span>
+            <span style={styles.legendItem}>
+              <span style={{ ...styles.legendDot, ...styles.legendDotMuted }} />
+              件数のみ
+            </span>
           </div>
 
           <div style={styles.weekHeader}>
@@ -232,7 +394,9 @@ export default function ToolClient() {
           <div style={styles.calendarGrid}>
             {month.cells.map((item) => {
               const isSelected = item.key === selectedDay.key;
-              const isClickable = !item.muted && Boolean(item.items?.length);
+              const isClickable = !item.muted && item.count > 0;
+              const hasItems = item.items.length > 0;
+
               return (
                 <button
                   key={item.key}
@@ -247,12 +411,13 @@ export default function ToolClient() {
                   onClick={() => setSelectedKey(item.key)}
                 >
                   <div style={styles.dayNumber}>{item.day}</div>
-                  {item.count ? (
+                  {item.count > 0 ? (
                     <div
                       style={{
                         ...styles.countBadge,
                         ...(item.count >= 20 ? styles.countBadgeBusy : {}),
                         ...(isSelected ? styles.countBadgeActive : {}),
+                        ...(!isSelected && !hasItems ? styles.countBadgeLocked : {}),
                       }}
                     >
                       {item.count}
@@ -273,20 +438,24 @@ export default function ToolClient() {
 
         <section style={styles.listSection}>
           <div style={styles.sectionAccent} />
-          <div style={styles.sectionTitle}>{formatSelectedTitle(selectedDay.key)}</div>
+          <div>
+            <div style={styles.sectionLabel}>日別一覧</div>
+            <div style={styles.sectionTitle}>{formatSelectedTitle(selectedDay.key)}</div>
+          </div>
         </section>
 
         <section style={styles.itemList}>
           {selectedItems.length === 0 ? (
             <article style={styles.emptyCard}>
-              <div style={styles.emptyTitle}>この日の決算予定はまだありません</div>
-              <div style={styles.emptyNote}>
-                件数がある日をタップすると、その日の銘柄一覧がここに出ます。
-              </div>
+              <div style={styles.emptyTitle}>この日の詳細一覧はまだありません</div>
+              <div style={styles.emptyNote}>{getEmptyStateMessage(selectedDay)}</div>
             </article>
           ) : (
-            selectedItems.map((item) => (
-              <article key={item.code} style={styles.itemCard}>
+            selectedItems.map((item, index) => (
+              <article
+                key={`${selectedDay.key}-${item.code}-${item.time}-${item.announcement_type}-${index}`}
+                style={styles.itemCard}
+              >
                 <div style={styles.codeBlock}>
                   <div style={styles.codeLabel}>CODE</div>
                   <div style={styles.codeValue}>{item.code}</div>
@@ -294,12 +463,18 @@ export default function ToolClient() {
 
                 <div style={styles.itemMain}>
                   <div style={styles.itemName}>{item.name}</div>
-                  <div style={styles.itemMarket}>🏛 {item.market}</div>
+                  <div style={styles.itemMetaRow}>
+                    <span>{normalizeMarket(item.market)}</span>
+                    <span>•</span>
+                    <span>{item.announcement_type}</span>
+                    <span>•</span>
+                    <span>{item.publish_status}</span>
+                  </div>
                 </div>
 
                 <div style={styles.itemTimeBlock}>
                   <div style={styles.timeLabel}>予定</div>
-                  <div style={styles.timeValue}>{item.time}</div>
+                  <div style={styles.timeValue}>{item.time || "--:--"}</div>
                 </div>
               </article>
             ))
@@ -327,33 +502,6 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid rgba(15, 23, 42, 0.06)",
     boxShadow: "0 20px 48px rgba(15, 23, 42, 0.10)",
     padding: "18px 14px 24px",
-  },
-  heroBlock: {
-    marginBottom: 16,
-  },
-  heroEyebrow: {
-    display: "inline-flex",
-    alignItems: "center",
-    padding: "4px 8px",
-    borderRadius: 999,
-    background: "#eef2ff",
-    color: "#3b5bdb",
-    fontSize: 11,
-    fontWeight: 800,
-    letterSpacing: 0.1,
-  },
-  heroTitle: {
-    margin: "10px 0 6px",
-    fontSize: 22,
-    lineHeight: 1.2,
-    letterSpacing: -0.4,
-    color: "#1f2937",
-  },
-  heroNote: {
-    margin: 0,
-    fontSize: 13,
-    lineHeight: 1.6,
-    color: "#667085",
   },
   headerRow: {
     display: "flex",
@@ -391,6 +539,33 @@ const styles: Record<string, React.CSSProperties> = {
     placeItems: "center",
     fontSize: 15,
   },
+  heroBlock: {
+    marginBottom: 16,
+  },
+  heroEyebrow: {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "4px 8px",
+    borderRadius: 999,
+    background: "#eef2ff",
+    color: "#3b5bdb",
+    fontSize: 11,
+    fontWeight: 800,
+    letterSpacing: 0.1,
+  },
+  heroTitle: {
+    margin: "10px 0 6px",
+    fontSize: 22,
+    lineHeight: 1.2,
+    letterSpacing: -0.4,
+    color: "#1f2937",
+  },
+  heroNote: {
+    margin: 0,
+    fontSize: 13,
+    lineHeight: 1.6,
+    color: "#667085",
+  },
   calendarCard: {
     background: "#fff",
     borderRadius: 22,
@@ -405,13 +580,22 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 14,
   },
   navBtn: {
-    border: "none",
-    background: "transparent",
+    width: 38,
+    height: 38,
+    borderRadius: 999,
+    border: "1px solid rgba(37, 84, 255, 0.12)",
+    background: "#f5f8ff",
     color: "#2554ff",
-    fontSize: 28,
+    fontSize: 26,
     lineHeight: 1,
     cursor: "pointer",
     padding: 0,
+    display: "grid",
+    placeItems: "center",
+  },
+  navBtnDisabled: {
+    opacity: 0.45,
+    cursor: "default",
   },
   monthLabel: {
     fontSize: 17,
@@ -421,7 +605,7 @@ const styles: Record<string, React.CSSProperties> = {
   calendarMeta: {
     display: "flex",
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 8,
     flexWrap: "wrap",
   },
   metaChip: {
@@ -444,10 +628,53 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 11,
     fontWeight: 700,
   },
+  metaChipStrong: {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "4px 8px",
+    borderRadius: 999,
+    background: "#e7edff",
+    color: "#2f47ca",
+    fontSize: 11,
+    fontWeight: 800,
+  },
+  calendarHint: {
+    marginBottom: 8,
+    fontSize: 12,
+    lineHeight: 1.5,
+    color: "#6b7280",
+  },
+  legendRow: {
+    display: "flex",
+    gap: 12,
+    alignItems: "center",
+    marginBottom: 12,
+    flexWrap: "wrap",
+  },
+  legendItem: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#94a3b8",
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    display: "inline-block",
+  },
+  legendDotPrimary: {
+    background: "#2554ff",
+  },
+  legendDotMuted: {
+    background: "#cbd5e1",
+  },
   weekHeader: {
     display: "grid",
     gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
-    gap: 6,
+    gap: 8,
     marginBottom: 8,
   },
   weekCell: {
@@ -474,6 +701,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   dayClickable: {
     cursor: "pointer",
+    boxShadow: "inset 0 0 0 1px rgba(37, 84, 255, 0.06)",
   },
   dayMuted: {
     opacity: 0.45,
@@ -505,10 +733,15 @@ const styles: Record<string, React.CSSProperties> = {
     background: "#dbe5ff",
     color: "#2f47ca",
   },
+  countBadgeLocked: {
+    background: "#eef2f7",
+    color: "#7c8799",
+  },
   selectionBar: {
     marginTop: 12,
-    paddingTop: 12,
-    borderTop: "1px solid rgba(15, 23, 42, 0.06)",
+    padding: "10px 12px",
+    borderRadius: 14,
+    background: "#f5f8ff",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -537,6 +770,13 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 999,
     background: "linear-gradient(180deg, #7562d8 0%, #9a88f5 100%)",
   },
+  sectionLabel: {
+    marginBottom: 3,
+    fontSize: 11,
+    fontWeight: 800,
+    color: "#94a3b8",
+    letterSpacing: 0.2,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: 800,
@@ -556,6 +796,7 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 12,
     alignItems: "center",
     boxShadow: "0 8px 24px rgba(15, 23, 42, 0.05)",
+    border: "1px solid rgba(15, 23, 42, 0.04)",
   },
   codeBlock: {
     display: "grid",
@@ -580,13 +821,17 @@ const styles: Record<string, React.CSSProperties> = {
     minWidth: 0,
   },
   itemName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 800,
     color: "#1f2937",
     lineHeight: 1.35,
   },
-  itemMarket: {
+  itemMetaRow: {
     marginTop: 4,
+    display: "flex",
+    gap: 6,
+    flexWrap: "wrap",
+    alignItems: "center",
     fontSize: 12,
     color: "#6b7280",
     lineHeight: 1.4,
@@ -601,7 +846,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   timeValue: {
     marginTop: 2,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 900,
     color: "#374151",
   },
