@@ -1,4 +1,5 @@
 export type EarningsCalendarItem = {
+  event_id?: string;
   time: string;
   code: string;
   name: string;

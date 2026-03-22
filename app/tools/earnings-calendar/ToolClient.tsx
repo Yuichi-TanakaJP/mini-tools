@@ -308,23 +308,6 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
   return (
     <main style={styles.page}>
       <div style={styles.mobileShell}>
-        <header style={styles.headerRow}>
-          <div style={styles.brandRow}>
-            <div style={styles.brandMark} aria-hidden>
-              ■
-            </div>
-            <div style={styles.brandName}>mini-tools</div>
-          </div>
-          <div style={styles.headerIcons}>
-            <span style={styles.headerIcon} aria-hidden>
-              ⌕
-            </span>
-            <span style={styles.headerIcon} aria-hidden>
-              ●
-            </span>
-          </div>
-        </header>
-
         <section style={styles.heroBlock}>
           <div style={styles.heroEyebrow}>決算カレンダー beta</div>
           <h1 style={styles.heroTitle}>日本株の決算予定を日付で見る</h1>
@@ -442,7 +425,10 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
           ) : (
             selectedItems.map((item, index) => (
               <article
-                key={`${selectedDay.key}-${item.code}-${item.time}-${item.announcement_type}-${index}`}
+                key={
+                  item.event_id ??
+                  `${selectedDay.key}-${item.code}-${item.time}-${item.announcement_type}-${index}`
+                }
                 style={styles.itemCard}
               >
                 <div style={styles.codeBlock}>
@@ -479,54 +465,19 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
 const styles: Record<string, React.CSSProperties> = {
   page: {
     minHeight: "100vh",
-    padding: "24px 16px 64px",
+    padding: "18px 12px 56px",
     background:
       "radial-gradient(1000px 420px at 20% 0%, rgba(37, 99, 235, 0.08), transparent 58%), #eef2f7",
   },
   mobileShell: {
-    maxWidth: 380,
+    width: "100%",
+    maxWidth: 440,
     margin: "0 auto",
     background: "#f8f9fb",
     borderRadius: 28,
     border: "1px solid rgba(15, 23, 42, 0.06)",
     boxShadow: "0 20px 48px rgba(15, 23, 42, 0.10)",
-    padding: "18px 14px 24px",
-  },
-  headerRow: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 18,
-  },
-  brandRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-  },
-  brandMark: {
-    color: "#2554ff",
-    fontSize: 18,
-    lineHeight: 1,
-  },
-  brandName: {
-    fontSize: 18,
-    fontWeight: 800,
-    color: "#1f2937",
-  },
-  headerIcons: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-  },
-  headerIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 999,
-    background: "#eef2ff",
-    color: "#374151",
-    display: "grid",
-    placeItems: "center",
-    fontSize: 15,
+    padding: "18px 18px 24px",
   },
   heroBlock: {
     marginBottom: 16,
