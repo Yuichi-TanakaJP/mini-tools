@@ -132,20 +132,21 @@ const MONTHS: CalendarMonth[] = [
 
 const WEEK_LABELS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
+function getWeekdayJa(year: number, month: number, day: number) {
+  return ["日", "月", "火", "水", "木", "金", "土"][
+    new Date(Date.UTC(year, month - 1, day)).getUTCDay()
+  ];
+}
+
 function formatSelectedLabel(key: string) {
-  const date = new Date(`${key}T00:00:00+09:00`);
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const weekday = ["日", "月", "火", "水", "木", "金", "土"][date.getDay()];
+  const [year, month, day] = key.split("-").map(Number);
+  const weekday = getWeekdayJa(year, month, day);
   return `${month}/${day}（${weekday}）`;
 }
 
 function formatSelectedTitle(key: string) {
-  const date = new Date(`${key}T00:00:00+09:00`);
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const weekday = ["日", "月", "火", "水", "木", "金", "土"][date.getDay()];
+  const [year, month, day] = key.split("-").map(Number);
+  const weekday = getWeekdayJa(year, month, day);
   return `${year}年${month}月${day}日（${weekday}）の決算銘柄`;
 }
 
@@ -231,7 +232,7 @@ export default function ToolClient() {
           <div style={styles.calendarGrid}>
             {month.cells.map((item) => {
               const isSelected = item.key === selectedDay.key;
-              const isClickable = !item.muted && Boolean(item.count);
+              const isClickable = !item.muted && Boolean(item.items?.length);
               return (
                 <button
                   key={item.key}
