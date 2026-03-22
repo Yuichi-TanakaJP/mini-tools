@@ -27,7 +27,7 @@ export default function ToolGridClient({ tools, styles }: Props) {
   return (
     <div style={styles.grid}>
       {tools.map((t) => (
-        <div key={t.href} style={styles.cardLink}>
+        <div key={t.href} style={styles.cardLink} className="toolLink">
           {t.disabled ? (
             <div style={styles.card} className="toolCard">
               <div

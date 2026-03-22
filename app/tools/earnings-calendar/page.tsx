@@ -149,7 +149,7 @@ export default function Page() {
 
         <section style={styles.listSection}>
           <div style={styles.sectionAccent} />
-          <div style={styles.sectionTitle}>2024年4月15日（金）の決算銘柄</div>
+          <div style={styles.sectionTitle}>2024年4月15日（月）の決算銘柄</div>
         </section>
 
         <section style={styles.itemList}>
