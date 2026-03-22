@@ -404,19 +404,15 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
             })}
           </div>
 
-          <div style={styles.selectionBar}>
-            <div style={styles.selectionLabel}>選択中</div>
-            <div style={styles.selectionValue}>
-              {formatSelectedLabel(selectedDay.key)} {selectedCount}件
-            </div>
-          </div>
         </section>
 
         <section style={styles.listSection}>
           <div style={styles.sectionAccent} />
           <div>
             <div style={styles.sectionLabel}>日別一覧</div>
-            <div style={styles.sectionTitle}>{formatSelectedTitle(selectedDay.key)}</div>
+            <div style={styles.sectionTitle}>
+              {formatSelectedTitle(selectedDay.key)} {selectedCount}件
+            </div>
           </div>
         </section>
 
@@ -651,27 +647,6 @@ const styles: Record<string, React.CSSProperties> = {
   countBadgeLocked: {
     background: "#eef2f7",
     color: "#7c8799",
-  },
-  selectionBar: {
-    marginTop: 12,
-    padding: "10px 12px",
-    borderRadius: 14,
-    background: "#f5f8ff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  selectionLabel: {
-    fontSize: 11,
-    fontWeight: 800,
-    color: "#94a3b8",
-    letterSpacing: 0.2,
-  },
-  selectionValue: {
-    fontSize: 13,
-    fontWeight: 800,
-    color: "#334155",
   },
   listSection: {
     marginTop: 22,
