@@ -6,6 +6,7 @@ import type {
   EarningsCalendarItem,
   EarningsCalendarManifestMonth,
   EarningsCalendarPageData,
+  JpxMarketClosedDay,
 } from "./types";
 
 type CalendarCell = {
@@ -14,6 +15,8 @@ type CalendarCell = {
   count: number;
   detailStatus: EarningsCalendarDay["detail_status"];
   items: EarningsCalendarItem[];
+  marketClosed: boolean;
+  marketClosedLabel: string;
   muted?: boolean;
 };
 
@@ -100,6 +103,8 @@ function createEmptyMonth(id: string, updatedAt: string): CalendarMonth {
       count: 0,
       detailStatus: "missing",
       items: [],
+      marketClosed: false,
+      marketClosedLabel: "",
       muted: true,
     });
   }
@@ -111,6 +116,8 @@ function createEmptyMonth(id: string, updatedAt: string): CalendarMonth {
       count: 0,
       detailStatus: "missing",
       items: [],
+      marketClosed: false,
+      marketClosedLabel: "",
     });
   }
 
@@ -125,6 +132,8 @@ function createEmptyMonth(id: string, updatedAt: string): CalendarMonth {
       count: 0,
       detailStatus: "missing",
       items: [],
+      marketClosed: false,
+      marketClosedLabel: "",
       muted: true,
     });
   }
@@ -141,7 +150,12 @@ function createEmptyMonth(id: string, updatedAt: string): CalendarMonth {
   };
 }
 
-function buildMonth(entry: EarningsCalendarManifestMonth, days: EarningsCalendarDay[], asOfDate: string): CalendarMonth {
+function buildMonth(
+  entry: EarningsCalendarManifestMonth,
+  days: EarningsCalendarDay[],
+  holidayMap: Map<string, JpxMarketClosedDay>,
+  asOfDate: string,
+): CalendarMonth {
   const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
   const { year, month } = sortedDays.length > 0 ? parseDateKey(sortedDays[0].date) : parseYearMonth(entry.id);
   const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
@@ -157,6 +171,8 @@ function buildMonth(entry: EarningsCalendarManifestMonth, days: EarningsCalendar
         count: day.count,
         detailStatus: day.detail_status,
         items: day.items,
+        marketClosed: holidayMap.get(day.date)?.market_closed ?? false,
+        marketClosedLabel: holidayMap.get(day.date)?.label ?? "",
       } satisfies CalendarCell,
     ]),
   );
@@ -181,6 +197,8 @@ function buildMonth(entry: EarningsCalendarManifestMonth, days: EarningsCalendar
       count: 0,
       detailStatus: "missing",
       items: [],
+      marketClosed: false,
+      marketClosedLabel: "",
       muted: true,
     });
   }
@@ -194,6 +212,8 @@ function buildMonth(entry: EarningsCalendarManifestMonth, days: EarningsCalendar
         count: 0,
         detailStatus: "missing",
         items: [],
+        marketClosed: holidayMap.get(key)?.market_closed ?? false,
+        marketClosedLabel: holidayMap.get(key)?.label ?? "",
       },
     );
   }
@@ -209,6 +229,8 @@ function buildMonth(entry: EarningsCalendarManifestMonth, days: EarningsCalendar
       count: 0,
       detailStatus: "missing",
       items: [],
+      marketClosed: false,
+      marketClosedLabel: "",
       muted: true,
     });
   }
@@ -226,11 +248,12 @@ function buildMonth(entry: EarningsCalendarManifestMonth, days: EarningsCalendar
 }
 
 function buildMonths(data: EarningsCalendarPageData): CalendarMonth[] {
+  const holidayMap = new Map(data.holidays.days.map((day) => [day.date, day]));
   const built = data.manifest.months
     .map((entry) => {
       const source = data.monthData[entry.id];
       if (!source) return null;
-      return buildMonth(entry, source.calendar, data.manifest.as_of_date);
+      return buildMonth(entry, source.calendar, holidayMap, data.manifest.as_of_date);
     })
     .filter((month): month is CalendarMonth => month !== null);
 
@@ -279,6 +302,11 @@ function buildMonths(data: EarningsCalendarPageData): CalendarMonth[] {
 }
 
 function getEmptyStateMessage(day: CalendarCell) {
+  if (day.marketClosed) {
+    return day.marketClosedLabel
+      ? `この日は JPX の休場日です（${day.marketClosedLabel}）。`
+      : "この日は JPX の休場日です。";
+  }
   if (day.detailStatus === "empty") {
     return "この日は件数だけ反映されていて、詳細一覧はまだ空です。";
   }
@@ -411,7 +439,7 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
           <div style={styles.calendarGrid}>
             {month.cells.map((item) => {
               const isSelected = item.key === selectedDay.key;
-              const isClickable = !item.muted && item.count > 0;
+              const isClickable = !item.muted && (item.count > 0 || item.marketClosed);
               const hasItems = item.items.length > 0;
 
               return (
@@ -421,6 +449,7 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
                   style={{
                     ...styles.dayCell,
                     ...(item.muted ? styles.dayMuted : {}),
+                    ...(item.marketClosed ? styles.dayHoliday : {}),
                     ...(isSelected ? styles.dayActive : {}),
                     ...(isClickable ? styles.dayClickable : {}),
                   }}
@@ -452,7 +481,10 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
           <div>
             <div style={styles.sectionLabel}>日別一覧</div>
             <div style={styles.sectionTitle}>
-              {formatSelectedTitle(selectedDay.key)} {selectedCount}件
+              {formatSelectedTitle(selectedDay.key)}
+              {selectedDay.marketClosed
+                ? ` ${selectedDay.marketClosedLabel || "休場日"}`
+                : ` ${selectedCount}件`}
             </div>
           </div>
         </section>
@@ -662,6 +694,9 @@ const styles: Record<string, React.CSSProperties> = {
   dayClickable: {
     cursor: "pointer",
     boxShadow: "inset 0 0 0 1px rgba(37, 84, 255, 0.06)",
+  },
+  dayHoliday: {
+    background: "#f7f1de",
   },
   dayMuted: {
     opacity: 0.45,
