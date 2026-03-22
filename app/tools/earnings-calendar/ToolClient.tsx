@@ -129,7 +129,7 @@ function buildMonths(data: EarningsCalendarResponse): CalendarMonth[] {
     grouped.set(key, bucket);
   }
 
-  const months = Array.from(grouped.entries())
+  const built = Array.from(grouped.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([id, days]) => {
       const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
@@ -214,20 +214,19 @@ function buildMonths(data: EarningsCalendarResponse): CalendarMonth[] {
       };
     });
 
-  if (months.length === 1) {
-    const [year, month] = months[0].id.split("-").map(Number);
-    const prev = new Date(Date.UTC(year, month - 2, 1));
-    const next = new Date(Date.UTC(year, month, 1));
-    const prevId = `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, "0")}`;
-    const nextId = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}`;
-    return [
-      createEmptyMonth(prevId, months[0].updatedAt),
-      months[0],
-      createEmptyMonth(nextId, months[0].updatedAt),
-    ];
+  if (built.length === 0) {
+    return [];
   }
 
-  return months;
+  const targetYear = parseDateKey(data.as_of_date).year;
+  const monthMap = new Map(built.map((month) => [month.id, month]));
+  const updatedAt = formatUpdatedAt(data.as_of_date);
+
+  return Array.from({ length: 12 }, (_, index) => {
+    const month = index + 1;
+    const id = `${targetYear}-${String(month).padStart(2, "0")}`;
+    return monthMap.get(id) ?? createEmptyMonth(id, updatedAt);
+  });
 }
 
 function getEmptyStateMessage(day: CalendarCell) {
@@ -370,17 +369,7 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
           </div>
 
           <div style={styles.calendarHint}>
-            青い件数がある日をタップすると、下の決算一覧を切り替えられます。
-          </div>
-          <div style={styles.legendRow}>
-            <span style={styles.legendItem}>
-              <span style={{ ...styles.legendDot, ...styles.legendDotPrimary }} />
-              詳細あり
-            </span>
-            <span style={styles.legendItem}>
-              <span style={{ ...styles.legendDot, ...styles.legendDotMuted }} />
-              件数のみ
-            </span>
+            今年の月を矢印で切り替えて、件数がある日をタップすると下の決算一覧を見られます。
           </div>
 
           <div style={styles.weekHeader}>
@@ -639,37 +628,10 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 800,
   },
   calendarHint: {
-    marginBottom: 8,
+    marginBottom: 12,
     fontSize: 12,
     lineHeight: 1.5,
     color: "#6b7280",
-  },
-  legendRow: {
-    display: "flex",
-    gap: 12,
-    alignItems: "center",
-    marginBottom: 12,
-    flexWrap: "wrap",
-  },
-  legendItem: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 6,
-    fontSize: 11,
-    fontWeight: 700,
-    color: "#94a3b8",
-  },
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    display: "inline-block",
-  },
-  legendDotPrimary: {
-    background: "#2554ff",
-  },
-  legendDotMuted: {
-    background: "#cbd5e1",
   },
   weekHeader: {
     display: "grid",
