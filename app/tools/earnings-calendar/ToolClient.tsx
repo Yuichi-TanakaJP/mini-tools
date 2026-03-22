@@ -62,6 +62,14 @@ function normalizeMarket(market: string) {
   return market;
 }
 
+function normalizeTimeLabel(time: string) {
+  return time.replace(/\s*\/\s*（?予定）?$/, "").replace(/\s*\/\s*\(予定\)$/, "");
+}
+
+function shouldShowPublishStatus(status: string) {
+  return status.trim() !== "" && status !== "予定";
+}
+
 function createEmptyMonth(id: string, updatedAt: string): CalendarMonth {
   const [year, month] = id.split("-").map(Number);
   const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
@@ -438,14 +446,18 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
                     <span>{normalizeMarket(item.market)}</span>
                     <span>•</span>
                     <span>{item.announcement_type}</span>
-                    <span>•</span>
-                    <span>{item.publish_status}</span>
+                    {shouldShowPublishStatus(item.publish_status) ? (
+                      <>
+                        <span>•</span>
+                        <span>{item.publish_status}</span>
+                      </>
+                    ) : null}
                   </div>
                 </div>
 
                 <div style={styles.itemTimeBlock}>
-                  <div style={styles.timeLabel}>予定</div>
-                  <div style={styles.timeValue}>{item.time || "--:--"}</div>
+                  <div style={styles.timeLabel}>時刻</div>
+                  <div style={styles.timeValue}>{normalizeTimeLabel(item.time || "--:--")}</div>
                 </div>
               </article>
             ))
