@@ -62,6 +62,14 @@ function normalizeMarket(market: string) {
   return market;
 }
 
+function normalizeTimeLabel(time: string) {
+  return time.replace(/\s*\/\s*（?予定）?$/, "").replace(/\s*\/\s*\(予定\)$/, "");
+}
+
+function shouldShowPublishStatus(status: string) {
+  return status.trim() !== "" && status !== "予定";
+}
+
 function createEmptyMonth(id: string, updatedAt: string): CalendarMonth {
   const [year, month] = id.split("-").map(Number);
   const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
@@ -276,7 +284,7 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
 
           <section style={styles.heroBlock}>
             <div style={styles.heroEyebrow}>決算カレンダー beta</div>
-            <h1 style={styles.heroTitle}>日本株の決算予定を日付で見る</h1>
+            <h1 style={styles.heroTitle}>決算カレンダー</h1>
             <p style={styles.heroNote}>
               決算データを読み込めなかったため、いまはカレンダーを表示できません。
             </p>
@@ -308,28 +316,11 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
   return (
     <main style={styles.page}>
       <div style={styles.mobileShell}>
-        <header style={styles.headerRow}>
-          <div style={styles.brandRow}>
-            <div style={styles.brandMark} aria-hidden>
-              ■
-            </div>
-            <div style={styles.brandName}>mini-tools</div>
-          </div>
-          <div style={styles.headerIcons}>
-            <span style={styles.headerIcon} aria-hidden>
-              ⌕
-            </span>
-            <span style={styles.headerIcon} aria-hidden>
-              ●
-            </span>
-          </div>
-        </header>
-
         <section style={styles.heroBlock}>
           <div style={styles.heroEyebrow}>決算カレンダー beta</div>
-          <h1 style={styles.heroTitle}>日本株の決算予定を日付で見る</h1>
+          <h1 style={styles.heroTitle}>決算カレンダー</h1>
           <p style={styles.heroNote}>
-            market_info のデータをもとに、その日の決算予定をスマホでさっと確認できます。
+            月ごとの予定を見ながら、気になる日の決算銘柄を下で確認できます。
           </p>
         </section>
 
@@ -366,10 +357,6 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
             <span style={styles.metaChip}>日本株</span>
             <span style={styles.metaChipMuted}>月間ビュー</span>
             <span style={styles.metaChipStrong}>今月 {month.totalCount}件</span>
-          </div>
-
-          <div style={styles.calendarHint}>
-            今年の月を矢印で切り替えて、件数がある日をタップすると下の決算一覧を見られます。
           </div>
 
           <div style={styles.weekHeader}>
@@ -417,19 +404,15 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
             })}
           </div>
 
-          <div style={styles.selectionBar}>
-            <div style={styles.selectionLabel}>選択中</div>
-            <div style={styles.selectionValue}>
-              {formatSelectedLabel(selectedDay.key)} {selectedCount}件
-            </div>
-          </div>
         </section>
 
         <section style={styles.listSection}>
           <div style={styles.sectionAccent} />
           <div>
             <div style={styles.sectionLabel}>日別一覧</div>
-            <div style={styles.sectionTitle}>{formatSelectedTitle(selectedDay.key)}</div>
+            <div style={styles.sectionTitle}>
+              {formatSelectedTitle(selectedDay.key)} {selectedCount}件
+            </div>
           </div>
         </section>
 
@@ -442,7 +425,10 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
           ) : (
             selectedItems.map((item, index) => (
               <article
-                key={`${selectedDay.key}-${item.code}-${item.time}-${item.announcement_type}-${index}`}
+                key={
+                  item.event_id ??
+                  `${selectedDay.key}-${item.code}-${item.time}-${item.announcement_type}-${index}`
+                }
                 style={styles.itemCard}
               >
                 <div style={styles.codeBlock}>
@@ -456,14 +442,18 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
                     <span>{normalizeMarket(item.market)}</span>
                     <span>•</span>
                     <span>{item.announcement_type}</span>
-                    <span>•</span>
-                    <span>{item.publish_status}</span>
+                    {shouldShowPublishStatus(item.publish_status) ? (
+                      <>
+                        <span>•</span>
+                        <span>{item.publish_status}</span>
+                      </>
+                    ) : null}
                   </div>
                 </div>
 
                 <div style={styles.itemTimeBlock}>
-                  <div style={styles.timeLabel}>予定</div>
-                  <div style={styles.timeValue}>{item.time || "--:--"}</div>
+                  <div style={styles.timeLabel}>時刻</div>
+                  <div style={styles.timeValue}>{normalizeTimeLabel(item.time || "--:--")}</div>
                 </div>
               </article>
             ))
@@ -479,24 +469,22 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
 const styles: Record<string, React.CSSProperties> = {
   page: {
     minHeight: "100vh",
-    padding: "24px 16px 64px",
+    padding: "18px 12px 56px",
     background:
       "radial-gradient(1000px 420px at 20% 0%, rgba(37, 99, 235, 0.08), transparent 58%), #eef2f7",
   },
   mobileShell: {
-    maxWidth: 380,
+    width: "100%",
+    maxWidth: 440,
     margin: "0 auto",
-    background: "#f8f9fb",
-    borderRadius: 28,
-    border: "1px solid rgba(15, 23, 42, 0.06)",
-    boxShadow: "0 20px 48px rgba(15, 23, 42, 0.10)",
-    padding: "18px 14px 24px",
+    padding: "0 8px 24px",
   },
   headerRow: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 18,
+    minHeight: 40,
+    marginBottom: 12,
   },
   brandRow: {
     display: "flex",
@@ -509,24 +497,10 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1,
   },
   brandName: {
+    color: "#0f2748",
     fontSize: 18,
     fontWeight: 800,
-    color: "#1f2937",
-  },
-  headerIcons: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-  },
-  headerIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 999,
-    background: "#eef2ff",
-    color: "#374151",
-    display: "grid",
-    placeItems: "center",
-    fontSize: 15,
+    letterSpacing: -0.2,
   },
   heroBlock: {
     marginBottom: 16,
@@ -627,12 +601,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 11,
     fontWeight: 800,
   },
-  calendarHint: {
-    marginBottom: 12,
-    fontSize: 12,
-    lineHeight: 1.5,
-    color: "#6b7280",
-  },
   weekHeader: {
     display: "grid",
     gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
@@ -698,27 +666,6 @@ const styles: Record<string, React.CSSProperties> = {
   countBadgeLocked: {
     background: "#eef2f7",
     color: "#7c8799",
-  },
-  selectionBar: {
-    marginTop: 12,
-    padding: "10px 12px",
-    borderRadius: 14,
-    background: "#f5f8ff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  selectionLabel: {
-    fontSize: 11,
-    fontWeight: 800,
-    color: "#94a3b8",
-    letterSpacing: 0.2,
-  },
-  selectionValue: {
-    fontSize: 13,
-    fontWeight: 800,
-    color: "#334155",
   },
   listSection: {
     marginTop: 22,
