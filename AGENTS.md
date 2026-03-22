@@ -67,14 +67,16 @@ PR 本文に必ず記載する項目:
 ## 6. レビュー確認と対応
 
 ```powershell
-# PR作成後、マージ前に Codex CLI review を1回実施する
+# コード変更を含むPRは、PR作成後〜マージ前に Codex CLI review を1回実施する
+# ドキュメント変更のみのPRは、必要に応じてスキップ可
 codex review --base main
 gh pr view <PR番号> --comments
 gh api repos/Yuichi-TanakaJP/mini-tools/pulls/<PR番号>/reviews
 gh api repos/Yuichi-TanakaJP/mini-tools/pulls/<PR番号>/comments
 ```
 
-- Codex review は、PR作成後の差分に対して必ず1回実施する。
+- Codex review は、コード変更を含むPRでは原則1回実施する。
+- ドキュメント変更のみのPRは、内容が明確で低リスクならスキップしてよい。
 - P1/P0 指摘は優先対応する。
 - 修正後は同じブランチで再コミットし push する。
 
