@@ -6,6 +6,7 @@ import type {
   EarningsCalendarManifest,
   EarningsCalendarPageData,
   EarningsCalendarResponse,
+  JpxMarketClosedResponse,
 } from "./types";
 
 export const metadata: Metadata = {
@@ -29,10 +30,16 @@ async function loadCalendarData(): Promise<EarningsCalendarPageData> {
       return [entry.id, JSON.parse(raw) as EarningsCalendarResponse] as const;
     }),
   );
+  const holidayRaw = await readFile(
+    path.join(dataDir, "jpx_market_closed_20260101_to_20271231.json"),
+    "utf-8",
+  );
+  const holidays = JSON.parse(holidayRaw) as JpxMarketClosedResponse;
 
   return {
     manifest,
     monthData: Object.fromEntries(monthEntries),
+    holidays,
   };
 }
 
