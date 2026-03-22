@@ -312,7 +312,7 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
           <div style={styles.heroEyebrow}>決算カレンダー beta</div>
           <h1 style={styles.heroTitle}>日本株の決算予定を日付で見る</h1>
           <p style={styles.heroNote}>
-            market_info のデータをもとに、その日の決算予定をスマホでさっと確認できます。
+            月ごとの予定を見ながら、気になる日の決算銘柄を下で確認できます。
           </p>
         </section>
 
@@ -349,10 +349,6 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
             <span style={styles.metaChip}>日本株</span>
             <span style={styles.metaChipMuted}>月間ビュー</span>
             <span style={styles.metaChipStrong}>今月 {month.totalCount}件</span>
-          </div>
-
-          <div style={styles.calendarHint}>
-            件数がある日をタップすると、下の決算一覧が切り替わります。
           </div>
 
           <div style={styles.weekHeader}>
@@ -577,12 +573,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#2f47ca",
     fontSize: 11,
     fontWeight: 800,
-  },
-  calendarHint: {
-    marginBottom: 12,
-    fontSize: 12,
-    lineHeight: 1.5,
-    color: "#6b7280",
   },
   weekHeader: {
     display: "grid",
