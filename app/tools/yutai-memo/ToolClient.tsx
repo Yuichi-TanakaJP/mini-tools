@@ -391,6 +391,11 @@ export default function ToolClient() {
     setTagManagerOpen(false);
   }
 
+  function shouldOpenEditFromCard(target: EventTarget | null) {
+    if (!(target instanceof HTMLElement)) return true;
+    return !target.closest("button, a, input, label");
+  }
+
   function openEdit(it: MemoItem) {
     if (typeof window !== "undefined") {
       setListScrollY(window.scrollY);
@@ -1179,7 +1184,13 @@ export default function ToolClient() {
                       onChange={() => toggleSelect(it.id)}
                     />
                   </label>
-                  <div className={styles.card}>
+                  <div
+                    className={styles.card}
+                    onClick={(e) => {
+                      if (!shouldOpenEditFromCard(e.target)) return;
+                      openEdit(it);
+                    }}
+                  >
                     <div className={styles.cardHeader}>
                       <div className={styles.cardHeaderTop}>
                         <div
