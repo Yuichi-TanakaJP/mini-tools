@@ -696,7 +696,8 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: "inset 0 0 0 1px rgba(37, 84, 255, 0.06)",
   },
   dayHoliday: {
-    background: "#f7f1de",
+    background: "#f7f7f2",
+    boxShadow: "inset 0 0 0 1px rgba(148, 163, 184, 0.08)",
   },
   dayMuted: {
     opacity: 0.45,
