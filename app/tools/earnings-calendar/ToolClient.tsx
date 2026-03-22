@@ -276,7 +276,7 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
 
           <section style={styles.heroBlock}>
             <div style={styles.heroEyebrow}>決算カレンダー beta</div>
-            <h1 style={styles.heroTitle}>日本株の決算予定を日付で見る</h1>
+            <h1 style={styles.heroTitle}>決算カレンダー</h1>
             <p style={styles.heroNote}>
               決算データを読み込めなかったため、いまはカレンダーを表示できません。
             </p>
@@ -310,7 +310,7 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
       <div style={styles.mobileShell}>
         <section style={styles.heroBlock}>
           <div style={styles.heroEyebrow}>決算カレンダー beta</div>
-          <h1 style={styles.heroTitle}>日本株の決算予定を日付で見る</h1>
+          <h1 style={styles.heroTitle}>決算カレンダー</h1>
           <p style={styles.heroNote}>
             月ごとの予定を見ながら、気になる日の決算銘柄を下で確認できます。
           </p>
