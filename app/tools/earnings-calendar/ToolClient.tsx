@@ -70,6 +70,10 @@ function shouldShowPublishStatus(status: string) {
   return status.trim() !== "" && status !== "予定";
 }
 
+function shouldShowTickerCode(market: string) {
+  return market !== "TKY";
+}
+
 function createEmptyMonth(id: string, updatedAt: string): CalendarMonth {
   const [year, month] = id.split("-").map(Number);
   const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
@@ -431,14 +435,15 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
                 }
                 style={styles.itemCard}
               >
-                <div style={styles.codeBlock}>
-                  <div style={styles.codeLabel}>CODE</div>
-                  <div style={styles.codeValue}>{item.code}</div>
-                </div>
-
                 <div style={styles.itemMain}>
                   <div style={styles.itemName}>{item.name}</div>
                   <div style={styles.itemMetaRow}>
+                    {shouldShowTickerCode(item.market) ? (
+                      <>
+                        <span>{item.code}</span>
+                        <span>•</span>
+                      </>
+                    ) : null}
                     <span>{normalizeMarket(item.market)}</span>
                     <span>•</span>
                     <span>{item.announcement_type}</span>
@@ -701,30 +706,11 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 18,
     padding: 14,
     display: "grid",
-    gridTemplateColumns: "56px minmax(0, 1fr) auto",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
     gap: 12,
     alignItems: "center",
     boxShadow: "0 8px 24px rgba(15, 23, 42, 0.05)",
     border: "1px solid rgba(15, 23, 42, 0.04)",
-  },
-  codeBlock: {
-    display: "grid",
-    gap: 4,
-    justifyItems: "center",
-    padding: "8px 6px",
-    borderRadius: 12,
-    background: "#f5f8ff",
-  },
-  codeLabel: {
-    fontSize: 10,
-    fontWeight: 800,
-    color: "#94a3b8",
-  },
-  codeValue: {
-    fontSize: 18,
-    fontWeight: 900,
-    color: "#2554ff",
-    lineHeight: 1,
   },
   itemMain: {
     minWidth: 0,
