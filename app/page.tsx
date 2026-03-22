@@ -19,6 +19,8 @@ type ToolItem = {
   detail: string;
   href: string;
   icon: string;
+  disabled?: boolean;
+  statusLabel?: string;
 };
 
 const TOOLS: ToolItem[] = [
@@ -51,6 +53,16 @@ const TOOLS: ToolItem[] = [
     detail: "早取り/長期1株/任期注意/失敗ログを保存",
     href: "/tools/yutai-memo",
     icon: "📝",
+  },
+  {
+    title: "決算カレンダー",
+    short: "日本株の予定を確認",
+    detail:
+      "market_info のデータをもとに、日本株の決算予定をカレンダーで見られるよう準備中です。",
+    href: "/tools/earnings-calendar",
+    icon: "🗓️",
+    disabled: true,
+    statusLabel: "準備中",
   },
 ];
 

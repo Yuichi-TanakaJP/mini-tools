@@ -10,6 +10,8 @@ type ToolItem = {
   detail: string;
   href: string;
   icon: string;
+  disabled?: boolean;
+  statusLabel?: string;
 };
 
 type Props = {
@@ -25,39 +27,82 @@ export default function ToolGridClient({ tools, styles }: Props) {
   return (
     <div style={styles.grid}>
       {tools.map((t) => (
-        <Link
-          key={t.href}
-          href={t.href}
-          onClick={() => onOpen(t.href)}
-          style={styles.cardLink}
-          className="toolLink"
-        >
-          <div style={styles.card} className="toolCard">
-            <div style={styles.cardInner} className="toolCardInner">
-              <div style={styles.cardTop}>
-                <div style={styles.icon}>{t.icon}</div>
-                <div style={styles.arrow} className="arrow" aria-hidden>
-                  →
+        <div key={t.href} style={styles.cardLink} className="toolLink">
+          {t.disabled ? (
+            <div style={styles.card} className="toolCard">
+              <div
+                style={{
+                  ...styles.cardInner,
+                  opacity: 0.88,
+                }}
+                className="toolCardInner"
+              >
+                <div style={styles.cardTop}>
+                  <div style={styles.icon}>{t.icon}</div>
+                  <div
+                    style={{
+                      ...styles.arrow,
+                      fontSize: 12,
+                      width: 64,
+                      fontWeight: 700,
+                    }}
+                    aria-hidden
+                  >
+                    {t.statusLabel ?? "準備中"}
+                  </div>
+                </div>
+
+                <div style={styles.cardTitle}>{t.title}</div>
+                <div style={styles.cardShort}>{t.short}</div>
+
+                <div style={styles.hoverHint} className="hoverHint">
+                  {t.statusLabel ?? "準備中"}
+                </div>
+
+                <details style={styles.details} className="toolDetails">
+                  {/* ここ、元ファイルのまま移植（今は “.” になってるので本体があるなら貼る） */}
+                </details>
+
+                <div className="tooltip" style={styles.tooltip}>
+                  {t.detail}
                 </div>
               </div>
-
-              <div style={styles.cardTitle}>{t.title}</div>
-              <div style={styles.cardShort}>{t.short}</div>
-
-              <div style={styles.hoverHint} className="hoverHint">
-                詳細を見る
-              </div>
-
-              <details style={styles.details} className="toolDetails">
-                {/* ここ、元ファイルのまま移植（今は “.” になってるので本体があるなら貼る） */}
-              </details>
-
-              <div className="tooltip" style={styles.tooltip}>
-                {t.detail}
-              </div>
             </div>
-          </div>
-        </Link>
+          ) : (
+            <Link
+              href={t.href}
+              onClick={() => onOpen(t.href)}
+              style={styles.cardLink}
+              className="toolLink"
+            >
+              <div style={styles.card} className="toolCard">
+                <div style={styles.cardInner} className="toolCardInner">
+                  <div style={styles.cardTop}>
+                    <div style={styles.icon}>{t.icon}</div>
+                    <div style={styles.arrow} className="arrow" aria-hidden>
+                      →
+                    </div>
+                  </div>
+
+                  <div style={styles.cardTitle}>{t.title}</div>
+                  <div style={styles.cardShort}>{t.short}</div>
+
+                  <div style={styles.hoverHint} className="hoverHint">
+                    詳細を見る
+                  </div>
+
+                  <details style={styles.details} className="toolDetails">
+                    {/* ここ、元ファイルのまま移植（今は “.” になってるので本体があるなら貼る） */}
+                  </details>
+
+                  <div className="tooltip" style={styles.tooltip}>
+                    {t.detail}
+                  </div>
+                </div>
+              </div>
+            </Link>
+          )}
+        </div>
       ))}
     </div>
   );
