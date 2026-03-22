@@ -352,7 +352,7 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
           </div>
 
           <div style={styles.calendarHint}>
-            今年の月を矢印で切り替えて、件数がある日をタップすると下の決算一覧を見られます。
+            件数がある日をタップすると、下の決算一覧が切り替わります。
           </div>
 
           <div style={styles.weekHeader}>
