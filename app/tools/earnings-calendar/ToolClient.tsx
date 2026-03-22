@@ -70,10 +70,6 @@ function shouldShowPublishStatus(status: string) {
   return status.trim() !== "" && status !== "予定";
 }
 
-function shouldShowTickerCode(market: string) {
-  return market !== "TKY";
-}
-
 function createEmptyMonth(id: string, updatedAt: string): CalendarMonth {
   const [year, month] = id.split("-").map(Number);
   const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
@@ -438,12 +434,8 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
                 <div style={styles.itemMain}>
                   <div style={styles.itemName}>{item.name}</div>
                   <div style={styles.itemMetaRow}>
-                    {shouldShowTickerCode(item.market) ? (
-                      <>
-                        <span>{item.code}</span>
-                        <span>•</span>
-                      </>
-                    ) : null}
+                    <span>{item.code}</span>
+                    <span>•</span>
                     <span>{normalizeMarket(item.market)}</span>
                     <span>•</span>
                     <span>{item.announcement_type}</span>
