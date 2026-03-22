@@ -477,7 +477,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: "100%",
     maxWidth: 440,
     margin: "0 auto",
-    padding: "18px 8px 24px",
+    padding: "8px 8px 24px",
   },
   heroBlock: {
     marginBottom: 16,
