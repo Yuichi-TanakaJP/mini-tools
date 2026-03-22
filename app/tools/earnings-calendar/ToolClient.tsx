@@ -479,6 +479,29 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "0 auto",
     padding: "0 8px 24px",
   },
+  headerRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    minHeight: 40,
+    marginBottom: 12,
+  },
+  brandRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+  },
+  brandMark: {
+    color: "#2554ff",
+    fontSize: 18,
+    lineHeight: 1,
+  },
+  brandName: {
+    color: "#0f2748",
+    fontSize: 18,
+    fontWeight: 800,
+    letterSpacing: -0.2,
+  },
   heroBlock: {
     marginBottom: 16,
   },
