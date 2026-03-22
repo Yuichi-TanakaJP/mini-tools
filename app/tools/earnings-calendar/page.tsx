@@ -2,7 +2,11 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Metadata } from "next";
 import ToolClient from "./ToolClient";
-import type { EarningsCalendarResponse } from "./types";
+import type {
+  EarningsCalendarManifest,
+  EarningsCalendarPageData,
+  EarningsCalendarResponse,
+} from "./types";
 
 export const metadata: Metadata = {
   title: "決算カレンダー | mini-tools",
@@ -13,10 +17,23 @@ export const metadata: Metadata = {
   },
 };
 
-async function loadCalendarData(): Promise<EarningsCalendarResponse> {
-  const filePath = path.join(process.cwd(), "app/tools/earnings-calendar/data/latest.json");
-  const raw = await readFile(filePath, "utf-8");
-  return JSON.parse(raw) as EarningsCalendarResponse;
+async function loadCalendarData(): Promise<EarningsCalendarPageData> {
+  const dataDir = path.join(process.cwd(), "app/tools/earnings-calendar/data");
+  const manifestPath = path.join(dataDir, "manifest.json");
+  const manifestRaw = await readFile(manifestPath, "utf-8");
+  const manifest = JSON.parse(manifestRaw) as EarningsCalendarManifest;
+
+  const monthEntries = await Promise.all(
+    manifest.months.map(async (entry) => {
+      const raw = await readFile(path.join(dataDir, entry.path), "utf-8");
+      return [entry.id, JSON.parse(raw) as EarningsCalendarResponse] as const;
+    }),
+  );
+
+  return {
+    manifest,
+    monthData: Object.fromEntries(monthEntries),
+  };
 }
 
 export default async function Page() {

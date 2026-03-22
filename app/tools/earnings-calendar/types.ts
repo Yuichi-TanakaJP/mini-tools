@@ -22,3 +22,26 @@ export type EarningsCalendarResponse = {
   as_of_date: string;
   calendar: EarningsCalendarDay[];
 };
+
+export type EarningsCalendarManifestMonth = {
+  id: string;
+  year: number;
+  month: number;
+  path: string;
+  partial: boolean;
+  bucket: "past" | "current" | "future";
+};
+
+export type EarningsCalendarManifest = {
+  as_of_date: string;
+  current_window: {
+    from: string;
+    to: string;
+  };
+  months: EarningsCalendarManifestMonth[];
+};
+
+export type EarningsCalendarPageData = {
+  manifest: EarningsCalendarManifest;
+  monthData: Record<string, EarningsCalendarResponse>;
+};

@@ -1,0 +1,25 @@
+{
+  "as_of_date": "2026-03-22",
+  "current_window": {
+    "from": "2026-03-01",
+    "to": "2026-04-30"
+  },
+  "months": [
+    {
+      "id": "2026-03",
+      "year": 2026,
+      "month": 3,
+      "path": "earnings_calendar_domestic_20260301_to_20260331.json",
+      "partial": false,
+      "bucket": "current"
+    },
+    {
+      "id": "2026-04",
+      "year": 2026,
+      "month": 4,
+      "path": "earnings_calendar_domestic_20260401_to_20260430.json",
+      "partial": false,
+      "bucket": "future"
+    }
+  ]
+}

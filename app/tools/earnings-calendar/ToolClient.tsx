@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import type {
   EarningsCalendarDay,
   EarningsCalendarItem,
-  EarningsCalendarResponse,
+  EarningsCalendarManifestMonth,
+  EarningsCalendarPageData,
 } from "./types";
 
 type CalendarCell = {
@@ -22,6 +23,8 @@ type CalendarMonth = {
   updatedAt: string;
   totalCount: number;
   selectedKey: string;
+  partial: boolean;
+  bucket: EarningsCalendarManifestMonth["bucket"];
   cells: CalendarCell[];
 };
 
@@ -119,117 +122,121 @@ function createEmptyMonth(id: string, updatedAt: string): CalendarMonth {
     updatedAt,
     totalCount: 0,
     selectedKey: `${id}-01`,
+    partial: false,
+    bucket: "future",
     cells,
   };
 }
 
-function buildMonths(data: EarningsCalendarResponse): CalendarMonth[] {
-  const grouped = new Map<string, EarningsCalendarDay[]>();
+function buildMonth(entry: EarningsCalendarManifestMonth, days: EarningsCalendarDay[], asOfDate: string): CalendarMonth {
+  const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
+  const { year, month } = parseDateKey(sortedDays[0].date);
+  const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const prevMonthLastDay = new Date(Date.UTC(year, month - 1, 0)).getUTCDate();
+  const totalCount = sortedDays.reduce((sum, day) => sum + day.count, 0);
+  const dayMap = new Map(
+    sortedDays.map((day) => [
+      day.date,
+      {
+        key: day.date,
+        day: parseDateKey(day.date).day,
+        count: day.count,
+        detailStatus: day.detail_status,
+        items: day.items,
+      } satisfies CalendarCell,
+    ]),
+  );
 
-  for (const day of data.calendar) {
-    const key = day.date.slice(0, 7);
-    const bucket = grouped.get(key) ?? [];
-    bucket.push(day);
-    grouped.set(key, bucket);
+  const futureOrToday = sortedDays.find((day) => day.date >= asOfDate && day.count > 0)?.date;
+  const defaultSelectedKey =
+    sortedDays.find((day) => day.date === asOfDate)?.date ??
+    futureOrToday ??
+    sortedDays.find((day) => day.count > 0)?.date ??
+    sortedDays[0].date;
+
+  const cells: CalendarCell[] = [];
+
+  for (let index = 0; index < firstWeekday; index += 1) {
+    const mutedDay = prevMonthLastDay - firstWeekday + index + 1;
+    const prevDate = new Date(Date.UTC(year, month - 2, mutedDay));
+    cells.push({
+      key: `${prevDate.getUTCFullYear()}-${String(prevDate.getUTCMonth() + 1).padStart(2, "0")}-${String(
+        prevDate.getUTCDate(),
+      ).padStart(2, "0")}`,
+      day: mutedDay,
+      count: 0,
+      detailStatus: "missing",
+      items: [],
+      muted: true,
+    });
   }
 
-  const built = Array.from(grouped.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([id, days]) => {
-      const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
-      const { year, month } = parseDateKey(sortedDays[0].date);
-      const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
-      const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
-      const prevMonthLastDay = new Date(Date.UTC(year, month - 1, 0)).getUTCDate();
-      const totalCount = sortedDays.reduce((sum, day) => sum + day.count, 0);
-      const dayMap = new Map(
-        sortedDays.map((day) => [
-          day.date,
-          {
-            key: day.date,
-            day: parseDateKey(day.date).day,
-            count: day.count,
-            detailStatus: day.detail_status,
-            items: day.items,
-          } satisfies CalendarCell,
-        ]),
-      );
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const key = `${entry.id}-${String(day).padStart(2, "0")}`;
+    cells.push(
+      dayMap.get(key) ?? {
+        key,
+        day,
+        count: 0,
+        detailStatus: "missing",
+        items: [],
+      },
+    );
+  }
 
-      const todayKey = data.as_of_date;
-      const futureOrToday = sortedDays.find((day) => day.date >= todayKey && day.count > 0)?.date;
-      const defaultSelectedKey =
-        sortedDays.find((day) => day.date === todayKey)?.date ??
-        futureOrToday ??
-        sortedDays.find((day) => day.count > 0)?.date ??
-        sortedDays[0].date;
-
-      const cells: CalendarCell[] = [];
-
-      for (let index = 0; index < firstWeekday; index += 1) {
-        const mutedDay = prevMonthLastDay - firstWeekday + index + 1;
-        const prevDate = new Date(Date.UTC(year, month - 2, mutedDay));
-        cells.push({
-          key: `${prevDate.getUTCFullYear()}-${String(prevDate.getUTCMonth() + 1).padStart(2, "0")}-${String(
-            prevDate.getUTCDate(),
-          ).padStart(2, "0")}`,
-          day: mutedDay,
-          count: 0,
-          detailStatus: "missing",
-          items: [],
-          muted: true,
-        });
-      }
-
-      for (let day = 1; day <= daysInMonth; day += 1) {
-        const key = `${id}-${String(day).padStart(2, "0")}`;
-        cells.push(
-          dayMap.get(key) ?? {
-            key,
-            day,
-            count: 0,
-            detailStatus: "missing",
-            items: [],
-          },
-        );
-      }
-
-      const trailingCount = (7 - (cells.length % 7)) % 7;
-      for (let index = 1; index <= trailingCount; index += 1) {
-        const nextDate = new Date(Date.UTC(year, month - 1, daysInMonth + index));
-        cells.push({
-          key: `${nextDate.getUTCFullYear()}-${String(nextDate.getUTCMonth() + 1).padStart(2, "0")}-${String(
-            nextDate.getUTCDate(),
-          ).padStart(2, "0")}`,
-          day: nextDate.getUTCDate(),
-          count: 0,
-          detailStatus: "missing",
-          items: [],
-          muted: true,
-        });
-      }
-
-      return {
-        id,
-        label: formatMonthLabel(year, month),
-        updatedAt: formatUpdatedAt(data.as_of_date),
-        totalCount,
-        selectedKey: defaultSelectedKey,
-        cells,
-      };
+  const trailingCount = (7 - (cells.length % 7)) % 7;
+  for (let index = 1; index <= trailingCount; index += 1) {
+    const nextDate = new Date(Date.UTC(year, month - 1, daysInMonth + index));
+    cells.push({
+      key: `${nextDate.getUTCFullYear()}-${String(nextDate.getUTCMonth() + 1).padStart(2, "0")}-${String(
+        nextDate.getUTCDate(),
+      ).padStart(2, "0")}`,
+      day: nextDate.getUTCDate(),
+      count: 0,
+      detailStatus: "missing",
+      items: [],
+      muted: true,
     });
+  }
+
+  return {
+    id: entry.id,
+    label: formatMonthLabel(year, month),
+    updatedAt: formatUpdatedAt(asOfDate),
+    totalCount,
+    selectedKey: defaultSelectedKey,
+    partial: entry.partial,
+    bucket: entry.bucket,
+    cells,
+  };
+}
+
+function buildMonths(data: EarningsCalendarPageData): CalendarMonth[] {
+  const built = data.manifest.months
+    .map((entry) => {
+      const source = data.monthData[entry.id];
+      if (!source) return null;
+      return buildMonth(entry, source.calendar, data.manifest.as_of_date);
+    })
+    .filter((month): month is CalendarMonth => month !== null);
 
   if (built.length === 0) {
     return [];
   }
 
-  const targetYear = parseDateKey(data.as_of_date).year;
+  const targetYear = parseDateKey(data.manifest.as_of_date).year;
   const monthMap = new Map(built.map((month) => [month.id, month]));
-  const updatedAt = formatUpdatedAt(data.as_of_date);
+  const updatedAt = formatUpdatedAt(data.manifest.as_of_date);
 
   return Array.from({ length: 12 }, (_, index) => {
     const month = index + 1;
     const id = `${targetYear}-${String(month).padStart(2, "0")}`;
-    return monthMap.get(id) ?? createEmptyMonth(id, updatedAt);
+    const existing = monthMap.get(id);
+    if (existing) return existing;
+    const bucket = month < parseDateKey(data.manifest.as_of_date).month ? "past" : "future";
+    const emptyMonth = createEmptyMonth(id, updatedAt);
+    return { ...emptyMonth, bucket, partial: false };
   });
 }
 
@@ -243,13 +250,13 @@ function getEmptyStateMessage(day: CalendarCell) {
   return "この日の決算予定はまだありません。";
 }
 
-export default function ToolClient({ data }: { data: EarningsCalendarResponse }) {
+export default function ToolClient({ data }: { data: EarningsCalendarPageData }) {
   const months = useMemo(() => buildMonths(data), [data]);
   const initialMonthIndex = useMemo(() => {
-    const targetMonth = data.as_of_date.slice(0, 7);
+    const targetMonth = data.manifest.as_of_date.slice(0, 7);
     const found = months.findIndex((month) => month.id === targetMonth);
     return found >= 0 ? found : 0;
-  }, [data.as_of_date, months]);
+  }, [data.manifest.as_of_date, months]);
   const [monthIndex, setMonthIndex] = useState(initialMonthIndex);
   const month = months[monthIndex] ?? null;
   const [selectedKey, setSelectedKey] = useState(months[initialMonthIndex]?.selectedKey ?? "");
