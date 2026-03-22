@@ -66,10 +66,6 @@ function normalizeTimeLabel(time: string) {
   return time.replace(/\s*\/\s*（?予定）?$/, "").replace(/\s*\/\s*\(予定\)$/, "");
 }
 
-function shouldShowPublishStatus(status: string) {
-  return status.trim() !== "" && status !== "予定";
-}
-
 function createEmptyMonth(id: string, updatedAt: string): CalendarMonth {
   const [year, month] = id.split("-").map(Number);
   const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
@@ -435,16 +431,8 @@ export default function ToolClient({ data }: { data: EarningsCalendarResponse })
                   <div style={styles.itemName}>{item.name}</div>
                   <div style={styles.itemMetaRow}>
                     <span>{item.code}</span>
-                    <span>•</span>
                     <span>{normalizeMarket(item.market)}</span>
-                    <span>•</span>
                     <span>{item.announcement_type}</span>
-                    {shouldShowPublishStatus(item.publish_status) ? (
-                      <>
-                        <span>•</span>
-                        <span>{item.publish_status}</span>
-                      </>
-                    ) : null}
                   </div>
                 </div>
 
@@ -716,7 +704,7 @@ const styles: Record<string, React.CSSProperties> = {
   itemMetaRow: {
     marginTop: 4,
     display: "flex",
-    gap: 6,
+    gap: 10,
     flexWrap: "wrap",
     alignItems: "center",
     fontSize: 12,
