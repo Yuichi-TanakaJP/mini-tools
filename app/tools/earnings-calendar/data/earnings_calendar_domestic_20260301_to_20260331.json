@@ -1,0 +1,2761 @@
+{
+  "as_of_date": "2026-03-22",
+  "calendar": [
+    {
+      "date": "2026-03-01",
+      "count": 0,
+      "detail_status": "missing",
+      "items": []
+    },
+    {
+      "date": "2026-03-02",
+      "count": 2,
+      "detail_status": "present",
+      "items": [
+        {
+          "event_id": "2026-03-02|2593|15:30|3Q|76ef3d6a19|01",
+          "time": "15:30",
+          "code": "2593",
+          "name": "伊藤園",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-02|7865|16:30|本決算|2f2f63b6d6|01",
+          "time": "16:30",
+          "code": "7865",
+          "name": "ピープル",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        }
+      ]
+    },
+    {
+      "date": "2026-03-03",
+      "count": 2,
+      "detail_status": "present",
+      "items": [
+        {
+          "event_id": "2026-03-03|7265|14:30|1Q|f2ade9daca|01",
+          "time": "14:30",
+          "code": "7265",
+          "name": "エイケン工業",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-03|4750|15:30|3Q|5cd3f11103|01",
+          "time": "15:30",
+          "code": "4750",
+          "name": "ダイサン",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        }
+      ]
+    },
+    {
+      "date": "2026-03-04",
+      "count": 2,
+      "detail_status": "present",
+      "items": [
+        {
+          "event_id": "2026-03-04|2590|15:30|本決算|5b8baa779c|01",
+          "time": "15:30",
+          "code": "2590",
+          "name": "ダイドーグループホールディングス",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-04|8057|15:30|中間 / 決算|5af5f8be7b|01",
+          "time": "15:30",
+          "code": "8057",
+          "name": "内田洋行",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        }
+      ]
+    },
+    {
+      "date": "2026-03-05",
+      "count": 3,
+      "detail_status": "present",
+      "items": [
+        {
+          "event_id": "2026-03-05|1928|12:00|本決算|5108761a62|01",
+          "time": "12:00",
+          "code": "1928",
+          "name": "積水ハウス",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-05|3172|15:00|中間 / 決算|65e7a9d6c2|01",
+          "time": "15:00",
+          "code": "3172",
+          "name": "ティーライフ",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-05|7590|15:30|本決算|9856383990|01",
+          "time": "15:30",
+          "code": "7590",
+          "name": "タカショー",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        }
+      ]
+    },
+    {
+      "date": "2026-03-06",
+      "count": 12,
+      "detail_status": "present",
+      "items": [
+        {
+          "event_id": "2026-03-06|7279|12:00|1Q|8f2d391a3f|01",
+          "time": "12:00",
+          "code": "7279",
+          "name": "ハイレックスコーポレーション",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-06|9824|14:00|1Q|b081ce0c11|01",
+          "time": "14:00",
+          "code": "9824",
+          "name": "泉州電業",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-06|2910|15:00|3Q|6aaca81283|01",
+          "time": "15:00",
+          "code": "2910",
+          "name": "ロック・フィールド",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-06|1873|15:30|3Q|458830820d|01",
+          "time": "15:30",
+          "code": "1873",
+          "name": "日本ハウスホールディングス",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-06|2353|15:30|中間 / 決算|43638fbb38|01",
+          "time": "15:30",
+          "code": "2353",
+          "name": "日本駐車場開発",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-06|2438|15:30|3Q|fbb55ff5d7|01",
+          "time": "15:30",
+          "code": "2438",
+          "name": "アスカネット",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-06|6040|15:30|中間 / 決算|f63aa70759|01",
+          "time": "15:30",
+          "code": "6040",
+          "name": "日本スキー場開発",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-06|6267|15:30|中間 / 決算|a53160cdba|01",
+          "time": "15:30",
+          "code": "6267",
+          "name": "ゼネラルパッカー",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-06|3854|15:40|中間 / 決算|4788414d96|01",
+          "time": "15:40",
+          "code": "3854",
+          "name": "アイル",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-06|3733|15:45|1Q|9b1d852e27|01",
+          "time": "15:45",
+          "code": "3733",
+          "name": "ソフトウェア・サービス",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-06|3816|16:00|中間 / 決算|4c3d7ab647|01",
+          "time": "16:00",
+          "code": "3816",
+          "name": "大和コンピューター",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-06|8917|16:00|1Q|5101735fb5|01",
+          "time": "16:00",
+          "code": "8917",
+          "name": "ファースト住建",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        }
+      ]
+    },
+    {
+      "date": "2026-03-07",
+      "count": 0,
+      "detail_status": "missing",
+      "items": []
+    },
+    {
+      "date": "2026-03-08",
+      "count": 0,
+      "detail_status": "missing",
+      "items": []
+    },
+    {
+      "date": "2026-03-09",
+      "count": 4,
+      "detail_status": "present",
+      "items": [
+        {
+          "event_id": "2026-03-09|4238|14:30|本決算|0cacf56065|01",
+          "time": "14:30",
+          "code": "4238",
+          "name": "ミライアル",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-09|2301|15:30|1Q|bcdf6e9af2|01",
+          "time": "15:30",
+          "code": "2301",
+          "name": "学情",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-09|7804|15:30|1Q|715ebdb511|01",
+          "time": "15:30",
+          "code": "7804",
+          "name": "ビーアンドピー",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-09|7856|15:30|1Q|40d5e80547|01",
+          "time": "15:30",
+          "code": "7856",
+          "name": "萩原工業",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        }
+      ]
+    },
+    {
+      "date": "2026-03-10",
+      "count": 9,
+      "detail_status": "present",
+      "items": [
+        {
+          "event_id": "2026-03-10|2502|11:30|3Q|29e27a3832|01",
+          "time": "11:30",
+          "code": "2502",
+          "name": "アサヒグループホールディングス",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-10|4441|12:00|1Q|3a48607060|01",
+          "time": "12:00",
+          "code": "4441",
+          "name": "トビラシステムズ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-10|2375|15:30|1Q|5eb13a29d0|01",
+          "time": "15:30",
+          "code": "2375",
+          "name": "ギグワークス",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-10|2923|15:30|3Q|e8edcafe67|01",
+          "time": "15:30",
+          "code": "2923",
+          "name": "サトウ食品",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-10|3180|15:30|3Q|2dd2265e96|01",
+          "time": "15:30",
+          "code": "3180",
+          "name": "ビューティガレージ",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-10|3248|15:30|1Q|ba2ad44528|01",
+          "time": "15:30",
+          "code": "3248",
+          "name": "アールエイジ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-10|6654|15:30|本決算|49910cbdd4|01",
+          "time": "15:30",
+          "code": "6654",
+          "name": "不二電機工業",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-10|7682|15:30|中間 / 決算|15c29f923e|01",
+          "time": "15:30",
+          "code": "7682",
+          "name": "浜木綿",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-10|9678|15:30|1Q|aa3c170419|01",
+          "time": "15:30",
+          "code": "9678",
+          "name": "カナモト",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-10|1436|15:31|3Q|58be080250|01",
+          "time": "15:31",
+          "code": "1436",
+          "name": "グリーンエナジー＆カンパニー",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        }
+      ]
+    },
+    {
+      "date": "2026-03-11",
+      "count": 15,
+      "detail_status": "present",
+      "items": [
+        {
+          "event_id": "2026-03-11|3921|12:00|本決算|ff9ffbff2c|01",
+          "time": "12:00",
+          "code": "3921",
+          "name": "ネオジャパン",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-11|6577|12:00|中間 / 決算|c54f14b88f|01",
+          "time": "12:00",
+          "code": "6577",
+          "name": "ベストワンドットコム",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-11|4026|14:30|3Q|c196e14414|01",
+          "time": "14:30",
+          "code": "4026",
+          "name": "神島化学工業",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-11|272A|15:30|3Q|6a480a169e|01",
+          "time": "15:30",
+          "code": "272A",
+          "name": "グリーンクロスホールディングス",
+          "market": "FKO",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-11|350A|15:30|中間 / 決算|824e28193b|01",
+          "time": "15:30",
+          "code": "350A",
+          "name": "デジタルグリッド",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-11|4599|15:30|中間 / 決算|8aa116f75f|01",
+          "time": "15:30",
+          "code": "4599",
+          "name": "ステムリム",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-11|5031|15:30|本決算|f66fa4155b|01",
+          "time": "15:30",
+          "code": "5031",
+          "name": "モイ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-11|5032|15:30|3Q|e35003a089|01",
+          "time": "15:30",
+          "code": "5032",
+          "name": "ＡＮＹＣＯＬＯＲ",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-11|6966|15:30|本決算|962d51f904|01",
+          "time": "15:30",
+          "code": "6966",
+          "name": "三井ハイテック",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-11|7064|15:30|本決算|f03681eeac|01",
+          "time": "15:30",
+          "code": "7064",
+          "name": "ハウテレビジョン",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-11|9236|15:30|1Q|1589b1c753|01",
+          "time": "15:30",
+          "code": "9236",
+          "name": "ジャパンＭ＆Ａソリューション",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-11|7435|15:40|3Q|8ebe06f2f6|01",
+          "time": "15:40",
+          "code": "7435",
+          "name": "ナ・デックス",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-11|5132|16:00|1Q|ef7cf69901|01",
+          "time": "16:00",
+          "code": "5132",
+          "name": "ｐｌｕｓｚｅｒｏ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-11|7678|16:00|本決算|efc8404087|01",
+          "time": "16:00",
+          "code": "7678",
+          "name": "あさくま",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-11|2751|17:00|3Q|fde29ecc62|01",
+          "time": "17:00",
+          "code": "2751",
+          "name": "テンポスホールディングス",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        }
+      ]
+    },
+    {
+      "date": "2026-03-12",
+      "count": 33,
+      "detail_status": "present",
+      "items": [
+        {
+          "event_id": "2026-03-12|6535|12:00|中間 / 決算|bb177d6ffa|01",
+          "time": "12:00",
+          "code": "6535",
+          "name": "アイモバイル",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-12|6696|12:00|本決算|cde1a03f94|01",
+          "time": "12:00",
+          "code": "6696",
+          "name": "トラース・オン・プロダクト",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-12|2198|15:00|1Q|5ad773cd77|01",
+          "time": "15:00",
+          "code": "2198",
+          "name": "アイ・ケイ・ケイホールディングス",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-12|6184|15:00|本決算|0d3642cc78|01",
+          "time": "15:00",
+          "code": "6184",
+          "name": "鎌倉新書",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-12|1433|15:30|本決算|be9bd518ca|01",
+          "time": "15:30",
+          "code": "1433",
+          "name": "ベステラ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-12|215A|15:30|1Q|fdb408535f|01",
+          "time": "15:30",
+          "code": "215A",
+          "name": "タイミー",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-12|215A|15:30|1Q|fdb408535f|02",
+          "time": "15:30",
+          "code": "215A",
+          "name": "タイミー",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-12|2294|15:30|3Q|145b8df18a|01",
+          "time": "15:30",
+          "code": "2294",
+          "name": "柿安本店",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-12|3246|15:30|本決算|9ee032d620|01",
+          "time": "15:30",
+          "code": "3246",
+          "name": "コーセーアールイー",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-12|3955|15:30|本決算|21d91903cb|01",
+          "time": "15:30",
+          "code": "3955",
+          "name": "イムラ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-12|4287|15:30|本決算|111b970849|01",
+          "time": "15:30",
+          "code": "4287",
+          "name": "ジャストプランニング",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-12|4422|15:30|中間 / 決算|cf7709d7f6|01",
+          "time": "15:30",
+          "code": "4422",
+          "name": "ＶＡＬＵＥＮＥＸ",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-12|4934|15:30|中間 / 決算|d91826d264|01",
+          "time": "15:30",
+          "code": "4934",
+          "name": "プレミアアンチエイジング",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-12|5075|15:30|本決算|2ebae073ab|01",
+          "time": "15:30",
+          "code": "5075",
+          "name": "アップコン",
+          "market": "NGY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-12|5134|15:30|1Q|08e08d952b|01",
+          "time": "15:30",
+          "code": "5134",
+          "name": "ＰＯＰＥＲ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-12|6387|15:30|中間 / 決算|80bea8f22e|01",
+          "time": "15:30",
+          "code": "6387",
+          "name": "サムコ",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-12|6778|15:30|中間 / 決算|698541ce4a|01",
+          "time": "15:30",
+          "code": "6778",
+          "name": "アルチザネットワークス",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-12|7095|15:30|3Q|ebcdd112b9|01",
+          "time": "15:30",
+          "code": "7095",
+          "name": "Ｍａｃｂｅｅ　Ｐｌａｎｅｔ",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-12|7378|15:30|1Q|e3f5236c70|01",
+          "time": "15:30",
+          "code": "7378",
+          "name": "アシロ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-12|7640|15:30|1Q|11c7288ac7|01",
+          "time": "15:30",
+          "code": "7640",
+          "name": "トップカルチャー",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-12|8142|15:30|本決算|2d9cef15b6|01",
+          "time": "15:30",
+          "code": "8142",
+          "name": "トーホー",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-12|9166|15:30|本決算|beade76d3a|01",
+          "time": "15:30",
+          "code": "9166",
+          "name": "ＧＥＮＤＡ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-12|9565|15:30|1Q|299c343d76|01",
+          "time": "15:30",
+          "code": "9565",
+          "name": "ＧＬＯＥ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-12|9692|15:30|本決算|f6053ae467|01",
+          "time": "15:30",
+          "code": "9692",
+          "name": "シーイーシー",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-12|6225|15:50|中間 / 決算|06fd1c3179|01",
+          "time": "15:50",
+          "code": "6225",
+          "name": "エコム",
+          "market": "NGY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-12|2776|16:00|本決算|e35c241daf|01",
+          "time": "16:00",
+          "code": "2776",
+          "name": "新都ホールディングス",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-12|3361|16:00|3Q|9074902856|01",
+          "time": "16:00",
+          "code": "3361",
+          "name": "トーエル",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-12|6091|16:00|中間 / 決算|bf96bf48ac|01",
+          "time": "16:00",
+          "code": "6091",
+          "name": "ウエスコホールディングス",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-12|6309|16:00|1Q|157b662af3|01",
+          "time": "16:00",
+          "code": "6309",
+          "name": "巴工業",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-12|6898|16:00|本決算|419661e27f|01",
+          "time": "16:00",
+          "code": "6898",
+          "name": "トミタ電機",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-12|7777|16:00|3Q|5817a8422e|01",
+          "time": "16:00",
+          "code": "7777",
+          "name": "スリー・ディー・マトリックス",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-12|1844|16:30|中間 / 決算|ee464aa357|01",
+          "time": "16:30",
+          "code": "1844",
+          "name": "大盛工業",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-12|5572|17:00|中間 / 決算|72e68aa9ac|01",
+          "time": "17:00",
+          "code": "5572",
+          "name": "Ｒｉｄｇｅ－ｉ",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-12|7196|17:20|本決算|3c5912a980|01",
+          "time": "17:20",
+          "code": "7196",
+          "name": "Ｃａｓａ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        }
+      ]
+    },
+    {
+      "date": "2026-03-13",
+      "count": 82,
+      "detail_status": "present",
+      "items": [
+        {
+          "event_id": "2026-03-13|9556|11:30|中間 / 決算|efbaf4d9cd|01",
+          "time": "11:30",
+          "code": "9556",
+          "name": "ＩＮＴＬＯＯＰ",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|3930|12:00|中間 / 決算|e6147776f4|01",
+          "time": "12:00",
+          "code": "3930",
+          "name": "はてな",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|7692|12:00|中間 / 決算|b074a39339|01",
+          "time": "12:00",
+          "code": "7692",
+          "name": "アースインフィニティ",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-13|2929|13:30|中間 / 決算|dff10f26dc|01",
+          "time": "13:30",
+          "code": "2929",
+          "name": "ファーマフーズ",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|3974|13:30|1Q|a83f11f31c|01",
+          "time": "13:30",
+          "code": "3974",
+          "name": "ＳＣＡＴ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-13|211A|14:00|中間 / 決算|618c88e438|01",
+          "time": "14:00",
+          "code": "211A",
+          "name": "カドス・コーポレーション",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|2163|14:00|本決算|306c33fbcf|01",
+          "time": "14:00",
+          "code": "2163",
+          "name": "アルトナー",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|2991|14:00|中間 / 決算|1215c03c81|01",
+          "time": "14:00",
+          "code": "2991",
+          "name": "ランドネット",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|6336|14:00|本決算|f138654e66|01",
+          "time": "14:00",
+          "code": "6336",
+          "name": "石井表記",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|3195|14:30|1Q|53bb4bb606|01",
+          "time": "14:30",
+          "code": "3195",
+          "name": "ジェネレーションパス",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|3071|15:00|本決算|e76649f5d8|01",
+          "time": "15:00",
+          "code": "3071",
+          "name": "ストリーム",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|3418|15:00|中間 / 決算|51a96327b0|01",
+          "time": "15:00",
+          "code": "3418",
+          "name": "バルニバービ",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|3419|15:00|1Q|476b69af8b|01",
+          "time": "15:00",
+          "code": "3419",
+          "name": "アートグリーン",
+          "market": "NGY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|3903|15:00|3Q|399a914270|01",
+          "time": "15:00",
+          "code": "3903",
+          "name": "ｇｕｍｉ",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|391A|15:00|3Q|85749c40d7|01",
+          "time": "15:00",
+          "code": "391A",
+          "name": "山忠",
+          "market": "NGY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-13|4996|15:00|1Q|ccfed6ac86|01",
+          "time": "15:00",
+          "code": "4996",
+          "name": "クミアイ化学工業",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-13|168A|15:30|本決算|b21a811030|01",
+          "time": "15:30",
+          "code": "168A",
+          "name": "イタミアート",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|1758|15:30|本決算|932d89a0e9|01",
+          "time": "15:30",
+          "code": "1758",
+          "name": "太洋基礎工業",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|1766|15:30|3Q|36187ccf8f|01",
+          "time": "15:30",
+          "code": "1766",
+          "name": "東建コーポレーション",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-13|1840|15:30|1Q|fd79dd96f9|01",
+          "time": "15:30",
+          "code": "1840",
+          "name": "土屋ホールディングス",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|212A|15:30|1Q|b8b0ff4f65|01",
+          "time": "15:30",
+          "code": "212A",
+          "name": "フィットイージー",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-13|2217|15:30|本決算|83a93bfbeb|01",
+          "time": "15:30",
+          "code": "2217",
+          "name": "モロゾフ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|2373|15:30|1Q|c512618646|01",
+          "time": "15:30",
+          "code": "2373",
+          "name": "ケア２１",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-13|2424|15:30|中間 / 決算|d87afad118|01",
+          "time": "15:30",
+          "code": "2424",
+          "name": "ブラス",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|2695|15:30|1Q|b731b0d0d0|01",
+          "time": "15:30",
+          "code": "2695",
+          "name": "くら寿司",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-13|3038|15:30|1Q|d5767dd5e8|01",
+          "time": "15:30",
+          "code": "3038",
+          "name": "神戸物産",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|3070|15:30|本決算|6d88935857|01",
+          "time": "15:30",
+          "code": "3070",
+          "name": "ジェリービーンズグループ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|3134|15:30|3Q|f24c9d70d6|01",
+          "time": "15:30",
+          "code": "3134",
+          "name": "Ｈａｍｅｅ",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|3159|15:30|本決算|c2c71b830b|01",
+          "time": "15:30",
+          "code": "3159",
+          "name": "丸善ＣＨＩホールディングス",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|3193|15:30|中間 / 決算|c9317b25c5|01",
+          "time": "15:30",
+          "code": "3193",
+          "name": "エターナルホスピタリティグループ",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-13|324A|15:30|3Q|6522258a04|01",
+          "time": "15:30",
+          "code": "324A",
+          "name": "ブッキングリゾート",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-13|3320|15:30|本決算|cefd80cce3|01",
+          "time": "15:30",
+          "code": "3320",
+          "name": "クロスプラス",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|3480|15:30|1Q|6a1196d320|01",
+          "time": "15:30",
+          "code": "3480",
+          "name": "ジェイ・エス・ビー",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|3653|15:30|1Q|c029a6bbe5|01",
+          "time": "15:30",
+          "code": "3653",
+          "name": "モルフォ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|3662|15:30|中間 / 決算|d0446996eb|01",
+          "time": "15:30",
+          "code": "3662",
+          "name": "エイチームホールディングス",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|3843|15:30|3Q|3908ca9da0|01",
+          "time": "15:30",
+          "code": "3843",
+          "name": "フリービット",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-13|4175|15:30|本決算|44e82465ec|01",
+          "time": "15:30",
+          "code": "4175",
+          "name": "ｃｏｌｙ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|4369|15:30|本決算|c910fc43e2|01",
+          "time": "15:30",
+          "code": "4369",
+          "name": "トリケミカル研究所",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|4382|15:30|3Q|0e7690d45b|01",
+          "time": "15:30",
+          "code": "4382",
+          "name": "ＨＥＲＯＺ",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-13|441A|15:30|3Q|aad7863268|01",
+          "time": "15:30",
+          "code": "441A",
+          "name": "ＮＥ",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-13|446A|15:30|本決算|4b9e6bfb13|01",
+          "time": "15:30",
+          "code": "446A",
+          "name": "ノースサンド",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|462A|15:30|1Q|e3bb824553|01",
+          "time": "15:30",
+          "code": "462A",
+          "name": "ＦＵＮＤＩＮＮＯ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|4936|15:30|中間 / 決算|ccbbc96913|01",
+          "time": "15:30",
+          "code": "4936",
+          "name": "アクシージア",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|5218|15:30|1Q|ce855c5361|01",
+          "time": "15:30",
+          "code": "5218",
+          "name": "オハラ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|5889|15:30|本決算|8f5f2368e5|01",
+          "time": "15:30",
+          "code": "5889",
+          "name": "Ｊａｐａｎ　Ｅｙｅｗｅａｒ　Ｈｏｌｄｉｎｇｓ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|6037|15:30|中間 / 決算|6aaa40afd1|01",
+          "time": "15:30",
+          "code": "6037",
+          "name": "楽待",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-13|6049|15:30|1Q|7c73c128d8|01",
+          "time": "15:30",
+          "code": "6049",
+          "name": "イトクロ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|6656|15:30|3Q|7bcc39862b|01",
+          "time": "15:30",
+          "code": "6656",
+          "name": "インスペック",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|6757|15:30|本決算|5aaf4d43b9|01",
+          "time": "15:30",
+          "code": "6757",
+          "name": "ＯＳＧコーポレーション",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|7073|15:30|本決算|2af6a41ba0|01",
+          "time": "15:30",
+          "code": "7073",
+          "name": "ジェイック",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|7097|15:30|中間 / 決算|72f9642d73|01",
+          "time": "15:30",
+          "code": "7097",
+          "name": "さくらさくプラス",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-13|7126|15:30|中間 / 決算|807d1185fa|01",
+          "time": "15:30",
+          "code": "7126",
+          "name": "グローバルスタイル",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|7131|15:30|1Q|4681a5a173|01",
+          "time": "15:30",
+          "code": "7131",
+          "name": "のむら産業",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-13|7614|15:30|本決算|4ba195432c|01",
+          "time": "15:30",
+          "code": "7614",
+          "name": "オーエムツーネットワーク",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|7827|15:30|1Q|081d6d8b46|01",
+          "time": "15:30",
+          "code": "7827",
+          "name": "オービス",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|7831|15:30|1Q|5dc5452901|01",
+          "time": "15:30",
+          "code": "7831",
+          "name": "ウイルコホールディングス",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|7878|15:30|本決算|9b6fed9a20|01",
+          "time": "15:30",
+          "code": "7878",
+          "name": "光・彩",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|7983|15:30|1Q|dd46715689|01",
+          "time": "15:30",
+          "code": "7983",
+          "name": "ミロク",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-13|8013|15:30|本決算|e33e6b98a1|01",
+          "time": "15:30",
+          "code": "8013",
+          "name": "ナイガイ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|9163|15:30|1Q|075cb0a6a2|01",
+          "time": "15:30",
+          "code": "9163",
+          "name": "ナレルグループ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-13|9235|15:30|中間 / 決算|291a4f1eff|01",
+          "time": "15:30",
+          "code": "9235",
+          "name": "売れるネット広告社グループ",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|9240|15:30|中間 / 決算|48c8260736|01",
+          "time": "15:30",
+          "code": "9240",
+          "name": "デリバリーコンサルティング",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-13|9242|15:30|中間 / 決算|57cd84a6f5|01",
+          "time": "15:30",
+          "code": "9242",
+          "name": "メディア総研",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-13|9603|15:30|1Q|79ddd2a4a5|01",
+          "time": "15:30",
+          "code": "9603",
+          "name": "エイチ・アイ・エス",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-13|218A|15:45|中間 / 決算|04ed976281|01",
+          "time": "15:45",
+          "code": "218A",
+          "name": "Ｌｉｂｅｒａｗａｒｅ",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|3444|15:45|3Q|c990c27367|01",
+          "time": "15:45",
+          "code": "3444",
+          "name": "菊池製作所",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|4334|15:45|本決算|7eaab625de|01",
+          "time": "15:45",
+          "code": "4334",
+          "name": "ユークス",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|186A|16:00|3Q|f8bfd99fe0|01",
+          "time": "16:00",
+          "code": "186A",
+          "name": "アストロスケールホールディングス",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|3441|16:00|中間 / 決算|055eab2e93|01",
+          "time": "16:00",
+          "code": "3441",
+          "name": "山王",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-13|3524|16:00|3Q|224a7914c3|01",
+          "time": "16:00",
+          "code": "3524",
+          "name": "日東製網",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|3931|16:00|本決算|1c00247630|01",
+          "time": "16:00",
+          "code": "3931",
+          "name": "バリューゴルフ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|4378|16:00|1Q|1394890bad|01",
+          "time": "16:00",
+          "code": "4378",
+          "name": "ＣＩＮＣ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|5079|16:00|3Q|1695e7b3b4|01",
+          "time": "16:00",
+          "code": "5079",
+          "name": "ノバック",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-13|7050|16:00|3Q|8719da3976|01",
+          "time": "16:00",
+          "code": "7050",
+          "name": "フロンティアインターナショナル",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-13|7674|16:00|本決算|b1c42e6d4d|01",
+          "time": "16:00",
+          "code": "7674",
+          "name": "ＮＡＴＴＹ　ＳＷＡＮＫＹホールディングス",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|7850|16:00|中間 / 決算|6ae2d990cf|01",
+          "time": "16:00",
+          "code": "7850",
+          "name": "総合商研",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-13|9262|16:00|中間 / 決算|b3f8130901|01",
+          "time": "16:00",
+          "code": "9262",
+          "name": "シルバーライフ",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-13|9425|16:00|1Q|7595883436|01",
+          "time": "16:00",
+          "code": "9425",
+          "name": "ＲｅＹｕｕ　Ｊａｐａｎ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|3161|16:30|3Q|46f83418af|01",
+          "time": "16:30",
+          "code": "3161",
+          "name": "アゼアス",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|9254|16:30|1Q|8c42bf7813|01",
+          "time": "16:30",
+          "code": "9254",
+          "name": "ラバブルマーケティンググループ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|9254|16:30|1Q|8c42bf7813|02",
+          "time": "16:30",
+          "code": "9254",
+          "name": "ラバブルマーケティンググループ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-13|3421|17:00|中間 / 決算|bf663581e8|01",
+          "time": "17:00",
+          "code": "3421",
+          "name": "稲葉製作所",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-13|4431|17:00|3Q|067402bbfc|01",
+          "time": "17:00",
+          "code": "4431",
+          "name": "スマレジ",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        }
+      ]
+    },
+    {
+      "date": "2026-03-14",
+      "count": 0,
+      "detail_status": "missing",
+      "items": []
+    },
+    {
+      "date": "2026-03-15",
+      "count": 0,
+      "detail_status": "missing",
+      "items": []
+    },
+    {
+      "date": "2026-03-16",
+      "count": 29,
+      "detail_status": "present",
+      "items": [
+        {
+          "event_id": "2026-03-16|9444|14:00|3Q|852f7d3f16|01",
+          "time": "14:00",
+          "code": "9444",
+          "name": "トーシンホールディングス",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-16|1383|15:00|1Q|dc013dc7c0|01",
+          "time": "15:00",
+          "code": "1383",
+          "name": "ベルグアース",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-16|3665|15:00|本決算|95e6f13761|01",
+          "time": "15:00",
+          "code": "3665",
+          "name": "エニグモ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-16|3988|15:00|中間 / 決算|20d918362c|01",
+          "time": "15:00",
+          "code": "3988",
+          "name": "ＳＹＳホールディングス",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-16|8079|15:00|1Q|2db1f82cfd|01",
+          "time": "15:00",
+          "code": "8079",
+          "name": "正栄食品工業",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-16|278A|15:30|本決算|3e1c8353e2|01",
+          "time": "15:30",
+          "code": "278A",
+          "name": "Ｔｅｒｒａ　Ｄｒｏｎｅ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-16|2978|15:30|中間 / 決算|bcbf399dca|01",
+          "time": "15:30",
+          "code": "2978",
+          "name": "ツクルバ",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-16|2983|15:30|本決算|de923ef064|01",
+          "time": "15:30",
+          "code": "2983",
+          "name": "アールプランナー",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-16|2997|15:30|本決算|15fea25912|01",
+          "time": "15:30",
+          "code": "2997",
+          "name": "ストレージ王",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-16|3804|15:30|1Q|b4dbc5901e|01",
+          "time": "15:30",
+          "code": "3804",
+          "name": "システム　ディ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-16|4014|15:30|中間 / 決算|bbc502d221|01",
+          "time": "15:30",
+          "code": "4014",
+          "name": "カラダノート",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-16|4075|15:30|中間 / 決算|8ea89c05e7|01",
+          "time": "15:30",
+          "code": "4075",
+          "name": "ブレインズテクノロジー",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-16|5888|15:30|本決算|228bea46b3|01",
+          "time": "15:30",
+          "code": "5888",
+          "name": "ＤＡＩＷＡ　ＣＹＣＬＥ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-16|7110|15:30|中間 / 決算|4ecd853b96|01",
+          "time": "15:30",
+          "code": "7110",
+          "name": "クラシコム",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-16|7901|15:30|3Q|30f2c99e26|01",
+          "time": "15:30",
+          "code": "7901",
+          "name": "マツモト",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-16|8077|15:30|1Q|559db7571a|01",
+          "time": "15:30",
+          "code": "8077",
+          "name": "トルク",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-16|9279|15:30|1Q|f0b6539b9c|01",
+          "time": "15:30",
+          "code": "9279",
+          "name": "ギフトホールディングス",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-16|5971|15:40|3Q|14290f0370|01",
+          "time": "15:40",
+          "code": "5971",
+          "name": "共和工業所",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-16|3121|16:00|1Q|39a8a38be6|01",
+          "time": "16:00",
+          "code": "3121",
+          "name": "マーチャント・バンカーズ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-16|3399|16:00|本決算|f2aee8181a|01",
+          "time": "16:00",
+          "code": "3399",
+          "name": "丸千代山岡家",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-16|3539|16:00|中間 / 決算|fb9f809a3a|01",
+          "time": "16:00",
+          "code": "3539",
+          "name": "ＪＭホールディングス",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-16|4446|16:00|中間 / 決算|858a480b53|01",
+          "time": "16:00",
+          "code": "4446",
+          "name": "Ｌｉｎｋ－Ｕグループ",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-16|456A|16:00|本決算|7968aca703|01",
+          "time": "16:00",
+          "code": "456A",
+          "name": "ＨＵＭＡＮ　ＭＡＤＥ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-16|500A|16:00|3Q|a299181fc7|01",
+          "time": "16:00",
+          "code": "500A",
+          "name": "ＴＯブックス",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-16|5131|16:00|中間 / 決算|cf4e31108e|01",
+          "time": "16:00",
+          "code": "5131",
+          "name": "リンカーズ",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-16|6838|16:00|1Q|2dea273953|01",
+          "time": "16:00",
+          "code": "6838",
+          "name": "多摩川ホールディングス",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-16|9632|16:00|本決算|71b43b9a25|01",
+          "time": "16:00",
+          "code": "9632",
+          "name": "スバル興業",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-16|2345|16:15|1Q|91183f82e1|01",
+          "time": "16:15",
+          "code": "2345",
+          "name": "ＨＯＤＬ１",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-16|8894|16:30|1Q|dc7ae45aab|01",
+          "time": "16:30",
+          "code": "8894",
+          "name": "ＲＥＶＯＬＵＴＩＯＮ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        }
+      ]
+    },
+    {
+      "date": "2026-03-17",
+      "count": 30,
+      "detail_status": "present",
+      "items": [
+        {
+          "event_id": "2026-03-17|7604|13:00|3Q|951a4be2e6|01",
+          "time": "13:00",
+          "code": "7604",
+          "name": "梅の花グループ",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-17|7810|15:04|中間 / 決算|8b483c4aa7|01",
+          "time": "15:04",
+          "code": "7810",
+          "name": "クロスフォー",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-17|5248|15:10|本決算|f820a5c1a0|01",
+          "time": "15:10",
+          "code": "5248",
+          "name": "テクノロジーズ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-17|1444|15:30|中間 / 決算|f7116be52e|01",
+          "time": "15:30",
+          "code": "1444",
+          "name": "ニッソウ",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-17|2315|15:30|1Q|5d26657dc6|01",
+          "time": "15:30",
+          "code": "2315",
+          "name": "ＣＡＩＣＡ　ＤＩＧＩＴＡＬ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-17|3415|15:30|本決算|491ec9cec7|01",
+          "time": "15:30",
+          "code": "3415",
+          "name": "ＴＯＫＹＯ　ＢＡＳＥ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-17|3475|15:30|1Q|8e20c5faa0|01",
+          "time": "15:30",
+          "code": "3475",
+          "name": "グッドコムアセット",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-17|3491|15:30|1Q|ca78035bc5|01",
+          "time": "15:30",
+          "code": "3491",
+          "name": "ＧＡ　ｔｅｃｈｎｏｌｏｇｉｅｓ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-17|3565|15:30|本決算|6146fdad76|01",
+          "time": "15:30",
+          "code": "3565",
+          "name": "アセンテック",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-17|4174|15:30|本決算|46cea67002|01",
+          "time": "15:30",
+          "code": "4174",
+          "name": "アピリッツ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-17|4194|15:30|中間 / 決算|e7172ed77a|01",
+          "time": "15:30",
+          "code": "4194",
+          "name": "ビジョナル",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-17|4384|15:30|中間 / 決算|f6063df15b|01",
+          "time": "15:30",
+          "code": "4384",
+          "name": "ラクスル",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-17|442A|15:30|1Q|8c90a943f9|01",
+          "time": "15:30",
+          "code": "442A",
+          "name": "クラシコ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-17|4592|15:30|本決算|4390bab129|01",
+          "time": "15:30",
+          "code": "4592",
+          "name": "サンバイオ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-17|460A|15:30|1Q|9b7b8c061f|01",
+          "time": "15:30",
+          "code": "460A",
+          "name": "ＢＲＡＮＵ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-17|4880|15:30|1Q|8ca113aee1|01",
+          "time": "15:30",
+          "code": "4880",
+          "name": "セルソース",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-17|7034|15:30|1Q|d0860607a5|01",
+          "time": "15:30",
+          "code": "7034",
+          "name": "プロレド・パートナーズ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-17|7683|15:30|本決算|da5f58ac63|01",
+          "time": "15:30",
+          "code": "7683",
+          "name": "ダブルエー",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-17|8927|15:30|中間 / 決算|bbdb1d3cdc|01",
+          "time": "15:30",
+          "code": "8927",
+          "name": "明豊エンタープライズ",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-17|9251|15:30|1Q|78dd53c96b|01",
+          "time": "15:30",
+          "code": "9251",
+          "name": "ＡＢ＆Ｃｏｍｐａｎｙ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-17|9627|15:30|3Q|b394d80921|01",
+          "time": "15:30",
+          "code": "9627",
+          "name": "アインホールディングス",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-17|9636|15:30|本決算|9736840ff4|01",
+          "time": "15:30",
+          "code": "9636",
+          "name": "きんえい",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-17|9743|15:30|本決算|49e9479b32|01",
+          "time": "15:30",
+          "code": "9743",
+          "name": "丹青社",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-17|184A|16:00|3Q|920e379cbb|01",
+          "time": "16:00",
+          "code": "184A",
+          "name": "学びエイド",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-17|3169|16:00|本決算|a1dc8c55ca|01",
+          "time": "16:00",
+          "code": "3169",
+          "name": "ミサワ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-17|3657|16:00|本決算|c701032191|01",
+          "time": "16:00",
+          "code": "3657",
+          "name": "ポールトゥウィンホールディングス",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-17|4380|16:00|本決算|be8a3b3e05|01",
+          "time": "16:00",
+          "code": "4380",
+          "name": "Ｍマート",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-17|5136|16:00|1Q|b786cec862|01",
+          "time": "16:00",
+          "code": "5136",
+          "name": "ｔｒｉｐｌａ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "SUNNY"
+        },
+        {
+          "event_id": "2026-03-17|9237|16:00|1Q|96f1a8f78a|01",
+          "time": "16:00",
+          "code": "9237",
+          "name": "笑美面",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        },
+        {
+          "event_id": "2026-03-17|4813|18:00|本決算|6304e8a96e|01",
+          "time": "18:00",
+          "code": "4813",
+          "name": "ＡＣＣＥＳＳ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        }
+      ]
+    },
+    {
+      "date": "2026-03-18",
+      "count": 0,
+      "detail_status": "missing",
+      "items": []
+    },
+    {
+      "date": "2026-03-19",
+      "count": 4,
+      "detail_status": "present",
+      "items": [
+        {
+          "event_id": "2026-03-19|6546|15:00|本決算|39f76afedf|01",
+          "time": "15:00",
+          "code": "6546",
+          "name": "フルテック",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-19|3544|15:30|3Q|12776b901f|01",
+          "time": "15:30",
+          "code": "3544",
+          "name": "サツドラホールディングス",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "CLOUDY"
+        },
+        {
+          "event_id": "2026-03-19|6619|15:30|本決算|c1f062af24|01",
+          "time": "15:30",
+          "code": "6619",
+          "name": "ダブル・スコープ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "発表済",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-19|2796|17:00|3Q|4f14e09f4f|01",
+          "time": "17:00",
+          "code": "2796",
+          "name": "ファーマライズホールディングス",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "発表済",
+          "progress_status": "RAINY"
+        }
+      ]
+    },
+    {
+      "date": "2026-03-20",
+      "count": 0,
+      "detail_status": "missing",
+      "items": []
+    },
+    {
+      "date": "2026-03-21",
+      "count": 0,
+      "detail_status": "missing",
+      "items": []
+    },
+    {
+      "date": "2026-03-22",
+      "count": 0,
+      "detail_status": "missing",
+      "items": []
+    },
+    {
+      "date": "2026-03-23",
+      "count": 2,
+      "detail_status": "present",
+      "items": [
+        {
+          "event_id": "2026-03-23|6905|11:30 / (予定)|3Q|365225eed7|01",
+          "time": "11:30 / (予定)",
+          "code": "6905",
+          "name": "コーセル",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-23|3160|15:30 / (予定)|3Q|b9b18c1885|01",
+          "time": "15:30 / (予定)",
+          "code": "3160",
+          "name": "大光",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        }
+      ]
+    },
+    {
+      "date": "2026-03-24",
+      "count": 1,
+      "detail_status": "present",
+      "items": [
+        {
+          "event_id": "2026-03-24|4716|15:30 / (予定)|3Q|5935ad2ab8|01",
+          "time": "15:30 / (予定)",
+          "code": "4716",
+          "name": "日本オラクル",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        }
+      ]
+    },
+    {
+      "date": "2026-03-25",
+      "count": 2,
+      "detail_status": "present",
+      "items": [
+        {
+          "event_id": "2026-03-25|7921|15:00 / (予定)|3Q|66e891738c|01",
+          "time": "15:00 / (予定)",
+          "code": "7921",
+          "name": "ＴＡＫＡＲＡ　＆　ＣＯＭＰＡＮＹ",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-25|9976|16:00 / (予定)|本決算|ed3bfcedef|01",
+          "time": "16:00 / (予定)",
+          "code": "9976",
+          "name": "セキチュー",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        }
+      ]
+    },
+    {
+      "date": "2026-03-26",
+      "count": 4,
+      "detail_status": "present",
+      "items": [
+        {
+          "event_id": "2026-03-26|7227|15:00 / (予定)|1Q|0e420beba2|01",
+          "time": "15:00 / (予定)",
+          "code": "7227",
+          "name": "アスカ",
+          "market": "NGY",
+          "announcement_type": "1Q",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-26|2792|15:30 / (予定)|3Q|9bc8d3b809|01",
+          "time": "15:30 / (予定)",
+          "code": "2792",
+          "name": "ハニーズホールディングス",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-26|7068|15:30 / (予定)|3Q|442ed59948|01",
+          "time": "15:30 / (予定)",
+          "code": "7068",
+          "name": "フィードフォースグループ",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-26|7624|16:00 / (予定)|本決算|5c77c701be|01",
+          "time": "16:00 / (予定)",
+          "code": "7624",
+          "name": "ＮａＩＴＯ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        }
+      ]
+    },
+    {
+      "date": "2026-03-27",
+      "count": 5,
+      "detail_status": "present",
+      "items": [
+        {
+          "event_id": "2026-03-27|2678|15:30 / (予定)|3Q|b0ea1db913|01",
+          "time": "15:30 / (予定)",
+          "code": "2678",
+          "name": "アスクル",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-27|2778|15:30 / (予定)|本決算|7e81076e7e|01",
+          "time": "15:30 / (予定)",
+          "code": "2778",
+          "name": "パレモ・ホールディングス",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-27|4465|15:30 / (予定)|3Q|ea1d3d9cbf|01",
+          "time": "15:30 / (予定)",
+          "code": "4465",
+          "name": "ニイタカ",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-27|7870|15:30 / (予定)|中間 / 決算|78fe784c20|01",
+          "time": "15:30 / (予定)",
+          "code": "7870",
+          "name": "福島印刷",
+          "market": "NGY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-27|9369|17:00 / (予定)|1Q|4c4b4a4b33|01",
+          "time": "17:00 / (予定)",
+          "code": "9369",
+          "name": "キユーソー流通システム",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        }
+      ]
+    },
+    {
+      "date": "2026-03-28",
+      "count": 0,
+      "detail_status": "missing",
+      "items": []
+    },
+    {
+      "date": "2026-03-29",
+      "count": 0,
+      "detail_status": "missing",
+      "items": []
+    },
+    {
+      "date": "2026-03-30",
+      "count": 3,
+      "detail_status": "present",
+      "items": [
+        {
+          "event_id": "2026-03-30|6083|15:30 / (予定)|3Q|0dab07f4ac|01",
+          "time": "15:30 / (予定)",
+          "code": "6083",
+          "name": "ＥＲＩホールディングス",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-30|7965|15:30 / (予定)|1Q|4cbe956906|01",
+          "time": "15:30 / (予定)",
+          "code": "7965",
+          "name": "象印マホービン",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-30|8227|15:30 / (予定)|本決算|2ffa4accdd|01",
+          "time": "15:30 / (予定)",
+          "code": "8227",
+          "name": "しまむら",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        }
+      ]
+    },
+    {
+      "date": "2026-03-31",
+      "count": 8,
+      "detail_status": "present",
+      "items": [
+        {
+          "event_id": "2026-03-31|7485|11:30 / (予定)|本決算|f7aef6b2a1|01",
+          "time": "11:30 / (予定)",
+          "code": "7485",
+          "name": "岡谷鋼機",
+          "market": "NGY",
+          "announcement_type": "本決算",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-31|192A|15:30 / (予定)|3Q|3a8c17a8e2|01",
+          "time": "15:30 / (予定)",
+          "code": "192A",
+          "name": "インテグループ",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-31|2975|15:30 / (予定)|1Q|2f243db151|01",
+          "time": "15:30 / (予定)",
+          "code": "2975",
+          "name": "スター・マイカ・ホールディングス",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-31|3089|15:30 / (予定)|1Q|8089ccbb3a|01",
+          "time": "15:30 / (予定)",
+          "code": "3089",
+          "name": "テクノアルファ",
+          "market": "TKY",
+          "announcement_type": "1Q",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-31|3607|15:30 / (予定)|中間 / 決算|5898c2cfb9|01",
+          "time": "15:30 / (予定)",
+          "code": "3607",
+          "name": "クラウディアホールディングス",
+          "market": "TKY",
+          "announcement_type": "中間 / 決算",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-31|9651|15:30 / (予定)|3Q|8b502d47ff|01",
+          "time": "15:30 / (予定)",
+          "code": "9651",
+          "name": "日本プロセス",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-31|2354|16:00 / (予定)|本決算|887152d5a5|01",
+          "time": "16:00 / (予定)",
+          "code": "2354",
+          "name": "ＹＥ　ＤＩＧＩＴＡＬ",
+          "market": "TKY",
+          "announcement_type": "本決算",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        },
+        {
+          "event_id": "2026-03-31|9265|16:00 / (予定)|3Q|0c3e3678a8|01",
+          "time": "16:00 / (予定)",
+          "code": "9265",
+          "name": "ヤマシタヘルスケアホールディングス",
+          "market": "TKY",
+          "announcement_type": "3Q",
+          "publish_status": "予定",
+          "progress_status": "NODATA"
+        }
+      ]
+    }
+  ]
+}
