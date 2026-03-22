@@ -35,6 +35,11 @@ function parseDateKey(key: string) {
   return { year, month, day };
 }
 
+function parseYearMonth(id: string) {
+  const [year, month] = id.split("-").map(Number);
+  return { year, month };
+}
+
 function getWeekdayJa(year: number, month: number, day: number) {
   return ["日", "月", "火", "水", "木", "金", "土"][
     new Date(Date.UTC(year, month - 1, day)).getUTCDay()
@@ -58,6 +63,14 @@ function formatMonthLabel(year: number, month: number) {
 function formatUpdatedAt(key: string) {
   const { year, month, day } = parseDateKey(key);
   return `${year}/${String(month).padStart(2, "0")}/${String(day).padStart(2, "0")}`;
+}
+
+function addMonths(year: number, month: number, offset: number) {
+  const base = new Date(Date.UTC(year, month - 1 + offset, 1));
+  return {
+    year: base.getUTCFullYear(),
+    month: base.getUTCMonth() + 1,
+  };
 }
 
 function normalizeMarket(market: string) {
@@ -130,7 +143,7 @@ function createEmptyMonth(id: string, updatedAt: string): CalendarMonth {
 
 function buildMonth(entry: EarningsCalendarManifestMonth, days: EarningsCalendarDay[], asOfDate: string): CalendarMonth {
   const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
-  const { year, month } = parseDateKey(sortedDays[0].date);
+  const { year, month } = sortedDays.length > 0 ? parseDateKey(sortedDays[0].date) : parseYearMonth(entry.id);
   const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const prevMonthLastDay = new Date(Date.UTC(year, month - 1, 0)).getUTCDate();
@@ -153,7 +166,7 @@ function buildMonth(entry: EarningsCalendarManifestMonth, days: EarningsCalendar
     sortedDays.find((day) => day.date === asOfDate)?.date ??
     futureOrToday ??
     sortedDays.find((day) => day.count > 0)?.date ??
-    sortedDays[0].date;
+    `${entry.id}-01`;
 
   const cells: CalendarCell[] = [];
 
@@ -225,19 +238,44 @@ function buildMonths(data: EarningsCalendarPageData): CalendarMonth[] {
     return [];
   }
 
-  const targetYear = parseDateKey(data.manifest.as_of_date).year;
   const monthMap = new Map(built.map((month) => [month.id, month]));
   const updatedAt = formatUpdatedAt(data.manifest.as_of_date);
+  const { year: asOfYear, month: asOfMonth } = parseDateKey(data.manifest.as_of_date);
+  const latestLoaded = data.manifest.months
+    .slice()
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .at(-1);
+  const earliestLoaded = data.manifest.months
+    .slice()
+    .sort((a, b) => a.id.localeCompare(b.id))[0];
+  const rangeStart = earliestLoaded
+    ? { year: earliestLoaded.year, month: earliestLoaded.month }
+    : { year: asOfYear, month: asOfMonth };
+  const rangeEnd = addMonths(asOfYear, asOfMonth, 12);
 
-  return Array.from({ length: 12 }, (_, index) => {
-    const month = index + 1;
-    const id = `${targetYear}-${String(month).padStart(2, "0")}`;
+  const months: CalendarMonth[] = [];
+  let cursor = { ...rangeStart };
+
+  while (
+    cursor.year < rangeEnd.year ||
+    (cursor.year === rangeEnd.year && cursor.month <= rangeEnd.month)
+  ) {
+    const id = `${cursor.year}-${String(cursor.month).padStart(2, "0")}`;
     const existing = monthMap.get(id);
-    if (existing) return existing;
-    const bucket = month < parseDateKey(data.manifest.as_of_date).month ? "past" : "future";
-    const emptyMonth = createEmptyMonth(id, updatedAt);
-    return { ...emptyMonth, bucket, partial: false };
-  });
+    if (existing) {
+      months.push(existing);
+    } else {
+      const bucket =
+        cursor.year < asOfYear || (cursor.year === asOfYear && cursor.month < asOfMonth)
+          ? "past"
+          : "future";
+      const emptyMonth = createEmptyMonth(id, updatedAt);
+      months.push({ ...emptyMonth, bucket, partial: false });
+    }
+    cursor = addMonths(cursor.year, cursor.month, 1);
+  }
+
+  return months;
 }
 
 function getEmptyStateMessage(day: CalendarCell) {
