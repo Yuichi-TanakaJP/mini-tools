@@ -57,12 +57,9 @@ const TOOLS: ToolItem[] = [
   {
     title: "決算カレンダー",
     short: "日本株の予定を確認",
-    detail:
-      "market_info のデータをもとに、日本株の決算予定をカレンダーで見られるよう準備中です。",
+    detail: "market_info のデータをもとに、日本株の決算予定をカレンダーで確認。",
     href: "/tools/earnings-calendar",
     icon: "🗓️",
-    disabled: true,
-    statusLabel: "準備中",
   },
 ];
 
