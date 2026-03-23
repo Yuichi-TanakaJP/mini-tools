@@ -316,7 +316,7 @@ function getEmptyStateMessage(day: CalendarCell) {
   if (day.marketClosed) {
     return day.marketClosedLabel ? `JPX休場日です（${day.marketClosedLabel}）` : "JPX休場日です";
   }
-  if (day.count > 0 && day.items.length === 0) {
+  if (day.detailStatus === "missing" || (day.count > 0 && day.items.length === 0)) {
     return "個別銘柄のデータは未反映です";
   }
   return "決算予定はありません";
@@ -326,7 +326,7 @@ function getEmptyStateTitle(day: CalendarCell) {
   if (day.marketClosed) {
     return "休場日です";
   }
-  if (day.count > 0 && day.items.length === 0) {
+  if (day.detailStatus === "missing" || (day.count > 0 && day.items.length === 0)) {
     return "決算一覧は未反映です";
   }
   return "決算一覧はありません";
