@@ -69,14 +69,18 @@ PR 本文に必ず記載する項目:
 
 ```powershell
 # コード変更を含むPRは、PR作成後〜マージ前に Codex CLI review を1回実施する
+# 通常差分は review-low、大きめ差分は review-medium を使う
 # ドキュメント変更のみのPRは、必要に応じてスキップ可
-codex review --base main
+codex --profile review-low review --base main
+# 大きめ差分は必要に応じて:
+codex --profile review-medium review --base main
 gh pr view <PR番号> --comments
 gh api repos/Yuichi-TanakaJP/mini-tools/pulls/<PR番号>/reviews
 gh api repos/Yuichi-TanakaJP/mini-tools/pulls/<PR番号>/comments
 ```
 
 - Codex review は、コード変更を含むPRでは原則1回実施する。
+- 通常の差分レビューは `review-low` を使い、規模が大きいPRや慎重に見たい差分では `review-medium` を使う。
 - ドキュメント変更のみのPRは、内容が明確で低リスクならスキップしてよい。
 - P1/P0 指摘は優先対応する。
 - 修正後は同じブランチで再コミットし push する。
