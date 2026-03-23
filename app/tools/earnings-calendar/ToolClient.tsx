@@ -279,7 +279,13 @@ function buildMonths(data: EarningsCalendarPageData): CalendarMonth[] {
   const rangeStart = earliestLoaded
     ? { year: earliestLoaded.year, month: earliestLoaded.month }
     : { year: asOfYear, month: asOfMonth };
-  const rangeEnd = addMonths(asOfYear, asOfMonth, 12);
+  const requestedRangeEnd = addMonths(asOfYear, asOfMonth, 12);
+  const { year: holidayToYear, month: holidayToMonth } = parseDateKey(data.holidays.to);
+  const rangeEnd =
+    requestedRangeEnd.year < holidayToYear ||
+    (requestedRangeEnd.year === holidayToYear && requestedRangeEnd.month <= holidayToMonth)
+      ? requestedRangeEnd
+      : { year: holidayToYear, month: holidayToMonth };
 
   const months: CalendarMonth[] = [];
   let cursor = { ...rangeStart };
