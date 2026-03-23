@@ -314,17 +314,22 @@ function buildMonths(data: EarningsCalendarPageData): CalendarMonth[] {
 
 function getEmptyStateMessage(day: CalendarCell) {
   if (day.marketClosed) {
-    return day.marketClosedLabel
-      ? `この日は JPX の休場日です（${day.marketClosedLabel}）。`
-      : "この日は JPX の休場日です。";
+    return day.marketClosedLabel ? `JPX休場日です（${day.marketClosedLabel}）` : "JPX休場日です";
   }
-  if (day.detailStatus === "empty") {
-    return "この日は件数だけ反映されていて、詳細一覧はまだ空です。";
+  if (day.detailStatus === "missing" || (day.count > 0 && day.items.length === 0)) {
+    return "個別銘柄のデータは未反映です";
   }
-  if (day.detailStatus === "missing") {
-    return "この日の詳細データはまだ未取得です。";
+  return "決算予定はありません";
+}
+
+function getEmptyStateTitle(day: CalendarCell) {
+  if (day.marketClosed) {
+    return "休場日です";
   }
-  return "この日の決算予定はまだありません。";
+  if (day.detailStatus === "missing" || (day.count > 0 && day.items.length === 0)) {
+    return "決算一覧は未反映です";
+  }
+  return "決算一覧はありません";
 }
 
 export default function ToolClient({ data }: { data: EarningsCalendarPageData }) {
@@ -504,7 +509,7 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
         <section style={styles.itemList}>
           {selectedItems.length === 0 ? (
             <article style={styles.emptyCard}>
-              <div style={styles.emptyTitle}>この日の詳細一覧はまだありません</div>
+              <div style={styles.emptyTitle}>{getEmptyStateTitle(selectedDay)}</div>
               <div style={styles.emptyNote}>{getEmptyStateMessage(selectedDay)}</div>
             </article>
           ) : (
