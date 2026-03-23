@@ -59,7 +59,7 @@ export default function ToolGridClient({ tools, styles }: Props) {
                   {t.statusLabel ?? "準備中"}
                 </div>
 
-                <details style={styles.details} className=”toolDetails”>
+                <details style={styles.details} className="toolDetails">
                   <summary style={styles.summary}>詳細を見る</summary>
                   <div style={styles.detailText}>{t.detail}</div>
                 </details>
@@ -92,12 +92,12 @@ export default function ToolGridClient({ tools, styles }: Props) {
                     詳細を見る
                   </div>
 
-                  <details style={styles.details} className=”toolDetails”>
+                  <details style={styles.details} className="toolDetails">
                     <summary style={styles.summary}>詳細を見る</summary>
                     <div style={styles.detailText}>{t.detail}</div>
                   </details>
 
-                  <div className=”tooltip” style={styles.tooltip}>
+                  <div className="tooltip" style={styles.tooltip}>
                     {t.detail}
                   </div>
                 </div>
