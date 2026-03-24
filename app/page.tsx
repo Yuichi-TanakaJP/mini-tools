@@ -118,12 +118,12 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 24,
     marginBottom: 12,
     padding: "10px 14px",
-    background: "rgba(0,0,0,0.02)",
-    border: "1px solid rgba(0,0,0,0.06)",
+    background: "var(--color-bg-input)",
+    border: "1px solid var(--color-border)",
     borderRadius: 14,
     fontSize: 13,
     fontWeight: 800,
-    color: "rgba(0,0,0,0.70)",
+    color: "var(--color-text-sub)",
     display: "block",
     width: "100%",
     position: "relative",
@@ -134,8 +134,8 @@ const styles: Record<string, React.CSSProperties> = {
     letterSpacing: 0.2,
     padding: "6px 10px",
     borderRadius: 999,
-    border: "1px solid rgba(0,0,0,0.12)",
-    background: "rgba(0,0,0,0.02)",
+    border: "1px solid var(--color-border)",
+    background: "var(--color-bg-input)",
     opacity: 0.85,
     marginBottom: 10,
   },
@@ -153,7 +153,7 @@ const styles: Record<string, React.CSSProperties> = {
   note: {
     marginTop: 10,
     fontSize: 12,
-    opacity: 0.7,
+    color: "var(--color-text-muted)",
   },
 
   section: {
@@ -162,7 +162,7 @@ const styles: Record<string, React.CSSProperties> = {
   sectionTitle: {
     fontSize: 14,
     fontWeight: 700,
-    opacity: 0.85,
+    color: "var(--color-text-sub)",
     marginBottom: 12,
   },
 
@@ -193,11 +193,11 @@ const styles: Record<string, React.CSSProperties> = {
     height: "100%",
     borderRadius: 18,
     padding: 14,
-    border: "3px solid rgba(59,130,246,0.15)",
-    background: "rgba(255,255,255,0.9)",
+    border: "3px solid var(--color-accent-sub)",
+    background: "var(--color-bg-card)",
     overflow: "hidden",
     transition: "transform 0.15s, box-shadow 0.15s",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.10)", // 常時影を残すならここ
+    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
   },
 
   cardTop: {
@@ -215,8 +215,8 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 14,
     display: "grid",
     placeItems: "center",
-    background: "rgba(0,0,0,0.04)",
-    border: "1px solid rgba(0,0,0,0.06)",
+    background: "var(--color-bg-input)",
+    border: "1px solid var(--color-border)",
   },
 
   arrow: {
@@ -225,8 +225,8 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 14,
     display: "grid",
     placeItems: "center",
-    border: "1px solid rgba(0,0,0,0.08)",
-    background: "rgba(255,255,255,0.9)",
+    border: "1px solid var(--color-border)",
+    background: "var(--color-bg-card)",
     fontSize: 18,
     opacity: 0.7,
   },
@@ -240,7 +240,7 @@ const styles: Record<string, React.CSSProperties> = {
 
   cardShort: {
     fontSize: 13,
-    opacity: 0.75,
+    color: "var(--color-text-sub)",
     marginTop: 6,
   },
 
@@ -252,8 +252,8 @@ const styles: Record<string, React.CSSProperties> = {
     opacity: 0.9,
     padding: "8px 10px",
     borderRadius: 12,
-    border: "1px solid rgba(0,0,0,0.10)",
-    background: "rgba(255,255,255,0.92)",
+    border: "1px solid var(--color-border)",
+    background: "var(--color-bg-card)",
     display: "inline-flex",
     alignItems: "center",
     gap: 6,
@@ -273,18 +273,18 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12,
     padding: "8px 10px",
     borderRadius: 12,
-    border: "1px solid rgba(0,0,0,0.08)",
-    background: "rgba(255,255,255,0.92)",
+    border: "1px solid var(--color-border)",
+    background: "var(--color-bg-card)",
   },
   detailText: {
     marginTop: 8,
     fontSize: 12,
-    opacity: 0.85,
+    color: "var(--color-text-sub)",
     lineHeight: 1.5,
     padding: "10px 12px",
     borderRadius: 12,
-    border: "1px solid rgba(0,0,0,0.08)",
-    background: "rgba(255,255,255,0.92)",
+    border: "1px solid var(--color-border)",
+    background: "var(--color-bg-card)",
   },
 
   // デスクトップホバー表示用 tooltip
@@ -295,7 +295,7 @@ const styles: Record<string, React.CSSProperties> = {
     bottom: 14,
     padding: "10px 12px",
     borderRadius: 14,
-    border: "1px solid rgba(0,0,0,0.10)",
+    border: "1px solid var(--color-border-strong)",
     background: "rgba(20,20,20,0.92)",
     color: "#fff",
     fontSize: 12,
@@ -317,12 +317,12 @@ const styles: Record<string, React.CSSProperties> = {
   bottomTitle: {
     fontSize: 14,
     fontWeight: 800,
-    opacity: 0.85,
+    color: "var(--color-text-sub)",
   },
   bottomSub: {
     marginTop: 4,
     fontSize: 12,
-    opacity: 0.65,
+    color: "var(--color-text-muted)",
   },
   bottomGrid: {
     display: "grid",
@@ -332,8 +332,8 @@ const styles: Record<string, React.CSSProperties> = {
   bottomPanel: {
     padding: "14px 14px",
     borderRadius: 16,
-    border: "1px solid rgba(0,0,0,0.08)",
-    background: "rgba(255,255,255,0.75)",
+    border: "1px solid var(--color-border)",
+    background: "var(--color-bg-card)",
     boxShadow: "0 10px 26px rgba(0,0,0,0.06)",
   },
   bottomPanelPlain: {
@@ -348,10 +348,10 @@ const styles: Record<string, React.CSSProperties> = {
     width: 44,
     height: 44,
     borderRadius: 14,
-    border: "1px solid rgba(0,0,0,0.12)",
-    background: "rgba(255,255,255,0.9)",
+    border: "1px solid var(--color-border)",
+    background: "var(--color-bg-card)",
     textDecoration: "none",
-    color: "rgba(0,0,0,0.80)",
+    color: "var(--color-text)",
     fontSize: 18,
     fontWeight: 900,
   },
@@ -361,7 +361,7 @@ const styles: Record<string, React.CSSProperties> = {
 
   hr: {
     height: 1,
-    background: "rgba(0,0,0,0.10)",
+    background: "var(--color-border)",
     width: "100%",
     marginBottom: 24,
   },
