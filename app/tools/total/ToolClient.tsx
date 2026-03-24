@@ -64,99 +64,229 @@ export default function ToolClient() {
     }
   };
 
+  const isEmpty = lines.trim().length === 0;
+
   return (
-    <main style={{ maxWidth: 760, margin: "0 auto", padding: 16 }}>
-      <div style={{ marginBottom: 12 }}>
+    <main style={{ maxWidth: 760, margin: "0 auto", padding: "16px 16px 48px" }}>
+
+      {/* ナビ */}
+      <div style={{ marginBottom: 20 }}>
         <Link
           href="/"
           onClick={() => track("nav_clicked", { to: "home_from_tool" })}
           style={{
-            display: "inline-block",
-            padding: "8px 10px",
-            borderRadius: 10,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "6px 12px",
+            borderRadius: 999,
             border: "1px solid var(--color-border-strong)",
             textDecoration: "none",
             color: "var(--color-text-sub)",
+            fontSize: 13,
+            fontWeight: 600,
           }}
         >
-          ← ツール一覧へ
+          ← ツール一覧
         </Link>
       </div>
-      <h1 style={{ fontSize: 24, marginBottom: 6 }}>合計計算ツール</h1>
-      <p style={{ marginTop: 0, fontSize: 13, lineHeight: 1.5, opacity: 0.72 }}>
-        数字を1行ずつ入れるだけで合計します（例：1200 / 300 / -50）。
-      </p>
 
-      <div style={{ marginTop: 14 }}>
-        <textarea
-          value={lines}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={"例:\n1200\n300\n-50"}
-          rows={10}
-          style={{
-            width: "100%",
-            padding: 12,
-            borderRadius: 12,
+      {/* ヒーロー */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "4px 10px",
+          borderRadius: 999,
+          background: "var(--color-accent-sub)",
+          color: "var(--color-accent)",
+          fontSize: 11,
+          fontWeight: 800,
+          marginBottom: 10,
+        }}>
+          🧮 合計計算
+        </div>
+        <h1 style={{ fontSize: 26, fontWeight: 800, margin: "0 0 6px", letterSpacing: -0.4 }}>
+          数字を貼るだけで合計
+        </h1>
+        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: "var(--color-text-sub)" }}>
+          1行1つの数字を入れるだけ。カンマ・円・マイナスも自動で読み取ります。
+        </p>
+      </div>
+
+      {/* 2カラムレイアウト */}
+      <div className="total-layout">
+
+        {/* 左: 入力エリア */}
+        <div className="total-input-col">
+          <div style={{
+            background: "var(--color-bg-card)",
+            borderRadius: 18,
             border: "1px solid var(--color-border)",
-            fontSize: 16,
-            background: "var(--color-bg-input)",
-          }}
-        />
-        <div style={{ marginTop: 8, fontSize: 12, opacity: 0.75 }}>
-          入力された数値：{nums.length}件
+            boxShadow: "0 8px 24px rgba(15,23,42,0.05)",
+            overflow: "hidden",
+          }}>
+            <div style={{
+              padding: "12px 16px 8px",
+              borderBottom: "1px solid var(--color-border)",
+              fontSize: 11,
+              fontWeight: 800,
+              color: "var(--color-text-muted)",
+              letterSpacing: 0.4,
+            }}>
+              INPUT
+            </div>
+            <textarea
+              value={lines}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder={"1200\n300\n-50"}
+              style={{
+                display: "block",
+                width: "100%",
+                padding: "14px 16px",
+                border: "none",
+                outline: "none",
+                resize: "none",
+                fontSize: 16,
+                lineHeight: 1.8,
+                background: "transparent",
+                color: "var(--color-text)",
+                fontFamily: "ui-monospace, monospace",
+                boxSizing: "border-box",
+              }}
+              rows={10}
+            />
+            <div style={{
+              padding: "8px 16px 12px",
+              borderTop: "1px solid var(--color-border)",
+              fontSize: 12,
+              color: "var(--color-text-muted)",
+            }}>
+              {nums.length > 0 ? `${nums.length} 件パース済み` : "数字を1行ずつ入力してください"}
+            </div>
+          </div>
+        </div>
+
+        {/* 右: 結果エリア */}
+        <div className="total-result-col">
+          <div style={{
+            background: "var(--color-bg-card)",
+            borderRadius: 18,
+            border: "1px solid var(--color-border)",
+            boxShadow: "0 8px 24px rgba(15,23,42,0.05)",
+            padding: "20px 20px 16px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+          }}>
+            {/* 合計表示 */}
+            <div>
+              <div style={{
+                fontSize: 11,
+                fontWeight: 800,
+                color: "var(--color-text-muted)",
+                letterSpacing: 0.4,
+                marginBottom: 6,
+              }}>
+                合計
+              </div>
+              <div style={{
+                fontSize: 38,
+                fontWeight: 800,
+                letterSpacing: -1,
+                color: isEmpty ? "var(--color-text-muted)" : "var(--color-text)",
+                lineHeight: 1.1,
+                fontFamily: "ui-monospace, monospace",
+              }}>
+                {isEmpty ? "—" : total.toLocaleString()}
+              </div>
+            </div>
+
+            {/* アクセントライン */}
+            <div style={{
+              height: 2,
+              borderRadius: 999,
+              background: "linear-gradient(90deg, var(--color-accent) 0%, var(--color-accent-sub) 100%)",
+              opacity: isEmpty ? 0.2 : 1,
+              transition: "opacity 0.2s",
+            }} />
+
+            {/* ボタン */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button
+                onClick={copyTotal}
+                disabled={isEmpty}
+                style={{
+                  padding: "11px 16px",
+                  border: "none",
+                  borderRadius: 12,
+                  background: isEmpty ? "var(--color-bg-input)" : "var(--color-accent)",
+                  color: isEmpty ? "var(--color-text-muted)" : "#fff",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: isEmpty ? "default" : "pointer",
+                  transition: "background 0.15s",
+                  textAlign: "center",
+                }}
+              >
+                合計をコピー
+              </button>
+              <button
+                onClick={clearAll}
+                disabled={isEmpty}
+                style={{
+                  padding: "11px 16px",
+                  border: "1px solid var(--color-border-strong)",
+                  borderRadius: 12,
+                  background: "var(--color-bg-input)",
+                  color: isEmpty ? "var(--color-text-muted)" : "var(--color-text-sub)",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: isEmpty ? "default" : "pointer",
+                  transition: "background 0.15s",
+                  textAlign: "center",
+                }}
+              >
+                クリア
+              </button>
+            </div>
+
+            {/* 注記 */}
+            <div style={{
+              fontSize: 11,
+              color: "var(--color-text-muted)",
+              lineHeight: 1.6,
+              paddingTop: 4,
+              borderTop: "1px solid var(--color-border)",
+            }}>
+              データはこの端末にのみ保存されます
+            </div>
+          </div>
         </div>
       </div>
 
-      <div
-        style={{
-          marginTop: 16,
-          padding: 14,
-          border: "1px solid var(--color-border-strong)",
-          borderRadius: 14,
-          background: "var(--color-bg-card)",
-        }}
-      >
-        <div style={{ fontSize: 13, color: "var(--color-text-sub)" }}>合計</div>
-        <div style={{ fontSize: 32, fontWeight: 700 }}>
-          {total.toLocaleString()}
-        </div>
-
-        <div
-          style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}
-        >
-          <button
-            onClick={copyTotal}
-            style={{
-              padding: "10px 12px",
-              border: "1px solid var(--color-accent)",
-              borderRadius: 10,
-              color: "var(--color-accent)",
-              background: "var(--color-accent-sub)",
-            }}
-          >
-            合計をコピー
-          </button>
-          <button
-            onClick={clearAll}
-            style={{
-              padding: "10px 12px",
-              border: "1px solid var(--color-border-strong)",
-              borderRadius: 10,
-              color: "var(--color-text-sub)",
-              background: "var(--color-bg-input)",
-            }}
-          >
-            クリア
-          </button>
-        </div>
+      <div style={{ marginTop: 32 }}>
+        <ShareButtons text="合計計算ツール：数字を貼るだけで合計できる" />
+        <MonetizeBar />
       </div>
 
-      <ShareButtons text="合計計算ツール：数字を貼るだけで合計できる" />
-      <MonetizeBar />
-
-      <div style={{ marginTop: 24, fontSize: 12, opacity: 0.75 }}>
-        ※入力はこの端末（ブラウザ）にのみ保存されます（localStorage）。
-      </div>
+      <style>{`
+        .total-layout {
+          display: grid;
+          grid-template-columns: 1fr 220px;
+          gap: 16px;
+          align-items: start;
+        }
+        @media (max-width: 560px) {
+          .total-layout {
+            grid-template-columns: 1fr;
+          }
+          .total-result-col {
+            order: -1;
+          }
+        }
+      `}</style>
     </main>
   );
 }
