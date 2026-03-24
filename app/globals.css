@@ -3,19 +3,19 @@
    パターンを変更する場合は docs/design-color-palette.md を参照
    ============================================================ */
 :root {
-  /* 背景 */
-  --color-bg:            #f8fafc;
+  /* 背景 — 決算カレンダーのカラーパレットを基準に統一 */
+  --color-bg:            #eef2f7;
   --color-bg-card:       #ffffff;
-  --color-bg-input:      #f1f5f9;
+  --color-bg-input:      #f4f6fb;
 
   /* テキスト */
-  --color-text:          #0f172a;
-  --color-text-sub:      #475569;
-  --color-text-muted:    #94a3b8;
+  --color-text:          #1f2937;
+  --color-text-sub:      #374151;
+  --color-text-muted:    #6b7280;
 
   /* ボーダー */
-  --color-border:        #e2e8f0;
-  --color-border-strong: #cbd5e1;
+  --color-border:        rgba(15, 23, 42, 0.08);
+  --color-border-strong: rgba(15, 23, 42, 0.14);
 
   /* アクセント */
   --color-accent:        #2554ff;
