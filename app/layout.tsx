@@ -2,6 +2,7 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import Header from "@/components/Header";
+import "./globals.css";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 const SITE_URL =
@@ -66,7 +67,7 @@ export default function RootLayout({
         ) : null}
       </head>
 
-      <body style={{ margin: 0 }}>
+      <body>
         <Header />
         {children}
       </body>
