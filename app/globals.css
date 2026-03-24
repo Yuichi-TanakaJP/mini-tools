@@ -1,0 +1,43 @@
+/* ============================================================
+   Design tokens — Pattern A: Light Blue
+   パターンを変更する場合は docs/design-color-palette.md を参照
+   ============================================================ */
+:root {
+  /* 背景 */
+  --color-bg:            #f8fafc;
+  --color-bg-card:       #ffffff;
+  --color-bg-input:      #f1f5f9;
+
+  /* テキスト */
+  --color-text:          #0f172a;
+  --color-text-sub:      #475569;
+  --color-text-muted:    #94a3b8;
+
+  /* ボーダー */
+  --color-border:        #e2e8f0;
+  --color-border-strong: #cbd5e1;
+
+  /* アクセント */
+  --color-accent:        #2554ff;
+  --color-accent-sub:    #eef2ff;
+  --color-accent-hover:  #1d44d8;
+
+  /* セマンティック */
+  --color-error:         #dc2626;
+  --color-success:       #16a34a;
+  --color-warning:       #d97706;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: system-ui, -apple-system, "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
