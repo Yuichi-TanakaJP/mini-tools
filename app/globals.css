@@ -38,6 +38,4 @@ body {
   margin: 0;
   background: var(--color-bg);
   color: var(--color-text);
-  font-family: system-ui, -apple-system, "Helvetica Neue", sans-serif;
-  -webkit-font-smoothing: antialiased;
 }

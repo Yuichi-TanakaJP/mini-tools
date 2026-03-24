@@ -175,8 +175,8 @@ export default function ToolClient() {
           gap: 8,
           padding: "4px 10px",
           borderRadius: 999,
-          background: "#f4f7fb",
-          color: "#345",
+          background: "var(--color-accent-sub)",
+          color: "var(--color-accent)",
           fontSize: 12,
           fontWeight: 700,
         }}
@@ -201,8 +201,9 @@ export default function ToolClient() {
             width: "100%",
             padding: 12,
             borderRadius: 12,
-            border: "1px solid #ccc",
+            border: "1px solid var(--color-border)",
             fontSize: 16,
+            background: "var(--color-bg-input)",
           }}
         />
         <div style={{ marginTop: 8, fontSize: 12, opacity: 0.75 }}>
@@ -214,8 +215,9 @@ export default function ToolClient() {
         style={{
           marginTop: 16,
           padding: 14,
-          border: "1px solid #111",
+          border: "1px solid var(--color-border-strong)",
           borderRadius: 14,
+          background: "var(--color-bg-card)",
         }}
       >
         <div
@@ -228,47 +230,47 @@ export default function ToolClient() {
           <div
             style={{
               padding: 12,
-              border: "1px solid #111",
+              border: "1px solid var(--color-accent)",
               borderRadius: 12,
-              background: "#fafafa",
+              background: "var(--color-accent-sub)",
             }}
           >
-            <div style={{ fontSize: 13, opacity: 0.8 }}>X推定文字数</div>
+            <div style={{ fontSize: 13, color: "var(--color-text-sub)" }}>X推定文字数</div>
             <div style={{ fontSize: 32, fontWeight: 700 }}>{stats.xEstimated}</div>
-            <div style={{ fontSize: 12, opacity: 0.7 }}>
+            <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
               URL=23 / 絵文字=2 / CJK=2 の推定
             </div>
           </div>
 
           <div
-            style={{ padding: 12, border: "1px solid #ddd", borderRadius: 12 }}
+            style={{ padding: 12, border: "1px solid var(--color-border)", borderRadius: 12 }}
           >
-            <div style={{ fontSize: 13, opacity: 0.8 }}>X推定 140字 残り</div>
+            <div style={{ fontSize: 13, color: "var(--color-text-sub)" }}>X推定 140字 残り</div>
             <div
               style={{
                 fontSize: 32,
                 fontWeight: 700,
-                color: stats.x140Remaining < 0 ? "#b91c1c" : "inherit",
+                color: stats.x140Remaining < 0 ? "var(--color-error)" : "inherit",
               }}
             >
               {stats.x140Remaining}
             </div>
-            <div style={{ fontSize: 12, opacity: 0.7 }}>
+            <div style={{ fontSize: 12, color: stats.x140Remaining < 0 ? "var(--color-error)" : "var(--color-text-muted)" }}>
               {stats.x140Remaining < 0 ? "オーバーしています" : "OK"}
             </div>
           </div>
 
           <div
-            style={{ padding: 12, border: "1px solid #ddd", borderRadius: 12 }}
+            style={{ padding: 12, border: "1px solid var(--color-border)", borderRadius: 12 }}
           >
-            <div style={{ fontSize: 13, opacity: 0.8 }}>文字数（そのまま）</div>
+            <div style={{ fontSize: 13, color: "var(--color-text-sub)" }}>文字数（そのまま）</div>
             <div style={{ fontSize: 32, fontWeight: 700 }}>{stats.raw}</div>
           </div>
 
           <div
-            style={{ padding: 12, border: "1px solid #ddd", borderRadius: 12 }}
+            style={{ padding: 12, border: "1px solid var(--color-border)", borderRadius: 12 }}
           >
-            <div style={{ fontSize: 13, opacity: 0.8 }}>スペース/改行除外</div>
+            <div style={{ fontSize: 13, color: "var(--color-text-sub)" }}>スペース/改行除外</div>
             <div style={{ fontSize: 32, fontWeight: 700 }}>{stats.noSpace}</div>
           </div>
         </div>
@@ -280,8 +282,10 @@ export default function ToolClient() {
             onClick={copyText}
             style={{
               padding: "10px 12px",
-              border: "1px solid #111",
+              border: "1px solid var(--color-accent)",
               borderRadius: 10,
+              color: "var(--color-accent)",
+              background: "var(--color-accent-sub)",
             }}
           >
             本文をコピー
@@ -290,8 +294,10 @@ export default function ToolClient() {
             onClick={clearAll}
             style={{
               padding: "10px 12px",
-              border: "1px solid #999",
+              border: "1px solid var(--color-border-strong)",
               borderRadius: 10,
+              color: "var(--color-text-sub)",
+              background: "var(--color-bg-input)",
             }}
           >
             クリア

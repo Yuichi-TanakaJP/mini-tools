@@ -74,8 +74,9 @@ export default function ToolClient() {
             display: "inline-block",
             padding: "8px 10px",
             borderRadius: 10,
-            border: "1px solid #999",
+            border: "1px solid var(--color-border-strong)",
             textDecoration: "none",
+            color: "var(--color-text-sub)",
           }}
         >
           ← ツール一覧へ
@@ -96,8 +97,9 @@ export default function ToolClient() {
             width: "100%",
             padding: 12,
             borderRadius: 12,
-            border: "1px solid #ccc",
+            border: "1px solid var(--color-border)",
             fontSize: 16,
+            background: "var(--color-bg-input)",
           }}
         />
         <div style={{ marginTop: 8, fontSize: 12, opacity: 0.75 }}>
@@ -109,11 +111,12 @@ export default function ToolClient() {
         style={{
           marginTop: 16,
           padding: 14,
-          border: "1px solid #111",
+          border: "1px solid var(--color-border-strong)",
           borderRadius: 14,
+          background: "var(--color-bg-card)",
         }}
       >
-        <div style={{ fontSize: 13, opacity: 0.8 }}>合計</div>
+        <div style={{ fontSize: 13, color: "var(--color-text-sub)" }}>合計</div>
         <div style={{ fontSize: 32, fontWeight: 700 }}>
           {total.toLocaleString()}
         </div>
@@ -125,8 +128,10 @@ export default function ToolClient() {
             onClick={copyTotal}
             style={{
               padding: "10px 12px",
-              border: "1px solid #111",
+              border: "1px solid var(--color-accent)",
               borderRadius: 10,
+              color: "var(--color-accent)",
+              background: "var(--color-accent-sub)",
             }}
           >
             合計をコピー
@@ -135,8 +140,10 @@ export default function ToolClient() {
             onClick={clearAll}
             style={{
               padding: "10px 12px",
-              border: "1px solid #999",
+              border: "1px solid var(--color-border-strong)",
               borderRadius: 10,
+              color: "var(--color-text-sub)",
+              background: "var(--color-bg-input)",
             }}
           >
             クリア
