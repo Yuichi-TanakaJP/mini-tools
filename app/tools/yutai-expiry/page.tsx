@@ -14,22 +14,17 @@ export const metadata: Metadata = {
 export default function Page() {
   return (
     <main
-      style={{ maxWidth: 980, margin: "0 auto", padding: "24px 16px 96px" }}
+      style={{ maxWidth: 1120, margin: "0 auto", padding: "28px 16px 96px" }}
     >
-      <header style={{ marginBottom: 16 }}>
-        <h1 style={{ fontSize: 24, margin: "0 0 6px" }}>株主優待リスト</h1>
-        <p style={{ margin: 0, fontSize: 13, opacity: 0.72, lineHeight: 1.5 }}>
-          優待の期限を管理するツールです。
-          <br />
-          データは自分のPC、スマホに保存されます。
-          <br />
-        </p>
-      </header>
-
       <ClientOnly />
 
       <footer
-        style={{ marginTop: 18, display: "flex", justifyContent: "center" }}
+        style={{
+          marginTop: 22,
+          display: "flex",
+          justifyContent: "center",
+          paddingTop: 12,
+        }}
       >
         <ShareButtons text="株主優待期限帳：今月の未使用が一瞬で見える（PC向け：カード/表）" />
       </footer>
