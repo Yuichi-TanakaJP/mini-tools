@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type { RankingPageData, RankingMarket, RankingType, RankingRecord } from "./types";
+import { useEffect, useMemo, useState } from "react";
+import type { RankingDayData, RankingPageData, RankingMarket, RankingType, RankingRecord } from "./types";
 
 const MARKETS: RankingMarket[] = ["プライム", "スタンダード", "グロース"];
 const RANKINGS: RankingType[] = ["値上がり率", "値下がり率", "売買高"];
@@ -190,19 +190,63 @@ function RankingTable({ records, rankingType }: RankingTableProps) {
 }
 
 export default function ToolClient({ data }: { data: RankingPageData }) {
-  const { manifest, dayData } = data;
+  const { manifest, initialDayData } = data;
 
   const [selectedDate, setSelectedDate] = useState<string>(manifest.latest);
   const [selectedMarket, setSelectedMarket] = useState<RankingMarket>("プライム");
   const [selectedRanking, setSelectedRanking] = useState<RankingType>("値上がり率");
+  const [loadedDays, setLoadedDays] = useState<Record<string, RankingDayData>>(() => {
+    if (!initialDayData) return {};
+    return { [initialDayData.date]: initialDayData };
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (loadedDays[selectedDate]) {
+      setLoadError(null);
+      return;
+    }
+
+    let active = true;
+
+    async function loadSelectedDate() {
+      setIsLoading(true);
+      setLoadError(null);
+
+      try {
+        const res = await fetch(`/tools/stock-ranking/data/${selectedDate}`);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const day = (await res.json()) as RankingDayData;
+        if (!active) return;
+        setLoadedDays((current) => ({ ...current, [day.date]: day }));
+      } catch {
+        if (!active) return;
+        setLoadError("データを読み込めませんでした。時間をおいて再度お試しください。");
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadSelectedDate();
+
+    return () => {
+      active = false;
+    };
+  }, [loadedDays, selectedDate]);
 
   const filtered = useMemo<RankingRecord[]>(() => {
-    const day = dayData[selectedDate];
+    const day = loadedDays[selectedDate];
     if (!day) return [];
     return day.records.filter(
       (r) => r.market === selectedMarket && r.ranking === selectedRanking,
     );
-  }, [dayData, selectedDate, selectedMarket, selectedRanking]);
+  }, [loadedDays, selectedDate, selectedMarket, selectedRanking]);
 
   return (
     <main style={{ maxWidth: 900, margin: "0 auto", padding: "0 16px 64px" }}>
@@ -305,7 +349,17 @@ export default function ToolClient({ data }: { data: RankingPageData }) {
         border: "1px solid var(--color-border)",
         overflow: "hidden",
       }}>
+        {loadError ? (
+          <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--color-text-muted)", fontSize: 14 }}>
+            {loadError}
+          </div>
+        ) : isLoading && !loadedDays[selectedDate] ? (
+          <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--color-text-muted)", fontSize: 14 }}>
+            読み込み中...
+          </div>
+        ) : (
         <RankingTable records={filtered} rankingType={selectedRanking} />
+        )}
       </div>
 
       {/* データ注記 */}

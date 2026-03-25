@@ -1,8 +1,7 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import type { Metadata } from "next";
 import ToolClient from "./ToolClient";
-import type { RankingManifest, RankingDayData, RankingPageData } from "./types";
+import { loadRankingDayData, loadRankingManifest } from "./data-loader";
+import type { RankingPageData } from "./types";
 
 export const metadata: Metadata = {
   title: "株価ランキング | mini-tools",
@@ -14,24 +13,10 @@ export const metadata: Metadata = {
 };
 
 async function loadData(): Promise<RankingPageData> {
-  const dataDir = path.join(process.cwd(), "app/tools/stock-ranking/data");
+  const manifest = await loadRankingManifest();
+  const initialDayData = await loadRankingDayData(manifest.latest);
 
-  const manifest: RankingManifest = JSON.parse(
-    await readFile(path.join(dataDir, "manifest.json"), "utf-8"),
-  );
-
-  const dayData: Record<string, RankingDayData> = {};
-  for (const dateStr of manifest.dates) {
-    const fileKey = dateStr.replace(/-/g, "");
-    try {
-      const raw = await readFile(path.join(dataDir, `${fileKey}.json`), "utf-8");
-      dayData[dateStr] = JSON.parse(raw) as RankingDayData;
-    } catch {
-      // ファイルが欠損していればスキップ
-    }
-  }
-
-  return { manifest, dayData };
+  return { manifest, initialDayData };
 }
 
 export default async function Page() {

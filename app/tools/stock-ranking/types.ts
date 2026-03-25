@@ -29,5 +29,5 @@ export type RankingManifest = {
 
 export type RankingPageData = {
   manifest: RankingManifest;
-  dayData: Record<string, RankingDayData>;
+  initialDayData: RankingDayData | null;
 };
