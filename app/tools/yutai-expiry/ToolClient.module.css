@@ -1076,12 +1076,6 @@
     padding-right: 14px;
   }
 
-  .compactRow {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
   .mobileControlRow {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: stretch;
