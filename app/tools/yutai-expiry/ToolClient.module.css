@@ -232,6 +232,10 @@
   display: none;
 }
 
+.mobileUtilityRow {
+  display: none;
+}
+
 .compactRow > * {
   min-width: 0;
 }
@@ -251,6 +255,14 @@
   white-space: nowrap;
   overflow: hidden;
   width: 100%;
+}
+
+.mobileToggle {
+  justify-content: flex-start;
+  width: auto;
+  min-width: 0;
+  padding: 0 14px;
+  font-size: 13px;
 }
 
 .toggle > span:last-child {
@@ -943,6 +955,11 @@
     align-items: stretch;
   }
 
+  .mobileUtilityRow {
+    display: flex;
+    justify-content: flex-start;
+  }
+
   .mobileControlRow .selectWrap,
   .mobileControlRow .segment {
     width: 100%;
@@ -1068,6 +1085,10 @@
   .mobileControlRow {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: stretch;
+  }
+
+  .mobileUtilityRow {
+    margin-top: -2px;
   }
 
   .mobileControlRow .selectWrap {

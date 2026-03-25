@@ -657,7 +657,7 @@ export default function ToolClient() {
 
             <button
               type="button"
-              className={`${styles.controlShell} ${styles.addBtnDesktop} ${styles.desktopOnly}`}
+              className={`${styles.controlShell} ${styles.addBtnDesktop}`}
               onClick={openAdd}
             >
               ＋ 追加
@@ -712,6 +712,24 @@ export default function ToolClient() {
                 リスト
               </button>
             </div>
+          </div>
+
+          <div className={styles.mobileUtilityRow}>
+            <label className={`${styles.controlShell} ${styles.mobileToggle}`}>
+              <input
+                type="checkbox"
+                checked={showUsed}
+                onChange={(e) => setShowUsed(e.target.checked)}
+                className={styles.toggleInput}
+              />
+              <span
+                className={`${styles.toggleCheck} ${
+                  showUsed ? styles.toggleCheckOn : ""
+                }`}
+                aria-hidden="true"
+              />
+              <span>使用済含む</span>
+            </label>
           </div>
         </div>
       </div>
