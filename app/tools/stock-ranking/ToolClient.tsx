@@ -24,14 +24,11 @@ function fmtPrice(n: number) {
 }
 
 function fmtVolume(n: number) {
-  if (n >= 10000) return `${(n / 10000).toFixed(1)}億株`;
   return `${n.toLocaleString("ja-JP")}万株`;
 }
 
 function fmtValue(n: number) {
-  if (n >= 100000) return `${(n / 100000).toFixed(1)}兆円`;
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}億円`;
-  return `${n.toLocaleString("ja-JP")}百万`;
+  return `${(n / 100).toFixed(1)}億円`;
 }
 
 type TabBarProps = {
@@ -87,8 +84,8 @@ function RankingTable({ records, rankingType }: RankingTableProps) {
     { key: "change", label: "前日比", align: "right" },
     { key: "changeRate", label: "騰落率", align: "right" },
     showVolume
-      ? { key: "volume", label: "売買高", align: "right" }
-      : { key: "value", label: "売買代金", align: "right" },
+      ? { key: "volume", label: "売買高(万株)", align: "right" }
+      : { key: "value", label: "売買代金(億円)", align: "right" },
   ];
 
   if (records.length === 0) {
