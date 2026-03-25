@@ -715,7 +715,9 @@ export default function ToolClient() {
           </div>
 
           <div className={styles.mobileUtilityRow}>
-            <label className={`${styles.controlShell} ${styles.mobileToggle}`}>
+            <label
+              className={`${styles.controlShell} ${styles.toggle} ${styles.mobileToggle}`}
+            >
               <input
                 type="checkbox"
                 checked={showUsed}
