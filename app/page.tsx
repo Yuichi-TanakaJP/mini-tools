@@ -58,6 +58,13 @@ const TOOLS: ToolItem[] = [
     href: "/tools/earnings-calendar",
     icon: "🗓️",
   },
+  {
+    title: "株価ランキング",
+    short: "値上がり・値下がり・売買高",
+    detail: "プライム・スタンダード・グロース市場の値上がり率・値下がり率・売買高ランキングをデイリーで確認。",
+    href: "/tools/stock-ranking",
+    icon: "📊",
+  },
 ];
 
 export default function HomePage() {
