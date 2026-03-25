@@ -214,47 +214,46 @@ export default function HomePage() {
           </div>
 
           {/* OFUSE 応援 */}
-          <div style={{
-            padding: "20px 24px",
-            borderRadius: 18,
-            border: "1px solid var(--color-border)",
-            background: "var(--color-bg-card)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: 12,
-            marginBottom: 28,
-          }}>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>
-                ☕ 役に立ったら、コーヒー1杯分の応援を
-              </div>
-              <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-                外部サービス（OFUSE）での匿名支援 · 100円〜
-              </div>
-            </div>
+          <div
+            className="ofuse-wrap"
+            style={{
+              borderRadius: 16,
+              border: "1px solid var(--color-border)",
+              background: "var(--color-bg-input)",
+              marginBottom: 24,
+            }}
+          >
             <a
               href="https://ofuse.me/52617c2e"
               target="_blank"
               rel="noopener noreferrer"
               style={{
-                display: "inline-flex",
+                display: "flex",
                 alignItems: "center",
-                gap: 6,
-                padding: "10px 18px",
-                borderRadius: 12,
-                background: "var(--color-accent)",
-                color: "#fff",
-                fontSize: 13,
-                fontWeight: 700,
+                gap: 14,
+                padding: "16px 20px",
                 textDecoration: "none",
-                whiteSpace: "nowrap",
               }}
             >
-              応援する →
+              <span style={{ fontSize: 26, lineHeight: 1, flexShrink: 0 }}>☕</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--color-text)", marginBottom: 3 }}>
+                  役に立ったら、コーヒー1杯分の応援を
+                </div>
+                <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+                  OFUSE · 匿名 · 100円〜
+                </div>
+              </div>
+              <span style={{ fontSize: 16, color: "var(--color-text-muted)" }}>→</span>
             </a>
           </div>
+
+          <style>{`
+            .ofuse-wrap:hover {
+              box-shadow: 0 4px 16px rgba(15,23,42,0.08) !important;
+              transform: translateY(-1px);
+            }
+          `}</style>
 
           {/* コピーライト */}
           <div style={{
