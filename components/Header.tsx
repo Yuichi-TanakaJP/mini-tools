@@ -11,64 +11,94 @@ type HeaderProps = {
 
 export default function Header({ title, subtitle }: HeaderProps) {
   return (
-    <header
-      style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 10,
-        height: 88,
-        backdropFilter: "blur(10px)",
-        background: "rgba(16,16,16,0.85)",
-        borderBottom: "1px solid rgba(255,255,255,0.10)",
-      }}
-    >
+    <header>
       <div
         style={{
-          maxWidth: 1040,
-          margin: "0 auto",
-          padding: "12px 16px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          backdropFilter: "blur(14px)",
+          background: "rgba(8, 10, 18, 0.90)",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <div
+          style={{
+            maxWidth: 1040,
+            margin: "0 auto",
+            padding: "0 16px",
+            height: 52,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          {/* ロゴ */}
           <Link
             href="/"
             style={{
               textDecoration: "none",
-              color: "#fff",
-              fontWeight: 900,
-              fontSize: 18,
-              letterSpacing: 0.2,
-              lineHeight: 1.1,
+              display: "flex",
+              alignItems: "baseline",
+              gap: 1,
             }}
           >
-            mini-tools
+            <span
+              style={{
+                color: "rgba(255,255,255,0.90)",
+                fontWeight: 900,
+                fontSize: 17,
+                letterSpacing: -0.4,
+              }}
+            >
+              mini-
+            </span>
+            <span
+              style={{
+                color: "#6ea8fe",
+                fontWeight: 900,
+                fontSize: 17,
+                letterSpacing: -0.4,
+              }}
+            >
+              tools
+            </span>
           </Link>
 
+          {/* ページタイトル（ツールページ用） */}
           {(title || subtitle) && (
             <div
               style={{
+                flex: 1,
+                paddingLeft: 12,
                 fontSize: 12,
-                color: "rgba(255,255,255,0.75)",
-                lineHeight: 1.2,
+                color: "rgba(255,255,255,0.55)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
               }}
             >
-              {title ? <span>{title}</span> : null}
-              {title && subtitle ? (
-                <span style={{ margin: "0 6px", opacity: 0.6 }}>·</span>
-              ) : null}
-              {subtitle ? <span>{subtitle}</span> : null}
+              {title}
+              {title && subtitle && (
+                <span style={{ margin: "0 6px", opacity: 0.5 }}>·</span>
+              )}
+              {subtitle}
             </div>
           )}
-        </div>
 
-        {/* 右側は空でもOK（将来: ダーク/ライト切替やGitHubリンク等を置ける） */}
-        <div>
           <ShareButtons text="mini-tools" methods={["qr"]} />
         </div>
+
+        {/* アクセントライン */}
+        <div
+          style={{
+            height: 2,
+            background:
+              "linear-gradient(90deg, #2554ff 0%, #60a5fa 60%, transparent 100%)",
+            opacity: 0.65,
+          }}
+        />
       </div>
     </header>
   );

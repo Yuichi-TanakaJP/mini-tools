@@ -1,6 +1,5 @@
 // app/page.tsx
 import type { Metadata } from "next";
-import MonetizeBar from "@/components/MonetizeBar";
 import ShareButtons from "@/components/ShareButtonsSuspended";
 import ToolGridClient from "./ToolGridClient";
 
@@ -27,37 +26,35 @@ const TOOLS: ToolItem[] = [
   {
     title: "合計計算",
     short: "数字を貼るだけ",
-    detail: "1行ごとに入力 → 合計。カンマ/円/マイナスもOK。入力は端末内保存。",
+    detail: "1行ごとに入力 → 合計。カンマ・円記号・マイナスもOK。入力は端末内保存。",
     href: "/tools/total",
     icon: "🧮",
   },
   {
     title: "文字数カウント",
     short: "文章を貼るだけ",
-    detail:
-      "Xやnote下書きを貼って文字数を確認。140/280の残り、スペース/改行除外も表示。入力は端末内保存。",
+    detail: "X投稿の下書きを貼って文字数を確認。URL・絵文字も正確に推定。140字残りも表示。",
     href: "/tools/charcount",
     icon: "🔤",
   },
   {
     title: "株主優待期限帳",
     short: "優待の期限を管理",
-    detail:
-      "取得した優待の有効期限（使える最終日）を管理。使用済み/未使用、期限が近い順、月別表示・ソート対応。データは端末内に保存。",
+    detail: "優待の有効期限（使える最終日）を管理。期限が近い順・月別表示対応。データは端末内に保存。",
     href: "/tools/yutai-expiry",
     icon: "🎁",
   },
   {
     title: "優待銘柄メモ帳",
-    short: "早取り/長期1株/任期注意/失敗ログを保存",
-    detail: "早取り/長期1株/任期注意/失敗ログを保存",
+    short: "早取り/長期1株/任期注意を保存",
+    detail: "早取り・長期1株・任期注意・失敗ログを銘柄ごとに保存。端末内に保存。",
     href: "/tools/yutai-memo",
     icon: "📝",
   },
   {
     title: "決算カレンダー",
-    short: "日本株の予定を確認",
-    detail: "market_info のデータをもとに、日本株の決算予定をカレンダーで確認。",
+    short: "日本株の決算予定を確認",
+    detail: "日本株の決算予定をカレンダーで確認。market_info のデータをもとに表示。",
     href: "/tools/earnings-calendar",
     icon: "🗓️",
   },
@@ -65,368 +62,214 @@ const TOOLS: ToolItem[] = [
 
 export default function HomePage() {
   return (
-    <main style={styles.page}>
-      {/* ===== ヒーローエリア（そのまま） ===== */}
-      <section style={styles.hero}>
-        <h1 style={styles.h1}>mini-tools</h1>
-        <p style={styles.lead}>個人投資家向けの無料ミニツール集</p>
-        <p style={styles.note}>
-          文字数カウント、株主優待期限管理、優待メモをブラウザで使えます。データは端末内に保存されます。
-        </p>
-      </section>
+    <>
+      <main style={{ maxWidth: 1040, margin: "0 auto", padding: "0 16px 64px" }}>
 
-      {/* ===== ツール一覧（Clientに分離） ===== */}
-      <section style={styles.section}>
-        <h2 style={styles.sectionTitle}>ツールを選ぶ</h2>
+        {/* ヒーロー */}
+        <section style={{ padding: "40px 0 32px", position: "relative" }}>
+          {/* 背景の装飾 */}
+          <div style={{
+            position: "absolute",
+            top: 0,
+            left: -16,
+            right: -16,
+            bottom: 0,
+            background: "radial-gradient(ellipse 700px 300px at 10% 50%, rgba(37,84,255,0.06) 0%, transparent 70%)",
+            pointerEvents: "none",
+          }} />
 
-        {/* ★ ここが重要：track() を含むので Client Component */}
-        <ToolGridClient tools={TOOLS} styles={styles} />
-      </section>
+          <div style={{ position: "relative" }}>
+            {/* バッジ群 */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
+              {["無料", "要ログイン不要", "データは端末内に保存"].map((label) => (
+                <span key={label} style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "4px 10px",
+                  borderRadius: 999,
+                  border: "1px solid var(--color-border-strong)",
+                  background: "var(--color-bg-card)",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "var(--color-text-muted)",
+                  letterSpacing: 0.2,
+                }}>
+                  {label}
+                </span>
+              ))}
+            </div>
 
-      {/* ===== 下部エリア ===== */}
-      <section style={styles.bottom}>
-        {/* ★ useSearchParams を使うので Suspense 必須 */}
-        <ShareButtons
-          text="mini-tools｜個人投資家向けの無料ミニツール集"
-          methods={["x", "copy", "email", "facebook"]}
-        />
+            {/* タイトル */}
+            <h1 style={{
+              margin: "0 0 12px",
+              fontSize: "clamp(32px, 5vw, 48px)",
+              fontWeight: 900,
+              letterSpacing: -1.5,
+              lineHeight: 1.1,
+              color: "var(--color-text)",
+            }}>
+              個人投資家向けの<br />
+              <span style={{
+                background: "linear-gradient(135deg, var(--color-accent) 0%, #60a5fa 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}>
+                ミニツール集
+              </span>
+            </h1>
 
-        <div style={{ height: 32 }} />
+            <p style={{
+              margin: 0,
+              fontSize: 15,
+              lineHeight: 1.7,
+              color: "var(--color-text-sub)",
+              maxWidth: 480,
+            }}>
+              文字数カウント・合計計算・株主優待管理など、<br />
+              ちょっと便利なツールをブラウザだけで使えます。
+            </p>
+          </div>
+        </section>
 
-        <MonetizeBar />
-      </section>
+        {/* ツール一覧 */}
+        <section>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            marginBottom: 14,
+          }}>
+            <span style={{
+              fontSize: 12,
+              fontWeight: 800,
+              color: "var(--color-text-muted)",
+              letterSpacing: 0.5,
+            }}>
+              TOOLS
+            </span>
+            <span style={{
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "2px 8px",
+              borderRadius: 999,
+              background: "var(--color-accent-sub)",
+              color: "var(--color-accent)",
+              fontSize: 11,
+              fontWeight: 800,
+            }}>
+              {TOOLS.length}
+            </span>
+          </div>
 
-      {/* styles / css は今まで通り */}
-      <style>{css}</style>
-    </main>
+          <ToolGridClient tools={TOOLS} />
+        </section>
+
+        {/* フッター */}
+        <footer style={{ marginTop: 56 }}>
+          {/* アクセントライン */}
+          <div style={{
+            height: 1,
+            background: "linear-gradient(90deg, var(--color-accent) 0%, var(--color-border) 40%, transparent 100%)",
+            marginBottom: 32,
+            opacity: 0.5,
+          }} />
+
+          {/* ブランド + シェア */}
+          <div style={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 24,
+            marginBottom: 32,
+          }}>
+            <div>
+              <div style={{
+                fontSize: 20,
+                fontWeight: 900,
+                letterSpacing: -0.5,
+                marginBottom: 6,
+              }}>
+                <span style={{ color: "var(--color-text)" }}>mini-</span>
+                <span style={{ color: "var(--color-accent)" }}>tools</span>
+              </div>
+              <p style={{
+                margin: 0,
+                fontSize: 12,
+                color: "var(--color-text-muted)",
+                lineHeight: 1.6,
+                maxWidth: 240,
+              }}>
+                個人投資家向けの小さなツール集。<br />
+                ブラウザだけで動き、データはあなたの端末に保存されます。
+              </p>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-end" }}>
+              <ShareButtons
+                text="mini-tools｜個人投資家向けの無料ミニツール集"
+                methods={["x", "copy", "email", "facebook"]}
+              />
+            </div>
+          </div>
+
+          {/* OFUSE 応援 */}
+          <div
+            className="ofuse-wrap"
+            style={{
+              borderRadius: 16,
+              border: "1px solid var(--color-border)",
+              background: "var(--color-bg-input)",
+              marginBottom: 24,
+            }}
+          >
+            <a
+              href="https://ofuse.me/52617c2e"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                padding: "16px 20px",
+                textDecoration: "none",
+              }}
+            >
+              <span style={{ fontSize: 26, lineHeight: 1, flexShrink: 0 }}>☕</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--color-text)", marginBottom: 3 }}>
+                  役に立ったら、コーヒー1杯分の応援を
+                </div>
+                <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+                  OFUSE · 匿名 · 100円〜
+                </div>
+              </div>
+              <span style={{ fontSize: 16, color: "var(--color-text-muted)" }}>→</span>
+            </a>
+          </div>
+
+          <style>{`
+            .ofuse-wrap:hover {
+              box-shadow: 0 4px 16px rgba(15,23,42,0.08) !important;
+              transform: translateY(-1px);
+            }
+          `}</style>
+
+          {/* コピーライト */}
+          <div style={{
+            fontSize: 11,
+            color: "var(--color-text-muted)",
+            lineHeight: 1.7,
+          }}>
+            <p style={{ margin: "0 0 4px" }}>
+              ※ 入力データはこの端末（ブラウザ）にのみ保存されます（localStorage）。サーバーへの送信はありません。
+            </p>
+            <p style={{ margin: 0 }}>
+              © {new Date().getFullYear()} mini-tools
+            </p>
+          </div>
+        </footer>
+      </main>
+    </>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    maxWidth: 1040,
-    margin: "0 auto",
-    padding: "28px 16px 44px",
-    background:
-      "radial-gradient(1200px 500px at 20% 0%, rgba(0,0,0,0.06), transparent 60%)",
-  },
-
-  hero: {
-    padding: "18px 0 10px",
-  },
-  toolsHeader: {
-    marginTop: 24,
-    marginBottom: 12,
-    padding: "10px 14px",
-    background: "var(--color-bg-input)",
-    border: "1px solid var(--color-border)",
-    borderRadius: 14,
-    fontSize: 13,
-    fontWeight: 800,
-    color: "var(--color-text-sub)",
-    display: "block",
-    width: "100%",
-    position: "relative",
-  },
-  badge: {
-    display: "inline-block",
-    fontWeight: 700,
-    letterSpacing: 0.2,
-    padding: "6px 10px",
-    borderRadius: 999,
-    border: "1px solid var(--color-border)",
-    background: "var(--color-bg-input)",
-    opacity: 0.85,
-    marginBottom: 10,
-  },
-  h1: {
-    fontSize: 34,
-    lineHeight: 1.15,
-    margin: "6px 0 8px",
-    letterSpacing: -0.6,
-  },
-  lead: {
-    margin: 0,
-    opacity: 0.9,
-    fontSize: 16,
-  },
-  note: {
-    marginTop: 10,
-    fontSize: 12,
-    color: "var(--color-text-muted)",
-  },
-
-  section: {
-    marginTop: 22,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: 700,
-    color: "var(--color-text-sub)",
-    marginBottom: 12,
-  },
-
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 240px))",
-    gap: 14,
-    justifyContent: "start",
-    alignItems: "start",
-  },
-
-  cardLink: {
-    display: "block",
-    width: "100%",
-    textDecoration: "none",
-    color: "inherit",
-  },
-
-  card: {
-    position: "relative",
-    width: "100%",
-    aspectRatio: "1 / 1",
-  },
-
-  cardInner: {
-    boxSizing: "border-box",
-    width: "100%",
-    height: "100%",
-    borderRadius: 18,
-    padding: 14,
-    border: "3px solid var(--color-accent-sub)",
-    background: "var(--color-bg-card)",
-    overflow: "hidden",
-    transition: "transform 0.15s, box-shadow 0.15s",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-  },
-
-  cardTop: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-
-  icon: {
-    fontSize: 28,
-    lineHeight: 1,
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    display: "grid",
-    placeItems: "center",
-    background: "var(--color-bg-input)",
-    border: "1px solid var(--color-border)",
-  },
-
-  arrow: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    display: "grid",
-    placeItems: "center",
-    border: "1px solid var(--color-border)",
-    background: "var(--color-bg-card)",
-    fontSize: 18,
-    opacity: 0.7,
-  },
-
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: 800,
-    letterSpacing: -0.2,
-    marginTop: 4,
-  },
-
-  cardShort: {
-    fontSize: 13,
-    color: "var(--color-text-sub)",
-    marginTop: 6,
-  },
-
-  hoverHint: {
-    position: "absolute",
-    left: 16,
-    bottom: 16,
-    fontSize: 12,
-    opacity: 0.9,
-    padding: "8px 10px",
-    borderRadius: 12,
-    border: "1px solid var(--color-border)",
-    background: "var(--color-bg-card)",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 6,
-  },
-
-  // モバイル用（ホバーが無いので）
-  details: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    bottom: 14,
-    display: "none", // CSS側でモバイル時に表示
-  },
-  summary: {
-    listStyle: "none",
-    cursor: "pointer",
-    fontSize: 12,
-    padding: "8px 10px",
-    borderRadius: 12,
-    border: "1px solid var(--color-border)",
-    background: "var(--color-bg-card)",
-  },
-  detailText: {
-    marginTop: 8,
-    fontSize: 12,
-    color: "var(--color-text-sub)",
-    lineHeight: 1.5,
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: "1px solid var(--color-border)",
-    background: "var(--color-bg-card)",
-  },
-
-  // デスクトップホバー表示用 tooltip
-  tooltip: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    bottom: 14,
-    padding: "10px 12px",
-    borderRadius: 14,
-    border: "1px solid var(--color-border-strong)",
-    background: "rgba(20,20,20,0.92)",
-    color: "#fff",
-    fontSize: 12,
-    lineHeight: 1.5,
-    opacity: 0,
-    transform: "translateY(6px)",
-    pointerEvents: "none",
-    transition: "opacity .15s ease, transform .15s ease",
-  },
-
-  bottom: {
-    marginTop: 24,
-    paddingTop: 10,
-  },
-  bottomHeader: {
-    marginTop: 24,
-    marginBottom: 10,
-  },
-  bottomTitle: {
-    fontSize: 14,
-    fontWeight: 800,
-    color: "var(--color-text-sub)",
-  },
-  bottomSub: {
-    marginTop: 4,
-    fontSize: 12,
-    color: "var(--color-text-muted)",
-  },
-  bottomGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-    gap: 12,
-  },
-  bottomPanel: {
-    padding: "14px 14px",
-    borderRadius: 16,
-    border: "1px solid var(--color-border)",
-    background: "var(--color-bg-card)",
-    boxShadow: "0 10px 26px rgba(0,0,0,0.06)",
-  },
-  bottomPanelPlain: {
-    padding: 0,
-    border: "none",
-    background: "transparent",
-    boxShadow: "none",
-  },
-  xIconLink: {
-    display: "inline-grid",
-    placeItems: "center",
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    border: "1px solid var(--color-border)",
-    background: "var(--color-bg-card)",
-    textDecoration: "none",
-    color: "var(--color-text)",
-    fontSize: 18,
-    fontWeight: 900,
-  },
-  footerActionArea: {
-    marginTop: 56,
-  },
-
-  hr: {
-    height: 1,
-    background: "var(--color-border)",
-    width: "100%",
-    marginBottom: 24,
-  },
-
-  centerRow: {
-    display: "flex",
-    justifyContent: "center",
-    width: "100%",
-  },
-
-  centerCol: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    width: "100%",
-  },
-};
-
-// hover/レスポンシブ挙動はCSSで
-const css = `
-  /* hover はツールカードリンクだけに限定 */
-  .toolLink > .toolCard > .toolCardInner {
-    transition: transform .15s ease, box-shadow .15s ease;
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    .toolLink:hover > .toolCard > .toolCardInner {
-      transform: translateY(-2px);
-      box-shadow: 0 14px 40px rgba(0,0,0,0.10);
-    }
-
-    .toolLink:hover .arrow { opacity: 1; }
-
-    .toolLink:hover > .toolCard > .toolCardInner .tooltip {
-      opacity: 1 !important;
-      transform: translateY(0) !important;
-    }
-
-    .toolDetails { display: none !important; }
-    .hoverHint { display: block !important; }
-    .tooltip { display: block !important; }
-  }
-
-  @media (hover: none) {
-    .tooltip { display: none !important; }
-    .toolDetails { display: block !important; }
-    .hoverHint { display: none !important; }
-  }
-  /* 「ツールを選ぶ」を帯っぽく：左にアクセント */
-  .toolsHeader::before {
-    content: "";
-    position: absolute;
-    left: 10px;
-    top: 10px;
-    bottom: 10px;
-    width: 3px;
-    border-radius: 999px;
-    background: rgba(0,0,0,0.18);
-  }
-
-  /* Xアイコンにホバー */
-  @media (hover: hover) and (pointer: fine) {
-    a[aria-label="Xでシェア"]:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 10px 22px rgba(0,0,0,0.10);
-    }
-  }
-`;
