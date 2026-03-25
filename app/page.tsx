@@ -265,7 +265,7 @@ export default function HomePage() {
               ※ 入力データはこの端末（ブラウザ）にのみ保存されます（localStorage）。サーバーへの送信はありません。
             </p>
             <p style={{ margin: 0 }}>
-              © 2024 mini-tools
+              © {new Date().getFullYear()} mini-tools
             </p>
           </div>
         </footer>

@@ -6,7 +6,6 @@ import { track } from "@/lib/analytics";
 
 type ToolItem = {
   title: string;
-  short: string;
   detail: string;
   href: string;
   icon: string;
