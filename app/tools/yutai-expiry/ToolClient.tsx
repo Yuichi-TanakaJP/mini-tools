@@ -94,6 +94,10 @@ function dueBadge(
   return { label: "期限あり", tone: "muted" };
 }
 
+function formatMonthLabel(d: Date): string {
+  return `${d.getFullYear()}年${d.getMonth() + 1}月`;
+}
+
 export type Draft = {
   id?: string;
   title: string;
@@ -242,11 +246,6 @@ export default function ToolClient() {
   const [tab, setTab] = useState<TabKey>("all");
   const isMobile = useMediaQuery("(max-width: 699px)");
 
-  const [hasManualViewMode, setHasManualViewMode] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return readSavedViewMode() !== null;
-  });
-
   const [viewMode, setViewMode] = useState<ViewMode>("table");
 
   const [showUsed, setShowUsed] = useState(true);
@@ -340,6 +339,19 @@ export default function ToolClient() {
 
   const allCount = useMemo(() => {
     return items.filter((it) => !it.isUsed).length;
+  }, [items]);
+
+  const overdueCount = useMemo(() => {
+    const today = todayISODate();
+    return items.filter((it) => {
+      if (it.isUsed) return false;
+      if (!it.expiresOn) return false;
+      return it.expiresOn < today;
+    }).length;
+  }, [items]);
+
+  const noExpiryCount = useMemo(() => {
+    return items.filter((it) => !it.isUsed && !it.expiresOn).length;
   }, [items]);
 
   // --- actions ---
@@ -488,121 +500,237 @@ export default function ToolClient() {
 
   // ===== layout parts =====
   const header = (
-    <div className={styles.topBar}>
-      <div className={styles.tabs}>
-        <button
-          className={`${styles.tabBtn} ${
-            tab === "all" ? styles.tabActive : ""
-          }`}
-          onClick={() => setTab("all")}
-          type="button"
-        >
-          すべて
-          <span className={styles.countPill} suppressHydrationWarning>
-            {allCount}
-          </span>
-        </button>
-
-        <button
-          className={`${styles.tabBtn} ${
-            tab === "thisMonth" ? styles.tabActive : ""
-          }`}
-          onClick={() => setTab("thisMonth")}
-          type="button"
-        >
-          今月
-          <span className={styles.countPill} suppressHydrationWarning>
-            {thisMonthCount}
-          </span>
-        </button>
-
-        <button
-          className={`${styles.tabBtn} ${
-            tab === "later" ? styles.tabActive : ""
-          }`}
-          onClick={() => setTab("later")}
-          type="button"
-        >
-          先の期限
-          <span className={styles.countPill} suppressHydrationWarning>
-            {laterCount}
-          </span>
-        </button>
-      </div>
-
-      <div className={styles.actionsRow}>
-        <div className={styles.searchWrap}>
-          <input
-            className={styles.search}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="検索（企業名 / 優待名 / メモ / リンク）"
-            aria-label="検索"
-          />
+    <div className={styles.headerStack}>
+      <section className={styles.heroCard}>
+        <div className={styles.heroCopy}>
+          <span className={styles.heroEyebrow}>YUTAI BENEFITS</span>
+          <h1 className={styles.heroName}>株主優待リスト</h1>
+          <p className={styles.heroTitle}>期限切れ前に、使う優待だけを前に出す。</p>
+          <p className={styles.heroLead}>
+            {formatMonthLabel(now)}の未使用優待を中心に、期限の近いものからさっと確認できます。
+            データはこの端末内だけに保存されます。
+          </p>
         </div>
 
-        <div className={styles.compactRow}>
-          <label className={styles.toggle}>
-            <input
-              type="checkbox"
-              checked={showUsed}
-              onChange={(e) => setShowUsed(e.target.checked)}
-            />
-            <span>使用済含む</span>
-          </label>
-
-          <div className={styles.selectWrap}>
-            <select
-              className={styles.select}
-              value={sortKey}
-              onChange={(e) => setSortKey(e.target.value as SortKey)}
-              aria-label="並び替え"
-            >
-              <option value="expiryAsc">期限が近い順</option>
-              <option value="companyAsc">企業名（A→Z）</option>
-              <option value="createdDesc">追加が新しい順</option>
-            </select>
+        <div className={styles.heroStats}>
+          <div className={styles.statCard}>
+            <span className={styles.statLabel}>今月の未使用</span>
+            <strong className={styles.statValue} suppressHydrationWarning>
+              {thisMonthCount}
+            </strong>
+            <span className={styles.statHint}>{formatMonthLabel(now)}に使う候補</span>
           </div>
-
-          <div className={`${styles.segment} ${styles.desktopOnly}`}>
-            <button
-              type="button"
-              className={`${styles.segBtn} ${
-                effectiveViewMode === "cards" ? styles.segActive : ""
-              }`}
-              onClick={() => {
-                setViewMode("cards");
-                setHasManualViewMode(true);
-                saveViewMode("cards");
-              }}
-              aria-label="カード表示"
-            >
-              カード
-            </button>
-            <button
-              type="button"
-              className={`${styles.segBtn} ${
-                effectiveViewMode === "table" ? styles.segActive : ""
-              }`}
-              onClick={() => {
-                setViewMode("table");
-                setHasManualViewMode(true);
-                saveViewMode("table");
-              }}
-              aria-label="表表示"
-            >
-              リスト
-            </button>
+          <div className={styles.statCard}>
+            <span className={styles.statLabel}>期限切れ注意</span>
+            <strong className={styles.statValue} suppressHydrationWarning>
+              {overdueCount}
+            </strong>
+            <span className={styles.statHint}>未使用の期限切れ分</span>
           </div>
+          <div className={styles.statCard}>
+            <span className={styles.statLabel}>期限未設定</span>
+            <strong className={styles.statValue} suppressHydrationWarning>
+              {noExpiryCount}
+            </strong>
+            <span className={styles.statHint}>あとで整理したい優待</span>
+          </div>
+        </div>
+      </section>
 
-          {/* PC用の追加ボタン */}
+      <div className={styles.topBar}>
+        <div className={styles.tabs}>
           <button
+            className={`${styles.tabBtn} ${
+              tab === "all" ? styles.tabActive : ""
+            }`}
+            onClick={() => setTab("all")}
             type="button"
-            className={`${styles.addBtnDesktop} ${styles.desktopOnly}`}
-            onClick={openAdd}
           >
-            追加
+            すべて
+            <span className={styles.countPill} suppressHydrationWarning>
+              {allCount}
+            </span>
           </button>
+
+          <button
+            className={`${styles.tabBtn} ${
+              tab === "thisMonth" ? styles.tabActive : ""
+            }`}
+            onClick={() => setTab("thisMonth")}
+            type="button"
+          >
+            今月
+            <span className={styles.countPill} suppressHydrationWarning>
+              {thisMonthCount}
+            </span>
+          </button>
+
+          <button
+            className={`${styles.tabBtn} ${
+              tab === "later" ? styles.tabActive : ""
+            }`}
+            onClick={() => setTab("later")}
+            type="button"
+          >
+            先の期限
+            <span className={styles.countPill} suppressHydrationWarning>
+              {laterCount}
+            </span>
+          </button>
+        </div>
+
+        <div className={styles.actionsRow}>
+          <div className={`${styles.controlShell} ${styles.searchWrap}`}>
+            <input
+              className={styles.search}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="検索（企業名 / 優待名 / メモ / リンク）"
+              aria-label="検索"
+            />
+          </div>
+
+          <div className={styles.compactRow}>
+            <label
+              className={`${styles.controlShell} ${styles.toggle} ${styles.desktopOnly}`}
+            >
+              <input
+                type="checkbox"
+                checked={showUsed}
+                onChange={(e) => setShowUsed(e.target.checked)}
+                className={styles.toggleInput}
+              />
+              <span
+                className={`${styles.toggleCheck} ${
+                  showUsed ? styles.toggleCheckOn : ""
+                }`}
+                aria-hidden="true"
+              />
+              <span>使用済含む</span>
+            </label>
+
+            <div
+              className={`${styles.controlShell} ${styles.selectWrap} ${styles.desktopOnly}`}
+            >
+              <select
+                className={styles.select}
+                value={sortKey}
+                onChange={(e) => setSortKey(e.target.value as SortKey)}
+                aria-label="並び替え"
+              >
+                <option value="expiryAsc">期限が近い順</option>
+                <option value="companyAsc">企業名（A→Z）</option>
+                <option value="createdDesc">追加が新しい順</option>
+              </select>
+            </div>
+
+            <div
+              className={`${styles.controlShell} ${styles.segment} ${styles.desktopOnly}`}
+            >
+              <button
+                type="button"
+                className={`${styles.segBtn} ${
+                  effectiveViewMode === "cards" ? styles.segActive : ""
+                }`}
+                onClick={() => {
+                  setViewMode("cards");
+                  saveViewMode("cards");
+                }}
+                aria-label="カード表示"
+              >
+                カード
+              </button>
+              <button
+                type="button"
+                className={`${styles.segBtn} ${
+                  effectiveViewMode === "table" ? styles.segActive : ""
+                }`}
+                onClick={() => {
+                  setViewMode("table");
+                  saveViewMode("table");
+                }}
+                aria-label="表表示"
+              >
+                リスト
+              </button>
+            </div>
+
+            <button
+              type="button"
+              className={`${styles.controlShell} ${styles.addBtnDesktop}`}
+              onClick={openAdd}
+            >
+              ＋ 追加
+            </button>
+          </div>
+
+          <div className={styles.mobileControlRow}>
+            <div className={`${styles.controlShell} ${styles.selectWrap}`}>
+              <select
+                className={styles.select}
+                value={sortKey}
+                onChange={(e) => setSortKey(e.target.value as SortKey)}
+                aria-label="並び替え"
+              >
+                <option value="expiryAsc">期限が近い順</option>
+                <option value="companyAsc">企業名（A→Z）</option>
+                <option value="createdDesc">追加が新しい順</option>
+              </select>
+            </div>
+
+            <div className={`${styles.controlShell} ${styles.segment}`}>
+              <button
+                type="button"
+                className={`${styles.segBtn} ${
+                  effectiveViewMode === "cards" ? styles.segActive : ""
+                }`}
+                onClick={() => {
+                  setViewMode("cards");
+                  saveViewMode("cards");
+                }}
+                aria-label="カード表示"
+              >
+                <span className={styles.segIcon} aria-hidden="true">
+                  ◫
+                </span>
+                カード
+              </button>
+              <button
+                type="button"
+                className={`${styles.segBtn} ${
+                  effectiveViewMode === "table" ? styles.segActive : ""
+                }`}
+                onClick={() => {
+                  setViewMode("table");
+                  saveViewMode("table");
+                }}
+                aria-label="表表示"
+              >
+                <span className={styles.segIcon} aria-hidden="true">
+                  ☰
+                </span>
+                リスト
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.mobileUtilityRow}>
+            <label className={`${styles.controlShell} ${styles.mobileToggle}`}>
+              <input
+                type="checkbox"
+                checked={showUsed}
+                onChange={(e) => setShowUsed(e.target.checked)}
+                className={styles.toggleInput}
+              />
+              <span
+                className={`${styles.toggleCheck} ${
+                  showUsed ? styles.toggleCheckOn : ""
+                }`}
+                aria-hidden="true"
+              />
+              <span>使用済含む</span>
+            </label>
+          </div>
         </div>
       </div>
     </div>
