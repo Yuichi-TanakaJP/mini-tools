@@ -64,6 +64,10 @@ npm run dev
 - `NEXT_PUBLIC_SITE_URL`
   - 共有URL（QR/コピー/SNS）の基準URLに使用
   - 参照: `components/ShareButtons.tsx`
+- `STOCK_RANKING_DATA_BASE_URL`
+  - `stock-ranking` が外部配信の `manifest.json` / 日次JSON を読むときの基準URL
+  - 未設定時は repo 内の `app/tools/stock-ranking/data/` を読む
+  - 参照: `app/tools/stock-ranking/data-loader.ts`
 
 `.env.local.example` に値なしの雛形キーを置いています。必要に応じて `.env.local` を作成して値を設定してください。
 
