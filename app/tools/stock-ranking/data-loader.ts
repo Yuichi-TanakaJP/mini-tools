@@ -11,7 +11,12 @@ function getExternalBaseUrl() {
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+  try {
   const res = await fetch(url, {
+    signal: controller.signal,
     next: { revalidate: 300 },
   });
 
@@ -20,6 +25,9 @@ async function fetchJson<T>(url: string): Promise<T> {
   }
 
   return (await res.json()) as T;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 async function loadLocalRankingManifest(): Promise<RankingManifest> {
