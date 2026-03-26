@@ -340,6 +340,7 @@
   padding: 1px 6px;
   border-radius: 5px;
   white-space: nowrap;
+  width: fit-content;
 }
 
 .cardSide {
