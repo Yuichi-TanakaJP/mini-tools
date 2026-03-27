@@ -54,6 +54,7 @@
 ### 2. `mini-tools` 側でやること
 
 - `STOCK_RANKING_DATA_BASE_URL` で公開 base URL を指定する
+- 必要なら `.../stock-ranking` のような JSON 配信ディレクトリ URL を直接指定してもよい
 - loader が外部の `stock-ranking/manifest.json` と `stock-ranking/YYYYMMDD.json` を読む
 - 取得失敗時だけ [`app/tools/stock-ranking/data/`](../../../app/tools/stock-ranking/data/) を fallback として使う
 - `stock-ranking` UI が崩れないことを確認する
@@ -81,6 +82,7 @@
 1. `market_info` 側で当日分のランキングデータを更新する。
 2. `market_info` 側で `manifest.json` と `YYYYMMDD.json` が公開 URL に upload されていることを確認する。
 3. `mini-tools` 側で `STOCK_RANKING_DATA_BASE_URL` を公開 base URL に設定する。
+   - 既存の配信先が `manifest.json` を直下に持つなら、その data-root URL をそのまま設定してよい。
 4. `mini-tools` で `/tools/stock-ranking` を開き、公開 `manifest.json` の `latest` と `dates` が反映されていることを確認する。
 5. `mini-tools` で以下を確認する。
    - `npm run lint`

@@ -6,13 +6,13 @@ function getDataDir() {
   return path.join(process.cwd(), "app/tools/stock-ranking/data");
 }
 
-function getExternalDataRootUrl() {
+function getExternalBaseUrl() {
   const baseUrl = process.env.STOCK_RANKING_DATA_BASE_URL?.trim().replace(/\/+$/, "") ?? "";
   if (!baseUrl) {
-    return "";
+    return [];
   }
 
-  return baseUrl.endsWith("/stock-ranking") ? baseUrl : `${baseUrl}/stock-ranking`;
+  return baseUrl.endsWith("/stock-ranking") ? [baseUrl] : [baseUrl, `${baseUrl}/stock-ranking`];
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -52,30 +52,38 @@ async function loadLocalRankingDayData(dateStr: string): Promise<RankingDayData 
 }
 
 export async function loadRankingManifest(): Promise<RankingManifest> {
-  const baseUrl = getExternalDataRootUrl();
+  const baseUrls = getExternalBaseUrl();
 
-  if (!baseUrl) {
+  if (baseUrls.length === 0) {
     return loadLocalRankingManifest();
   }
 
-  try {
-    return await fetchJson<RankingManifest>(`${baseUrl}/manifest.json`);
-  } catch {
-    return loadLocalRankingManifest();
+  for (const baseUrl of baseUrls) {
+    try {
+      return await fetchJson<RankingManifest>(`${baseUrl}/manifest.json`);
+    } catch {
+      continue;
+    }
   }
+
+  return loadLocalRankingManifest();
 }
 
 export async function loadRankingDayData(dateStr: string): Promise<RankingDayData | null> {
   const fileKey = dateStr.replace(/-/g, "");
-  const baseUrl = getExternalDataRootUrl();
+  const baseUrls = getExternalBaseUrl();
 
-  if (!baseUrl) {
+  if (baseUrls.length === 0) {
     return loadLocalRankingDayData(dateStr);
   }
 
-  try {
-    return await fetchJson<RankingDayData>(`${baseUrl}/${fileKey}.json`);
-  } catch {
-    return loadLocalRankingDayData(dateStr);
+  for (const baseUrl of baseUrls) {
+    try {
+      return await fetchJson<RankingDayData>(`${baseUrl}/${fileKey}.json`);
+    } catch {
+      continue;
+    }
   }
+
+  return loadLocalRankingDayData(dateStr);
 }
