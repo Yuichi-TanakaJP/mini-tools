@@ -151,6 +151,7 @@ mini-tools
 `mini-tools` 側でやること:
 
 - [`app/tools/stock-ranking/data-loader.ts`](../app/tools/stock-ranking/data-loader.ts) をローカルファイル読み込みから外部JSON取得へ切り替える
+- `STOCK_RANKING_DATA_BASE_URL` には公開 base URL を設定し、loader 側で `/stock-ranking` prefix を補う
 - 可能なら `fetch` をサーバー側で行う
 - 失敗時の挙動を決める
   - manifest 取得失敗時はエラー表示
@@ -221,6 +222,11 @@ mini-tools
 - 外部JSON URL を環境変数化する
 - `data-loader.ts` の読み込み元を差し替えられるようにする
 - fallback 方針を決める
+
+運用メモ:
+
+- 2026-03-28 時点では `STOCK_RANKING_DATA_BASE_URL=https://<public-base-url>` を推奨する
+- `.../stock-ranking` 付きで設定しても loader 側で二重 prefix にはしない
 
 ## 保留事項
 

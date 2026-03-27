@@ -6,8 +6,13 @@ function getDataDir() {
   return path.join(process.cwd(), "app/tools/stock-ranking/data");
 }
 
-function getExternalBaseUrl() {
-  return process.env.STOCK_RANKING_DATA_BASE_URL?.trim().replace(/\/+$/, "") ?? "";
+function getExternalDataRootUrl() {
+  const baseUrl = process.env.STOCK_RANKING_DATA_BASE_URL?.trim().replace(/\/+$/, "") ?? "";
+  if (!baseUrl) {
+    return "";
+  }
+
+  return baseUrl.endsWith("/stock-ranking") ? baseUrl : `${baseUrl}/stock-ranking`;
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -15,16 +20,16 @@ async function fetchJson<T>(url: string): Promise<T> {
   const timeoutId = setTimeout(() => controller.abort(), 5000);
 
   try {
-  const res = await fetch(url, {
-    signal: controller.signal,
-    next: { revalidate: 300 },
-  });
+    const res = await fetch(url, {
+      signal: controller.signal,
+      next: { revalidate: 300 },
+    });
 
-  if (!res.ok) {
-    throw new Error(`Failed to fetch ${url}: HTTP ${res.status}`);
-  }
+    if (!res.ok) {
+      throw new Error(`Failed to fetch ${url}: HTTP ${res.status}`);
+    }
 
-  return (await res.json()) as T;
+    return (await res.json()) as T;
   } finally {
     clearTimeout(timeoutId);
   }
@@ -47,7 +52,7 @@ async function loadLocalRankingDayData(dateStr: string): Promise<RankingDayData 
 }
 
 export async function loadRankingManifest(): Promise<RankingManifest> {
-  const baseUrl = getExternalBaseUrl();
+  const baseUrl = getExternalDataRootUrl();
 
   if (!baseUrl) {
     return loadLocalRankingManifest();
@@ -62,7 +67,7 @@ export async function loadRankingManifest(): Promise<RankingManifest> {
 
 export async function loadRankingDayData(dateStr: string): Promise<RankingDayData | null> {
   const fileKey = dateStr.replace(/-/g, "");
-  const baseUrl = getExternalBaseUrl();
+  const baseUrl = getExternalDataRootUrl();
 
   if (!baseUrl) {
     return loadLocalRankingDayData(dateStr);
