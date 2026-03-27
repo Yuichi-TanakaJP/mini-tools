@@ -66,6 +66,8 @@ npm run dev
   - 参照: `components/ShareButtons.tsx`
 - `STOCK_RANKING_DATA_BASE_URL`
   - `stock-ranking` が外部配信の `manifest.json` / 日次JSON を読むときの基準URL
+  - 通常は `https://<public-base-url>` のように prefix なしで指定する
+  - `.../stock-ranking` のような JSON 配信ディレクトリ URL を直接指定しても動く
   - 未設定時は repo 内の `app/tools/stock-ranking/data/` を読む
   - 参照: `app/tools/stock-ranking/data-loader.ts`
 

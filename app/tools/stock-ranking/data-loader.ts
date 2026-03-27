@@ -7,7 +7,12 @@ function getDataDir() {
 }
 
 function getExternalBaseUrl() {
-  return process.env.STOCK_RANKING_DATA_BASE_URL?.trim().replace(/\/+$/, "") ?? "";
+  const baseUrl = process.env.STOCK_RANKING_DATA_BASE_URL?.trim().replace(/\/+$/, "") ?? "";
+  if (!baseUrl) {
+    return [];
+  }
+
+  return baseUrl.endsWith("/stock-ranking") ? [baseUrl] : [baseUrl, `${baseUrl}/stock-ranking`];
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -15,16 +20,16 @@ async function fetchJson<T>(url: string): Promise<T> {
   const timeoutId = setTimeout(() => controller.abort(), 5000);
 
   try {
-  const res = await fetch(url, {
-    signal: controller.signal,
-    next: { revalidate: 300 },
-  });
+    const res = await fetch(url, {
+      signal: controller.signal,
+      next: { revalidate: 300 },
+    });
 
-  if (!res.ok) {
-    throw new Error(`Failed to fetch ${url}: HTTP ${res.status}`);
-  }
+    if (!res.ok) {
+      throw new Error(`Failed to fetch ${url}: HTTP ${res.status}`);
+    }
 
-  return (await res.json()) as T;
+    return (await res.json()) as T;
   } finally {
     clearTimeout(timeoutId);
   }
@@ -47,30 +52,38 @@ async function loadLocalRankingDayData(dateStr: string): Promise<RankingDayData 
 }
 
 export async function loadRankingManifest(): Promise<RankingManifest> {
-  const baseUrl = getExternalBaseUrl();
+  const baseUrls = getExternalBaseUrl();
 
-  if (!baseUrl) {
+  if (baseUrls.length === 0) {
     return loadLocalRankingManifest();
   }
 
-  try {
-    return await fetchJson<RankingManifest>(`${baseUrl}/manifest.json`);
-  } catch {
-    return loadLocalRankingManifest();
+  for (const baseUrl of baseUrls) {
+    try {
+      return await fetchJson<RankingManifest>(`${baseUrl}/manifest.json`);
+    } catch {
+      continue;
+    }
   }
+
+  return loadLocalRankingManifest();
 }
 
 export async function loadRankingDayData(dateStr: string): Promise<RankingDayData | null> {
   const fileKey = dateStr.replace(/-/g, "");
-  const baseUrl = getExternalBaseUrl();
+  const baseUrls = getExternalBaseUrl();
 
-  if (!baseUrl) {
+  if (baseUrls.length === 0) {
     return loadLocalRankingDayData(dateStr);
   }
 
-  try {
-    return await fetchJson<RankingDayData>(`${baseUrl}/${fileKey}.json`);
-  } catch {
-    return loadLocalRankingDayData(dateStr);
+  for (const baseUrl of baseUrls) {
+    try {
+      return await fetchJson<RankingDayData>(`${baseUrl}/${fileKey}.json`);
+    } catch {
+      continue;
+    }
   }
+
+  return loadLocalRankingDayData(dateStr);
 }

@@ -8,7 +8,8 @@
 このため、ランキングも `yutai-memo` や `earnings-calendar` と同様に、
 
 - 生成責務: `market_info`
-- 取り込み・配布責務: `mini-tools`
+- 外部公開責務: `market_info`
+- 取り込み・表示責務: `mini-tools`
 
 で運用する前提を整理する。
 
@@ -52,9 +53,11 @@
 
 ### 2. `mini-tools` 側でやること
 
-- `market_info` 側の生成物を [`app/tools/stock-ranking/data/`](../../../app/tools/stock-ranking/data/) へコピーする
+- `STOCK_RANKING_DATA_BASE_URL` で公開 base URL を指定する
+- 必要なら `.../stock-ranking` のような JSON 配信ディレクトリ URL を直接指定してもよい
+- loader が外部の `stock-ranking/manifest.json` と `stock-ranking/YYYYMMDD.json` を読む
+- 取得失敗時だけ [`app/tools/stock-ranking/data/`](../../../app/tools/stock-ranking/data/) を fallback として使う
 - `stock-ranking` UI が崩れないことを確認する
-- データ更新 PR として反映する
 
 ### 3. 責務を混ぜない
 
@@ -63,21 +66,24 @@
   - 整形
   - 日付ごとの JSON 生成
   - `manifest.json` 更新
+  - 公開ストレージへの upload
 - `mini-tools`
-  - 静的ファイルの保持
+  - 外部 JSON の取得
   - 画面表示
+  - fallback 用ローカルファイルの保持
   - 軽い動作確認
 
 `mini-tools` 側で CSV から再変換し続ける運用も可能だが、長期的には `market_info` 側で JSON 完成物まで出した方が手順がぶれにくい。
 
-## 手動連携の最小手順
+## 外部公開運用の最小手順
 
-当面は手動運用で十分。
+当面は `market_info` 側で publish された JSON を `mini-tools` が読む構成で十分。
 
 1. `market_info` 側で当日分のランキングデータを更新する。
-2. `market_info` 側で `manifest.json` と `YYYYMMDD.json` が生成されていることを確認する。
-3. `mini-tools` 側の [`app/tools/stock-ranking/data/`](../../../app/tools/stock-ranking/data/) に必要ファイルをコピーする。
-4. `mini-tools` で `manifest.json` の `latest` と `dates` が追加日付を含んでいることを確認する。
+2. `market_info` 側で `manifest.json` と `YYYYMMDD.json` が公開 URL に upload されていることを確認する。
+3. `mini-tools` 側で `STOCK_RANKING_DATA_BASE_URL` を公開 base URL に設定する。
+   - 既存の配信先が `manifest.json` を直下に持つなら、その data-root URL をそのまま設定してよい。
+4. `mini-tools` で `/tools/stock-ranking` を開き、公開 `manifest.json` の `latest` と `dates` が反映されていることを確認する。
 5. `mini-tools` で以下を確認する。
    - `npm run lint`
    - `npm run build`
@@ -85,7 +91,7 @@
    - 追加日の選択
    - プライム / スタンダード / グロース 切り替え
    - 値上がり率 / 値下がり率 / 売買高 切り替え
-6. データ更新 PR として反映する。
+6. docs / env 設定に変更があればコード PR として反映する。
 
 ## `market_info` から `mini-tools` へ渡す contract
 
@@ -112,10 +118,10 @@
 
 採用推奨:
 
-- まずは手動コピー運用
-- `market_info` で JSON 完成物を出す
-- `mini-tools` は静的配布に専念する
-- コード変更 PR とデータ更新 PR は分ける
+- `market_info` で JSON 完成物を出して公開する
+- `mini-tools` は外部 JSON の取得と表示に専念する
+- 取得失敗時だけ local fallback を使う
+- コード変更 PR とデータ更新運用は分ける
 
 今回は見送ってよい:
 
@@ -129,5 +135,5 @@
 
 1. `market_info` 側にランキング JSON 出力先を固定する。
 2. その出力をこの `mini-tools` の `stock-ranking/data` と同じ shape にそろえる。
-3. まずは手動コピーで 1 日分更新して動作確認する。
-4. 手間が大きくなった時点で自動同期を別 Issue で検討する。
+3. 公開 base URL を `mini-tools` の環境変数に設定して動作確認する。
+4. local fallback をどこまで残すかを別 Issue で判断する。
