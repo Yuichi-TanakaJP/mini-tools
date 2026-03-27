@@ -301,6 +301,11 @@ export default function ToolClient() {
     saveSortState(sortState);
   }, [sortState]);
 
+  // 選択件数が0になったら一括操作パネルを閉じる
+  useEffect(() => {
+    if (selectedIds.size === 0) setBulkActionsOpen(false);
+  }, [selectedIds]);
+
   useEffect(() => {
     if (mode !== "list" || listScrollY === null || typeof window === "undefined") {
       return;
@@ -645,10 +650,14 @@ export default function ToolClient() {
       return;
     }
     const rect = e.currentTarget.getBoundingClientRect();
-    setCrossTypePopoverPos({
-      top: rect.bottom + 4,
-      right: window.innerWidth - rect.right,
-    });
+    const POPOVER_HEIGHT = 224; // 5 items × ~40px + padding
+    const preferredTop = rect.bottom + 4;
+    const top =
+      preferredTop + POPOVER_HEIGHT <= window.innerHeight - 8
+        ? preferredTop
+        : Math.max(8, rect.top - POPOVER_HEIGHT - 4);
+    const right = Math.max(8, window.innerWidth - rect.right);
+    setCrossTypePopoverPos({ top, right });
     setCrossTypePopoverId(id);
   }
 
