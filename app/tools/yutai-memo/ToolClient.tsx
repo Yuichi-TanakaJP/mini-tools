@@ -199,6 +199,12 @@ function normalizeDisplayText(value: string): string {
   return value.normalize("NFKC");
 }
 
+const SORT_KEY_LABELS: Record<SortKey, string> = {
+  createdAt: "作成日",
+  code: "銘柄コード",
+  name: "銘柄名",
+};
+
 const CROSS_TYPE_DESCRIPTIONS: Record<CrossType, string> = {
   長期優遇なし:
     "長期条件を特に気にせず、その都度判断する通常運用です。",
@@ -231,6 +237,8 @@ export default function ToolClient() {
   const [sortState, setSortState] = useState<SortState>(() => loadSortState());
   const [sortControlsOpen, setSortControlsOpen] = useState(false);
   const [bulkActionsOpen, setBulkActionsOpen] = useState(false);
+  const [crossTypePopoverId, setCrossTypePopoverId] = useState<string | null>(null);
+  const [crossTypePopoverPos, setCrossTypePopoverPos] = useState<{ top: number; right: number } | null>(null);
 
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [mode, setMode] = useState<"list" | "edit">("list");
@@ -292,6 +300,11 @@ export default function ToolClient() {
   useEffect(() => {
     saveSortState(sortState);
   }, [sortState]);
+
+  // 選択件数が0になったら一括操作パネルを閉じる
+  useEffect(() => {
+    if (selectedIds.size === 0) setBulkActionsOpen(false);
+  }, [selectedIds]);
 
   useEffect(() => {
     if (mode !== "list" || listScrollY === null || typeof window === "undefined") {
@@ -621,19 +634,31 @@ export default function ToolClient() {
     );
   }
 
-  function cycleCrossType(id: string) {
+  function setCrossTypeForItem(id: string, crossType: CrossType) {
     const updatedAt = new Date().toISOString();
     setItems((prev) =>
-      prev.map((it) =>
-        it.id === id
-          ? {
-              ...it,
-              crossType: getNextCrossType(it.crossType),
-              updatedAt,
-            }
-          : it
-      )
+      prev.map((it) => (it.id === id ? { ...it, crossType, updatedAt } : it))
     );
+    setCrossTypePopoverId(null);
+    setCrossTypePopoverPos(null);
+  }
+
+  function openCrossTypePopover(id: string, e: React.MouseEvent<HTMLButtonElement>) {
+    if (crossTypePopoverId === id) {
+      setCrossTypePopoverId(null);
+      setCrossTypePopoverPos(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const POPOVER_HEIGHT = 224; // 5 items × ~40px + padding
+    const preferredTop = rect.bottom + 4;
+    const top =
+      preferredTop + POPOVER_HEIGHT <= window.innerHeight - 8
+        ? preferredTop
+        : Math.max(8, rect.top - POPOVER_HEIGHT - 4);
+    const right = Math.max(8, window.innerWidth - rect.right);
+    setCrossTypePopoverPos({ top, right });
+    setCrossTypePopoverId(id);
   }
 
   function createArchiveRecord(
@@ -989,15 +1014,27 @@ export default function ToolClient() {
           </div>
 
           <div className={styles.searchGroup}>
-            <input
-              className={`${styles.input} ${styles.searchInput}`}
-              placeholder="検索（銘柄/コード/メモ/任期/リンク）"
-              value={q}
-              onChange={(e) => {
-                clearSelection();
-                setQ(e.target.value);
-              }}
-            />
+            <div className={styles.searchInputWrap}>
+              <input
+                className={`${styles.input} ${styles.searchInput}`}
+                placeholder="検索（銘柄/コード/メモ/任期/リンク）"
+                value={q}
+                onChange={(e) => {
+                  clearSelection();
+                  setQ(e.target.value);
+                }}
+              />
+              {q.length > 0 && (
+                <button
+                  type="button"
+                  className={styles.searchClearBtn}
+                  onClick={() => { setQ(""); clearSelection(); }}
+                  aria-label="検索をクリア"
+                >
+                  ×
+                </button>
+              )}
+            </div>
             <select
               className={styles.select}
               value={monthFilter}
@@ -1072,7 +1109,7 @@ export default function ToolClient() {
               type="button"
               onClick={() => setSortControlsOpen((prev) => !prev)}
             >
-              表示順を変更
+              表示順: {SORT_KEY_LABELS[sortState.key]}
               <span className={styles.sortToggleChevron} aria-hidden="true">
                 {sortControlsOpen ? "▲" : "▼"}
               </span>
@@ -1110,7 +1147,9 @@ export default function ToolClient() {
 
           <div className={styles.bulkBarSection}>
             <div className={styles.bulkBarHeader}>
-              <div className={styles.bulkBarCount}>{selectedCount}件選択中</div>
+              {selectedCount > 0 && (
+                <span className={styles.bulkBarCount}>{selectedCount}件選択中</span>
+              )}
               <button
                 className={styles.bulkBarToggle}
                 type="button"
@@ -1123,7 +1162,7 @@ export default function ToolClient() {
               </button>
             </div>
 
-            {bulkActionsOpen ? (
+            {bulkActionsOpen && (
               <div className={styles.bulkBar}>
                 <button
                   className={`${styles.btn} ${styles.bulkBarButton}`}
@@ -1164,14 +1203,16 @@ export default function ToolClient() {
                   削除
                 </button>
               </div>
-            ) : null}
+            )}
           </div>
 
           <div className={styles.list}>
             {filtered.length === 0 ? (
               <div className={styles.card}>
                 <div className={styles.small}>
-                  まだメモがありません。右上の「追加」から作れます。
+                  {items.length === 0
+                    ? "まだメモがありません。右上の「追加」から作れます。"
+                    : "フィルター条件に合うメモがありません。"}
                 </div>
               </div>
             ) : (
@@ -1265,8 +1306,7 @@ export default function ToolClient() {
                           <button
                             type="button"
                             className={styles.strategyBadge}
-                            onClick={() => cycleCrossType(it.id)}
-                            title="タップで戦略タイプを切り替え"
+                            onClick={(e) => openCrossTypePopover(it.id, e)}
                           >
                             {it.crossType ?? "長期優遇なし"}
                           </button>
@@ -1463,6 +1503,36 @@ export default function ToolClient() {
               </div>
             </div>
           ) : null}
+
+          {crossTypePopoverId && crossTypePopoverPos && (
+            <>
+              <div
+                className={styles.strategyPopoverBackdrop}
+                onClick={() => {
+                  setCrossTypePopoverId(null);
+                  setCrossTypePopoverPos(null);
+                }}
+              />
+              <div
+                className={styles.strategyPopover}
+                style={{ top: crossTypePopoverPos.top, right: crossTypePopoverPos.right }}
+              >
+                {CROSS_TYPES.map((type) => {
+                  const current = items.find((it) => it.id === crossTypePopoverId)?.crossType ?? "長期優遇なし";
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      className={`${styles.strategyPopoverItem} ${type === current ? styles.strategyPopoverItemActive : ""}`}
+                      onClick={() => setCrossTypeForItem(crossTypePopoverId, type)}
+                    >
+                      {type}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
 
           {tagManagerOpen ? (
             <div

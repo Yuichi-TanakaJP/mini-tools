@@ -195,9 +195,40 @@
   margin-top: 10px;
 }
 
-.searchInput {
+.searchInputWrap {
   flex: 1 1 260px;
   min-width: 0;
+  position: relative;
+}
+
+.searchInput {
+  width: 100%;
+  padding-right: 36px;
+}
+
+.searchClearBtn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: #cbd5e1;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s;
+}
+
+.searchClearBtn:hover {
+  background: #94a3b8;
+  color: #fff;
 }
 
 /* ===== Sort row ===== */
@@ -407,7 +438,7 @@
 .bulkBarHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
 }
 
@@ -427,8 +458,8 @@
   display: inline-flex;
   align-items: center;
   font-size: 12px;
-  color: #64748b;
-  font-weight: 500;
+  color: var(--clr-primary-text);
+  font-weight: 600;
 }
 
 .bulkBarButton {
@@ -443,7 +474,7 @@
   border: 0;
   border-radius: 4px;
   background: transparent;
-  color: #475569; /* slate-600: meets WCAG AA contrast on white */
+  color: #475569;
   font-size: 12px;
   cursor: pointer;
 }
@@ -601,6 +632,53 @@
 
 .strategyBadge:focus-visible {
   box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+}
+
+/* ===== Strategy type popover ===== */
+.strategyPopoverBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.strategyPopover {
+  position: fixed;
+  z-index: 41;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12), 0 2px 8px rgba(15, 23, 42, 0.06);
+  padding: 6px;
+  min-width: 130px;
+  display: grid;
+  gap: 2px;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+}
+
+.strategyPopoverItem {
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s, color 0.1s;
+  white-space: nowrap;
+}
+
+.strategyPopoverItem:hover {
+  background: var(--clr-violet-hover);
+  color: var(--clr-violet-text);
+}
+
+.strategyPopoverItemActive {
+  background: var(--clr-violet-light);
+  color: var(--clr-violet-text);
+  font-weight: 700;
 }
 
 /* ===== One-share toggle ===== */
@@ -1152,8 +1230,9 @@
     align-items: flex-start;
   }
 
-  .bulkBarHeader {
-    align-items: center;
+  .bulkBar {
+    gap: 6px;
+    align-items: flex-start;
   }
 
   .bulkBarCount {
@@ -1169,6 +1248,12 @@
     padding: 8px 10px;
     font-size: 11px;
     line-height: 1.2;
+  }
+
+  .searchInputWrap {
+    flex: none;
+    width: 100%;
+    min-width: 0;
   }
 
   .cardHeader {
