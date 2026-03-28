@@ -577,25 +577,48 @@ function ImpactMap({ records, selectedCode, onSelect }: ImpactMapProps) {
   );
 }
 
-function RecordsTable({ records }: { records: NikkeiContributionRecord[] }) {
+function RecordsTable({ records, compact }: { records: NikkeiContributionRecord[]; compact: boolean }) {
+  const columns = [
+    { key: "name", label: "銘柄", mobile: true, width: compact ? "40%" : "30%", align: "left" as const },
+    { key: "price", label: "価格*", mobile: false, width: "10%", align: "right" as const },
+    { key: "minashi", label: "みなし*", mobile: false, width: "10%", align: "right" as const },
+    { key: "weight_pct", label: "ウェイト", mobile: true, width: compact ? "18%" : "12%", align: "right" as const },
+    { key: "chg_pct", label: "騰落率", mobile: true, width: compact ? "18%" : "12%", align: "right" as const },
+    { key: "chg", label: "前日比", mobile: false, width: "12%", align: "right" as const },
+    { key: "contribution", label: "寄与度", mobile: true, width: compact ? "24%" : "14%", align: "right" as const },
+  ].filter((column) => !compact || column.mobile);
+
   return (
     <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-      <table style={{ width: "100%", minWidth: 880, borderCollapse: "collapse", fontSize: 13 }}>
+      <table
+        style={{
+          width: "100%",
+          minWidth: compact ? 0 : 720,
+          borderCollapse: "collapse",
+          fontSize: compact ? 12 : 13,
+          tableLayout: "fixed",
+        }}
+      >
+        <colgroup>
+          {columns.map((column) => (
+            <col key={column.key} style={{ width: column.width }} />
+          ))}
+        </colgroup>
         <thead>
           <tr style={{ borderBottom: "2px solid var(--color-border-strong)" }}>
-            {["銘柄", "価格", "みなし額面", "ウェイト", "騰落率", "前日比", "寄与度"].map((label) => (
+            {columns.map((column) => (
               <th
-                key={label}
+                key={column.key}
                 style={{
-                  padding: "8px 10px",
-                  textAlign: label === "銘柄" ? "left" : "right",
+                  padding: compact ? "8px 6px" : "8px 10px",
+                  textAlign: column.align,
                   fontWeight: 700,
                   color: "var(--color-text-muted)",
                   whiteSpace: "nowrap",
                   fontSize: 11,
                 }}
               >
-                {label}
+                {column.label}
               </th>
             ))}
           </tr>
@@ -605,18 +628,81 @@ function RecordsTable({ records }: { records: NikkeiContributionRecord[] }) {
             const tone = getBarTone(record.contribution);
             return (
               <tr key={record.code} style={{ borderBottom: "1px solid var(--color-border)" }}>
-                <td style={{ padding: "10px" }}>
-                  <div style={{ fontWeight: 700 }}>{record.name}</div>
-                  <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 2 }}>{record.code}</div>
-                </td>
-                <td style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>{fmtPrice(record.price)}</td>
-                <td style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>{fmtPrice(record.minashi)}</td>
-                <td style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>{record.weight_pct.toFixed(2)}%</td>
-                <td style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>{fmtPct(record.chg_pct)}</td>
-                <td style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>{sign(record.chg)}{fmtNumber(record.chg)}</td>
-                <td style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap", color: tone.text, fontWeight: 800 }}>
-                  {fmtPt(record.contribution)}
-                </td>
+                {columns.map((column) => {
+                  if (column.key === "name") {
+                    return (
+                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "10px 6px" : "10px" }}>
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                          title={record.name}
+                        >
+                          {record.name}
+                        </div>
+                        <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 2 }}>{record.code}</div>
+                      </td>
+                    );
+                  }
+
+                  if (column.key === "price") {
+                    return (
+                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "10px 6px" : "10px", textAlign: "right", whiteSpace: "nowrap" }}>
+                        {fmtPrice(record.price)}
+                      </td>
+                    );
+                  }
+
+                  if (column.key === "minashi") {
+                    return (
+                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "10px 6px" : "10px", textAlign: "right", whiteSpace: "nowrap" }}>
+                        {fmtPrice(record.minashi)}
+                      </td>
+                    );
+                  }
+
+                  if (column.key === "weight_pct") {
+                    return (
+                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "10px 6px" : "10px", textAlign: "right", whiteSpace: "nowrap" }}>
+                        {record.weight_pct.toFixed(2)}%
+                      </td>
+                    );
+                  }
+
+                  if (column.key === "chg_pct") {
+                    return (
+                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "10px 6px" : "10px", textAlign: "right", whiteSpace: "nowrap" }}>
+                        {fmtPct(record.chg_pct)}
+                      </td>
+                    );
+                  }
+
+                  if (column.key === "chg") {
+                    return (
+                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "10px 6px" : "10px", textAlign: "right", whiteSpace: "nowrap" }}>
+                        {sign(record.chg)}{fmtNumber(record.chg)}
+                      </td>
+                    );
+                  }
+
+                  return (
+                    <td
+                      key={`${record.code}-${column.key}`}
+                      style={{
+                        padding: compact ? "10px 6px" : "10px",
+                        textAlign: "right",
+                        whiteSpace: "nowrap",
+                        color: tone.text,
+                        fontWeight: 800,
+                      }}
+                    >
+                      {fmtPt(record.contribution)}
+                    </td>
+                  );
+                })}
               </tr>
             );
           })}
@@ -635,6 +721,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
   });
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isCompactTable, setIsCompactTable] = useState(false);
   const [sortKey, setSortKey] = useState<"contribution" | "weight_pct" | "chg_pct">("contribution");
   const [selectedCode, setSelectedCode] = useState<string | null>(initialDayData?.records[0]?.code ?? null);
   const holidayMap = useMemo(() => {
@@ -667,6 +754,17 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
       ? displayDates[currentDateIndex + 1]
       : null;
   const nextDate = currentDateIndex > 0 ? displayDates[currentDateIndex - 1] : null;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mediaQuery = window.matchMedia("(max-width: 820px)");
+    const update = () => setIsCompactTable(mediaQuery.matches);
+
+    update();
+    mediaQuery.addEventListener("change", update);
+    return () => mediaQuery.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     if (!currentSelectedDate || loadedDays[currentSelectedDate]) {
@@ -1000,6 +1098,9 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
                 <p style={{ margin: 0, fontSize: 12, color: "var(--color-text-muted)" }}>
                   寄与度、ウェイト、騰落率の絶対値で並び替えて確認できます。
                 </p>
+                <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--color-text-muted)" }}>
+                  `価格*` と `みなし*` は日経寄与度の元データ表記です。通常の株価表示とは単位が異なる可能性があります。
+                </p>
               </div>
               <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                 {[
@@ -1030,7 +1131,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
                 })}
               </div>
             </div>
-            <RecordsTable records={sortedRecords} />
+            <RecordsTable records={sortedRecords} compact={isCompactTable} />
           </section>
 
           <p style={{ marginTop: 16, fontSize: 11, color: "var(--color-text-muted)", lineHeight: 1.7 }}>
