@@ -72,6 +72,13 @@ const TOOLS: ToolItem[] = [
     href: "/tools/stock-ranking",
     icon: "📊",
   },
+  {
+    title: "日経225寄与度",
+    short: "誰が指数を動かしたか",
+    detail: "日経225の上昇・下落寄与、影響度マップ、全銘柄一覧を日付ごとに確認。",
+    href: "/tools/nikkei-contribution",
+    icon: "🗺️",
+  },
 ];
 
 export default function HomePage() {
