@@ -16,6 +16,20 @@ function normalizeText(value: string) {
   return value.normalize("NFKC").toLowerCase();
 }
 
+function formatGeneratedAt(value: string | null) {
+  if (!value) return "データ未接続";
+  const time = Date.parse(value);
+  if (Number.isNaN(time)) return "更新時刻不明";
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Tokyo",
+  }).format(new Date(time));
+}
+
 function loadPickedCodes() {
   if (typeof window === "undefined") return new Set<string>();
   try {
@@ -175,12 +189,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
             market_info の月別優待 JSON を候補一覧として表示し、気になる銘柄だけを優待メモへ送れます。
           </p>
           <div style={styles.heroMeta}>
-            <span style={styles.metaChip}>{data.selectedMonthId} 表示</span>
-            <span style={styles.metaChipMuted}>{data.items.length}件</span>
-            <span style={styles.metaChipMuted}>
-              {data.generatedAt ? `generated ${data.generatedAt}` : "データ未接続"}
-            </span>
-            {data.source ? <span style={styles.metaChipMuted}>source: {data.source}</span> : null}
+            <span style={styles.metaChipMuted}>更新: {formatGeneratedAt(data.generatedAt)}</span>
           </div>
         </section>
 
