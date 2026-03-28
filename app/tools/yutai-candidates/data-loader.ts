@@ -1,6 +1,11 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import type { MonthlyYutaiCandidate, MonthlyYutaiManifest, MonthlyYutaiPageData } from "./types";
+import type {
+  MonthlyYutaiCandidate,
+  MonthlyYutaiManifest,
+  MonthlyYutaiMonthManifest,
+  MonthlyYutaiPageData,
+} from "./types";
 
 const DEFAULT_MONTH_ID = "2026-04";
 
@@ -46,15 +51,27 @@ async function loadLocalManifest(): Promise<MonthlyYutaiManifest | null> {
   }
 }
 
-async function loadLocalMonthData(monthId: string): Promise<MonthlyYutaiCandidate[]> {
-  const fileKey = monthId.replace(/-/g, "");
-
+async function loadLocalMonthData(relativePath: string): Promise<MonthlyYutaiCandidate[]> {
   try {
-    const raw = await readFile(path.join(getDataDir(), `${fileKey}.json`), "utf-8");
+    const raw = await readFile(path.join(getDataDir(), relativePath), "utf-8");
     return JSON.parse(raw) as MonthlyYutaiCandidate[];
   } catch {
     return [];
   }
+}
+
+function resolveSelectedMonthEntry(
+  manifest: MonthlyYutaiManifest | null,
+): MonthlyYutaiMonthManifest | null {
+  if (!manifest?.months?.length) return null;
+
+  const sorted = [...manifest.months].sort((a, b) => a.id.localeCompare(b.id));
+  return (
+    sorted.find((entry) => entry.id === manifest.as_of_date.slice(0, 7)) ??
+    sorted.find((entry) => entry.month === Number(manifest.as_of_date.slice(5, 7))) ??
+    sorted.at(-1) ??
+    null
+  );
 }
 
 export async function loadMonthlyYutaiManifest(): Promise<MonthlyYutaiManifest | null> {
@@ -75,29 +92,33 @@ export async function loadMonthlyYutaiManifest(): Promise<MonthlyYutaiManifest |
   return loadLocalManifest();
 }
 
-export async function loadMonthlyYutaiMonthData(monthId: string): Promise<MonthlyYutaiCandidate[]> {
-  const fileKey = monthId.replace(/-/g, "");
+export async function loadMonthlyYutaiMonthData(
+  monthEntry: MonthlyYutaiMonthManifest,
+): Promise<MonthlyYutaiCandidate[]> {
   const baseUrls = getExternalBaseUrl();
 
   if (baseUrls.length === 0) {
-    return loadLocalMonthData(monthId);
+    return loadLocalMonthData(monthEntry.path);
   }
 
   for (const baseUrl of baseUrls) {
     try {
-      return await fetchJson<MonthlyYutaiCandidate[]>(`${baseUrl}/${fileKey}.json`);
+      return await fetchJson<MonthlyYutaiCandidate[]>(
+        `${baseUrl}/${monthEntry.path.replace(/^\/+/, "")}`,
+      );
     } catch {
       continue;
     }
   }
 
-  return loadLocalMonthData(monthId);
+  return loadLocalMonthData(monthEntry.path);
 }
 
 export async function loadMonthlyYutaiPageData(): Promise<MonthlyYutaiPageData> {
   const manifest = await loadMonthlyYutaiManifest();
-  const selectedMonthId = manifest?.months.find((month) => month.month === 4)?.id ?? manifest?.months[0]?.id ?? DEFAULT_MONTH_ID;
-  const items = selectedMonthId ? await loadMonthlyYutaiMonthData(selectedMonthId) : [];
+  const selectedMonthEntry = resolveSelectedMonthEntry(manifest);
+  const selectedMonthId = selectedMonthEntry?.id ?? DEFAULT_MONTH_ID;
+  const items = selectedMonthEntry ? await loadMonthlyYutaiMonthData(selectedMonthEntry) : [];
 
   return {
     manifest,
