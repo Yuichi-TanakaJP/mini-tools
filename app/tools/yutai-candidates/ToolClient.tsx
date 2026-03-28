@@ -9,7 +9,7 @@ const PICKED_KEY = "monthly_yutai_picks_v1";
 
 type StatusFilter = "all" | "picked" | "added" | "unselected";
 type LinkFilter = "all" | "with" | "without";
-type SortKey = "company" | "code";
+type SortKey = "company" | "code" | "investment";
 
 function normalizeText(value: string) {
   return value.normalize("NFKC").toLowerCase();
@@ -33,12 +33,7 @@ function savePickedCodes(codes: Set<string>) {
 }
 
 function hasOfficialLink(item: MonthlyYutaiCandidate) {
-  return Boolean(item.official_benefit_url?.trim());
-}
-
-function parseInvestmentAmount(value: string) {
-  const normalized = value.replace(/[^\d]/g, "");
-  return normalized ? Number(normalized) : Number.POSITIVE_INFINITY;
+  return item.has_official_link && Boolean(item.official_benefit_url);
 }
 
 export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
@@ -88,6 +83,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
           [
             item.company_name,
             item.code,
+            item.benefit_summary,
             item.minimum_investment_text,
             item.benefit_category_tags.join(" "),
           ].join(" "),
@@ -96,9 +92,12 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
       .slice()
       .sort((a, b) => {
         if (sortKey === "code") return collator.compare(a.code, b.code);
+        if (sortKey === "investment") {
+          return (a.minimum_investment_yen ?? Number.POSITIVE_INFINITY) - (b.minimum_investment_yen ?? Number.POSITIVE_INFINITY);
+        }
         const byName = collator.compare(a.company_name, b.company_name);
         if (byName !== 0) return byName;
-        return parseInvestmentAmount(a.minimum_investment_text) - parseInvestmentAmount(b.minimum_investment_text);
+        return (a.minimum_investment_yen ?? Number.POSITIVE_INFINITY) - (b.minimum_investment_yen ?? Number.POSITIVE_INFINITY);
       });
   }, [addedKeys, data.items, linkFilter, pickedCodes, query, sortKey, statusFilter, tagFilter]);
 
@@ -154,8 +153,9 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
             <span style={styles.metaChip}>{data.selectedMonthId} 表示</span>
             <span style={styles.metaChipMuted}>{data.items.length}件</span>
             <span style={styles.metaChipMuted}>
-              {data.manifest ? `as of ${data.manifest.as_of_date}` : "データ未接続"}
+              {data.generatedAt ? `generated ${data.generatedAt}` : "データ未接続"}
             </span>
+            {data.source ? <span style={styles.metaChipMuted}>source: {data.source}</span> : null}
           </div>
         </section>
 
@@ -198,6 +198,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
             <select value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)} style={styles.select}>
               <option value="company">並び順: 会社名</option>
               <option value="code">並び順: コード</option>
+              <option value="investment">並び順: 最低投資金額</option>
             </select>
           </div>
 
@@ -206,7 +207,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
               <div style={styles.emptyTitle}>月別優待データはまだ接続されていません</div>
               <div style={styles.emptyNote}>
                 `app/tools/yutai-candidates/data/manifest.json` または
-                `MONTHLY_YUTAI_DATA_BASE_URL` を用意すると、ここに 4月分の一覧が表示されます。
+                `MONTHLY_YUTAI_DATA_BASE_URL` を用意すると、manifest の `latest_path` を基準に一覧が表示されます。
               </div>
             </article>
           ) : filteredItems.length === 0 ? (
@@ -229,6 +230,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                           <span>{item.month}月権利</span>
                           <span>{item.minimum_investment_text || "投資金額未設定"}</span>
                         </div>
+                        <div style={styles.summaryText}>{item.benefit_summary || "優待概要なし"}</div>
                       </div>
                       <div style={styles.stateChips}>
                         {picked ? <span style={styles.pickedChip}>Pick</span> : null}
@@ -435,6 +437,12 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 6,
     fontSize: 12,
     color: "#667085",
+  },
+  summaryText: {
+    marginTop: 8,
+    fontSize: 13,
+    lineHeight: 1.6,
+    color: "#374151",
   },
   stateChips: {
     display: "flex",
