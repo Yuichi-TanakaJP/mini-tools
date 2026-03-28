@@ -364,7 +364,7 @@ export default function ToolClient({ data }: { data: RankingPageData }) {
 
       {/* データ注記 */}
       <p style={{ marginTop: 16, fontSize: 11, color: "var(--color-text-muted)", lineHeight: 1.6 }}>
-        ※ データは内藤証券のランキング情報をもとに加工・整形したものです。投資判断の参考情報としてご利用ください。
+        ※ 投資判断の参考情報としてご利用ください。
       </p>
     </main>
   );
