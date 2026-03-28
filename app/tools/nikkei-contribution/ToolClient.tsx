@@ -14,6 +14,21 @@ function formatDate(dateStr: string) {
   return `${y}年${Number(m)}月${Number(d)}日`;
 }
 
+function formatDateTime(dateStr?: string) {
+  if (!dateStr) return "-";
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) {
+    return dateStr;
+  }
+
+  return parsed.toLocaleString("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function getDayOfWeek(dateStr: string) {
   const [y, m, d] = dateStr.split("-").map(Number);
   return new Date(y, m - 1, d).getDay();
@@ -956,27 +971,73 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 6 }}>
-          <div style={{ background: "var(--color-bg-card)", borderRadius: 10, padding: 14, border: "1px solid var(--color-border)" }}>
-            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 6 }}>合計寄与</div>
-            <div style={{ fontSize: 28, fontWeight: 900, color: getBarTone(dayData?.summary.total_contribution ?? 0).text }}>
+          <div
+            style={{
+              background: "var(--color-bg-card)",
+              borderRadius: 10,
+              padding: 14,
+              border: "1px solid var(--color-border)",
+              minHeight: 118,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+            }}
+          >
+            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 10 }}>合計寄与</div>
+            <div style={{ fontSize: 28, lineHeight: 1, fontWeight: 900, color: getBarTone(dayData?.summary.total_contribution ?? 0).text }}>
               {dayData ? fmtPt(dayData.summary.total_contribution) : "-"}
             </div>
           </div>
-          <div style={{ background: "var(--color-bg-card)", borderRadius: 10, padding: 14, border: "1px solid var(--color-border)" }}>
-            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 6 }}>上昇 / 下落 / 横ばい</div>
-            <div style={{ fontSize: 24, fontWeight: 900 }}>
+          <div
+            style={{
+              background: "var(--color-bg-card)",
+              borderRadius: 10,
+              padding: 14,
+              border: "1px solid var(--color-border)",
+              minHeight: 118,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+            }}
+          >
+            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 10 }}>上昇 / 下落 / 横ばい</div>
+            <div style={{ fontSize: 28, lineHeight: 1, fontWeight: 900 }}>
               {marketBreadth ? `${marketBreadth.advancers} / ${marketBreadth.decliners} / ${marketBreadth.unchanged}` : "-"}
             </div>
           </div>
-          <div style={{ background: "var(--color-bg-card)", borderRadius: 10, padding: 14, border: "1px solid var(--color-border)" }}>
-            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 6 }}>全銘柄寄与合計</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color: getBarTone(totalFromRecords).text }}>
+          <div
+            style={{
+              background: "var(--color-bg-card)",
+              borderRadius: 10,
+              padding: 14,
+              border: "1px solid var(--color-border)",
+              minHeight: 118,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+            }}
+          >
+            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 10 }}>全銘柄寄与合計</div>
+            <div style={{ fontSize: 28, lineHeight: 1, fontWeight: 900, color: getBarTone(totalFromRecords).text }}>
               {dayData ? fmtPt(totalFromRecords) : "-"}
             </div>
           </div>
-          <div style={{ background: "var(--color-bg-card)", borderRadius: 10, padding: 14, border: "1px solid var(--color-border)" }}>
-            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 6 }}>対象銘柄数</div>
-            <div style={{ fontSize: 24, fontWeight: 900 }}>{dayData ? `${dayData.records.length}件` : "-"}</div>
+          <div
+            style={{
+              background: "var(--color-bg-card)",
+              borderRadius: 10,
+              padding: 14,
+              border: "1px solid var(--color-border)",
+              minHeight: 118,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+            }}
+          >
+            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 10 }}>データ生成</div>
+            <div style={{ fontSize: 21, lineHeight: 1.15, fontWeight: 900, letterSpacing: -0.2 }}>
+              {dayData ? formatDateTime(dayData.generated_at) : "-"}
+            </div>
           </div>
         </div>
       </section>
@@ -1099,7 +1160,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
                   寄与度、ウェイト、騰落率の絶対値で並び替えて確認できます。
                 </p>
                 <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--color-text-muted)" }}>
-                  `価格*` と `みなし*` は日経寄与度の元データ表記です。通常の株価表示とは単位が異なる可能性があります。
+                  `価格*` と `みなし*` は寄与度元データの列名です。通常の株価表示とは単位や意味が異なる可能性があります。
                 </p>
               </div>
               <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
