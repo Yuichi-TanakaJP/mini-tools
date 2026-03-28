@@ -1,0 +1,154 @@
+.summaryGrid,
+.topweightGrid {
+  gap: 4px;
+}
+
+.summaryCard {
+  border-radius: 8px;
+  padding: 10px;
+  min-height: 76px;
+}
+
+.summaryLabel {
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+
+.summaryValue {
+  font-size: 22px;
+}
+
+.topweightCard {
+  border-radius: 5px;
+  padding: 8px;
+}
+
+.topweightName {
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+
+.topweightCode,
+.topweightMeta {
+  font-size: 10px;
+}
+
+.topweightCode {
+  margin-bottom: 6px;
+}
+
+.topweightValue {
+  font-size: 18px;
+}
+
+.topweightMeta {
+  margin-top: 5px;
+}
+
+.mobileOnly {
+  display: inline;
+}
+
+.desktopOnly {
+  display: none;
+}
+
+.recordsTable {
+  min-width: 0;
+  font-size: 11px;
+}
+
+.recordsTable th,
+.recordsTable td {
+  padding: 8px 4px;
+}
+
+.recordsTable th {
+  font-size: 10px;
+}
+
+.recordsCode {
+  font-size: 10px;
+}
+
+.recordsMobileHidden {
+  display: none;
+}
+
+@media (min-width: 641px) {
+  .summaryGrid,
+  .topweightGrid {
+    gap: 6px;
+  }
+
+  .summaryCard {
+    border-radius: 10px;
+    padding: 12px;
+    min-height: 96px;
+  }
+
+  .summaryLabel {
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+
+  .summaryValue {
+    font-size: 28px;
+  }
+
+  .topweightCard {
+    border-radius: 6px;
+    padding: 10px;
+  }
+
+  .topweightName {
+    font-size: 14px;
+  }
+
+  .topweightCode,
+  .topweightMeta {
+    font-size: 11px;
+  }
+
+  .topweightCode {
+    margin-bottom: 8px;
+  }
+
+  .topweightValue {
+    font-size: 21px;
+  }
+
+  .topweightMeta {
+    margin-top: 6px;
+  }
+
+  .mobileOnly {
+    display: none;
+  }
+
+  .desktopOnly {
+    display: inline;
+  }
+
+  .recordsTable {
+    min-width: 720px;
+    font-size: 13px;
+  }
+
+  .recordsTable th,
+  .recordsTable td {
+    padding: 10px;
+  }
+
+  .recordsTable th {
+    font-size: 11px;
+  }
+
+  .recordsCode {
+    font-size: 11px;
+  }
+
+  .recordsMobileHidden {
+    display: table-cell;
+  }
+}

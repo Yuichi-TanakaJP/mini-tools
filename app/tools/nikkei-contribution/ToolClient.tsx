@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import styles from "./ToolClient.module.css";
 import type {
   JpxMarketClosedDay,
   NikkeiContributionDayData,
@@ -50,14 +51,6 @@ function fmtPct(n: number) {
 
 function fmtPt(n: number) {
   return `${sign(n)}${n.toFixed(1)}pt`;
-}
-
-function fmtCompactPct(n: number) {
-  return `${sign(n)}${n.toFixed(1)}%`;
-}
-
-function fmtCompactWeight(n: number) {
-  return `${n.toFixed(1)}%`;
 }
 
 function fmtNumber(n: number) {
@@ -603,46 +596,40 @@ function ImpactMap({ records, selectedCode, onSelect }: ImpactMapProps) {
   );
 }
 
-function RecordsTable({ records, compact }: { records: NikkeiContributionRecord[]; compact: boolean }) {
+function RecordsTable({ records }: { records: NikkeiContributionRecord[] }) {
   const columns = [
-    { key: "name", label: "銘柄", mobile: true, width: compact ? "34%" : "38%", align: "left" as const },
-    { key: "weight_pct", label: compact ? "比率" : "ウェイト", mobile: true, width: compact ? "17%" : "16%", align: "right" as const },
-    { key: "chg_pct", label: compact ? "騰落" : "騰落率", mobile: true, width: compact ? "21%" : "16%", align: "right" as const },
-    { key: "chg", label: "前日比", mobile: false, width: "14%", align: "right" as const },
-    { key: "contribution", label: "寄与", mobile: true, width: compact ? "28%" : "16%", align: "right" as const },
-  ].filter((column) => !compact || column.mobile);
+    { key: "name", label: "銘柄", align: "left" as const, mobileHidden: false },
+    { key: "weight_pct", label: "ウェイト", mobileLabel: "比率", align: "right" as const, mobileHidden: false },
+    { key: "chg_pct", label: "騰落率", mobileLabel: "騰落", align: "right" as const, mobileHidden: false },
+    { key: "chg", label: "前日比", align: "right" as const, mobileHidden: true },
+    { key: "contribution", label: "寄与度", mobileLabel: "寄与", align: "right" as const, mobileHidden: false },
+  ];
 
   return (
     <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
       <table
+        className={styles.recordsTable}
         style={{
           width: "100%",
-          minWidth: compact ? 0 : 720,
           borderCollapse: "collapse",
-          fontSize: compact ? 11 : 13,
           tableLayout: "fixed",
         }}
       >
-        <colgroup>
-          {columns.map((column) => (
-            <col key={column.key} style={{ width: column.width }} />
-          ))}
-        </colgroup>
         <thead>
           <tr style={{ borderBottom: "2px solid var(--color-border-strong)" }}>
             {columns.map((column) => (
               <th
                 key={column.key}
+                className={column.mobileHidden ? styles.recordsMobileHidden : undefined}
                 style={{
-                  padding: compact ? "6px 4px" : "8px 10px",
                   textAlign: column.align,
                   fontWeight: 700,
                   color: "var(--color-text-muted)",
                   whiteSpace: "nowrap",
-                  fontSize: compact ? 10 : 11,
                 }}
               >
-                {column.label}
+                <span className={styles.desktopOnly}>{column.label}</span>
+                <span className={styles.mobileOnly}>{column.mobileLabel ?? column.label}</span>
               </th>
             ))}
           </tr>
@@ -655,8 +642,9 @@ function RecordsTable({ records, compact }: { records: NikkeiContributionRecord[
                 {columns.map((column) => {
                   if (column.key === "name") {
                     return (
-                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "8px 4px" : "10px" }}>
+                      <td key={`${record.code}-${column.key}`}>
                         <div
+                          className="nikkei-records-name"
                           style={{
                             fontWeight: 700,
                             whiteSpace: "nowrap",
@@ -667,30 +655,32 @@ function RecordsTable({ records, compact }: { records: NikkeiContributionRecord[
                         >
                           {record.name}
                         </div>
-                        <div style={{ fontSize: compact ? 10 : 11, color: "var(--color-text-muted)", marginTop: 2 }}>{record.code}</div>
+                        <div className={styles.recordsCode} style={{ color: "var(--color-text-muted)", marginTop: 2 }}>{record.code}</div>
                       </td>
                     );
                   }
 
                   if (column.key === "weight_pct") {
                     return (
-                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "8px 4px" : "10px", textAlign: "right", whiteSpace: "nowrap" }}>
-                        {compact ? fmtCompactWeight(record.weight_pct) : `${record.weight_pct.toFixed(2)}%`}
+                      <td key={`${record.code}-${column.key}`} style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                        <span className={styles.desktopOnly}>{record.weight_pct.toFixed(2)}%</span>
+                        <span className={styles.mobileOnly}>{record.weight_pct.toFixed(1)}%</span>
                       </td>
                     );
                   }
 
                   if (column.key === "chg_pct") {
                     return (
-                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "8px 4px" : "10px", textAlign: "right", whiteSpace: "nowrap" }}>
-                        {compact ? fmtCompactPct(record.chg_pct) : fmtPct(record.chg_pct)}
+                      <td key={`${record.code}-${column.key}`} style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                        <span className={styles.desktopOnly}>{fmtPct(record.chg_pct)}</span>
+                        <span className={styles.mobileOnly}>{`${sign(record.chg_pct)}${record.chg_pct.toFixed(1)}%`}</span>
                       </td>
                     );
                   }
 
                   if (column.key === "chg") {
                     return (
-                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "8px 4px" : "10px", textAlign: "right", whiteSpace: "nowrap" }}>
+                      <td key={`${record.code}-${column.key}`} className={styles.recordsMobileHidden} style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                         {sign(record.chg)}{fmtNumber(record.chg)}
                       </td>
                     );
@@ -700,7 +690,6 @@ function RecordsTable({ records, compact }: { records: NikkeiContributionRecord[
                     <td
                       key={`${record.code}-${column.key}`}
                       style={{
-                        padding: compact ? "8px 4px" : "10px",
                         textAlign: "right",
                         whiteSpace: "nowrap",
                         color: tone.text,
@@ -729,7 +718,6 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
   });
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [isCompactTable, setIsCompactTable] = useState(false);
   const [sortKey, setSortKey] = useState<"contribution" | "weight_pct" | "chg_pct">("contribution");
   const [selectedCode, setSelectedCode] = useState<string | null>(initialDayData?.records[0]?.code ?? null);
   const holidayMap = useMemo(() => {
@@ -762,17 +750,6 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
       ? displayDates[currentDateIndex + 1]
       : null;
   const nextDate = currentDateIndex > 0 ? displayDates[currentDateIndex - 1] : null;
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const mediaQuery = window.matchMedia("(max-width: 640px)");
-    const update = () => setIsCompactTable(mediaQuery.matches);
-
-    update();
-    mediaQuery.addEventListener("change", update);
-    return () => mediaQuery.removeEventListener("change", update);
-  }, []);
 
   useEffect(() => {
     if (!currentSelectedDate || loadedDays[currentSelectedDate]) {
@@ -972,77 +949,69 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
         </div>
 
         <div
+          className={styles.summaryGrid}
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-            gap: isCompactTable ? 4 : 6,
           }}
         >
           <div
+            className={styles.summaryCard}
             style={{
               background: "var(--color-bg-card)",
-              borderRadius: isCompactTable ? 8 : 10,
-              padding: isCompactTable ? 10 : 12,
               border: "1px solid var(--color-border)",
-              minHeight: isCompactTable ? 76 : 96,
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
             }}
           >
-            <div style={{ fontSize: isCompactTable ? 11 : 12, color: "var(--color-text-muted)", marginBottom: isCompactTable ? 6 : 8 }}>合計寄与</div>
-            <div style={{ fontSize: isCompactTable ? 22 : 28, lineHeight: 1, fontWeight: 900, color: getBarTone(dayData?.summary.total_contribution ?? 0).text }}>
+            <div className={styles.summaryLabel} style={{ color: "var(--color-text-muted)" }}>合計寄与</div>
+            <div className={styles.summaryValue} style={{ lineHeight: 1, fontWeight: 900, color: getBarTone(dayData?.summary.total_contribution ?? 0).text }}>
               {dayData ? fmtPt(dayData.summary.total_contribution) : "-"}
             </div>
           </div>
           <div
+            className={styles.summaryCard}
             style={{
               background: "var(--color-bg-card)",
-              borderRadius: isCompactTable ? 8 : 10,
-              padding: isCompactTable ? 10 : 12,
               border: "1px solid var(--color-border)",
-              minHeight: isCompactTable ? 76 : 96,
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
             }}
           >
-            <div style={{ fontSize: isCompactTable ? 11 : 12, color: "var(--color-text-muted)", marginBottom: isCompactTable ? 6 : 8 }}>上昇 / 下落 / 横ばい</div>
-            <div style={{ fontSize: isCompactTable ? 22 : 28, lineHeight: 1, fontWeight: 900 }}>
+            <div className={styles.summaryLabel} style={{ color: "var(--color-text-muted)" }}>上昇 / 下落 / 横ばい</div>
+            <div className={styles.summaryValue} style={{ lineHeight: 1, fontWeight: 900 }}>
               {marketBreadth ? `${marketBreadth.advancers} / ${marketBreadth.decliners} / ${marketBreadth.unchanged}` : "-"}
             </div>
           </div>
           <div
+            className={styles.summaryCard}
             style={{
               background: "var(--color-bg-card)",
-              borderRadius: isCompactTable ? 8 : 10,
-              padding: isCompactTable ? 10 : 12,
               border: "1px solid var(--color-border)",
-              minHeight: isCompactTable ? 76 : 96,
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
             }}
           >
-            <div style={{ fontSize: isCompactTable ? 11 : 12, color: "var(--color-text-muted)", marginBottom: isCompactTable ? 6 : 8 }}>上昇寄与合計</div>
-            <div style={{ fontSize: isCompactTable ? 22 : 28, lineHeight: 1, fontWeight: 900, color: getBarTone(positiveTotal).text }}>
+            <div className={styles.summaryLabel} style={{ color: "var(--color-text-muted)" }}>上昇寄与合計</div>
+            <div className={styles.summaryValue} style={{ lineHeight: 1, fontWeight: 900, color: getBarTone(positiveTotal).text }}>
               {dayData ? fmtPt(positiveTotal) : "-"}
             </div>
           </div>
           <div
+            className={styles.summaryCard}
             style={{
               background: "var(--color-bg-card)",
-              borderRadius: isCompactTable ? 8 : 10,
-              padding: isCompactTable ? 10 : 12,
               border: "1px solid var(--color-border)",
-              minHeight: isCompactTable ? 76 : 96,
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
             }}
           >
-            <div style={{ fontSize: isCompactTable ? 11 : 12, color: "var(--color-text-muted)", marginBottom: isCompactTable ? 6 : 8 }}>下落寄与合計</div>
-            <div style={{ fontSize: isCompactTable ? 22 : 28, lineHeight: 1, fontWeight: 900, color: getBarTone(negativeTotal).text }}>
+            <div className={styles.summaryLabel} style={{ color: "var(--color-text-muted)" }}>下落寄与合計</div>
+            <div className={styles.summaryValue} style={{ lineHeight: 1, fontWeight: 900, color: getBarTone(negativeTotal).text }}>
               {dayData ? fmtPt(negativeTotal) : "-"}
             </div>
           </div>
@@ -1134,21 +1103,20 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
                 </p>
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: isCompactTable ? 4 : 6 }}>
+            <div className={styles.topweightGrid} style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
               {topWeight.map((record) => (
                 <div
                   key={`weight-${record.code}`}
+                  className={styles.topweightCard}
                   style={{
-                    borderRadius: isCompactTable ? 5 : 6,
-                    padding: isCompactTable ? 8 : 10,
                     background: "var(--color-bg-input)",
                     border: "1px solid var(--color-border)",
                   }}
                 >
-                  <div style={{ fontWeight: 800, marginBottom: 3, fontSize: isCompactTable ? 12 : 14, lineHeight: 1.3 }}>{record.name}</div>
-                  <div style={{ fontSize: isCompactTable ? 10 : 11, color: "var(--color-text-muted)", marginBottom: isCompactTable ? 6 : 8 }}>{record.code}</div>
-                  <div style={{ fontSize: isCompactTable ? 18 : 21, fontWeight: 900, lineHeight: 1.05 }}>{record.weight_pct.toFixed(2)}%</div>
-                  <div style={{ marginTop: isCompactTable ? 5 : 6, fontSize: isCompactTable ? 10 : 11, color: getBarTone(record.contribution).text }}>
+                  <div className={styles.topweightName} style={{ fontWeight: 800, lineHeight: 1.3 }}>{record.name}</div>
+                  <div className={styles.topweightCode} style={{ color: "var(--color-text-muted)" }}>{record.code}</div>
+                  <div className={styles.topweightValue} style={{ fontWeight: 900, lineHeight: 1.05 }}>{record.weight_pct.toFixed(2)}%</div>
+                  <div className={styles.topweightMeta} style={{ color: getBarTone(record.contribution).text }}>
                     寄与度 {fmtPt(record.contribution)}
                   </div>
                 </div>
@@ -1200,7 +1168,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
                 })}
               </div>
             </div>
-            <RecordsTable records={sortedRecords} compact={isCompactTable} />
+            <RecordsTable records={sortedRecords} />
           </section>
 
           <p style={{ marginTop: 16, fontSize: 11, color: "var(--color-text-muted)", lineHeight: 1.7 }}>
