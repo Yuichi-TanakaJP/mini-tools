@@ -9,6 +9,7 @@
 
 設計・方針・トレードオフの判断理由を記録します。
 
+- [2026-03-28 日経225寄与度ツールのデータ連携と UI 判断](./decision-log/2026-03-28-nikkei-contribution-data-and-ui.md)
 - [2026-03-22 決算カレンダーのデータ contract と運用メモ](./decision-log/2026-03-22-earnings-calendar-data-contract.md)
 - [2026-03-17 yutai-memo 銘柄マスタ JSON 更新運用](./decision-log/2026-03-17-yutai-memo-master-update-ops.md)
 - [2026-03-26 株価ランキングのデータ連携手順メモ](./decision-log/2026-03-26-stock-ranking-data-update-ops.md)

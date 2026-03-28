@@ -662,11 +662,11 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
     ? selectedDate
     : displayDates[0] ?? "";
   const currentDateIndex = displayDates.indexOf(currentSelectedDate);
-  const prevDate = currentDateIndex > 0 ? displayDates[currentDateIndex - 1] : null;
-  const nextDate =
+  const prevDate =
     currentDateIndex >= 0 && currentDateIndex < displayDates.length - 1
       ? displayDates[currentDateIndex + 1]
       : null;
+  const nextDate = currentDateIndex > 0 ? displayDates[currentDateIndex - 1] : null;
 
   useEffect(() => {
     if (!currentSelectedDate || loadedDays[currentSelectedDate]) {
@@ -761,18 +761,19 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
             type="button"
             onClick={() => prevDate && setSelectedDate(prevDate)}
             disabled={!prevDate}
+            aria-label="前日へ移動"
             style={{
               padding: "7px 10px",
               borderRadius: 999,
               border: "1px solid var(--color-border-strong)",
-              background: prevDate ? "var(--color-bg-card)" : "var(--color-bg-input)",
-              color: prevDate ? "var(--color-text)" : "var(--color-text-muted)",
+              background: prevDate ? "var(--color-bg-card)" : "#e5e7eb",
+              color: prevDate ? "var(--color-text)" : "#94a3b8",
               fontSize: 12,
               fontWeight: 700,
               cursor: prevDate ? "pointer" : "not-allowed",
             }}
           >
-            前日
+            ←
           </button>
           <select
             value={currentSelectedDate}
@@ -801,18 +802,19 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
             type="button"
             onClick={() => nextDate && setSelectedDate(nextDate)}
             disabled={!nextDate}
+            aria-label="翌日へ移動"
             style={{
               padding: "7px 10px",
               borderRadius: 999,
               border: "1px solid var(--color-border-strong)",
-              background: nextDate ? "var(--color-bg-card)" : "var(--color-bg-input)",
-              color: nextDate ? "var(--color-text)" : "var(--color-text-muted)",
+              background: nextDate ? "var(--color-bg-card)" : "#e5e7eb",
+              color: nextDate ? "var(--color-text)" : "#94a3b8",
               fontSize: 12,
               fontWeight: 700,
               cursor: nextDate ? "pointer" : "not-allowed",
             }}
           >
-            翌日
+            →
           </button>
           {dayData?.market_status ? (
             <span
