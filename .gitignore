@@ -11,6 +11,7 @@ public/workbox-*.js
 
 # production build
 dist/
+*.tsbuildinfo
 
 # env files
 .env
