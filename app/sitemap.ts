@@ -7,8 +7,11 @@ const ROUTES = [
   "/",
   "/tools/charcount",
   "/tools/total",
+  "/tools/earnings-calendar",
+  "/tools/stock-ranking",
   "/tools/yutai-expiry",
   "/tools/yutai-memo",
+  "/tools/yutai-candidates",
 ] as const;
 
 export default function sitemap(): MetadataRoute.Sitemap {
