@@ -2,6 +2,11 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { NikkeiContributionDayData, NikkeiContributionManifest } from "./types";
 
+const EMPTY_MANIFEST: NikkeiContributionManifest = {
+  dates: [],
+  latest_date: null,
+};
+
 function getDataDir() {
   return path.join(process.cwd(), "app/tools/nikkei-contribution/data");
 }
@@ -36,8 +41,12 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 async function loadLocalManifest(): Promise<NikkeiContributionManifest> {
-  const raw = await readFile(path.join(getDataDir(), "nikkei_contribution_manifest.json"), "utf-8");
-  return JSON.parse(raw) as NikkeiContributionManifest;
+  try {
+    const raw = await readFile(path.join(getDataDir(), "nikkei_contribution_manifest.json"), "utf-8");
+    return JSON.parse(raw) as NikkeiContributionManifest;
+  } catch {
+    return EMPTY_MANIFEST;
+  }
 }
 
 async function loadLocalDayData(dateStr: string): Promise<NikkeiContributionDayData | null> {
