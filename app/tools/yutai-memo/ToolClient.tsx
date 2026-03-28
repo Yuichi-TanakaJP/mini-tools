@@ -12,6 +12,7 @@ import {
   saveItems,
   saveTags,
 } from "./storage";
+import { resolveEntitlementMonthKey, toJstYearMonth, toMonthKeyFromIso } from "./date-utils";
 
 function uid() {
   // 十分実用（uuid不要ならこれでOK）
@@ -102,27 +103,9 @@ function formatArchiveDate(iso: string): string {
   return new Date(t).toLocaleString("ja-JP");
 }
 
-function toJstYearMonth(d: Date): { year: number; month: number } {
-  const fmt = new Intl.DateTimeFormat("ja-JP", {
-    timeZone: "Asia/Tokyo",
-    year: "numeric",
-    month: "2-digit",
-  });
-  const parts = fmt.formatToParts(d);
-  const year = Number(parts.find((p) => p.type === "year")?.value ?? "0");
-  const month = Number(parts.find((p) => p.type === "month")?.value ?? "0");
-  return { year, month };
-}
-
 function toMonthKeyFromDate(d: Date): string {
   const ym = toJstYearMonth(d);
   return `${ym.year}-${`${ym.month}`.padStart(2, "0")}`;
-}
-
-function toMonthKeyFromIso(iso: string): string | null {
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return null;
-  return toMonthKeyFromDate(new Date(t));
 }
 
 function getArchiveGroupKey(a: ArchivedMemoItem): string | null {
@@ -132,28 +115,6 @@ function getArchiveGroupKey(a: ArchivedMemoItem): string | null {
   return toMonthKeyFromIso(a.acquiredAt);
 }
 
-function resolveEntitlementMonthKey(months: number[], acquiredAt: string): string | null {
-  if (!Array.isArray(months) || months.length === 0) return toMonthKeyFromIso(acquiredAt);
-  const t = Date.parse(acquiredAt);
-  if (Number.isNaN(t)) return null;
-  const ym = toJstYearMonth(new Date(t));
-  const currentYear = ym.year;
-  const currentMonth = ym.month;
-  const normalized = Array.from(
-    new Set(
-      months.filter(
-        (m) => Number.isInteger(m) && m >= 1 && m <= 12
-      )
-    )
-  ).sort((a, b) => a - b);
-
-  if (normalized.length === 0) return toMonthKeyFromIso(acquiredAt);
-
-  const candidate = [...normalized].reverse().find((m) => m <= currentMonth);
-  const targetMonth = candidate ?? normalized[normalized.length - 1];
-  const targetYear = targetMonth <= currentMonth ? currentYear : currentYear - 1;
-  return `${targetYear}-${`${targetMonth}`.padStart(2, "0")}`;
-}
 
 function hasOneSharePosition(item: Pick<MemoItem, "oneShareStartedAt" | "oneShareHold">): boolean {
   return Boolean(item.oneShareStartedAt?.trim() || item.oneShareHold);

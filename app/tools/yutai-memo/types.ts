@@ -31,6 +31,13 @@ export type MemoItem = {
   oneShareHold?: boolean; // legacy compatibility
   priority: 1 | 2 | 3;
   memo: string;
+  source?: "manual" | "minkabu";
+  pickedFrom?: "monthly_yutai_list";
+  minkabuYutaiUrl?: string;
+  officialBenefitUrl?: string;
+  officialLinkStatus?: string;
+  minimumInvestmentText?: string;
+  benefitCategoryTags?: string[];
   updatedAt: string; // ISO
 };
 
