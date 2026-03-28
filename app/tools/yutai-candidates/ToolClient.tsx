@@ -189,20 +189,31 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     <main style={styles.page}>
       <div style={styles.shell}>
         <section style={styles.hero}>
-          <div style={styles.heroEyebrow}>優待候補一覧 beta</div>
-          <h1 style={styles.heroTitle}>月別の優待候補を見ながら、優待メモへ追加</h1>
+          <div style={styles.heroEyebrow}>
+            <span style={styles.heroEyebrowDot} />
+            優待候補一覧 beta
+          </div>
+          <h1 style={styles.heroTitle}>月別の優待候補を探す</h1>
           <p style={styles.heroNote}>
-            market_info の月別優待 JSON を候補一覧として表示し、気になる銘柄だけを優待メモへ送れます。
+            月別優待データを一覧表示して、気になる銘柄だけをピックし優待メモへ追加できます。
           </p>
           <div style={styles.heroMeta}>
-            <span style={styles.metaChipMuted}>更新: {formatGeneratedAt(data.generatedAt)}</span>
+            <span style={styles.metaChip}>
+              <span style={styles.metaOnlineDot} />
+              {formatGeneratedAt(data.generatedAt)}
+            </span>
+            {data.items.length > 0 && (
+              <span style={styles.metaChip}>
+                全 {data.items.length.toLocaleString("ja-JP")} 件
+              </span>
+            )}
           </div>
         </section>
 
         <section style={styles.panel}>
-          {availableMonths.length > 0 ? (
-            <div style={styles.monthBar}>
-              <div style={styles.monthBarLabel}>表示月</div>
+          {availableMonths.length > 0 && (
+            <div style={styles.monthSection}>
+              <div style={styles.sectionLabel}>表示月</div>
               <div style={styles.monthChipList}>
                 {availableMonths.map((month) => {
                   const active = month.id === data.selectedMonthId;
@@ -220,319 +231,442 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                 })}
               </div>
             </div>
-          ) : null}
+          )}
 
-          <div style={styles.filters}>
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="会社名・コード・カテゴリで検索"
-              style={styles.search}
-            />
-            <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} style={styles.select}>
-              <option value="all">カテゴリ: すべて</option>
-              {availableTags.map((tag) => (
-                <option key={tag} value={tag}>
-                  カテゴリ: {tag}
-                </option>
-              ))}
-            </select>
-            <select
-              value={linkFilter}
-              onChange={(e) => setLinkFilter(e.target.value as LinkFilter)}
-              style={styles.select}
-            >
-              <option value="all">企業リンク: すべて</option>
-              <option value="with">企業リンクあり</option>
-              <option value="without">企業リンクなし</option>
-            </select>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              style={styles.select}
-            >
-              <option value="all">状態: すべて</option>
-              <option value="picked">状態: ピック済み</option>
-              <option value="added">状態: メモ追加済み</option>
-              <option value="unselected">状態: 未選択</option>
-            </select>
-            <select value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)} style={styles.select}>
-              <option value="company">並び順: 会社名</option>
-              <option value="code">並び順: コード</option>
-              <option value="investment">並び順: 最低投資金額</option>
-            </select>
+          <div style={styles.filterSection}>
+            <div style={styles.searchWrapper}>
+              <svg style={styles.searchIcon} viewBox="0 0 20 20" fill="none">
+                <circle cx="9" cy="9" r="6" stroke="#94a3b8" strokeWidth="1.5" />
+                <path d="M13.5 13.5L17 17" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="会社名・コード・カテゴリで検索"
+                style={styles.search}
+              />
+            </div>
+            <div style={styles.filterSelectRow}>
+              <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} style={styles.select}>
+                <option value="all">カテゴリ: すべて</option>
+                {availableTags.map((tag) => (
+                  <option key={tag} value={tag}>カテゴリ: {tag}</option>
+                ))}
+              </select>
+              <select value={linkFilter} onChange={(e) => setLinkFilter(e.target.value as LinkFilter)} style={styles.select}>
+                <option value="all">企業リンク: すべて</option>
+                <option value="with">企業リンクあり</option>
+                <option value="without">企業リンクなし</option>
+              </select>
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as StatusFilter)} style={styles.select}>
+                <option value="all">状態: すべて</option>
+                <option value="picked">状態: ピック済み</option>
+                <option value="added">状態: メモ追加済み</option>
+                <option value="unselected">状態: 未選択</option>
+              </select>
+              <select value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)} style={styles.select}>
+                <option value="company">並び順: 会社名</option>
+                <option value="code">並び順: コード</option>
+                <option value="investment">並び順: 最低投資金額</option>
+              </select>
+            </div>
           </div>
 
           {!data.manifest ? (
             <article style={styles.emptyCard}>
+              <svg style={styles.emptyIcon} viewBox="0 0 24 24" fill="none" width={28} height={28}>
+                <circle cx="12" cy="12" r="9" stroke="#94a3b8" strokeWidth="1.5" />
+                <path d="M12 8v4M12 16h.01" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
               <div style={styles.emptyTitle}>月別優待データはまだ接続されていません</div>
               <div style={styles.emptyNote}>
-                `app/tools/yutai-candidates/data/manifest.json` または
-                `MONTHLY_YUTAI_DATA_BASE_URL` を用意すると、manifest の `months[].path` を正として一覧が表示されます。
+                {"`app/tools/yutai-candidates/data/manifest.json`"} または{" "}
+                {"`MONTHLY_YUTAI_DATA_BASE_URL`"} を用意すると、manifest の{" "}
+                {"`months[].path`"} を正として一覧が表示されます。
               </div>
             </article>
           ) : filteredItems.length === 0 ? (
             <article style={styles.emptyCard}>
+              <svg style={styles.emptyIcon} viewBox="0 0 24 24" fill="none" width={28} height={28}>
+                <path d="M3 6h18M3 12h18M3 18h18" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
               <div style={styles.emptyTitle}>条件に合う銘柄がありません</div>
               <div style={styles.emptyNote}>検索条件やフィルタをゆるめると候補を再表示できます。</div>
             </article>
           ) : (
-            <div style={styles.list}>
-              {filteredItems.map((item) => {
-                const added = addedKeys.has(`${item.code}:${item.month}`);
-                const picked = pickedCodes.has(item.code);
-                return (
-                  <article key={`${item.code}:${item.month}`} style={styles.card}>
-                    <div style={styles.cardTop}>
-                      <div>
-                        <div style={styles.companyName}>{item.company_name}</div>
-                        <div style={styles.metaRow}>
-                          <span>{item.code}</span>
-                          <span>{item.month}月権利</span>
-                          <span>{item.minimum_investment_text || "投資金額未設定"}</span>
+            <>
+              <div style={styles.resultsMeta}>
+                <span style={styles.resultsCount}>{filteredItems.length.toLocaleString("ja-JP")}</span>
+                <span style={styles.resultsLabel}>件の候補</span>
+              </div>
+              <div style={styles.list}>
+                {filteredItems.map((item) => {
+                  const added = addedKeys.has(`${item.code}:${item.month}`);
+                  const picked = pickedCodes.has(item.code);
+                  const cardStyle = added ? styles.cardAdded : picked ? styles.cardPicked : styles.card;
+                  return (
+                    <article key={`${item.code}:${item.month}`} style={cardStyle}>
+                      <div style={styles.cardTop}>
+                        <div style={styles.cardMain}>
+                          <div style={styles.cardNameRow}>
+                            <span style={styles.companyName}>{item.company_name}</span>
+                            <span style={styles.codeChip}>{item.code}</span>
+                          </div>
+                          <div style={styles.metaRow}>
+                            <span style={styles.metaItem}>{item.month}月権利</span>
+                            {item.minimum_investment_text && (
+                              <>
+                                <span style={styles.metaDivider}>·</span>
+                                <span style={styles.investChip}>{item.minimum_investment_text}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
-                        <div style={styles.summaryText}>{item.benefit_summary || "優待概要なし"}</div>
+                        <div style={styles.stateChips}>
+                          {picked && <span style={styles.pickedChip}>★ Pick</span>}
+                          {added && <span style={styles.addedChip}>✓ Memo</span>}
+                        </div>
                       </div>
-                      <div style={styles.stateChips}>
-                        {picked ? <span style={styles.pickedChip}>Pick</span> : null}
-                        {added ? <span style={styles.addedChip}>Memo</span> : null}
+
+                      {item.benefit_summary && (
+                        <p style={styles.summaryText}>{item.benefit_summary}</p>
+                      )}
+
+                      <div style={styles.tagRow}>
+                        {item.benefit_category_tags.length > 0 ? (
+                          item.benefit_category_tags.map((tag) => (
+                            <span key={tag} style={styles.tag}>{tag}</span>
+                          ))
+                        ) : (
+                          <span style={styles.mutedText}>カテゴリなし</span>
+                        )}
                       </div>
-                    </div>
 
-                    <div style={styles.tagRow}>
-                      {item.benefit_category_tags.length > 0 ? (
-                        item.benefit_category_tags.map((tag) => (
-                          <span key={tag} style={styles.tag}>
-                            {tag}
-                          </span>
-                        ))
-                      ) : (
-                        <span style={styles.mutedText}>カテゴリなし</span>
-                      )}
-                    </div>
-
-                    <div style={styles.linkRow}>
-                      <a href={item.minkabu_yutai_url} target="_blank" rel="noopener noreferrer" style={styles.link}>
-                        みんかぶ
-                      </a>
-                      {item.official_benefit_url ? (
-                        <a
-                          href={item.official_benefit_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={styles.link}
-                        >
-                          企業リンク
-                        </a>
-                      ) : (
-                        <span style={styles.linkStatusChip}>{getOfficialLinkLabel(item)}</span>
-                      )}
-                      {item.official_benefit_url ? (
-                        <span style={styles.linkStatusChip}>{getOfficialLinkLabel(item)}</span>
-                      ) : null}
-                    </div>
-
-                    <div style={styles.actions}>
-                      <button type="button" onClick={() => togglePick(item.code)} style={styles.secondaryButton}>
-                        {picked ? "ピック解除" : "ピック"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleAdd(item)}
-                        style={added ? styles.disabledButton : styles.primaryButton}
-                        disabled={added}
-                      >
-                        {added ? "追加済み" : "優待メモへ追加"}
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+                      <div style={styles.cardFooter}>
+                        <div style={styles.linkRow}>
+                          <a href={item.minkabu_yutai_url} target="_blank" rel="noopener noreferrer" style={styles.linkButton}>
+                            みんかぶ ↗
+                          </a>
+                          {item.official_benefit_url ? (
+                            <a href={item.official_benefit_url} target="_blank" rel="noopener noreferrer" style={styles.linkButton}>
+                              企業サイト ↗
+                            </a>
+                          ) : (
+                            <span style={styles.linkStatusChip}>{getOfficialLinkLabel(item)}</span>
+                          )}
+                        </div>
+                        <div style={styles.actions}>
+                          <button
+                            type="button"
+                            onClick={() => togglePick(item.code)}
+                            style={picked ? styles.secondaryButtonActive : styles.secondaryButton}
+                          >
+                            {picked ? "★ ピック解除" : "☆ ピック"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAdd(item)}
+                            style={added ? styles.disabledButton : styles.primaryButton}
+                            disabled={added}
+                          >
+                            {added ? "✓ 追加済み" : "優待メモへ追加"}
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </>
           )}
         </section>
 
-        {notice ? (
+        {notice && (
           <div style={styles.notice}>
             <span>{notice}</span>
             <button type="button" onClick={() => setNotice(null)} style={styles.noticeButton}>
               閉じる
             </button>
           </div>
-        ) : null}
+        )}
       </div>
     </main>
   );
 }
 
+const INDIGO = "#4f46e5";
+const INDIGO_LIGHT = "#eef2ff";
+const INDIGO_MID = "#6366f1";
+
+const baseDot: React.CSSProperties = {
+  display: "inline-block",
+  width: 6,
+  height: 6,
+  borderRadius: "50%",
+  flexShrink: 0,
+};
+
+const baseMonthChip: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: 4,
+  padding: "10px 8px",
+  borderRadius: 14,
+  fontSize: 13,
+};
+
+const baseCard: React.CSSProperties = {
+  borderRadius: 20,
+  padding: "16px 18px",
+  display: "flex",
+  flexDirection: "column",
+  gap: 12,
+};
+
+const baseSecondaryButton: React.CSSProperties = {
+  padding: "8px 14px",
+  borderRadius: 10,
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
 const styles: Record<string, React.CSSProperties> = {
   page: {
     minHeight: "100vh",
-    padding: "18px 12px 56px",
+    padding: "24px 16px 72px",
     background:
-      "radial-gradient(1100px 420px at 15% 0%, rgba(37, 84, 255, 0.08), transparent 58%), #eef2f7",
+      "radial-gradient(ellipse 1200px 500px at 0% -10%, rgba(99,102,241,0.10) 0%, transparent 60%), " +
+      "radial-gradient(ellipse 800px 600px at 100% 80%, rgba(79,70,229,0.06) 0%, transparent 55%), " +
+      "#f1f5f9",
   },
   shell: {
     width: "100%",
-    maxWidth: 920,
+    maxWidth: 980,
     margin: "0 auto",
   },
   hero: {
-    marginBottom: 20,
+    marginBottom: 28,
   },
   heroEyebrow: {
     display: "inline-flex",
-    padding: "4px 8px",
+    alignItems: "center",
+    gap: 6,
+    padding: "5px 10px 5px 8px",
     borderRadius: 999,
-    background: "#eef2ff",
-    color: "#3151da",
+    background: INDIGO_LIGHT,
+    color: INDIGO,
     fontSize: 11,
     fontWeight: 800,
+    letterSpacing: 0.3,
+    border: "1px solid rgba(79,70,229,0.15)",
   },
+  heroEyebrowDot: { ...baseDot, background: INDIGO_MID },
   heroTitle: {
-    margin: "10px 0 8px",
-    fontSize: "clamp(26px, 5vw, 38px)",
-    lineHeight: 1.12,
-    letterSpacing: -0.8,
+    margin: "12px 0 8px",
+    fontSize: "clamp(28px, 5vw, 42px)",
+    fontWeight: 900,
+    lineHeight: 1.1,
+    letterSpacing: -1,
+    color: "#0f172a",
   },
   heroNote: {
     margin: 0,
-    maxWidth: 680,
+    maxWidth: 600,
     fontSize: 14,
-    lineHeight: 1.7,
-    color: "#667085",
+    lineHeight: 1.75,
+    color: "#64748b",
   },
   heroMeta: {
     display: "flex",
     gap: 8,
     flexWrap: "wrap",
-    marginTop: 12,
+    marginTop: 14,
+    alignItems: "center",
   },
-  metaChipMuted: {
+  metaChip: {
     display: "inline-flex",
-    padding: "4px 8px",
+    alignItems: "center",
+    gap: 5,
+    padding: "4px 10px",
     borderRadius: 999,
-    background: "#f4f6fb",
-    color: "#667085",
+    background: "#ffffff",
+    border: "1px solid rgba(15,23,42,0.08)",
+    color: "#64748b",
     fontSize: 11,
     fontWeight: 700,
+    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
   },
+  metaOnlineDot: { ...baseDot, background: "#22c55e" },
   panel: {
     background: "#ffffff",
-    borderRadius: 24,
-    padding: 18,
-    boxShadow: "0 12px 32px rgba(15, 23, 42, 0.06)",
-    border: "1px solid rgba(15, 23, 42, 0.06)",
+    borderRadius: 28,
+    padding: "20px 20px 24px",
+    boxShadow:
+      "0 1px 3px rgba(15,23,42,0.04), 0 8px 24px rgba(15,23,42,0.06), 0 24px 48px rgba(15,23,42,0.04)",
+    border: "1px solid rgba(15,23,42,0.06)",
   },
-  monthBar: {
-    marginBottom: 16,
-    paddingBottom: 16,
-    borderBottom: "1px solid rgba(15, 23, 42, 0.06)",
+  monthSection: {
+    marginBottom: 20,
+    paddingBottom: 20,
+    borderBottom: "1px solid rgba(15,23,42,0.06)",
   },
-  monthBarLabel: {
+  sectionLabel: {
     marginBottom: 10,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 800,
-    color: "#667085",
-    letterSpacing: 0.2,
+    color: "#94a3b8",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
   },
   monthChipList: {
     display: "grid",
-    gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
-    gap: 6,
+    gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))",
+    gap: 8,
   },
   monthChip: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: 3,
-    border: "1px solid rgba(15, 23, 42, 0.08)",
-    background: "#f7f9fc",
-    color: "#374151",
-    padding: "6px 7px",
-    borderRadius: 12,
-    minWidth: 0,
-    fontSize: 12,
+    ...baseMonthChip,
+    border: "1px solid rgba(15,23,42,0.08)",
+    background: "#f8fafc",
+    color: "#475569",
     fontWeight: 700,
     cursor: "pointer",
   },
   monthChipActive: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: 3,
-    border: "1px solid rgba(37, 84, 255, 0.12)",
-    background: "#eef2ff",
-    color: "#2554ff",
-    padding: "6px 7px",
-    borderRadius: 12,
-    minWidth: 0,
-    fontSize: 12,
+    ...baseMonthChip,
+    border: `1.5px solid ${INDIGO}`,
+    background: INDIGO_LIGHT,
+    color: INDIGO,
     fontWeight: 800,
     cursor: "default",
+    boxShadow: "0 0 0 3px rgba(79,70,229,0.08)",
   },
   monthChipCount: {
     fontSize: 10,
     fontWeight: 700,
-    color: "#64748b",
-    lineHeight: 1.1,
+    color: "#94a3b8",
+    lineHeight: 1,
   },
   monthChipCountActive: {
     fontSize: 10,
     fontWeight: 800,
-    color: "#2554ff",
-    lineHeight: 1.1,
+    color: INDIGO,
+    lineHeight: 1,
   },
-  filters: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: 10,
-    marginBottom: 18,
+  filterSection: {
+    background: "#f8fafc",
+    borderRadius: 18,
+    padding: "14px 14px 12px",
+    marginBottom: 20,
+    border: "1px solid rgba(15,23,42,0.05)",
+  },
+  searchWrapper: {
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  searchIcon: {
+    position: "absolute",
+    left: 12,
+    width: 16,
+    height: 16,
+    pointerEvents: "none",
+    flexShrink: 0,
   },
   search: {
-    gridColumn: "1 / -1",
     width: "100%",
-    borderRadius: 14,
-    border: "1px solid rgba(15, 23, 42, 0.08)",
-    background: "#f7f9fc",
-    padding: "12px 14px",
+    borderRadius: 12,
+    border: "1px solid rgba(15,23,42,0.10)",
+    background: "#ffffff",
+    padding: "11px 12px 11px 36px",
     fontSize: 14,
+    color: "#0f172a",
+    boxSizing: "border-box",
+    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+  },
+  filterSelectRow: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+    gap: 8,
   },
   select: {
     width: "100%",
-    borderRadius: 12,
-    border: "1px solid rgba(15, 23, 42, 0.08)",
-    background: "#f7f9fc",
-    padding: "11px 12px",
+    borderRadius: 10,
+    border: "1px solid rgba(15,23,42,0.10)",
+    background: "#ffffff",
+    padding: "9px 10px",
     fontSize: 13,
+    color: "#374151",
+    cursor: "pointer",
+    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+  },
+  resultsMeta: {
+    display: "flex",
+    alignItems: "baseline",
+    gap: 4,
+    marginBottom: 14,
+    paddingLeft: 2,
+  },
+  resultsCount: {
+    fontSize: 22,
+    fontWeight: 900,
+    color: "#0f172a",
+    lineHeight: 1,
+  },
+  resultsLabel: {
+    fontSize: 13,
+    color: "#64748b",
+    fontWeight: 600,
   },
   emptyCard: {
     borderRadius: 18,
-    padding: 20,
-    background: "#f7f9fc",
-    border: "1px solid rgba(15, 23, 42, 0.05)",
+    padding: "32px 24px",
+    background: "#f8fafc",
+    border: "1px solid rgba(15,23,42,0.05)",
+    textAlign: "center",
+  },
+  emptyIcon: {
+    display: "block",
+    margin: "0 auto 12px",
+    opacity: 0.6,
   },
   emptyTitle: {
     fontSize: 16,
     fontWeight: 800,
+    color: "#0f172a",
   },
   emptyNote: {
     marginTop: 8,
     fontSize: 13,
     lineHeight: 1.7,
-    color: "#667085",
+    color: "#64748b",
     whiteSpace: "pre-wrap",
   },
   list: {
     display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))",
     gap: 14,
   },
   card: {
-    borderRadius: 18,
-    padding: 16,
-    background: "#fdfefe",
-    border: "1px solid rgba(15, 23, 42, 0.08)",
+    ...baseCard,
+    background: "#fdfdfe",
+    border: "1px solid rgba(15,23,42,0.08)",
+    borderLeft: "3px solid rgba(15,23,42,0.10)",
+  },
+  cardPicked: {
+    ...baseCard,
+    background: "#fffbeb",
+    border: "1px solid rgba(245,158,11,0.20)",
+    borderLeft: "3px solid #f59e0b",
+  },
+  cardAdded: {
+    ...baseCard,
+    background: "#f0fdf4",
+    border: "1px solid rgba(34,197,94,0.20)",
+    borderLeft: "3px solid #22c55e",
   },
   cardTop: {
     display: "flex",
@@ -540,147 +674,213 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 12,
     alignItems: "flex-start",
   },
+  cardMain: {
+    flex: 1,
+    minWidth: 0,
+  },
+  cardNameRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
   companyName: {
     fontSize: 17,
     fontWeight: 800,
     lineHeight: 1.3,
+    color: "#0f172a",
+  },
+  codeChip: {
+    display: "inline-flex",
+    padding: "2px 7px",
+    borderRadius: 6,
+    background: "#f1f5f9",
+    color: "#475569",
+    fontSize: 11,
+    fontWeight: 800,
+    letterSpacing: 0.3,
+    flexShrink: 0,
   },
   metaRow: {
     display: "flex",
     flexWrap: "wrap",
-    gap: 10,
+    gap: 6,
     marginTop: 6,
+    alignItems: "center",
+  },
+  metaItem: {
     fontSize: 12,
-    color: "#667085",
+    color: "#64748b",
+    fontWeight: 600,
+  },
+  metaDivider: {
+    color: "#cbd5e1",
+    fontSize: 12,
+  },
+  investChip: {
+    display: "inline-flex",
+    padding: "2px 8px",
+    borderRadius: 6,
+    background: INDIGO_LIGHT,
+    color: INDIGO,
+    fontSize: 11,
+    fontWeight: 800,
   },
   summaryText: {
-    marginTop: 8,
+    margin: 0,
     fontSize: 13,
-    lineHeight: 1.6,
+    lineHeight: 1.65,
     color: "#374151",
   },
   stateChips: {
     display: "flex",
-    gap: 8,
+    gap: 6,
     flexWrap: "wrap",
     justifyContent: "flex-end",
+    flexShrink: 0,
   },
   pickedChip: {
     display: "inline-flex",
-    padding: "4px 8px",
+    padding: "4px 9px",
     borderRadius: 999,
-    background: "#fff3d6",
-    color: "#9a5b00",
+    background: "#fef3c7",
+    color: "#92400e",
     fontSize: 11,
     fontWeight: 800,
+    border: "1px solid rgba(245,158,11,0.20)",
   },
   addedChip: {
     display: "inline-flex",
-    padding: "4px 8px",
+    padding: "4px 9px",
     borderRadius: 999,
-    background: "#e6f9ee",
+    background: "#dcfce7",
     color: "#15803d",
     fontSize: 11,
     fontWeight: 800,
+    border: "1px solid rgba(34,197,94,0.20)",
   },
   tagRow: {
     display: "flex",
-    gap: 8,
+    gap: 6,
     flexWrap: "wrap",
-    marginTop: 12,
   },
   tag: {
     display: "inline-flex",
-    padding: "5px 9px",
+    padding: "4px 9px",
     borderRadius: 999,
-    background: "#eef2ff",
-    color: "#3146d4",
-    fontSize: 12,
+    background: "#f0f0ff",
+    color: "#4338ca",
+    fontSize: 11,
     fontWeight: 700,
+    border: "1px solid rgba(79,70,229,0.12)",
+  },
+  mutedText: {
+    color: "#94a3b8",
+    fontSize: 12,
+  },
+  cardFooter: {
+    display: "flex",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 10,
+    paddingTop: 10,
+    borderTop: "1px solid rgba(15,23,42,0.06)",
+    marginTop: 2,
   },
   linkRow: {
     display: "flex",
-    gap: 12,
+    gap: 8,
     flexWrap: "wrap",
     alignItems: "center",
-    marginTop: 12,
   },
-  link: {
-    color: "#2554ff",
-    fontSize: 13,
+  linkButton: {
+    display: "inline-flex",
+    padding: "5px 10px",
+    borderRadius: 8,
+    background: "#f1f5f9",
+    color: "#475569",
+    fontSize: 12,
     fontWeight: 700,
     textDecoration: "none",
-  },
-  mutedText: {
-    color: "#667085",
-    fontSize: 12,
+    border: "1px solid rgba(15,23,42,0.08)",
   },
   linkStatusChip: {
     display: "inline-flex",
     alignItems: "center",
     padding: "4px 8px",
     borderRadius: 999,
-    background: "#f4f6fb",
-    color: "#667085",
+    background: "#f8fafc",
+    color: "#94a3b8",
     fontSize: 11,
     fontWeight: 700,
+    border: "1px solid rgba(15,23,42,0.06)",
   },
   actions: {
     display: "flex",
-    gap: 10,
+    gap: 8,
     flexWrap: "wrap",
-    marginTop: 14,
   },
   secondaryButton: {
-    border: "1px solid rgba(15, 23, 42, 0.1)",
+    ...baseSecondaryButton,
+    border: "1px solid rgba(15,23,42,0.10)",
     background: "#ffffff",
     color: "#374151",
-    padding: "10px 14px",
-    borderRadius: 12,
-    fontSize: 13,
-    fontWeight: 700,
-    cursor: "pointer",
+    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+  },
+  secondaryButtonActive: {
+    ...baseSecondaryButton,
+    border: "1px solid rgba(245,158,11,0.25)",
+    background: "#fffbeb",
+    color: "#92400e",
   },
   primaryButton: {
     border: "none",
-    background: "#2554ff",
+    background: `linear-gradient(135deg, ${INDIGO} 0%, ${INDIGO_MID} 100%)`,
     color: "#ffffff",
-    padding: "10px 14px",
-    borderRadius: 12,
-    fontSize: 13,
+    padding: "8px 16px",
+    borderRadius: 10,
+    fontSize: 12,
     fontWeight: 800,
     cursor: "pointer",
+    boxShadow: "0 2px 8px rgba(79,70,229,0.30)",
   },
   disabledButton: {
     border: "none",
-    background: "#dbe5ff",
-    color: "#4b61cb",
-    padding: "10px 14px",
-    borderRadius: 12,
-    fontSize: 13,
+    background: "#e0e7ff",
+    color: "#6366f1",
+    padding: "8px 16px",
+    borderRadius: 10,
+    fontSize: 12,
     fontWeight: 800,
     cursor: "default",
+    opacity: 0.7,
   },
   notice: {
     position: "sticky",
-    bottom: 16,
-    marginTop: 16,
+    bottom: 20,
+    marginTop: 20,
     display: "flex",
     justifyContent: "space-between",
     gap: 12,
     alignItems: "center",
-    padding: "12px 14px",
-    borderRadius: 14,
-    background: "#1f2937",
+    padding: "14px 18px",
+    borderRadius: 16,
+    background: "#0f172a",
     color: "#ffffff",
     fontSize: 13,
+    fontWeight: 600,
+    boxShadow: "0 8px 24px rgba(15,23,42,0.24)",
   },
   noticeButton: {
-    border: "1px solid rgba(255, 255, 255, 0.18)",
-    background: "transparent",
-    color: "#ffffff",
-    padding: "6px 10px",
+    border: "1px solid rgba(255,255,255,0.15)",
+    background: "rgba(255,255,255,0.08)",
+    color: "#e2e8f0",
+    padding: "6px 12px",
     borderRadius: 10,
     cursor: "pointer",
+    fontSize: 12,
+    fontWeight: 700,
+    whiteSpace: "nowrap",
   },
 };
