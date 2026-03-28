@@ -188,7 +188,6 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   return (
     <main style={styles.page}>
       <div style={styles.shell}>
-        {/* Hero */}
         <section style={styles.hero}>
           <div style={styles.heroEyebrow}>
             <span style={styles.heroEyebrowDot} />
@@ -211,9 +210,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
           </div>
         </section>
 
-        {/* Control panel */}
         <section style={styles.panel}>
-          {/* Month selector */}
           {availableMonths.length > 0 && (
             <div style={styles.monthSection}>
               <div style={styles.sectionLabel}>表示月</div>
@@ -236,22 +233,19 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
             </div>
           )}
 
-          {/* Filters */}
           <div style={styles.filterSection}>
-            <div style={styles.filterSearchRow}>
-              <div style={styles.searchWrapper}>
-                <svg style={styles.searchIcon} viewBox="0 0 20 20" fill="none">
-                  <circle cx="9" cy="9" r="6" stroke="#94a3b8" strokeWidth="1.5" />
-                  <path d="M13.5 13.5L17 17" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="会社名・コード・カテゴリで検索"
-                  style={styles.search}
-                />
-              </div>
+            <div style={styles.searchWrapper}>
+              <svg style={styles.searchIcon} viewBox="0 0 20 20" fill="none">
+                <circle cx="9" cy="9" r="6" stroke="#94a3b8" strokeWidth="1.5" />
+                <path d="M13.5 13.5L17 17" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="会社名・コード・カテゴリで検索"
+                style={styles.search}
+              />
             </div>
             <div style={styles.filterSelectRow}>
               <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} style={styles.select}>
@@ -279,15 +273,12 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
             </div>
           </div>
 
-          {/* Results */}
           {!data.manifest ? (
             <article style={styles.emptyCard}>
-              <div style={styles.emptyIconWrap}>
-                <svg viewBox="0 0 24 24" fill="none" width={28} height={28}>
-                  <circle cx="12" cy="12" r="9" stroke="#94a3b8" strokeWidth="1.5" />
-                  <path d="M12 8v4M12 16h.01" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-              </div>
+              <svg style={styles.emptyIcon} viewBox="0 0 24 24" fill="none" width={28} height={28}>
+                <circle cx="12" cy="12" r="9" stroke="#94a3b8" strokeWidth="1.5" />
+                <path d="M12 8v4M12 16h.01" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
               <div style={styles.emptyTitle}>月別優待データはまだ接続されていません</div>
               <div style={styles.emptyNote}>
                 {"`app/tools/yutai-candidates/data/manifest.json`"} または{" "}
@@ -297,11 +288,9 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
             </article>
           ) : filteredItems.length === 0 ? (
             <article style={styles.emptyCard}>
-              <div style={styles.emptyIconWrap}>
-                <svg viewBox="0 0 24 24" fill="none" width={28} height={28}>
-                  <path d="M3 6h18M3 12h18M3 18h18" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-              </div>
+              <svg style={styles.emptyIcon} viewBox="0 0 24 24" fill="none" width={28} height={28}>
+                <path d="M3 6h18M3 12h18M3 18h18" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
               <div style={styles.emptyTitle}>条件に合う銘柄がありません</div>
               <div style={styles.emptyNote}>検索条件やフィルタをゆるめると候補を再表示できます。</div>
             </article>
@@ -318,7 +307,6 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                   const cardStyle = added ? styles.cardAdded : picked ? styles.cardPicked : styles.card;
                   return (
                     <article key={`${item.code}:${item.month}`} style={cardStyle}>
-                      {/* Top row */}
                       <div style={styles.cardTop}>
                         <div style={styles.cardMain}>
                           <div style={styles.cardNameRow}>
@@ -341,12 +329,10 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                         </div>
                       </div>
 
-                      {/* Summary */}
                       {item.benefit_summary && (
                         <p style={styles.summaryText}>{item.benefit_summary}</p>
                       )}
 
-                      {/* Tags */}
                       <div style={styles.tagRow}>
                         {item.benefit_category_tags.length > 0 ? (
                           item.benefit_category_tags.map((tag) => (
@@ -357,7 +343,6 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                         )}
                       </div>
 
-                      {/* Footer */}
                       <div style={styles.cardFooter}>
                         <div style={styles.linkRow}>
                           <a href={item.minkabu_yutai_url} target="_blank" rel="noopener noreferrer" style={styles.linkButton}>
@@ -397,7 +382,6 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
           )}
         </section>
 
-        {/* Notice toast */}
         {notice && (
           <div style={styles.notice}>
             <span>{notice}</span>
@@ -415,8 +399,41 @@ const INDIGO = "#4f46e5";
 const INDIGO_LIGHT = "#eef2ff";
 const INDIGO_MID = "#6366f1";
 
+const baseDot: React.CSSProperties = {
+  display: "inline-block",
+  width: 6,
+  height: 6,
+  borderRadius: "50%",
+  flexShrink: 0,
+};
+
+const baseMonthChip: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: 4,
+  padding: "10px 8px",
+  borderRadius: 14,
+  fontSize: 13,
+};
+
+const baseCard: React.CSSProperties = {
+  borderRadius: 20,
+  padding: "16px 18px",
+  display: "flex",
+  flexDirection: "column",
+  gap: 12,
+};
+
+const baseSecondaryButton: React.CSSProperties = {
+  padding: "8px 14px",
+  borderRadius: 10,
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
 const styles: Record<string, React.CSSProperties> = {
-  /* ── Page ── */
   page: {
     minHeight: "100vh",
     padding: "24px 16px 72px",
@@ -430,8 +447,6 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: 980,
     margin: "0 auto",
   },
-
-  /* ── Hero ── */
   hero: {
     marginBottom: 28,
   },
@@ -448,13 +463,7 @@ const styles: Record<string, React.CSSProperties> = {
     letterSpacing: 0.3,
     border: "1px solid rgba(79,70,229,0.15)",
   },
-  heroEyebrowDot: {
-    display: "inline-block",
-    width: 6,
-    height: 6,
-    borderRadius: "50%",
-    background: INDIGO_MID,
-  },
+  heroEyebrowDot: { ...baseDot, background: INDIGO_MID },
   heroTitle: {
     margin: "12px 0 8px",
     fontSize: "clamp(28px, 5vw, 42px)",
@@ -490,16 +499,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
   },
-  metaOnlineDot: {
-    display: "inline-block",
-    width: 6,
-    height: 6,
-    borderRadius: "50%",
-    background: "#22c55e",
-    flexShrink: 0,
-  },
-
-  /* ── Panel ── */
+  metaOnlineDot: { ...baseDot, background: "#22c55e" },
   panel: {
     background: "#ffffff",
     borderRadius: 28,
@@ -508,8 +508,6 @@ const styles: Record<string, React.CSSProperties> = {
       "0 1px 3px rgba(15,23,42,0.04), 0 8px 24px rgba(15,23,42,0.06), 0 24px 48px rgba(15,23,42,0.04)",
     border: "1px solid rgba(15,23,42,0.06)",
   },
-
-  /* ── Month selector ── */
   monthSection: {
     marginBottom: 20,
     paddingBottom: 20,
@@ -529,30 +527,18 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 8,
   },
   monthChip: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: 4,
+    ...baseMonthChip,
     border: "1px solid rgba(15,23,42,0.08)",
     background: "#f8fafc",
     color: "#475569",
-    padding: "10px 8px",
-    borderRadius: 14,
-    fontSize: 13,
     fontWeight: 700,
     cursor: "pointer",
   },
   monthChipActive: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: 4,
+    ...baseMonthChip,
     border: `1.5px solid ${INDIGO}`,
     background: INDIGO_LIGHT,
     color: INDIGO,
-    padding: "10px 8px",
-    borderRadius: 14,
-    fontSize: 13,
     fontWeight: 800,
     cursor: "default",
     boxShadow: "0 0 0 3px rgba(79,70,229,0.08)",
@@ -569,8 +555,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: INDIGO,
     lineHeight: 1,
   },
-
-  /* ── Filters ── */
   filterSection: {
     background: "#f8fafc",
     borderRadius: 18,
@@ -578,13 +562,11 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 20,
     border: "1px solid rgba(15,23,42,0.05)",
   },
-  filterSearchRow: {
-    marginBottom: 10,
-  },
   searchWrapper: {
     position: "relative",
     display: "flex",
     alignItems: "center",
+    marginBottom: 10,
   },
   searchIcon: {
     position: "absolute",
@@ -621,8 +603,6 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
     boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
   },
-
-  /* ── Results meta ── */
   resultsMeta: {
     display: "flex",
     alignItems: "baseline",
@@ -641,8 +621,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#64748b",
     fontWeight: 600,
   },
-
-  /* ── Empty states ── */
   emptyCard: {
     borderRadius: 18,
     padding: "32px 24px",
@@ -650,10 +628,9 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid rgba(15,23,42,0.05)",
     textAlign: "center",
   },
-  emptyIconWrap: {
-    display: "flex",
-    justifyContent: "center",
-    marginBottom: 12,
+  emptyIcon: {
+    display: "block",
+    margin: "0 auto 12px",
     opacity: 0.6,
   },
   emptyTitle: {
@@ -668,47 +645,29 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#64748b",
     whiteSpace: "pre-wrap",
   },
-
-  /* ── Card list ── */
   list: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))",
     gap: 14,
   },
-
-  /* ── Card variants ── */
   card: {
-    borderRadius: 20,
-    padding: "16px 18px",
+    ...baseCard,
     background: "#fdfdfe",
     border: "1px solid rgba(15,23,42,0.08)",
     borderLeft: "3px solid rgba(15,23,42,0.10)",
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
   },
   cardPicked: {
-    borderRadius: 20,
-    padding: "16px 18px",
+    ...baseCard,
     background: "#fffbeb",
     border: "1px solid rgba(245,158,11,0.20)",
     borderLeft: "3px solid #f59e0b",
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
   },
   cardAdded: {
-    borderRadius: 20,
-    padding: "16px 18px",
+    ...baseCard,
     background: "#f0fdf4",
     border: "1px solid rgba(34,197,94,0.20)",
     borderLeft: "3px solid #22c55e",
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
   },
-
-  /* ── Card internals ── */
   cardTop: {
     display: "flex",
     justifyContent: "space-between",
@@ -819,8 +778,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#94a3b8",
     fontSize: 12,
   },
-
-  /* ── Card footer ── */
   cardFooter: {
     display: "flex",
     flexWrap: "wrap",
@@ -865,25 +822,17 @@ const styles: Record<string, React.CSSProperties> = {
     flexWrap: "wrap",
   },
   secondaryButton: {
+    ...baseSecondaryButton,
     border: "1px solid rgba(15,23,42,0.10)",
     background: "#ffffff",
     color: "#374151",
-    padding: "8px 14px",
-    borderRadius: 10,
-    fontSize: 12,
-    fontWeight: 700,
-    cursor: "pointer",
     boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
   },
   secondaryButtonActive: {
+    ...baseSecondaryButton,
     border: "1px solid rgba(245,158,11,0.25)",
     background: "#fffbeb",
     color: "#92400e",
-    padding: "8px 14px",
-    borderRadius: 10,
-    fontSize: 12,
-    fontWeight: 700,
-    cursor: "pointer",
   },
   primaryButton: {
     border: "none",
@@ -907,8 +856,6 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "default",
     opacity: 0.7,
   },
-
-  /* ── Notice toast ── */
   notice: {
     position: "sticky",
     bottom: 20,
