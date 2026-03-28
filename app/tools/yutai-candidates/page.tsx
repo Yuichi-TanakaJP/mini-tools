@@ -11,7 +11,14 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function Page() {
-  const data = await loadMonthlyYutaiPageData();
+type PageProps = {
+  searchParams?: Promise<{
+    month?: string;
+  }>;
+};
+
+export default async function Page({ searchParams }: PageProps) {
+  const params = searchParams ? await searchParams : undefined;
+  const data = await loadMonthlyYutaiPageData(params?.month);
   return <ToolClient data={data} />;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { addMemoItemFromCandidate, isImportedMonthlyYutaiCandidate } from "@/app/tools/yutai-memo/candidate-import";
 import { loadItems } from "@/app/tools/yutai-memo/storage";
 import type { MonthlyYutaiCandidate, MonthlyYutaiPageData } from "./types";
@@ -37,6 +38,8 @@ function hasOfficialLink(item: MonthlyYutaiCandidate) {
 }
 
 export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [tagFilter, setTagFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -62,6 +65,17 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
       ),
     ).sort((a, b) => a.localeCompare(b, "ja"));
   }, [data.items]);
+
+  const availableMonths = useMemo(() => {
+    if (!data.manifest?.months?.length) return [];
+    return [...data.manifest.months]
+      .map((entry) => ({
+        id: `${entry.year}-${`${entry.month}`.padStart(2, "0")}`,
+        label: `${entry.year}年${entry.month}月`,
+        count: entry.count,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+  }, [data.manifest]);
 
   const filteredItems = useMemo(() => {
     const normalizedQuery = normalizeText(query.trim());
@@ -140,6 +154,17 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     setNotice(`${item.company_name} を優待メモへ追加しました。`);
   }
 
+  function handleMonthChange(nextMonthId: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (!nextMonthId) {
+      params.delete("month");
+    } else {
+      params.set("month", nextMonthId);
+    }
+    const nextQuery = params.toString();
+    router.replace(nextQuery ? `/tools/yutai-candidates?${nextQuery}` : "/tools/yutai-candidates");
+  }
+
   return (
     <main style={styles.page}>
       <div style={styles.shell}>
@@ -160,6 +185,27 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
         </section>
 
         <section style={styles.panel}>
+          {availableMonths.length > 0 ? (
+            <div style={styles.monthBar}>
+              <div style={styles.monthBarLabel}>表示月</div>
+              <div style={styles.monthChipList}>
+                {availableMonths.map((month) => {
+                  const active = month.id === data.selectedMonthId;
+                  return (
+                    <button
+                      key={month.id}
+                      type="button"
+                      onClick={() => handleMonthChange(month.id)}
+                      style={active ? styles.monthChipActive : styles.monthChip}
+                    >
+                      {month.label} ({month.count})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
           <div style={styles.filters}>
             <input
               type="search"
@@ -368,6 +414,43 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 18,
     boxShadow: "0 12px 32px rgba(15, 23, 42, 0.06)",
     border: "1px solid rgba(15, 23, 42, 0.06)",
+  },
+  monthBar: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottom: "1px solid rgba(15, 23, 42, 0.06)",
+  },
+  monthBarLabel: {
+    marginBottom: 10,
+    fontSize: 12,
+    fontWeight: 800,
+    color: "#667085",
+    letterSpacing: 0.2,
+  },
+  monthChipList: {
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  monthChip: {
+    border: "1px solid rgba(15, 23, 42, 0.08)",
+    background: "#f7f9fc",
+    color: "#374151",
+    padding: "8px 12px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  monthChipActive: {
+    border: "1px solid rgba(37, 84, 255, 0.12)",
+    background: "#eef2ff",
+    color: "#2554ff",
+    padding: "8px 12px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 800,
+    cursor: "default",
   },
   filters: {
     display: "grid",

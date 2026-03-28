@@ -62,6 +62,7 @@ async function loadLocalMonthData(relativePath: string): Promise<MonthlyYutaiMon
 
 function resolveSelectedMonthEntry(
   manifest: MonthlyYutaiManifest | null,
+  requestedMonthId?: string,
 ): MonthlyYutaiMonthManifest | null {
   if (!manifest?.months?.length) return null;
 
@@ -74,7 +75,13 @@ function resolveSelectedMonthEntry(
   const latestMonthEntry = sorted.find(
     (entry) => `${entry.year}-${`${entry.month}`.padStart(2, "0")}` === manifest.latest_month,
   );
+  const requestedEntry = requestedMonthId
+    ? sorted.find(
+        (entry) => `${entry.year}-${`${entry.month}`.padStart(2, "0")}` === requestedMonthId,
+      )
+    : null;
   return (
+    requestedEntry ??
     latestEntry ??
     latestMonthEntry ??
     sorted.at(-1) ??
@@ -122,9 +129,9 @@ export async function loadMonthlyYutaiMonthData(
   return loadLocalMonthData(monthEntry.path);
 }
 
-export async function loadMonthlyYutaiPageData(): Promise<MonthlyYutaiPageData> {
+export async function loadMonthlyYutaiPageData(requestedMonthId?: string): Promise<MonthlyYutaiPageData> {
   const manifest = await loadMonthlyYutaiManifest();
-  const selectedMonthEntry = resolveSelectedMonthEntry(manifest);
+  const selectedMonthEntry = resolveSelectedMonthEntry(manifest, requestedMonthId);
   const selectedMonthId = selectedMonthEntry
     ? `${selectedMonthEntry.year}-${`${selectedMonthEntry.month}`.padStart(2, "0")}`
     : manifest?.latest_month ?? DEFAULT_MONTH_ID;
