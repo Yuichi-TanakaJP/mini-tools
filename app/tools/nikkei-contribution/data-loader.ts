@@ -2,6 +2,9 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { NikkeiContributionDayData, NikkeiContributionManifest } from "./types";
 
+const DEFAULT_EXTERNAL_BASE_URL =
+  "https://pub-b1f1de37018549c8a5ae3e6f9a7a1c6c.r2.dev/nikkei-contribution";
+
 const EMPTY_MANIFEST: NikkeiContributionManifest = {
   dates: [],
   latest_date: null,
@@ -12,7 +15,10 @@ function getDataDir() {
 }
 
 function getExternalBaseUrl() {
-  const baseUrl = process.env.NIKKEI_CONTRIBUTION_DATA_BASE_URL?.trim().replace(/\/+$/, "") ?? "";
+  const baseUrl = (
+    process.env.NIKKEI_CONTRIBUTION_DATA_BASE_URL?.trim().replace(/\/+$/, "") ??
+    DEFAULT_EXTERNAL_BASE_URL
+  ).trim();
   if (!baseUrl) {
     return [];
   }
