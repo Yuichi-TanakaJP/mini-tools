@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type {
+  JpxMarketClosedDay,
   NikkeiContributionDayData,
   NikkeiContributionPageData,
   NikkeiContributionRankItem,
@@ -11,6 +12,32 @@ import type {
 function formatDate(dateStr: string) {
   const [y, m, d] = dateStr.split("-");
   return `${y}年${Number(m)}月${Number(d)}日`;
+}
+
+function getDayOfWeek(dateStr: string) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d).getDay();
+}
+
+function isWeekendDate(dateStr: string) {
+  const day = getDayOfWeek(dateStr);
+  return day === 0 || day === 6;
+}
+
+function isMarketClosedDate(dateStr: string, holidayMap: Map<string, JpxMarketClosedDay>) {
+  return holidayMap.get(dateStr)?.market_closed ?? false;
+}
+
+function isLikelyMarketClosed(dayData: NikkeiContributionDayData | null | undefined) {
+  if (!dayData || dayData.records.length === 0) {
+    return false;
+  }
+
+  const hasMovement = dayData.records.some(
+    (record) => record.chg !== 0 || record.chg_pct !== 0 || record.contribution !== 0,
+  );
+
+  return !hasMovement;
 }
 
 function sign(n: number) {
@@ -72,6 +99,13 @@ function getReadableTextColor(bgHex: string) {
 
 function withAlpha(hex: string, alpha: string) {
   return `${hex}${alpha}`;
+}
+
+function getShortDisplayName(name: string, maxLength: number) {
+  if (name.length <= maxLength) {
+    return name;
+  }
+  return `${name.slice(0, Math.max(1, maxLength - 1))}…`;
 }
 
 function sumContribution(items: NikkeiContributionRecord[]) {
@@ -338,19 +372,34 @@ function ImpactMap({ records, selectedCode, onSelect }: ImpactMapProps) {
               const area = rect.width * rect.height;
               const minSide = Math.min(rect.width, rect.height);
               const textColor = getReadableTextColor(tone.bg);
-              const showLarge = area >= 220;
-              const showMedium = !showLarge && area >= 120 && minSide >= 6;
-              const showPctOnly = !showLarge && !showMedium && area >= 34;
-              const titleSize = showLarge ? Math.min(17, Math.max(10, minSide * 0.72)) : showMedium ? Math.min(12, Math.max(8, minSide * 0.56)) : 0;
-              const pctSize = showLarge ? Math.min(14, Math.max(9, minSide * 0.52)) : showMedium ? Math.min(10, Math.max(7, minSide * 0.42)) : showPctOnly ? Math.min(9, Math.max(7, minSide * 0.42)) : 0;
-              const nameLabel = showLarge
-                ? record.name
+              const showLarge = area >= 170;
+              const showMedium = !showLarge && area >= 78 && minSide >= 4.8;
+              const showSmallName = !showLarge && !showMedium && area >= 34 && minSide >= 3.6;
+              const showPctOnly = !showLarge && !showMedium && !showSmallName && area >= 20;
+              const titleSize = showLarge
+                ? Math.min(17, Math.max(10, minSide * 0.68))
                 : showMedium
-                ? record.name.length > 10
-                  ? `${record.name.slice(0, 10)}…`
-                  : record.name
+                ? Math.min(11, Math.max(7.5, minSide * 0.5))
+                : showSmallName
+                ? Math.min(8.5, Math.max(6.5, minSide * 0.38))
+                : 0;
+              const pctSize = showLarge
+                ? Math.min(13, Math.max(8.5, minSide * 0.48))
+                : showMedium
+                ? Math.min(9.5, Math.max(6.5, minSide * 0.38))
+                : showPctOnly
+                ? Math.min(8.5, Math.max(6.5, minSide * 0.38))
+                : 0;
+              const ptSize = showLarge ? Math.min(11, Math.max(7.5, minSide * 0.4)) : 0;
+              const nameLabel = showLarge
+                ? getShortDisplayName(record.name, 16)
+                : showMedium
+                ? getShortDisplayName(record.name, 12)
+                : showSmallName
+                ? getShortDisplayName(record.name, 8)
                 : "";
               const pctColor = record.chg_pct >= 0 ? withAlpha(textColor, "f2") : withAlpha(textColor, "eb");
+              const ptColor = record.contribution >= 0 ? withAlpha(textColor, "d9") : withAlpha(textColor, "c9");
 
               return (
                 <button
@@ -370,7 +419,7 @@ function ImpactMap({ records, selectedCode, onSelect }: ImpactMapProps) {
                     width: `${Math.max(0, rect.width)}%`,
                     height: `${Math.max(0, rect.height)}%`,
                     borderRadius: 0,
-                    padding: showLarge ? 8 : showMedium ? 4 : 2,
+                    padding: showLarge ? 8 : showMedium ? 4 : showSmallName ? 3 : 2,
                     background: tone.bg,
                     color: textColor,
                     border: selected
@@ -394,12 +443,14 @@ function ImpactMap({ records, selectedCode, onSelect }: ImpactMapProps) {
                   }}
                 >
                   {showLarge || showMedium ? (
-                    <div style={{ lineHeight: 1.05, display: "grid", gap: 4, alignItems: "center", textShadow: textColor === "#f8fafc" ? "0 1px 1px rgba(15,23,42,0.35)" : "none" }}>
+                    <div style={{ width: "100%", lineHeight: 1.04, display: "grid", gap: 3, alignItems: "center", textShadow: textColor === "#f8fafc" ? "0 1px 1px rgba(15,23,42,0.35)" : "none" }}>
                       <div
                         style={{
                           fontWeight: 900,
                           fontSize: titleSize,
-                          wordBreak: "break-word",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
                           letterSpacing: showLarge ? -0.6 : -0.3,
                         }}
                       >
@@ -415,6 +466,36 @@ function ImpactMap({ records, selectedCode, onSelect }: ImpactMapProps) {
                       >
                         {fmtPct(record.chg_pct)}
                       </div>
+                      {showLarge ? (
+                        <div
+                          style={{
+                            fontSize: ptSize,
+                            fontWeight: 700,
+                            color: ptColor,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            letterSpacing: -0.2,
+                          }}
+                        >
+                          {fmtPt(record.contribution)}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : showSmallName ? (
+                    <div
+                      style={{
+                        width: "100%",
+                        fontSize: titleSize,
+                        fontWeight: 700,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        color: withAlpha(textColor, "e6"),
+                        textShadow: textColor === "#f8fafc" ? "0 1px 1px rgba(15,23,42,0.28)" : "none",
+                      }}
+                    >
+                      {nameLabel}
                     </div>
                   ) : showPctOnly ? (
                     <div
@@ -546,7 +627,7 @@ function RecordsTable({ records }: { records: NikkeiContributionRecord[] }) {
 }
 
 export default function ToolClient({ data }: { data: NikkeiContributionPageData }) {
-  const { manifest, initialDayData } = data;
+  const { manifest, initialDayData, holidays } = data;
   const [selectedDate, setSelectedDate] = useState<string>(manifest.latest_date ?? "");
   const [loadedDays, setLoadedDays] = useState<Record<string, NikkeiContributionDayData>>(() => {
     if (!initialDayData) return {};
@@ -556,9 +637,39 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
   const [loadError, setLoadError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<"contribution" | "weight_pct" | "chg_pct">("contribution");
   const [selectedCode, setSelectedCode] = useState<string | null>(initialDayData?.records[0]?.code ?? null);
+  const holidayMap = useMemo(() => {
+    return new Map((holidays?.days ?? []).map((day) => [day.date, day]));
+  }, [holidays]);
+  const displayDates = useMemo(() => {
+    return manifest.dates.filter((date) => {
+      if (isMarketClosedDate(date, holidayMap)) {
+        return false;
+      }
+
+      if (isWeekendDate(date)) {
+        return false;
+      }
+
+      const loaded = loadedDays[date];
+      if (!loaded) {
+        return true;
+      }
+
+      return !isLikelyMarketClosed(loaded);
+    });
+  }, [holidayMap, loadedDays, manifest.dates]);
+  const currentSelectedDate = displayDates.includes(selectedDate)
+    ? selectedDate
+    : displayDates[0] ?? "";
+  const currentDateIndex = displayDates.indexOf(currentSelectedDate);
+  const prevDate = currentDateIndex > 0 ? displayDates[currentDateIndex - 1] : null;
+  const nextDate =
+    currentDateIndex >= 0 && currentDateIndex < displayDates.length - 1
+      ? displayDates[currentDateIndex + 1]
+      : null;
 
   useEffect(() => {
-    if (!selectedDate || loadedDays[selectedDate]) {
+    if (!currentSelectedDate || loadedDays[currentSelectedDate]) {
       setLoadError(null);
       return;
     }
@@ -570,7 +681,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
       setLoadError(null);
 
       try {
-        const res = await fetch(`/tools/nikkei-contribution/data/${selectedDate}`);
+        const res = await fetch(`/tools/nikkei-contribution/data/${currentSelectedDate}`);
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }
@@ -593,9 +704,9 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
     return () => {
       active = false;
     };
-  }, [loadedDays, selectedDate]);
+  }, [currentSelectedDate, loadedDays]);
 
-  const dayData = selectedDate ? loadedDays[selectedDate] ?? null : null;
+  const dayData = currentSelectedDate ? loadedDays[currentSelectedDate] ?? null : null;
   const sortedRecords = useMemo(() => {
     if (!dayData) return [];
     return [...dayData.records].sort((a, b) => Math.abs(b[sortKey]) - Math.abs(a[sortKey]));
@@ -646,10 +757,27 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
       >
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, fontWeight: 800, color: "var(--color-text-muted)", minWidth: 40 }}>日付</span>
+          <button
+            type="button"
+            onClick={() => prevDate && setSelectedDate(prevDate)}
+            disabled={!prevDate}
+            style={{
+              padding: "7px 10px",
+              borderRadius: 999,
+              border: "1px solid var(--color-border-strong)",
+              background: prevDate ? "var(--color-bg-card)" : "var(--color-bg-input)",
+              color: prevDate ? "var(--color-text)" : "var(--color-text-muted)",
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: prevDate ? "pointer" : "not-allowed",
+            }}
+          >
+            前日
+          </button>
           <select
-            value={selectedDate}
+            value={currentSelectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            disabled={manifest.dates.length === 0}
+            disabled={displayDates.length === 0}
             style={{
               padding: "8px 12px",
               borderRadius: 10,
@@ -659,16 +787,33 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
               fontSize: 13,
             }}
           >
-            {manifest.dates.length === 0 ? (
+            {displayDates.length === 0 ? (
               <option value="">データ準備中</option>
             ) : (
-              manifest.dates.map((date) => (
+              displayDates.map((date) => (
                 <option key={date} value={date}>
                   {formatDate(date)}
                 </option>
               ))
             )}
           </select>
+          <button
+            type="button"
+            onClick={() => nextDate && setSelectedDate(nextDate)}
+            disabled={!nextDate}
+            style={{
+              padding: "7px 10px",
+              borderRadius: 999,
+              border: "1px solid var(--color-border-strong)",
+              background: nextDate ? "var(--color-bg-card)" : "var(--color-bg-input)",
+              color: nextDate ? "var(--color-text)" : "var(--color-text-muted)",
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: nextDate ? "pointer" : "not-allowed",
+            }}
+          >
+            翌日
+          </button>
           {dayData?.market_status ? (
             <span
               style={{
