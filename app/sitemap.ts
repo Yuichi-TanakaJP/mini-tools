@@ -8,6 +8,7 @@ const ROUTES = [
   "/tools/charcount",
   "/tools/total",
   "/tools/earnings-calendar",
+  "/tools/nikkei-contribution",
   "/tools/stock-ranking",
   "/tools/yutai-expiry",
   "/tools/yutai-memo",
