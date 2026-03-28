@@ -19,7 +19,7 @@ function getExternalBaseUrl() {
     return [];
   }
 
-  return baseUrl.endsWith("/monthly-yutai") ? [baseUrl] : [baseUrl, `${baseUrl}/monthly-yutai`];
+  return [baseUrl];
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
