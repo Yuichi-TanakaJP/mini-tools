@@ -52,6 +52,7 @@ function hasOfficialLink(item: MonthlyYutaiCandidate) {
 }
 
 function getOfficialLinkLabel(item: MonthlyYutaiCandidate) {
+  if (item.official_link_status === "not_checked") return "企業リンク未確認";
   if (item.official_link_status === "missing") return "企業リンクなし";
   if (hasOfficialLink(item)) return "企業リンクあり";
   return "企業リンク未確認";
@@ -80,9 +81,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
 
   const availableTags = useMemo(() => {
     return Array.from(
-      new Set(
-        data.items.flatMap((item) => item.benefit_category_tags ?? []).filter(Boolean),
-      ),
+      new Set(data.items.flatMap((item) => item.benefit_category_tags ?? []).filter(Boolean)),
     ).sort((a, b) => a.localeCompare(b, "ja"));
   }, [data.items]);
 
@@ -92,6 +91,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
       .map((entry) => ({
         id: `${entry.year}-${`${entry.month}`.padStart(2, "0")}`,
         label: `${entry.year}年${entry.month}月`,
+        shortLabel: `${entry.month}月`,
         count: entry.count,
       }))
       .sort((a, b) => a.id.localeCompare(b.id));
@@ -213,7 +213,8 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                       onClick={() => handleMonthChange(month.id)}
                       style={active ? styles.monthChipActive : styles.monthChip}
                     >
-                      {month.label} ({month.count})
+                      <span>{month.shortLabel}</span>
+                      <span style={active ? styles.monthChipCountActive : styles.monthChipCount}>{month.count}</span>
                     </button>
                   );
                 })}
@@ -268,7 +269,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
               <div style={styles.emptyTitle}>月別優待データはまだ接続されていません</div>
               <div style={styles.emptyNote}>
                 `app/tools/yutai-candidates/data/manifest.json` または
-                `MONTHLY_YUTAI_DATA_BASE_URL` を用意すると、manifest の `latest_path` を基準に一覧が表示されます。
+                `MONTHLY_YUTAI_DATA_BASE_URL` を用意すると、manifest の `months[].path` を正として一覧が表示されます。
               </div>
             </article>
           ) : filteredItems.length === 0 ? (
@@ -408,15 +409,6 @@ const styles: Record<string, React.CSSProperties> = {
     flexWrap: "wrap",
     marginTop: 12,
   },
-  metaChip: {
-    display: "inline-flex",
-    padding: "4px 8px",
-    borderRadius: 999,
-    background: "#e7edff",
-    color: "#2f47ca",
-    fontSize: 11,
-    fontWeight: 800,
-  },
   metaChipMuted: {
     display: "inline-flex",
     padding: "4px 8px",
@@ -446,29 +438,51 @@ const styles: Record<string, React.CSSProperties> = {
     letterSpacing: 0.2,
   },
   monthChipList: {
-    display: "flex",
-    gap: 8,
-    flexWrap: "wrap",
+    display: "grid",
+    gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+    gap: 6,
   },
   monthChip: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 3,
     border: "1px solid rgba(15, 23, 42, 0.08)",
     background: "#f7f9fc",
     color: "#374151",
-    padding: "8px 12px",
-    borderRadius: 999,
+    padding: "6px 7px",
+    borderRadius: 12,
+    minWidth: 0,
     fontSize: 12,
     fontWeight: 700,
     cursor: "pointer",
   },
   monthChipActive: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 3,
     border: "1px solid rgba(37, 84, 255, 0.12)",
     background: "#eef2ff",
     color: "#2554ff",
-    padding: "8px 12px",
-    borderRadius: 999,
+    padding: "6px 7px",
+    borderRadius: 12,
+    minWidth: 0,
     fontSize: 12,
     fontWeight: 800,
     cursor: "default",
+  },
+  monthChipCount: {
+    fontSize: 10,
+    fontWeight: 700,
+    color: "#64748b",
+    lineHeight: 1.1,
+  },
+  monthChipCountActive: {
+    fontSize: 10,
+    fontWeight: 800,
+    color: "#2554ff",
+    lineHeight: 1.1,
   },
   filters: {
     display: "grid",

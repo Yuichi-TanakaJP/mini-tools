@@ -9,7 +9,7 @@ export type MonthlyYutaiCandidate = {
   minkabu_yutai_url: string;
   has_official_link: boolean;
   official_benefit_url: string | null;
-  official_link_status: "found" | "missing";
+  official_link_status: "found" | "missing" | "not_checked";
   source: string;
   fetched_at: string;
 };

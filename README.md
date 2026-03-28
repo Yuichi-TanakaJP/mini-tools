@@ -70,6 +70,12 @@ npm run dev
   - `.../stock-ranking` のような JSON 配信ディレクトリ URL を直接指定しても動く
   - 未設定時は repo 内の `app/tools/stock-ranking/data/` を読む
   - 参照: `app/tools/stock-ranking/data-loader.ts`
+- `MONTHLY_YUTAI_DATA_BASE_URL`
+  - `yutai-candidates` が外部配信の `manifest.json` / 月別JSON を読むときの入口URL
+  - `.../yutai/monthly` のようなディレクトリURLと `.../yutai/monthly/manifest.json` のような manifest URL 直指定の両方に対応
+  - 月別JSONは `manifest.months[].path` を正として解決する
+  - 未設定時は repo 内の `app/tools/yutai-candidates/data/` を読む
+  - 参照: `app/tools/yutai-candidates/data-loader.ts`
 
 `.env.local.example` に値なしの雛形キーを置いています。必要に応じて `.env.local` を作成して値を設定してください。
 
