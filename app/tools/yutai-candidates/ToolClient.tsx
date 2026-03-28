@@ -51,6 +51,12 @@ function hasOfficialLink(item: MonthlyYutaiCandidate) {
   return item.has_official_link && Boolean(item.official_benefit_url);
 }
 
+function getOfficialLinkLabel(item: MonthlyYutaiCandidate) {
+  if (item.official_link_status === "missing") return "企業リンクなし";
+  if (hasOfficialLink(item)) return "企業リンクあり";
+  return "企業リンク未確認";
+}
+
 export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -319,8 +325,11 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                           企業リンク
                         </a>
                       ) : (
-                        <span style={styles.mutedText}>企業リンクなし</span>
+                        <span style={styles.linkStatusChip}>{getOfficialLinkLabel(item)}</span>
                       )}
+                      {item.official_benefit_url ? (
+                        <span style={styles.linkStatusChip}>{getOfficialLinkLabel(item)}</span>
+                      ) : null}
                     </div>
 
                     <div style={styles.actions}>
@@ -591,6 +600,16 @@ const styles: Record<string, React.CSSProperties> = {
   mutedText: {
     color: "#667085",
     fontSize: 12,
+  },
+  linkStatusChip: {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "4px 8px",
+    borderRadius: 999,
+    background: "#f4f6fb",
+    color: "#667085",
+    fontSize: 11,
+    fontWeight: 700,
   },
   actions: {
     display: "flex",

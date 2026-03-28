@@ -41,12 +41,12 @@ export function createMemoItemFromCandidate(
   const source = candidate.source ?? "minkabu";
   const pickedFrom = candidate.pickedFrom ?? "monthly_yutai_list";
   const memoLines = [
-    `追加元: ${pickedFrom}`,
-    `候補ソース: ${source}`,
+    pickedFrom === "monthly_yutai_list" ? "候補一覧から追加" : `追加元: ${pickedFrom}`,
     candidate.minimumInvestmentText ? `最低投資金額: ${candidate.minimumInvestmentText}` : "",
     candidate.benefitCategoryTags?.length
       ? `優待カテゴリ: ${candidate.benefitCategoryTags.join(", ")}`
       : "",
+    candidate.officialLinkStatus === "missing" ? "企業リンク: なし" : "",
   ].filter(Boolean);
 
   return {
