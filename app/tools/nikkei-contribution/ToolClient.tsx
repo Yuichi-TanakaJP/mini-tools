@@ -763,17 +763,29 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
             disabled={!prevDate}
             aria-label="前日へ移動"
             style={{
-              padding: "7px 10px",
+              width: 34,
+              height: 34,
+              padding: 0,
               borderRadius: 999,
               border: "1px solid var(--color-border-strong)",
-              background: prevDate ? "var(--color-bg-card)" : "#e5e7eb",
-              color: prevDate ? "var(--color-text)" : "#94a3b8",
-              fontSize: 12,
-              fontWeight: 700,
+              background: prevDate ? "linear-gradient(180deg, #ffffff, #f3f6fb)" : "#e5e7eb",
+              color: prevDate ? "#0f172a" : "#94a3b8",
+              display: "grid",
+              placeItems: "center",
+              boxShadow: prevDate ? "0 1px 2px rgba(15,23,42,0.08)" : "none",
               cursor: prevDate ? "pointer" : "not-allowed",
+              transition: "transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease",
             }}
           >
-            ←
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path
+                d="M9.75 3.5L5.25 8L9.75 12.5"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </button>
           <select
             value={currentSelectedDate}
@@ -804,17 +816,29 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
             disabled={!nextDate}
             aria-label="翌日へ移動"
             style={{
-              padding: "7px 10px",
+              width: 34,
+              height: 34,
+              padding: 0,
               borderRadius: 999,
               border: "1px solid var(--color-border-strong)",
-              background: nextDate ? "var(--color-bg-card)" : "#e5e7eb",
-              color: nextDate ? "var(--color-text)" : "#94a3b8",
-              fontSize: 12,
-              fontWeight: 700,
+              background: nextDate ? "linear-gradient(180deg, #ffffff, #f3f6fb)" : "#e5e7eb",
+              color: nextDate ? "#0f172a" : "#94a3b8",
+              display: "grid",
+              placeItems: "center",
+              boxShadow: nextDate ? "0 1px 2px rgba(15,23,42,0.08)" : "none",
               cursor: nextDate ? "pointer" : "not-allowed",
+              transition: "transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease",
             }}
           >
-            →
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path
+                d="M6.25 3.5L10.75 8L6.25 12.5"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </button>
           {dayData?.market_status ? (
             <span
