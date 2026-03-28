@@ -112,14 +112,21 @@ function sumContribution(items: NikkeiContributionRecord[]) {
   return items.reduce((total, item) => total + item.contribution, 0);
 }
 
+function sumPositiveContribution(items: NikkeiContributionRecord[]) {
+  return items.reduce((total, item) => total + (item.contribution > 0 ? item.contribution : 0), 0);
+}
+
+function sumNegativeContribution(items: NikkeiContributionRecord[]) {
+  return items.reduce((total, item) => total + (item.contribution < 0 ? item.contribution : 0), 0);
+}
+
 type RankingListProps = {
   title: string;
   items: NikkeiContributionRankItem[];
+  maxAbs: number;
 };
 
-function RankingList({ title, items }: RankingListProps) {
-  const maxAbs = Math.max(...items.map((item) => Math.abs(item.contribution)), 1);
-
+function RankingList({ title, items, maxAbs }: RankingListProps) {
   return (
     <section
       style={{
@@ -155,8 +162,19 @@ function RankingList({ title, items }: RankingListProps) {
                   {item.rank}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13 }}>
-                    <span style={{ fontWeight: 700, color: "var(--color-text)" }}>{item.name}</span>
+                  <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", alignItems: "baseline", gap: 10, fontSize: 13 }}>
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        color: "var(--color-text)",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                      title={item.name}
+                    >
+                      {item.name}
+                    </span>
                     <span style={{ fontWeight: 800, color: tone.text, whiteSpace: "nowrap" }}>
                       {fmtPt(item.contribution)}
                     </span>
@@ -577,25 +595,46 @@ function ImpactMap({ records, selectedCode, onSelect }: ImpactMapProps) {
   );
 }
 
-function RecordsTable({ records }: { records: NikkeiContributionRecord[] }) {
+function RecordsTable({ records, compact }: { records: NikkeiContributionRecord[]; compact: boolean }) {
+  const columns = [
+    { key: "name", label: "銘柄", mobile: true, width: compact ? "40%" : "38%", align: "left" as const },
+    { key: "weight_pct", label: "ウェイト", mobile: true, width: compact ? "18%" : "16%", align: "right" as const },
+    { key: "chg_pct", label: "騰落率", mobile: true, width: compact ? "18%" : "16%", align: "right" as const },
+    { key: "chg", label: "前日比", mobile: false, width: "14%", align: "right" as const },
+    { key: "contribution", label: "寄与度", mobile: true, width: compact ? "24%" : "16%", align: "right" as const },
+  ].filter((column) => !compact || column.mobile);
+
   return (
     <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-      <table style={{ width: "100%", minWidth: 880, borderCollapse: "collapse", fontSize: 13 }}>
+      <table
+        style={{
+          width: "100%",
+          minWidth: compact ? 0 : 720,
+          borderCollapse: "collapse",
+          fontSize: compact ? 12 : 13,
+          tableLayout: "fixed",
+        }}
+      >
+        <colgroup>
+          {columns.map((column) => (
+            <col key={column.key} style={{ width: column.width }} />
+          ))}
+        </colgroup>
         <thead>
           <tr style={{ borderBottom: "2px solid var(--color-border-strong)" }}>
-            {["銘柄", "価格", "みなし額面", "ウェイト", "騰落率", "前日比", "寄与度"].map((label) => (
+            {columns.map((column) => (
               <th
-                key={label}
+                key={column.key}
                 style={{
-                  padding: "8px 10px",
-                  textAlign: label === "銘柄" ? "left" : "right",
+                  padding: compact ? "8px 6px" : "8px 10px",
+                  textAlign: column.align,
                   fontWeight: 700,
                   color: "var(--color-text-muted)",
                   whiteSpace: "nowrap",
                   fontSize: 11,
                 }}
               >
-                {label}
+                {column.label}
               </th>
             ))}
           </tr>
@@ -605,18 +644,65 @@ function RecordsTable({ records }: { records: NikkeiContributionRecord[] }) {
             const tone = getBarTone(record.contribution);
             return (
               <tr key={record.code} style={{ borderBottom: "1px solid var(--color-border)" }}>
-                <td style={{ padding: "10px" }}>
-                  <div style={{ fontWeight: 700 }}>{record.name}</div>
-                  <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 2 }}>{record.code}</div>
-                </td>
-                <td style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>{fmtPrice(record.price)}</td>
-                <td style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>{fmtPrice(record.minashi)}</td>
-                <td style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>{record.weight_pct.toFixed(2)}%</td>
-                <td style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>{fmtPct(record.chg_pct)}</td>
-                <td style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap" }}>{sign(record.chg)}{fmtNumber(record.chg)}</td>
-                <td style={{ padding: "10px", textAlign: "right", whiteSpace: "nowrap", color: tone.text, fontWeight: 800 }}>
-                  {fmtPt(record.contribution)}
-                </td>
+                {columns.map((column) => {
+                  if (column.key === "name") {
+                    return (
+                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "10px 6px" : "10px" }}>
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                          title={record.name}
+                        >
+                          {record.name}
+                        </div>
+                        <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 2 }}>{record.code}</div>
+                      </td>
+                    );
+                  }
+
+                  if (column.key === "weight_pct") {
+                    return (
+                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "10px 6px" : "10px", textAlign: "right", whiteSpace: "nowrap" }}>
+                        {record.weight_pct.toFixed(2)}%
+                      </td>
+                    );
+                  }
+
+                  if (column.key === "chg_pct") {
+                    return (
+                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "10px 6px" : "10px", textAlign: "right", whiteSpace: "nowrap" }}>
+                        {fmtPct(record.chg_pct)}
+                      </td>
+                    );
+                  }
+
+                  if (column.key === "chg") {
+                    return (
+                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "10px 6px" : "10px", textAlign: "right", whiteSpace: "nowrap" }}>
+                        {sign(record.chg)}{fmtNumber(record.chg)}
+                      </td>
+                    );
+                  }
+
+                  return (
+                    <td
+                      key={`${record.code}-${column.key}`}
+                      style={{
+                        padding: compact ? "10px 6px" : "10px",
+                        textAlign: "right",
+                        whiteSpace: "nowrap",
+                        color: tone.text,
+                        fontWeight: 800,
+                      }}
+                    >
+                      {fmtPt(record.contribution)}
+                    </td>
+                  );
+                })}
               </tr>
             );
           })}
@@ -635,6 +721,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
   });
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isCompactTable, setIsCompactTable] = useState(false);
   const [sortKey, setSortKey] = useState<"contribution" | "weight_pct" | "chg_pct">("contribution");
   const [selectedCode, setSelectedCode] = useState<string | null>(initialDayData?.records[0]?.code ?? null);
   const holidayMap = useMemo(() => {
@@ -662,11 +749,22 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
     ? selectedDate
     : displayDates[0] ?? "";
   const currentDateIndex = displayDates.indexOf(currentSelectedDate);
-  const prevDate = currentDateIndex > 0 ? displayDates[currentDateIndex - 1] : null;
-  const nextDate =
+  const prevDate =
     currentDateIndex >= 0 && currentDateIndex < displayDates.length - 1
       ? displayDates[currentDateIndex + 1]
       : null;
+  const nextDate = currentDateIndex > 0 ? displayDates[currentDateIndex - 1] : null;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mediaQuery = window.matchMedia("(max-width: 640px)");
+    const update = () => setIsCompactTable(mediaQuery.matches);
+
+    update();
+    mediaQuery.addEventListener("change", update);
+    return () => mediaQuery.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     if (!currentSelectedDate || loadedDays[currentSelectedDate]) {
@@ -719,11 +817,19 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
     if (!dayData) return [];
     return [...dayData.records]
       .sort((a, b) => b.weight_pct - a.weight_pct)
-      .slice(0, 5);
+      .slice(0, 4);
   }, [dayData]);
   const marketBreadth = dayData?.summary;
-  const totalFromRecords = dayData ? sumContribution(dayData.records) : 0;
-
+  const positiveTotal = dayData ? sumPositiveContribution(dayData.records) : 0;
+  const negativeTotal = dayData ? sumNegativeContribution(dayData.records) : 0;
+  const rankingMaxAbs = useMemo(() => {
+    if (!dayData) return 1;
+    return Math.max(
+      1,
+      ...dayData.top_positive.map((item) => Math.abs(item.contribution)),
+      ...dayData.top_negative.map((item) => Math.abs(item.contribution)),
+    );
+  }, [dayData]);
   useEffect(() => {
     if (!dayData) return;
     if (!selectedCode || !dayData.records.some((record) => record.code === selectedCode)) {
@@ -761,18 +867,31 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
             type="button"
             onClick={() => prevDate && setSelectedDate(prevDate)}
             disabled={!prevDate}
+            aria-label="前日へ移動"
             style={{
-              padding: "7px 10px",
+              width: 34,
+              height: 34,
+              padding: 0,
               borderRadius: 999,
               border: "1px solid var(--color-border-strong)",
-              background: prevDate ? "var(--color-bg-card)" : "var(--color-bg-input)",
-              color: prevDate ? "var(--color-text)" : "var(--color-text-muted)",
-              fontSize: 12,
-              fontWeight: 700,
+              background: prevDate ? "linear-gradient(180deg, #ffffff, #f3f6fb)" : "#e5e7eb",
+              color: prevDate ? "#0f172a" : "#94a3b8",
+              display: "grid",
+              placeItems: "center",
+              boxShadow: prevDate ? "0 1px 2px rgba(15,23,42,0.08)" : "none",
               cursor: prevDate ? "pointer" : "not-allowed",
+              transition: "transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease",
             }}
           >
-            前日
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path
+                d="M9.75 3.5L5.25 8L9.75 12.5"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </button>
           <select
             value={currentSelectedDate}
@@ -801,18 +920,31 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
             type="button"
             onClick={() => nextDate && setSelectedDate(nextDate)}
             disabled={!nextDate}
+            aria-label="翌日へ移動"
             style={{
-              padding: "7px 10px",
+              width: 34,
+              height: 34,
+              padding: 0,
               borderRadius: 999,
               border: "1px solid var(--color-border-strong)",
-              background: nextDate ? "var(--color-bg-card)" : "var(--color-bg-input)",
-              color: nextDate ? "var(--color-text)" : "var(--color-text-muted)",
-              fontSize: 12,
-              fontWeight: 700,
+              background: nextDate ? "linear-gradient(180deg, #ffffff, #f3f6fb)" : "#e5e7eb",
+              color: nextDate ? "#0f172a" : "#94a3b8",
+              display: "grid",
+              placeItems: "center",
+              boxShadow: nextDate ? "0 1px 2px rgba(15,23,42,0.08)" : "none",
               cursor: nextDate ? "pointer" : "not-allowed",
+              transition: "transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease",
             }}
           >
-            翌日
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path
+                d="M6.25 3.5L10.75 8L6.25 12.5"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </button>
           {dayData?.market_status ? (
             <span
@@ -831,28 +963,80 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
           ) : null}
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 6 }}>
-          <div style={{ background: "var(--color-bg-card)", borderRadius: 10, padding: 14, border: "1px solid var(--color-border)" }}>
-            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 6 }}>合計寄与</div>
-            <div style={{ fontSize: 28, fontWeight: 900, color: getBarTone(dayData?.summary.total_contribution ?? 0).text }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: isCompactTable ? "minmax(0, 1fr)" : "repeat(2, minmax(0, 1fr))",
+            gap: 6,
+          }}
+        >
+          <div
+            style={{
+              background: "var(--color-bg-card)",
+              borderRadius: 10,
+              padding: 12,
+              border: "1px solid var(--color-border)",
+              minHeight: 96,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+            }}
+          >
+            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 8 }}>合計寄与</div>
+            <div style={{ fontSize: 28, lineHeight: 1, fontWeight: 900, color: getBarTone(dayData?.summary.total_contribution ?? 0).text }}>
               {dayData ? fmtPt(dayData.summary.total_contribution) : "-"}
             </div>
           </div>
-          <div style={{ background: "var(--color-bg-card)", borderRadius: 10, padding: 14, border: "1px solid var(--color-border)" }}>
-            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 6 }}>上昇 / 下落 / 横ばい</div>
-            <div style={{ fontSize: 24, fontWeight: 900 }}>
+          <div
+            style={{
+              background: "var(--color-bg-card)",
+              borderRadius: 10,
+              padding: 12,
+              border: "1px solid var(--color-border)",
+              minHeight: 96,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+            }}
+          >
+            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 8 }}>上昇 / 下落 / 横ばい</div>
+            <div style={{ fontSize: 28, lineHeight: 1, fontWeight: 900 }}>
               {marketBreadth ? `${marketBreadth.advancers} / ${marketBreadth.decliners} / ${marketBreadth.unchanged}` : "-"}
             </div>
           </div>
-          <div style={{ background: "var(--color-bg-card)", borderRadius: 10, padding: 14, border: "1px solid var(--color-border)" }}>
-            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 6 }}>全銘柄寄与合計</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color: getBarTone(totalFromRecords).text }}>
-              {dayData ? fmtPt(totalFromRecords) : "-"}
+          <div
+            style={{
+              background: "var(--color-bg-card)",
+              borderRadius: 10,
+              padding: 12,
+              border: "1px solid var(--color-border)",
+              minHeight: 96,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+            }}
+          >
+            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 8 }}>上昇寄与合計</div>
+            <div style={{ fontSize: 28, lineHeight: 1, fontWeight: 900, color: getBarTone(positiveTotal).text }}>
+              {dayData ? fmtPt(positiveTotal) : "-"}
             </div>
           </div>
-          <div style={{ background: "var(--color-bg-card)", borderRadius: 10, padding: 14, border: "1px solid var(--color-border)" }}>
-            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 6 }}>対象銘柄数</div>
-            <div style={{ fontSize: 24, fontWeight: 900 }}>{dayData ? `${dayData.records.length}件` : "-"}</div>
+          <div
+            style={{
+              background: "var(--color-bg-card)",
+              borderRadius: 10,
+              padding: 12,
+              border: "1px solid var(--color-border)",
+              minHeight: 96,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+            }}
+          >
+            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 8 }}>下落寄与合計</div>
+            <div style={{ fontSize: 28, lineHeight: 1, fontWeight: 900, color: getBarTone(negativeTotal).text }}>
+              {dayData ? fmtPt(negativeTotal) : "-"}
+            </div>
           </div>
         </div>
       </section>
@@ -903,7 +1087,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
                   {fmtPt(selectedRecord.contribution)}
                 </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 4 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 4 }}>
                 <div style={{ background: "var(--color-bg-input)", border: "1px solid var(--color-border)", borderRadius: 6, padding: 10 }}>
                   <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginBottom: 4 }}>騰落率</div>
                   <div style={{ fontWeight: 800 }}>{fmtPct(selectedRecord.chg_pct)}</div>
@@ -916,17 +1100,13 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
                   <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginBottom: 4 }}>前日比</div>
                   <div style={{ fontWeight: 800 }}>{sign(selectedRecord.chg)}{fmtNumber(selectedRecord.chg)}</div>
                 </div>
-                <div style={{ background: "var(--color-bg-input)", border: "1px solid var(--color-border)", borderRadius: 6, padding: 10 }}>
-                  <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginBottom: 4 }}>みなし額面</div>
-                  <div style={{ fontWeight: 800 }}>{fmtPrice(selectedRecord.minashi)}</div>
-                </div>
               </div>
             </section>
           ) : null}
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6, marginBottom: 6 }}>
-            <RankingList title="上昇寄与ランキング" items={dayData.top_positive} />
-            <RankingList title="下落寄与ランキング" items={dayData.top_negative} />
+            <RankingList title="上昇寄与ランキング" items={dayData.top_positive} maxAbs={rankingMaxAbs} />
+            <RankingList title="下落寄与ランキング" items={dayData.top_negative} maxAbs={rankingMaxAbs} />
           </div>
 
           <section
@@ -946,9 +1126,17 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
                 </p>
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 6 }}>
+            <div style={{ display: "grid", gridTemplateColumns: isCompactTable ? "minmax(0, 1fr)" : "repeat(2, minmax(0, 1fr))", gap: 6 }}>
               {topWeight.map((record) => (
-                <div key={`weight-${record.code}`} style={{ borderRadius: 6, padding: 12, background: "var(--color-bg-input)", border: "1px solid var(--color-border)" }}>
+                <div
+                  key={`weight-${record.code}`}
+                  style={{
+                    borderRadius: 6,
+                    padding: 12,
+                    background: "var(--color-bg-input)",
+                    border: "1px solid var(--color-border)",
+                  }}
+                >
                   <div style={{ fontWeight: 800, marginBottom: 6 }}>{record.name}</div>
                   <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 10 }}>{record.code}</div>
                   <div style={{ fontSize: 24, fontWeight: 900 }}>{record.weight_pct.toFixed(2)}%</div>
@@ -1004,7 +1192,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
                 })}
               </div>
             </div>
-            <RecordsTable records={sortedRecords} />
+            <RecordsTable records={sortedRecords} compact={isCompactTable} />
           </section>
 
           <p style={{ marginTop: 16, fontSize: 11, color: "var(--color-text-muted)", lineHeight: 1.7 }}>
