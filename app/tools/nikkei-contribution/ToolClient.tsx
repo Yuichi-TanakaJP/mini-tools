@@ -52,6 +52,14 @@ function fmtPt(n: number) {
   return `${sign(n)}${n.toFixed(1)}pt`;
 }
 
+function fmtCompactPct(n: number) {
+  return `${sign(n)}${n.toFixed(1)}%`;
+}
+
+function fmtCompactWeight(n: number) {
+  return `${n.toFixed(1)}%`;
+}
+
 function fmtNumber(n: number) {
   return n.toLocaleString("ja-JP");
 }
@@ -597,11 +605,11 @@ function ImpactMap({ records, selectedCode, onSelect }: ImpactMapProps) {
 
 function RecordsTable({ records, compact }: { records: NikkeiContributionRecord[]; compact: boolean }) {
   const columns = [
-    { key: "name", label: "銘柄", mobile: true, width: compact ? "40%" : "38%", align: "left" as const },
-    { key: "weight_pct", label: "ウェイト", mobile: true, width: compact ? "18%" : "16%", align: "right" as const },
-    { key: "chg_pct", label: "騰落率", mobile: true, width: compact ? "18%" : "16%", align: "right" as const },
+    { key: "name", label: "銘柄", mobile: true, width: compact ? "34%" : "38%", align: "left" as const },
+    { key: "weight_pct", label: compact ? "比率" : "ウェイト", mobile: true, width: compact ? "17%" : "16%", align: "right" as const },
+    { key: "chg_pct", label: compact ? "騰落" : "騰落率", mobile: true, width: compact ? "21%" : "16%", align: "right" as const },
     { key: "chg", label: "前日比", mobile: false, width: "14%", align: "right" as const },
-    { key: "contribution", label: "寄与度", mobile: true, width: compact ? "24%" : "16%", align: "right" as const },
+    { key: "contribution", label: "寄与", mobile: true, width: compact ? "28%" : "16%", align: "right" as const },
   ].filter((column) => !compact || column.mobile);
 
   return (
@@ -611,7 +619,7 @@ function RecordsTable({ records, compact }: { records: NikkeiContributionRecord[
           width: "100%",
           minWidth: compact ? 0 : 720,
           borderCollapse: "collapse",
-          fontSize: compact ? 12 : 13,
+          fontSize: compact ? 11 : 13,
           tableLayout: "fixed",
         }}
       >
@@ -626,12 +634,12 @@ function RecordsTable({ records, compact }: { records: NikkeiContributionRecord[
               <th
                 key={column.key}
                 style={{
-                  padding: compact ? "8px 6px" : "8px 10px",
+                  padding: compact ? "6px 4px" : "8px 10px",
                   textAlign: column.align,
                   fontWeight: 700,
                   color: "var(--color-text-muted)",
                   whiteSpace: "nowrap",
-                  fontSize: 11,
+                  fontSize: compact ? 10 : 11,
                 }}
               >
                 {column.label}
@@ -647,7 +655,7 @@ function RecordsTable({ records, compact }: { records: NikkeiContributionRecord[
                 {columns.map((column) => {
                   if (column.key === "name") {
                     return (
-                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "10px 6px" : "10px" }}>
+                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "8px 4px" : "10px" }}>
                         <div
                           style={{
                             fontWeight: 700,
@@ -659,30 +667,30 @@ function RecordsTable({ records, compact }: { records: NikkeiContributionRecord[
                         >
                           {record.name}
                         </div>
-                        <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 2 }}>{record.code}</div>
+                        <div style={{ fontSize: compact ? 10 : 11, color: "var(--color-text-muted)", marginTop: 2 }}>{record.code}</div>
                       </td>
                     );
                   }
 
                   if (column.key === "weight_pct") {
                     return (
-                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "10px 6px" : "10px", textAlign: "right", whiteSpace: "nowrap" }}>
-                        {record.weight_pct.toFixed(2)}%
+                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "8px 4px" : "10px", textAlign: "right", whiteSpace: "nowrap" }}>
+                        {compact ? fmtCompactWeight(record.weight_pct) : `${record.weight_pct.toFixed(2)}%`}
                       </td>
                     );
                   }
 
                   if (column.key === "chg_pct") {
                     return (
-                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "10px 6px" : "10px", textAlign: "right", whiteSpace: "nowrap" }}>
-                        {fmtPct(record.chg_pct)}
+                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "8px 4px" : "10px", textAlign: "right", whiteSpace: "nowrap" }}>
+                        {compact ? fmtCompactPct(record.chg_pct) : fmtPct(record.chg_pct)}
                       </td>
                     );
                   }
 
                   if (column.key === "chg") {
                     return (
-                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "10px 6px" : "10px", textAlign: "right", whiteSpace: "nowrap" }}>
+                      <td key={`${record.code}-${column.key}`} style={{ padding: compact ? "8px 4px" : "10px", textAlign: "right", whiteSpace: "nowrap" }}>
                         {sign(record.chg)}{fmtNumber(record.chg)}
                       </td>
                     );
@@ -692,7 +700,7 @@ function RecordsTable({ records, compact }: { records: NikkeiContributionRecord[
                     <td
                       key={`${record.code}-${column.key}`}
                       style={{
-                        padding: compact ? "10px 6px" : "10px",
+                        padding: compact ? "8px 4px" : "10px",
                         textAlign: "right",
                         whiteSpace: "nowrap",
                         color: tone.text,
@@ -966,75 +974,75 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: isCompactTable ? "minmax(0, 1fr)" : "repeat(2, minmax(0, 1fr))",
-            gap: 6,
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gap: isCompactTable ? 4 : 6,
           }}
         >
           <div
             style={{
               background: "var(--color-bg-card)",
-              borderRadius: 10,
-              padding: 12,
+              borderRadius: isCompactTable ? 8 : 10,
+              padding: isCompactTable ? 10 : 12,
               border: "1px solid var(--color-border)",
-              minHeight: 96,
+              minHeight: isCompactTable ? 76 : 96,
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
             }}
           >
-            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 8 }}>合計寄与</div>
-            <div style={{ fontSize: 28, lineHeight: 1, fontWeight: 900, color: getBarTone(dayData?.summary.total_contribution ?? 0).text }}>
+            <div style={{ fontSize: isCompactTable ? 11 : 12, color: "var(--color-text-muted)", marginBottom: isCompactTable ? 6 : 8 }}>合計寄与</div>
+            <div style={{ fontSize: isCompactTable ? 22 : 28, lineHeight: 1, fontWeight: 900, color: getBarTone(dayData?.summary.total_contribution ?? 0).text }}>
               {dayData ? fmtPt(dayData.summary.total_contribution) : "-"}
             </div>
           </div>
           <div
             style={{
               background: "var(--color-bg-card)",
-              borderRadius: 10,
-              padding: 12,
+              borderRadius: isCompactTable ? 8 : 10,
+              padding: isCompactTable ? 10 : 12,
               border: "1px solid var(--color-border)",
-              minHeight: 96,
+              minHeight: isCompactTable ? 76 : 96,
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
             }}
           >
-            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 8 }}>上昇 / 下落 / 横ばい</div>
-            <div style={{ fontSize: 28, lineHeight: 1, fontWeight: 900 }}>
+            <div style={{ fontSize: isCompactTable ? 11 : 12, color: "var(--color-text-muted)", marginBottom: isCompactTable ? 6 : 8 }}>上昇 / 下落 / 横ばい</div>
+            <div style={{ fontSize: isCompactTable ? 22 : 28, lineHeight: 1, fontWeight: 900 }}>
               {marketBreadth ? `${marketBreadth.advancers} / ${marketBreadth.decliners} / ${marketBreadth.unchanged}` : "-"}
             </div>
           </div>
           <div
             style={{
               background: "var(--color-bg-card)",
-              borderRadius: 10,
-              padding: 12,
+              borderRadius: isCompactTable ? 8 : 10,
+              padding: isCompactTable ? 10 : 12,
               border: "1px solid var(--color-border)",
-              minHeight: 96,
+              minHeight: isCompactTable ? 76 : 96,
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
             }}
           >
-            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 8 }}>上昇寄与合計</div>
-            <div style={{ fontSize: 28, lineHeight: 1, fontWeight: 900, color: getBarTone(positiveTotal).text }}>
+            <div style={{ fontSize: isCompactTable ? 11 : 12, color: "var(--color-text-muted)", marginBottom: isCompactTable ? 6 : 8 }}>上昇寄与合計</div>
+            <div style={{ fontSize: isCompactTable ? 22 : 28, lineHeight: 1, fontWeight: 900, color: getBarTone(positiveTotal).text }}>
               {dayData ? fmtPt(positiveTotal) : "-"}
             </div>
           </div>
           <div
             style={{
               background: "var(--color-bg-card)",
-              borderRadius: 10,
-              padding: 12,
+              borderRadius: isCompactTable ? 8 : 10,
+              padding: isCompactTable ? 10 : 12,
               border: "1px solid var(--color-border)",
-              minHeight: 96,
+              minHeight: isCompactTable ? 76 : 96,
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
             }}
           >
-            <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 8 }}>下落寄与合計</div>
-            <div style={{ fontSize: 28, lineHeight: 1, fontWeight: 900, color: getBarTone(negativeTotal).text }}>
+            <div style={{ fontSize: isCompactTable ? 11 : 12, color: "var(--color-text-muted)", marginBottom: isCompactTable ? 6 : 8 }}>下落寄与合計</div>
+            <div style={{ fontSize: isCompactTable ? 22 : 28, lineHeight: 1, fontWeight: 900, color: getBarTone(negativeTotal).text }}>
               {dayData ? fmtPt(negativeTotal) : "-"}
             </div>
           </div>
@@ -1126,21 +1134,21 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
                 </p>
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: isCompactTable ? "minmax(0, 1fr)" : "repeat(2, minmax(0, 1fr))", gap: 6 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: isCompactTable ? 4 : 6 }}>
               {topWeight.map((record) => (
                 <div
                   key={`weight-${record.code}`}
                   style={{
-                    borderRadius: 6,
-                    padding: 12,
+                    borderRadius: isCompactTable ? 5 : 6,
+                    padding: isCompactTable ? 8 : 10,
                     background: "var(--color-bg-input)",
                     border: "1px solid var(--color-border)",
                   }}
                 >
-                  <div style={{ fontWeight: 800, marginBottom: 6 }}>{record.name}</div>
-                  <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 10 }}>{record.code}</div>
-                  <div style={{ fontSize: 24, fontWeight: 900 }}>{record.weight_pct.toFixed(2)}%</div>
-                  <div style={{ marginTop: 8, fontSize: 12, color: getBarTone(record.contribution).text }}>
+                  <div style={{ fontWeight: 800, marginBottom: 3, fontSize: isCompactTable ? 12 : 14, lineHeight: 1.3 }}>{record.name}</div>
+                  <div style={{ fontSize: isCompactTable ? 10 : 11, color: "var(--color-text-muted)", marginBottom: isCompactTable ? 6 : 8 }}>{record.code}</div>
+                  <div style={{ fontSize: isCompactTable ? 18 : 21, fontWeight: 900, lineHeight: 1.05 }}>{record.weight_pct.toFixed(2)}%</div>
+                  <div style={{ marginTop: isCompactTable ? 5 : 6, fontSize: isCompactTable ? 10 : 11, color: getBarTone(record.contribution).text }}>
                     寄与度 {fmtPt(record.contribution)}
                   </div>
                 </div>
