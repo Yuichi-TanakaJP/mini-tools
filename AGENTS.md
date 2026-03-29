@@ -15,6 +15,21 @@
 - `next-env.d.ts` などの環境起因ファイルは、意図がない限りコミットしない。
 - コミット前に最低 `npm run lint` を実行する。
 
+## Task Request Format
+
+- 新しい依頼は、可能な限り先頭に次のヘッダー形式を付ける。
+
+```text
+[repo:<repo_name>] [type:<report|fix|review|investigation|docs>] [target:<artifact_or_scope>] [action:<specific_work>]
+```
+
+- 例:
+  - `[repo:mini-tools] [type:fix] [target:market calendar screen] [action:resolve loading flicker]`
+  - `[repo:mini-tools] [type:review] [target:PR #123] [action:code review]`
+- 依頼文がこの形式で始まっていない場合でも、作業前に内容をこの構造へ正規化して解釈する。
+- 初回応答では、正規化したヘッダーを先頭に短く明示してから作業を進める。
+- 日本語の簡略形式でもよいが、会話一覧で判別しやすくするため、`repo` / `type` / `target` / `action` が分かる形を優先する。
+
 ## 1. 作業開始
 
 ```powershell
