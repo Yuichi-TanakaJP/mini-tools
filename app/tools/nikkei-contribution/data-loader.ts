@@ -2,9 +2,6 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { NikkeiContributionDayData, NikkeiContributionManifest } from "./types";
 
-const DEFAULT_EXTERNAL_BASE_URL =
-  "https://pub-b1f1de37018549c8a5ae3e6f9a7a1c6c.r2.dev/nikkei-contribution";
-
 const EMPTY_MANIFEST: NikkeiContributionManifest = {
   dates: [],
   latest_date: null,
@@ -14,16 +11,8 @@ function getDataDir() {
   return path.join(process.cwd(), "app/tools/nikkei-contribution/data");
 }
 
-function getExternalBaseUrl() {
-  const baseUrl = (
-    process.env.NIKKEI_CONTRIBUTION_DATA_BASE_URL?.trim().replace(/\/+$/, "") ??
-    DEFAULT_EXTERNAL_BASE_URL
-  ).trim();
-  if (!baseUrl) {
-    return [];
-  }
-
-  return baseUrl.endsWith("/nikkei-contribution") ? [baseUrl] : [baseUrl, `${baseUrl}/nikkei-contribution`];
+function getApiBaseUrl() {
+  return process.env.MARKET_INFO_API_BASE_URL?.trim().replace(/\/+$/, "") ?? "";
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -65,21 +54,17 @@ async function loadLocalDayData(dateStr: string): Promise<NikkeiContributionDayD
 }
 
 export async function loadContributionManifest(): Promise<NikkeiContributionManifest> {
-  const baseUrls = getExternalBaseUrl();
+  const apiBase = getApiBaseUrl();
 
-  if (baseUrls.length === 0) {
+  if (!apiBase) {
     return loadLocalManifest();
   }
 
-  for (const baseUrl of baseUrls) {
-    try {
-      return await fetchJson<NikkeiContributionManifest>(`${baseUrl}/nikkei_contribution_manifest.json`);
-    } catch {
-      continue;
-    }
+  try {
+    return await fetchJson<NikkeiContributionManifest>(`${apiBase}/nikkei/manifest`);
+  } catch {
+    return loadLocalManifest();
   }
-
-  return loadLocalManifest();
 }
 
 export async function loadContributionDayData(dateStr: string): Promise<NikkeiContributionDayData | null> {
@@ -87,19 +72,15 @@ export async function loadContributionDayData(dateStr: string): Promise<NikkeiCo
     return null;
   }
 
-  const baseUrls = getExternalBaseUrl();
+  const apiBase = getApiBaseUrl();
 
-  if (baseUrls.length === 0) {
+  if (!apiBase) {
     return loadLocalDayData(dateStr);
   }
 
-  for (const baseUrl of baseUrls) {
-    try {
-      return await fetchJson<NikkeiContributionDayData>(`${baseUrl}/nikkei_contribution_${dateStr}.json`);
-    } catch {
-      continue;
-    }
+  try {
+    return await fetchJson<NikkeiContributionDayData>(`${apiBase}/nikkei/${dateStr}`);
+  } catch {
+    return loadLocalDayData(dateStr);
   }
-
-  return loadLocalDayData(dateStr);
 }
