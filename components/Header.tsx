@@ -87,7 +87,12 @@ export default function Header({ title, subtitle }: HeaderProps) {
             </div>
           )}
 
-          <ShareButtons text="mini-tools" methods={["qr"]} />
+          <ShareButtons
+            text="mini-tools"
+            methods={["qr"]}
+            tone="light"
+            inline
+          />
         </div>
 
         {/* アクセントライン */}

@@ -15,6 +15,8 @@ type Props = {
   size?: number;
   iconsOnly?: boolean;
   label?: string;
+  tone?: "default" | "light";
+  inline?: boolean;
 };
 
 const DEFAULT_METHODS: ShareMethod[] = ["x", "facebook", "email", "copy", "qr"];
@@ -26,6 +28,8 @@ export default function ShareButtons({
   size = 44,
   iconsOnly = true,
   label,
+  tone = "default",
+  inline = false,
 }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -212,7 +216,20 @@ export default function ShareButtons({
   };
 
   return (
-    <div className="share-buttons-root" style={{ marginTop: 12 }}>
+    <div
+      className="share-buttons-root"
+      style={
+        {
+          marginTop: inline ? 0 : 12,
+          "--share-button-color":
+            tone === "light" ? "rgba(255,255,255,0.88)" : "rgba(0,0,0,0.78)",
+          "--share-button-focus-ring":
+            tone === "light"
+              ? "0 0 0 3px rgba(110,168,254,0.45)"
+              : "0 0 0 3px rgba(37,84,255,0.28)",
+        } as React.CSSProperties
+      }
+    >
       {label ? (
         <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 8 }}>
           {label}
@@ -315,7 +332,7 @@ function iconButtonStyle(size: number): React.CSSProperties {
     alignItems: "center",
     justifyContent: "center",
     textDecoration: "none",
-    color: "rgba(0,0,0,0.78)",
+    color: "var(--share-button-color, rgba(0,0,0,0.78))",
     cursor: "pointer",
     userSelect: "none",
     transition: "transform .12s ease, opacity .12s ease",
@@ -329,12 +346,11 @@ const overlayStyle: React.CSSProperties = {
   background: "rgba(0,0,0,0.55)",
   display: "flex",
   justifyContent: "center",
-  alignItems: "flex-start", // center → flex-start
-  paddingTop: "var(--header-h, 88px)",
+  alignItems: "center",
   paddingLeft: "16px",
   paddingRight: "16px",
   paddingBottom: "16px",
-  overflowY: "auto", // 低い画面でも操作できる
+  overflowY: "auto",
   zIndex: 1000,
 };
 
@@ -371,7 +387,7 @@ const css = `
   .share-buttons-root button:focus,
   .share-buttons-root button:focus-visible {
     outline: none;
-    box-shadow: none;
+    box-shadow: var(--share-button-focus-ring, 0 0 0 3px rgba(37,84,255,0.28));
   }
 
   @media (hover: hover) and (pointer: fine) {
