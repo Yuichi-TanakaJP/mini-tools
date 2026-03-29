@@ -1,7 +1,9 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import type { Metadata } from "next";
 import ToolClient from "./ToolClient";
 import { loadRankingDayData, loadRankingManifest } from "./data-loader";
-import type { RankingPageData } from "./types";
+import type { JpxMarketClosedResponse, RankingPageData } from "./types";
 
 export const metadata: Metadata = {
   title: "株価ランキング | mini-tools",
@@ -12,11 +14,50 @@ export const metadata: Metadata = {
   },
 };
 
+function getDayOfWeek(dateStr: string) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d).getDay();
+}
+
+function isWeekendDate(dateStr: string) {
+  const day = getDayOfWeek(dateStr);
+  return day === 0 || day === 6;
+}
+
 async function loadData(): Promise<RankingPageData> {
   const manifest = await loadRankingManifest();
-  const initialDayData = await loadRankingDayData(manifest.latest);
+  let holidays: JpxMarketClosedResponse | null = null;
 
-  return { manifest, initialDayData };
+  try {
+    const holidayPath = path.join(
+      process.cwd(),
+      "app/tools/earnings-calendar/data/jpx_market_closed_20260101_to_20271231.json",
+    );
+    const holidayRaw = await readFile(holidayPath, "utf-8");
+    holidays = JSON.parse(holidayRaw) as JpxMarketClosedResponse;
+  } catch {
+    holidays = null;
+  }
+
+  const holidayMap = new Map((holidays?.days ?? []).map((day) => [day.date, day]));
+  const visibleDates = manifest.dates.filter((date) => {
+    if (holidayMap.get(date)?.market_closed) {
+      return false;
+    }
+
+    return !isWeekendDate(date);
+  });
+  const latest = visibleDates[0] ?? manifest.latest;
+  const initialDayData = latest ? await loadRankingDayData(latest) : null;
+
+  return {
+    manifest: {
+      ...manifest,
+      dates: visibleDates,
+      latest,
+    },
+    initialDayData,
+  };
 }
 
 export default async function Page() {

@@ -27,6 +27,18 @@ export type RankingManifest = {
   latest: string;
 };
 
+export type JpxMarketClosedDay = {
+  date: string;
+  label: string;
+  market_closed: boolean;
+};
+
+export type JpxMarketClosedResponse = {
+  from: string;
+  to: string;
+  days: JpxMarketClosedDay[];
+};
+
 export type RankingPageData = {
   manifest: RankingManifest;
   initialDayData: RankingDayData | null;

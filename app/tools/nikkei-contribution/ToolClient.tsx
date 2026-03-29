@@ -836,9 +836,10 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
 
       <section
         style={{
-          background: "linear-gradient(135deg, rgba(37,84,255,0.08), rgba(96,165,250,0.03))",
-          border: "1px solid var(--color-border)",
-          borderRadius: 10,
+          background: "#fff",
+          border: "1px solid rgba(15, 23, 42, 0.04)",
+          borderRadius: 22,
+          boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
           padding: 16,
           marginBottom: 16,
           display: "flex",
@@ -846,8 +847,15 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
           gap: 8,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, fontWeight: 800, color: "var(--color-text-muted)", minWidth: 40 }}>日付</span>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            flexWrap: "wrap",
+          }}
+        >
           <button
             type="button"
             onClick={() => prevDate && setSelectedDate(prevDate)}
@@ -858,14 +866,14 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
               height: 34,
               padding: 0,
               borderRadius: 999,
-              border: "1px solid var(--color-border-strong)",
-              background: prevDate ? "linear-gradient(180deg, #ffffff, #f3f6fb)" : "#e5e7eb",
-              color: prevDate ? "#0f172a" : "#94a3b8",
+              border: "1px solid rgba(37, 84, 255, 0.12)",
+              background: "#f5f8ff",
+              color: prevDate ? "#2554ff" : "#b9c2d0",
               display: "grid",
               placeItems: "center",
-              boxShadow: prevDate ? "0 1px 2px rgba(15,23,42,0.08)" : "none",
-              cursor: prevDate ? "pointer" : "not-allowed",
-              transition: "transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease",
+              cursor: prevDate ? "pointer" : "default",
+              opacity: prevDate ? 1 : 0.45,
+              WebkitTapHighlightColor: "transparent",
             }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -884,11 +892,15 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
             disabled={displayDates.length === 0}
             style={{
               padding: "8px 12px",
+              minWidth: 210,
               borderRadius: 10,
-              border: "1.5px solid var(--color-border-strong)",
-              background: "var(--color-bg-card)",
-              color: "var(--color-text)",
+              border: "1.5px solid rgba(148, 163, 184, 0.35)",
+              background: "#fff",
+              color: "#0f172a",
               fontSize: 13,
+              fontWeight: 700,
+              textAlignLast: "center",
+              WebkitTapHighlightColor: "transparent",
             }}
           >
             {displayDates.length === 0 ? (
@@ -911,14 +923,14 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
               height: 34,
               padding: 0,
               borderRadius: 999,
-              border: "1px solid var(--color-border-strong)",
-              background: nextDate ? "linear-gradient(180deg, #ffffff, #f3f6fb)" : "#e5e7eb",
-              color: nextDate ? "#0f172a" : "#94a3b8",
+              border: "1px solid rgba(37, 84, 255, 0.12)",
+              background: "#f5f8ff",
+              color: nextDate ? "#2554ff" : "#b9c2d0",
               display: "grid",
               placeItems: "center",
-              boxShadow: nextDate ? "0 1px 2px rgba(15,23,42,0.08)" : "none",
-              cursor: nextDate ? "pointer" : "not-allowed",
-              transition: "transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease",
+              cursor: nextDate ? "pointer" : "default",
+              opacity: nextDate ? 1 : 0.45,
+              WebkitTapHighlightColor: "transparent",
             }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
