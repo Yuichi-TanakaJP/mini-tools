@@ -14,6 +14,8 @@
 - `gh issue create` / `gh issue comment` / `gh pr create` / `gh pr comment` で複数行本文を渡すときは、CLI の `--body "..."` に直接改行を書かず、本文ファイル（例: 一時 `.md`）を作って `--body-file` で渡す。
 - `next-env.d.ts` などの環境起因ファイルは、意図がない限りコミットしない。
 - コミット前に最低 `npm run lint` を実行する。
+- 会話・レビュー・実装中に仕様や運用判断が固まった場合は、コード変更だけで終わらせず docs に判断を残す。
+- docs の残し方は `docs/docs-writing-workflow.md` を参照し、少なくとも `docs/decision-log/` への記録要否を毎回確認する。
 
 ## Task Request Format
 
