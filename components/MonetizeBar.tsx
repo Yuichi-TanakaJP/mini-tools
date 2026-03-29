@@ -14,7 +14,7 @@ export default function MonetizeBar() {
   };
 
   return (
-    <div style={styles.wrap}>
+    <div className="monetize-bar-root" style={styles.wrap}>
       <a
         href={donateUrl}
         target="_blank"
@@ -69,26 +69,25 @@ const styles: Record<string, React.CSSProperties> = {
 };
 
 const css = `
-  /* aタグ由来の枠・丸・フォーカスを無効化 */
-  a {
-    background: transparent !important;
-    border: none !important;
-    outline: none !important;
-    box-shadow: none !important;
+  .monetize-bar-root a {
+    background: transparent;
+    border: none;
+    outline: none;
+    box-shadow: none;
   }
-  a:focus,
-  a:focus-visible {
-    outline: none !important;
-    box-shadow: none !important;
+  .monetize-bar-root a:focus,
+  .monetize-bar-root a:focus-visible {
+    outline: none;
+    box-shadow: none;
   }
 
   @media (hover: hover) and (pointer: fine) {
-    a[aria-label="OFUSEで応援する"]:hover {
+    .monetize-bar-root a[aria-label="OFUSEで応援する"]:hover {
       opacity: 0.95;
       text-decoration: underline;
       text-underline-offset: 3px;
     }
-    a[aria-label="OFUSEで応援する"]:active {
+    .monetize-bar-root a[aria-label="OFUSEで応援する"]:active {
       opacity: 0.85;
     }
   }
