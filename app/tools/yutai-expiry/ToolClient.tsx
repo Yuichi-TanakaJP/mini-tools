@@ -239,7 +239,7 @@ export default function ToolClient() {
   ) => {
     const prev = getBenefitsSnapshot();
     const next =
-      typeof updater === "function" ? (updater as any)(prev) : updater;
+      typeof updater === "function" ? updater(prev) : updater;
     writeBenefits(next);
   };
 

@@ -212,7 +212,7 @@ export default function ShareButtons({
   };
 
   return (
-    <div style={{ marginTop: 12 }}>
+    <div className="share-buttons-root" style={{ marginTop: 12 }}>
       {label ? (
         <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 8 }}>
           {label}
@@ -356,38 +356,36 @@ const modalBtnStyle: React.CSSProperties = {
 };
 
 const css = `
+  .share-buttons-root a,
+  .share-buttons-root button {
+    background: transparent;
+    border: none;
+    outline: none;
+    box-shadow: none;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  .share-buttons-root a:focus,
+  .share-buttons-root a:focus-visible,
+  .share-buttons-root button:focus,
+  .share-buttons-root button:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
   @media (hover: hover) and (pointer: fine) {
-    a[aria-label*="でシェア"]:hover,
-    button[aria-label*="コピー"]:hover,
-    button[aria-label*="QR"]:hover {
+    .share-buttons-root a[aria-label*="でシェア"]:hover,
+    .share-buttons-root button[aria-label*="コピー"]:hover,
+    .share-buttons-root button[aria-label*="QR"]:hover {
       transform: translateY(-1px);
       opacity: 1;
     }
-    a[aria-label*="でシェア"]:active,
-    button[aria-label*="コピー"]:active,
-    button[aria-label*="QR"]:active {
+    .share-buttons-root a[aria-label*="でシェア"]:active,
+    .share-buttons-root button[aria-label*="コピー"]:active,
+    .share-buttons-root button[aria-label*="QR"]:active {
       transform: translateY(0px);
       opacity: 0.85;
     }
-  }
-
-  a {
-    background: transparent !important;
-    border: none !important;
-    outline: none !important;
-    box-shadow: none !important;
-  }
-
-  a:focus,
-  a:focus-visible {
-    outline: none !important;
-    box-shadow: none !important;
-  }
-
-  button {
-    appearance: none;
-    -webkit-appearance: none;
-    border: none;
-    background: transparent;
   }
 `;

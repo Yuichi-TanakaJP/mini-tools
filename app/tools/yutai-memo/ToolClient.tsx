@@ -194,7 +194,7 @@ export default function ToolClient() {
   const [monthFilter, setMonthFilter] = useState<number | "all">(
     () => toJstYearMonth(new Date()).month
   );
-  const [tagFilter, setTagFilter] = useState<string | "all">("all");
+  const [tagFilter, setTagFilter] = useState<string>("all");
   const [sortState, setSortState] = useState<SortState>(() => loadSortState());
   const [sortControlsOpen, setSortControlsOpen] = useState(false);
   const [bulkActionsOpen, setBulkActionsOpen] = useState(false);
@@ -1017,7 +1017,7 @@ export default function ToolClient() {
               value={tagFilter}
               onChange={(e) => {
                 clearSelection();
-                setTagFilter(e.target.value as any);
+                setTagFilter(e.target.value);
               }}
             >
               <option value="all">タグ: すべて</option>

@@ -81,7 +81,6 @@ export function normalizeLegacyToV2(raw: unknown): BenefitItemV2[] {
 
       const amountYen = (() => {
         if (typeof obj.amount === "number") return obj.amount;
-        if (typeof obj.amount === "string") return toNumberOrNull(obj.amount);
         // v1で amount が "¥1,000" みたいに入ってる可能性を拾う
         if (typeof obj.amount === "string") {
           const cleaned = obj.amount.replace(/[^\d.-]/g, "");
