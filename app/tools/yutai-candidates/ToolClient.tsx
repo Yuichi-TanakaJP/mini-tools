@@ -333,46 +333,32 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                         <p style={styles.summaryText}>{item.benefit_summary}</p>
                       )}
 
-                      <div style={styles.tagRow}>
-                        {item.benefit_category_tags.length > 0 ? (
-                          item.benefit_category_tags.map((tag) => (
-                            <span key={tag} style={styles.tag}>{tag}</span>
-                          ))
-                        ) : (
-                          <span style={styles.mutedText}>カテゴリなし</span>
-                        )}
-                      </div>
-
                       <div style={styles.cardFooter}>
-                        <div style={styles.linkRow}>
-                          <a href={item.minkabu_yutai_url} target="_blank" rel="noopener noreferrer" style={styles.linkButton}>
-                            みんかぶ ↗
+                        <a href={item.minkabu_yutai_url} target="_blank" rel="noopener noreferrer" style={styles.linkButton}>
+                          みんかぶ ↗
+                        </a>
+                        {item.official_benefit_url ? (
+                          <a href={item.official_benefit_url} target="_blank" rel="noopener noreferrer" style={styles.linkButton}>
+                            企業サイト ↗
                           </a>
-                          {item.official_benefit_url ? (
-                            <a href={item.official_benefit_url} target="_blank" rel="noopener noreferrer" style={styles.linkButton}>
-                              企業サイト ↗
-                            </a>
-                          ) : (
-                            <span style={styles.linkStatusChip}>{getOfficialLinkLabel(item)}</span>
-                          )}
-                        </div>
-                        <div style={styles.actions}>
-                          <button
-                            type="button"
-                            onClick={() => togglePick(item.code)}
-                            style={picked ? styles.secondaryButtonActive : styles.secondaryButton}
-                          >
-                            {picked ? "★ ピック解除" : "☆ ピック"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleAdd(item)}
-                            style={added ? styles.disabledButton : styles.primaryButton}
-                            disabled={added}
-                          >
-                            {added ? "✓ 追加済み" : "優待メモへ追加"}
-                          </button>
-                        </div>
+                        ) : (
+                          <span style={styles.linkStatusChip}>{getOfficialLinkLabel(item)}</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => togglePick(item.code)}
+                          style={picked ? styles.secondaryButtonActive : styles.secondaryButton}
+                        >
+                          {picked ? "★ ピック解除" : "ピック"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleAdd(item)}
+                          style={added ? styles.disabledButton : styles.primaryButton}
+                          disabled={added}
+                        >
+                          {added ? "✓ 追加済み" : "優待メモ追加"}
+                        </button>
                       </div>
                     </article>
                   );
@@ -411,10 +397,13 @@ const baseMonthChip: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  gap: 4,
-  padding: "10px 8px",
-  borderRadius: 14,
+  justifyContent: "center",
+  gap: 2,
+  minHeight: 42,
+  padding: "4px 8px",
+  borderRadius: 10,
   fontSize: 13,
+  lineHeight: 1,
 };
 
 const baseCard: React.CSSProperties = {
@@ -426,11 +415,14 @@ const baseCard: React.CSSProperties = {
 };
 
 const baseSecondaryButton: React.CSSProperties = {
-  padding: "8px 14px",
+  padding: "6px 14px",
   borderRadius: 10,
   fontSize: 12,
   fontWeight: 700,
   cursor: "pointer",
+  minWidth: 0,
+  whiteSpace: "nowrap",
+  textAlign: "center",
 };
 
 const styles: Record<string, React.CSSProperties> = {
@@ -509,8 +501,8 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid rgba(15,23,42,0.06)",
   },
   monthSection: {
-    marginBottom: 20,
-    paddingBottom: 20,
+    marginBottom: 16,
+    paddingBottom: 16,
     borderBottom: "1px solid rgba(15,23,42,0.06)",
   },
   sectionLabel: {
@@ -523,8 +515,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
   monthChipList: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))",
-    gap: 8,
+    gridTemplateColumns: "repeat(auto-fill, minmax(56px, 1fr))",
+    gap: 4,
   },
   monthChip: {
     ...baseMonthChip,
@@ -541,7 +533,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: INDIGO,
     fontWeight: 800,
     cursor: "default",
-    boxShadow: "0 0 0 3px rgba(79,70,229,0.08)",
+    boxShadow: "0 0 0 2px rgba(79,70,229,0.08)",
   },
   monthChipCount: {
     fontSize: 10,
@@ -673,6 +665,7 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     gap: 12,
     alignItems: "flex-start",
+    flexWrap: "nowrap",
   },
   cardMain: {
     flex: 1,
@@ -682,13 +675,19 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     alignItems: "center",
     gap: 8,
-    flexWrap: "wrap",
+    flexWrap: "nowrap",
+    minWidth: 0,
   },
   companyName: {
+    flex: "1 1 auto",
+    minWidth: 0,
     fontSize: 17,
     fontWeight: 800,
     lineHeight: 1.3,
     color: "#0f172a",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
   },
   codeChip: {
     display: "inline-flex",
@@ -735,9 +734,10 @@ const styles: Record<string, React.CSSProperties> = {
   stateChips: {
     display: "flex",
     gap: 6,
-    flexWrap: "wrap",
+    flexWrap: "nowrap",
     justifyContent: "flex-end",
     flexShrink: 0,
+    maxWidth: "100%",
   },
   pickedChip: {
     display: "inline-flex",
@@ -779,47 +779,42 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12,
   },
   cardFooter: {
-    display: "flex",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
+    display: "grid",
+    gridTemplateColumns: "minmax(0,0.8fr) minmax(0,1fr) minmax(0,1.15fr) minmax(0,1.35fr)",
     alignItems: "center",
-    gap: 10,
-    paddingTop: 10,
-    borderTop: "1px solid rgba(15,23,42,0.06)",
-    marginTop: 2,
-  },
-  linkRow: {
-    display: "flex",
     gap: 8,
-    flexWrap: "wrap",
-    alignItems: "center",
+    paddingTop: 6,
+    borderTop: "1px solid rgba(15,23,42,0.06)",
+    marginTop: 0,
   },
   linkButton: {
     display: "inline-flex",
-    padding: "5px 10px",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: "3px 10px",
     borderRadius: 8,
     background: "#f1f5f9",
     color: "#475569",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 700,
     textDecoration: "none",
     border: "1px solid rgba(15,23,42,0.08)",
+    minWidth: 0,
+    whiteSpace: "nowrap",
   },
   linkStatusChip: {
     display: "inline-flex",
     alignItems: "center",
+    justifyContent: "center",
     padding: "4px 8px",
     borderRadius: 999,
     background: "#f8fafc",
     color: "#94a3b8",
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: 700,
     border: "1px solid rgba(15,23,42,0.06)",
-  },
-  actions: {
-    display: "flex",
-    gap: 8,
-    flexWrap: "wrap",
+    minWidth: 0,
+    whiteSpace: "nowrap",
   },
   secondaryButton: {
     ...baseSecondaryButton,
@@ -827,34 +822,44 @@ const styles: Record<string, React.CSSProperties> = {
     background: "#ffffff",
     color: "#374151",
     boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+    width: "100%",
   },
   secondaryButtonActive: {
     ...baseSecondaryButton,
     border: "1px solid rgba(245,158,11,0.25)",
     background: "#fffbeb",
     color: "#92400e",
+    width: "100%",
   },
   primaryButton: {
     border: "none",
     background: `linear-gradient(135deg, ${INDIGO} 0%, ${INDIGO_MID} 100%)`,
     color: "#ffffff",
-    padding: "8px 16px",
+    padding: "6px 16px",
     borderRadius: 10,
     fontSize: 12,
     fontWeight: 800,
     cursor: "pointer",
     boxShadow: "0 2px 8px rgba(79,70,229,0.30)",
+    minWidth: 0,
+    width: "100%",
+    whiteSpace: "nowrap",
+    textAlign: "center",
   },
   disabledButton: {
     border: "none",
     background: "#e0e7ff",
     color: "#6366f1",
-    padding: "8px 16px",
+    padding: "6px 16px",
     borderRadius: 10,
     fontSize: 12,
     fontWeight: 800,
     cursor: "default",
     opacity: 0.7,
+    minWidth: 0,
+    width: "100%",
+    whiteSpace: "nowrap",
+    textAlign: "center",
   },
   notice: {
     position: "sticky",
