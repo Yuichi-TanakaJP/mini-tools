@@ -68,6 +68,15 @@ function formatUpdatedAt(key: string) {
   return `${year}/${String(month).padStart(2, "0")}/${String(day).padStart(2, "0")}`;
 }
 
+function todayJstKey() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
 function addMonths(year: number, month: number, offset: number) {
   const base = new Date(Date.UTC(year, month - 1 + offset, 1));
   return {
@@ -160,6 +169,7 @@ function buildMonth(
   days: EarningsCalendarDay[],
   holidayMap: Map<string, JpxMarketClosedDay>,
   asOfDate: string,
+  initialFocusDate: string,
 ): CalendarMonth {
   const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
   const { year, month } = sortedDays.length > 0 ? parseDateKey(sortedDays[0].date) : parseYearMonth(entry.id);
@@ -182,9 +192,9 @@ function buildMonth(
     ]),
   );
 
-  const futureOrToday = sortedDays.find((day) => day.date >= asOfDate && day.count > 0)?.date;
+  const futureOrToday = sortedDays.find((day) => day.date >= initialFocusDate && day.count > 0)?.date;
   const defaultSelectedKey =
-    sortedDays.find((day) => day.date === asOfDate)?.date ??
+    sortedDays.find((day) => day.date === initialFocusDate)?.date ??
     futureOrToday ??
     sortedDays.find((day) => day.count > 0)?.date ??
     `${entry.id}-01`;
@@ -252,13 +262,13 @@ function buildMonth(
   };
 }
 
-function buildMonths(data: EarningsCalendarPageData): CalendarMonth[] {
+function buildMonths(data: EarningsCalendarPageData, initialFocusDate: string): CalendarMonth[] {
   const holidayMap = new Map(data.holidays.days.map((day) => [day.date, day]));
   const built = data.manifest.months
     .map((entry) => {
       const source = data.monthData[entry.id];
       if (!source) return null;
-      return buildMonth(entry, source.calendar, holidayMap, data.manifest.as_of_date);
+      return buildMonth(entry, source.calendar, holidayMap, data.manifest.as_of_date, initialFocusDate);
     })
     .filter((month): month is CalendarMonth => month !== null);
 
@@ -333,12 +343,17 @@ function getEmptyStateTitle(day: CalendarCell) {
 }
 
 export default function ToolClient({ data }: { data: EarningsCalendarPageData }) {
-  const months = useMemo(() => buildMonths(data), [data]);
+  const initialFocusDate = useMemo(() => {
+    const today = todayJstKey();
+    const todayMonth = today.slice(0, 7);
+    return data.manifest.months.some((month) => month.id === todayMonth) ? today : data.manifest.as_of_date;
+  }, [data.manifest.as_of_date, data.manifest.months]);
+  const months = useMemo(() => buildMonths(data, initialFocusDate), [data, initialFocusDate]);
   const initialMonthIndex = useMemo(() => {
-    const targetMonth = data.manifest.as_of_date.slice(0, 7);
+    const targetMonth = initialFocusDate.slice(0, 7);
     const found = months.findIndex((month) => month.id === targetMonth);
     return found >= 0 ? found : 0;
-  }, [data.manifest.as_of_date, months]);
+  }, [initialFocusDate, months]);
   const [monthIndex, setMonthIndex] = useState(initialMonthIndex);
   const month = months[monthIndex] ?? null;
   const [selectedKey, setSelectedKey] = useState(months[initialMonthIndex]?.selectedKey ?? "");
@@ -753,7 +768,7 @@ const styles: Record<string, React.CSSProperties> = {
   listSection: {
     marginTop: 22,
     display: "flex",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 10,
   },
   sectionAccent: {

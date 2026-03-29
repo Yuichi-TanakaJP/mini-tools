@@ -247,6 +247,12 @@ export default function ToolClient({ data }: { data: RankingPageData }) {
       (r) => r.market === selectedMarket && r.ranking === selectedRanking,
     );
   }, [loadedDays, selectedDate, selectedMarket, selectedRanking]);
+  const currentDateIndex = manifest.dates.indexOf(selectedDate);
+  const prevDate =
+    currentDateIndex >= 0 && currentDateIndex < manifest.dates.length - 1
+      ? manifest.dates[currentDateIndex + 1]
+      : null;
+  const nextDate = currentDateIndex > 0 ? manifest.dates[currentDateIndex - 1] : null;
 
   return (
     <main style={{ maxWidth: 900, margin: "0 auto", padding: "0 16px 64px" }}>
@@ -265,30 +271,53 @@ export default function ToolClient({ data }: { data: RankingPageData }) {
 
       {/* コントロール */}
       <div style={{
-        background: "var(--color-bg-card)",
-        borderRadius: 14,
-        border: "1px solid var(--color-border)",
-        padding: "16px 18px",
+        background: "#fff",
+        borderRadius: 22,
+        border: "1px solid rgba(15, 23, 42, 0.04)",
+        boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+        padding: 16,
         marginBottom: 20,
         display: "flex",
         flexDirection: "column",
         gap: 14,
       }}>
         {/* 日付 */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text-muted)", minWidth: 40 }}>
-            日付
-          </span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={() => prevDate && setSelectedDate(prevDate)}
+            disabled={!prevDate}
+            aria-label="前日へ移動"
+            style={{
+              width: 34,
+              height: 34,
+              padding: 0,
+              borderRadius: 999,
+              border: "1px solid rgba(37, 84, 255, 0.12)",
+              background: "#f5f8ff",
+              color: prevDate ? "#2554ff" : "#b9c2d0",
+              display: "grid",
+              placeItems: "center",
+              cursor: prevDate ? "pointer" : "default",
+              opacity: prevDate ? 1 : 0.45,
+            }}
+          >
+            ‹
+          </button>
           <select
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
             style={{
-              padding: "6px 10px",
-              borderRadius: 8,
-              border: "1.5px solid var(--color-border-strong)",
-              background: "var(--color-bg-input)",
+              minHeight: 38,
+              minWidth: 210,
+              padding: "8px 12px",
+              borderRadius: 10,
+              border: "1.5px solid rgba(148, 163, 184, 0.35)",
+              background: "#fff",
               fontSize: 13,
-              color: "var(--color-text)",
+              fontWeight: 700,
+              color: "#0f172a",
+              textAlignLast: "center",
               cursor: "pointer",
             }}
           >
@@ -298,6 +327,27 @@ export default function ToolClient({ data }: { data: RankingPageData }) {
               </option>
             ))}
           </select>
+          <button
+            type="button"
+            onClick={() => nextDate && setSelectedDate(nextDate)}
+            disabled={!nextDate}
+            aria-label="翌日へ移動"
+            style={{
+              width: 34,
+              height: 34,
+              padding: 0,
+              borderRadius: 999,
+              border: "1px solid rgba(37, 84, 255, 0.12)",
+              background: "#f5f8ff",
+              color: nextDate ? "#2554ff" : "#b9c2d0",
+              display: "grid",
+              placeItems: "center",
+              cursor: nextDate ? "pointer" : "default",
+              opacity: nextDate ? 1 : 0.45,
+            }}
+          >
+            ›
+          </button>
         </div>
 
         {/* 市場 */}
