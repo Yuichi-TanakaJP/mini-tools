@@ -649,7 +649,6 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 0,
     display: "grid",
     placeItems: "center",
-    WebkitTapHighlightColor: "transparent",
   },
   navBtnDisabled: {
     opacity: 0.45,
@@ -723,7 +722,6 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     justifyContent: "space-between",
     border: "none",
-    WebkitTapHighlightColor: "transparent",
   },
   dayClickable: {
     cursor: "pointer",

@@ -300,7 +300,6 @@ export default function ToolClient({ data }: { data: RankingPageData }) {
               placeItems: "center",
               cursor: prevDate ? "pointer" : "default",
               opacity: prevDate ? 1 : 0.45,
-              WebkitTapHighlightColor: "transparent",
             }}
           >
             ‹
@@ -320,7 +319,6 @@ export default function ToolClient({ data }: { data: RankingPageData }) {
               color: "#0f172a",
               textAlignLast: "center",
               cursor: "pointer",
-              WebkitTapHighlightColor: "transparent",
             }}
           >
             {manifest.dates.map((d) => (
@@ -346,7 +344,6 @@ export default function ToolClient({ data }: { data: RankingPageData }) {
               placeItems: "center",
               cursor: nextDate ? "pointer" : "default",
               opacity: nextDate ? 1 : 0.45,
-              WebkitTapHighlightColor: "transparent",
             }}
           >
             ›

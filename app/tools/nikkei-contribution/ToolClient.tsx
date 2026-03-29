@@ -873,7 +873,6 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
               placeItems: "center",
               cursor: prevDate ? "pointer" : "default",
               opacity: prevDate ? 1 : 0.45,
-              WebkitTapHighlightColor: "transparent",
             }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -900,7 +899,6 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
               fontSize: 13,
               fontWeight: 700,
               textAlignLast: "center",
-              WebkitTapHighlightColor: "transparent",
             }}
           >
             {displayDates.length === 0 ? (
@@ -930,7 +928,6 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
               placeItems: "center",
               cursor: nextDate ? "pointer" : "default",
               opacity: nextDate ? 1 : 0.45,
-              WebkitTapHighlightColor: "transparent",
             }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
