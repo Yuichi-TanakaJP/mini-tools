@@ -24,9 +24,39 @@ function isWeekendDate(dateStr: string) {
   return day === 0 || day === 6;
 }
 
-async function loadData(): Promise<RankingPageData> {
-  const manifest = await loadRankingManifest();
-  let holidays: JpxMarketClosedResponse | null = null;
+function getStockRankingBaseUrls() {
+  const baseUrl = process.env.STOCK_RANKING_DATA_BASE_URL?.trim().replace(/\/+$/, "") ?? "";
+  if (!baseUrl) {
+    return [];
+  }
+
+  return baseUrl.endsWith("/stock-ranking") ? [baseUrl] : [baseUrl, `${baseUrl}/stock-ranking`];
+}
+
+async function fetchHolidayJson(url: string): Promise<JpxMarketClosedResponse> {
+  const res = await fetch(url, { next: { revalidate: 300 } });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch ${url}: HTTP ${res.status}`);
+  }
+
+  return (await res.json()) as JpxMarketClosedResponse;
+}
+
+async function loadHolidayData(): Promise<JpxMarketClosedResponse | null> {
+  const baseUrls = getStockRankingBaseUrls();
+  const remoteCandidates = baseUrls.flatMap((baseUrl) =>
+    baseUrl.endsWith("/stock-ranking")
+      ? [`${baseUrl.slice(0, -"/stock-ranking".length)}/earnings-calendar`]
+      : [`${baseUrl}/earnings-calendar`, baseUrl],
+  );
+
+  for (const candidate of remoteCandidates) {
+    try {
+      return await fetchHolidayJson(`${candidate}/jpx_market_closed_20260101_to_20271231.json`);
+    } catch {
+      continue;
+    }
+  }
 
   try {
     const holidayPath = path.join(
@@ -34,10 +64,15 @@ async function loadData(): Promise<RankingPageData> {
       "app/tools/earnings-calendar/data/jpx_market_closed_20260101_to_20271231.json",
     );
     const holidayRaw = await readFile(holidayPath, "utf-8");
-    holidays = JSON.parse(holidayRaw) as JpxMarketClosedResponse;
+    return JSON.parse(holidayRaw) as JpxMarketClosedResponse;
   } catch {
-    holidays = null;
+    return null;
   }
+}
+
+async function loadData(): Promise<RankingPageData> {
+  const manifest = await loadRankingManifest();
+  const holidays = await loadHolidayData();
 
   const holidayMap = new Map((holidays?.days ?? []).map((day) => [day.date, day]));
   const visibleDates = manifest.dates.filter((date) => {
