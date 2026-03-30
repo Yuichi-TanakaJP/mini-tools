@@ -596,14 +596,64 @@ function ImpactMap({ records, selectedCode, onSelect }: ImpactMapProps) {
   );
 }
 
+type RecordSortKey = "name" | "weight_pct" | "chg_pct" | "chg" | "contribution";
+type SortDir = "desc" | "asc";
+type NameMode = "name" | "code";
+
 function RecordsTable({ records }: { records: NikkeiContributionRecord[] }) {
-  const columns = [
-    { key: "name", label: "銘柄", align: "left" as const, mobileHidden: false },
-    { key: "weight_pct", label: "ウェイト", mobileLabel: "比率", align: "right" as const, mobileHidden: false },
-    { key: "chg_pct", label: "騰落率", mobileLabel: "騰落", align: "right" as const, mobileHidden: false },
-    { key: "chg", label: "前日比", align: "right" as const, mobileHidden: true },
-    { key: "contribution", label: "寄与度", mobileLabel: "寄与", align: "right" as const, mobileHidden: false },
+  const [sortKey, setSortKey] = useState<RecordSortKey>("contribution");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [nameMode, setNameMode] = useState<NameMode>("name");
+
+  const columns: { key: RecordSortKey; label: string; mobileLabel?: string; align: "left" | "right"; mobileHidden: boolean }[] = [
+    { key: "name", label: "銘柄", align: "left", mobileHidden: false },
+    { key: "weight_pct", label: "ウェイト", mobileLabel: "比率", align: "right", mobileHidden: false },
+    { key: "chg_pct", label: "騰落率", mobileLabel: "騰落", align: "right", mobileHidden: false },
+    { key: "chg", label: "前日比", align: "right", mobileHidden: true },
+    { key: "contribution", label: "寄与度", mobileLabel: "寄与", align: "right", mobileHidden: false },
   ];
+
+  const sortedRecords = useMemo(() => {
+    return [...records].sort((a, b) => {
+      if (sortKey === "name") {
+        const aVal = nameMode === "name" ? a.name : a.code;
+        const bVal = nameMode === "name" ? b.name : b.code;
+        return aVal.localeCompare(bVal, "ja");
+      }
+      const diff = a[sortKey] - b[sortKey];
+      return sortDir === "desc" ? -diff : diff;
+    });
+  }, [records, sortKey, sortDir, nameMode]);
+
+  function handleSort(key: RecordSortKey) {
+    if (key === "name") {
+      if (sortKey === "name") {
+        setNameMode((prev) => (prev === "name" ? "code" : "name"));
+      } else {
+        setSortKey("name");
+        setNameMode("name");
+      }
+    } else {
+      if (sortKey === key) {
+        setSortDir((prev) => (prev === "desc" ? "asc" : "desc"));
+      } else {
+        setSortKey(key);
+        setSortDir("desc");
+      }
+    }
+  }
+
+  function getSortIndicator(key: RecordSortKey) {
+    if (sortKey !== key) return null;
+    if (key === "name") {
+      const label = nameMode === "name" ? " 名▲" : " #▲";
+      return <span style={{ color: "#166534" }}>{label}</span>;
+    }
+    if (sortDir === "desc") {
+      return <span style={{ color: "#991b1b" }}> ▼</span>;
+    }
+    return <span style={{ color: "#166534" }}> ▲</span>;
+  }
 
   return (
     <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
@@ -621,21 +671,24 @@ function RecordsTable({ records }: { records: NikkeiContributionRecord[] }) {
               <th
                 key={column.key}
                 className={column.mobileHidden ? styles.recordsMobileHidden : undefined}
+                onClick={() => handleSort(column.key)}
                 style={{
                   textAlign: column.align,
                   fontWeight: 700,
-                  color: "var(--color-text-muted)",
+                  color: sortKey === column.key ? "var(--color-accent)" : "var(--color-text-muted)",
                   whiteSpace: "nowrap",
+                  cursor: "pointer",
+                  userSelect: "none",
                 }}
               >
-                <span className={styles.desktopOnly}>{column.label}</span>
-                <span className={styles.mobileOnly}>{column.mobileLabel ?? column.label}</span>
+                <span className={styles.desktopOnly}>{column.label}{getSortIndicator(column.key)}</span>
+                <span className={styles.mobileOnly}>{column.mobileLabel ?? column.label}{getSortIndicator(column.key)}</span>
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {records.map((record) => {
+          {sortedRecords.map((record) => {
             const tone = getBarTone(record.contribution);
             return (
               <tr key={record.code} style={{ borderBottom: "1px solid var(--color-border)" }}>
@@ -671,7 +724,7 @@ function RecordsTable({ records }: { records: NikkeiContributionRecord[] }) {
 
                   if (column.key === "chg_pct") {
                     return (
-                      <td key={`${record.code}-${column.key}`} style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                      <td key={`${record.code}-${column.key}`} style={{ textAlign: "right", whiteSpace: "nowrap", color: getBarTone(record.chg_pct).text }}>
                         <span className={styles.desktopOnly}>{fmtPct(record.chg_pct)}</span>
                         <span className={styles.mobileOnly}>{`${sign(record.chg_pct)}${record.chg_pct.toFixed(1)}%`}</span>
                       </td>
@@ -680,7 +733,7 @@ function RecordsTable({ records }: { records: NikkeiContributionRecord[] }) {
 
                   if (column.key === "chg") {
                     return (
-                      <td key={`${record.code}-${column.key}`} className={styles.recordsMobileHidden} style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                      <td key={`${record.code}-${column.key}`} className={styles.recordsMobileHidden} style={{ textAlign: "right", whiteSpace: "nowrap", color: getBarTone(record.chg).text }}>
                         {sign(record.chg)}{fmtNumber(record.chg)}
                       </td>
                     );
@@ -718,7 +771,6 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
   });
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [sortKey, setSortKey] = useState<"contribution" | "weight_pct" | "chg_pct">("contribution");
   const [selectedCode, setSelectedCode] = useState<string | null>(initialDayData?.records[0]?.code ?? null);
   const holidayMap = useMemo(() => {
     return new Map((holidays?.days ?? []).map((day) => [day.date, day]));
@@ -790,10 +842,6 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
   }, [currentSelectedDate, loadedDays]);
 
   const dayData = currentSelectedDate ? loadedDays[currentSelectedDate] ?? null : null;
-  const sortedRecords = useMemo(() => {
-    if (!dayData) return [];
-    return [...dayData.records].sort((a, b) => Math.abs(b[sortKey]) - Math.abs(a[sortKey]));
-  }, [dayData, sortKey]);
   const selectedRecord = useMemo(() => {
     if (!dayData) return null;
     return dayData.records.find((record) => record.code === selectedCode) ?? dayData.records[0] ?? null;
@@ -940,7 +988,9 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
               />
             </svg>
           </button>
-          {dayData?.market_status ? (
+          {isLoading ? (
+            <div className={`${styles.spinner} ${styles.spinnerSmall}`} aria-label="読み込み中" />
+          ) : dayData?.market_status ? (
             <span
               style={{
                 padding: "4px 10px",
@@ -1030,7 +1080,10 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
       {loadError ? (
         <div style={{ padding: "20px 0", color: "var(--color-text-muted)" }}>{loadError}</div>
       ) : isLoading && !dayData ? (
-        <div style={{ padding: "20px 0", color: "var(--color-text-muted)" }}>読み込み中...</div>
+        <div style={{ padding: "56px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+          <div className={styles.spinner} />
+          <span style={{ color: "var(--color-text-muted)", fontSize: 13 }}>読み込み中...</span>
+        </div>
       ) : !dayData ? (
         <div
           style={{
@@ -1141,43 +1194,13 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
               padding: 14,
             }}
           >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-              <div>
+              <div style={{ marginBottom: 8 }}>
                 <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 900 }}>全銘柄テーブル</h2>
                 <p style={{ margin: 0, fontSize: 12, color: "var(--color-text-muted)" }}>
-                  寄与度、ウェイト、騰落率の絶対値で並び替えて確認できます。
+                  ヘッダーをクリックして並び替えできます。
                 </p>
               </div>
-              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                {[
-                  ["contribution", "寄与度順"],
-                  ["weight_pct", "ウェイト順"],
-                  ["chg_pct", "騰落率順"],
-                ].map(([key, label]) => {
-                  const active = sortKey === key;
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setSortKey(key as typeof sortKey)}
-                      style={{
-                        padding: "6px 12px",
-                        borderRadius: 999,
-                        border: active ? "1.5px solid var(--color-accent)" : "1.5px solid var(--color-border-strong)",
-                        background: active ? "var(--color-accent-sub)" : "var(--color-bg-card)",
-                        color: active ? "var(--color-accent)" : "var(--color-text-sub)",
-                        fontWeight: 700,
-                        fontSize: 12,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <RecordsTable records={sortedRecords} />
+            <RecordsTable records={dayData.records} />
           </section>
 
           <p style={{ marginTop: 16, fontSize: 11, color: "var(--color-text-muted)", lineHeight: 1.7 }}>
