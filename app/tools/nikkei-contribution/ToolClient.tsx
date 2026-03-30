@@ -724,7 +724,7 @@ function RecordsTable({ records }: { records: NikkeiContributionRecord[] }) {
 
                   if (column.key === "chg_pct") {
                     return (
-                      <td key={`${record.code}-${column.key}`} style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                      <td key={`${record.code}-${column.key}`} style={{ textAlign: "right", whiteSpace: "nowrap", color: getBarTone(record.chg_pct).text }}>
                         <span className={styles.desktopOnly}>{fmtPct(record.chg_pct)}</span>
                         <span className={styles.mobileOnly}>{`${sign(record.chg_pct)}${record.chg_pct.toFixed(1)}%`}</span>
                       </td>
@@ -733,7 +733,7 @@ function RecordsTable({ records }: { records: NikkeiContributionRecord[] }) {
 
                   if (column.key === "chg") {
                     return (
-                      <td key={`${record.code}-${column.key}`} className={styles.recordsMobileHidden} style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                      <td key={`${record.code}-${column.key}`} className={styles.recordsMobileHidden} style={{ textAlign: "right", whiteSpace: "nowrap", color: getBarTone(record.chg).text }}>
                         {sign(record.chg)}{fmtNumber(record.chg)}
                       </td>
                     );
@@ -988,7 +988,9 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
               />
             </svg>
           </button>
-          {dayData?.market_status ? (
+          {isLoading ? (
+            <div className={`${styles.spinner} ${styles.spinnerSmall}`} aria-label="読み込み中" />
+          ) : dayData?.market_status ? (
             <span
               style={{
                 padding: "4px 10px",
@@ -1078,7 +1080,10 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
       {loadError ? (
         <div style={{ padding: "20px 0", color: "var(--color-text-muted)" }}>{loadError}</div>
       ) : isLoading && !dayData ? (
-        <div style={{ padding: "20px 0", color: "var(--color-text-muted)" }}>読み込み中...</div>
+        <div style={{ padding: "56px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+          <div className={styles.spinner} />
+          <span style={{ color: "var(--color-text-muted)", fontSize: 13 }}>読み込み中...</span>
+        </div>
       ) : !dayData ? (
         <div
           style={{
