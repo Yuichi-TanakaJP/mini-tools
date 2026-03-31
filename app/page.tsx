@@ -54,14 +54,14 @@ const TOOLS: ToolItem[] = [
   {
     title: "優待候補一覧",
     short: "月別の候補を探す",
-    detail: "market_info の月別優待データを一覧で見て、気になる銘柄だけを優待メモへ追加。",
+    detail: "月別の優待銘柄候補を一覧で確認。気になる銘柄をピックして優待メモへ追加できます。",
     href: "/tools/yutai-candidates",
     icon: "🔎",
   },
   {
     title: "決算カレンダー",
     short: "日本株の決算予定を確認",
-    detail: "日本株の決算予定をカレンダーで確認。market_info のデータをもとに表示。",
+    detail: "日本株の決算予定をカレンダーで確認。日付ごとに銘柄と決算種別を一覧表示。",
     href: "/tools/earnings-calendar",
     icon: "🗓️",
   },
