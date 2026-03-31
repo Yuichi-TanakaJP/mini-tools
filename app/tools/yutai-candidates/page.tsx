@@ -5,7 +5,7 @@ import { loadMonthlyYutaiPageData } from "./data-loader";
 export const metadata: Metadata = {
   title: "優待候補一覧 | mini-tools",
   description:
-    "market_info の月別優待データを一覧表示し、気になる銘柄をピックして優待メモへ追加できる候補探索ページです。",
+    "月別の優待銘柄候補を一覧表示し、気になる銘柄をピックして優待メモへ追加できる候補探索ページです。",
   alternates: {
     canonical: "/tools/yutai-candidates",
   },
