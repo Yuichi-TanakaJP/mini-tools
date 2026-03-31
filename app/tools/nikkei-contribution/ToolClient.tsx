@@ -613,17 +613,15 @@ function RecordsTable({ records }: { records: NikkeiContributionRecord[] }) {
     { key: "contribution", label: "寄与度", mobileLabel: "寄与", align: "right", mobileHidden: false },
   ];
 
-  const sortedRecords = useMemo(() => {
-    return [...records].sort((a, b) => {
-      if (sortKey === "name") {
-        const aVal = nameMode === "name" ? a.name : a.code;
-        const bVal = nameMode === "name" ? b.name : b.code;
-        return aVal.localeCompare(bVal, "ja");
-      }
-      const diff = a[sortKey] - b[sortKey];
-      return sortDir === "desc" ? -diff : diff;
-    });
-  }, [records, sortKey, sortDir, nameMode]);
+  const sortedRecords = [...records].sort((a, b) => {
+    if (sortKey === "name") {
+      const aVal = nameMode === "name" ? a.name : a.code;
+      const bVal = nameMode === "name" ? b.name : b.code;
+      return aVal.localeCompare(bVal, "ja");
+    }
+    const diff = a[sortKey] - b[sortKey];
+    return sortDir === "desc" ? -diff : diff;
+  });
 
   function handleSort(key: RecordSortKey) {
     if (key === "name") {

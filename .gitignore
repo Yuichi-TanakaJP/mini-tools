@@ -33,5 +33,7 @@ Thumbs.db
 
 
 .claude/
+.tmp/
 .tmp-edge-cdp/
 .tmp-edge-live/
+.vercel

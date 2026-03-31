@@ -9,6 +9,7 @@
 
 設計・方針・トレードオフの判断理由を記録します。
 
+- [2026-03-31 TOPIX33業種データ追加と market tools 導線の方針](./decision-log/2026-03-31-topix33-market-tool-plan.md)
 - [2026-03-29 market tools の日付 UI と休場日扱いの整理](./decision-log/2026-03-29-market-tools-date-ui-and-holiday-handling.md)
 - [2026-03-29 dev 環境の WSL 移行方針と OneDrive 運用解消](./decision-log/2026-03-29-dev-env-wsl-migration-and-onedrive-exit.md)
 - [2026-03-29 ヘッダー QR ボタンの視認性とモーダル位置](./decision-log/2026-03-29-header-qr-visibility-and-modal-position.md)
@@ -37,6 +38,7 @@
 
 - [Docs Writing Workflow](./docs-writing-workflow.md)
 - Market Tools 関連:
+- [2026-03-31 TOPIX33業種データ追加と market tools 導線の方針](./decision-log/2026-03-31-topix33-market-tool-plan.md)
 - [2026-03-29 market tools の日付 UI と休場日扱いの整理](./decision-log/2026-03-29-market-tools-date-ui-and-holiday-handling.md)
 - [2026-03-28 日経225寄与度ツールのデータ連携と UI 判断](./decision-log/2026-03-28-nikkei-contribution-data-and-ui.md)
 - [2026-03-22 決算カレンダーのデータ contract と運用メモ](./decision-log/2026-03-22-earnings-calendar-data-contract.md)
