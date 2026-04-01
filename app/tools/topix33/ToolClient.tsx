@@ -118,15 +118,15 @@ function RankingList({ title, items, maxAbs }: RankingListProps) {
 type SectorSortKey = "sector_name" | "chg_pct" | "chg";
 type SortDir = "desc" | "asc";
 
+const SECTOR_COLUMNS: { key: SectorSortKey; label: string; align: "left" | "right"; mobileHidden: boolean }[] = [
+  { key: "sector_name", label: "業種", align: "left", mobileHidden: false },
+  { key: "chg_pct", label: "騰落率", align: "right", mobileHidden: false },
+  { key: "chg", label: "前日比", align: "right", mobileHidden: true },
+];
+
 function SectorsTable({ sectors }: { sectors: Topix33SectorRecord[] }) {
   const [sortKey, setSortKey] = useState<SectorSortKey>("chg_pct");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-
-  const columns: { key: SectorSortKey; label: string; align: "left" | "right"; mobileHidden: boolean }[] = [
-    { key: "sector_name", label: "業種", align: "left", mobileHidden: false },
-    { key: "chg_pct", label: "騰落率", align: "right", mobileHidden: false },
-    { key: "chg", label: "前日比", align: "right", mobileHidden: true },
-  ];
 
   const sortedSectors = [...sectors].sort((a, b) => {
     if (sortKey === "sector_name") {
@@ -167,7 +167,7 @@ function SectorsTable({ sectors }: { sectors: Topix33SectorRecord[] }) {
       >
         <thead>
           <tr style={{ borderBottom: "2px solid var(--color-border-strong)" }}>
-            {columns.map((column) => (
+            {SECTOR_COLUMNS.map((column) => (
               <th
                 key={column.key}
                 className={column.mobileHidden ? styles.sectorsMobileHidden : undefined}
@@ -288,7 +288,6 @@ export default function ToolClient({ data }: { data: Topix33PageData }) {
   }, [currentSelectedDate, loadedDays]);
 
   const dayData = currentSelectedDate ? loadedDays[currentSelectedDate] ?? null : null;
-  const marketBreadth = dayData?.summary;
 
   const rankingMaxAbs = useMemo(() => {
     if (!dayData) return 1;
@@ -423,7 +422,7 @@ export default function ToolClient({ data }: { data: Topix33PageData }) {
       </section>
 
       {/* サマリー */}
-      {marketBreadth && (
+      {dayData?.summary && (
         <section
           style={{
             background: "var(--color-bg-card)",
@@ -442,9 +441,9 @@ export default function ToolClient({ data }: { data: Topix33PageData }) {
             }}
           >
             {[
-              { label: "上昇業種", value: marketBreadth.advancers, color: "#166534", bg: "#f0fdf4", border: "#bbf7d0" },
-              { label: "下落業種", value: marketBreadth.decliners, color: "#991b1b", bg: "#fef2f2", border: "#fecaca" },
-              { label: "変わらず", value: marketBreadth.unchanged, color: "#475569", bg: "var(--color-bg-input)", border: "var(--color-border)" },
+              { label: "上昇業種", value: dayData.summary.advancers, color: "#166534", bg: "#f0fdf4", border: "#bbf7d0" },
+              { label: "下落業種", value: dayData.summary.decliners, color: "#991b1b", bg: "#fef2f2", border: "#fecaca" },
+              { label: "変わらず", value: dayData.summary.unchanged, color: "#475569", bg: "var(--color-bg-input)", border: "var(--color-border)" },
             ].map(({ label, value, color, bg, border }) => (
               <div
                 key={label}
@@ -501,7 +500,7 @@ export default function ToolClient({ data }: { data: Topix33PageData }) {
       )}
 
       {/* データなし */}
-      {!isLoading && !loadError && !dayData && displayDates.length === 0 && (
+      {!isLoading && !loadError && !dayData && (
         <section
           style={{
             background: "var(--color-bg-card)",
