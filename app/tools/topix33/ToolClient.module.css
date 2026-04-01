@@ -1,0 +1,107 @@
+.summaryGrid {
+  gap: 4px;
+}
+
+.summaryCard {
+  border-radius: 8px;
+  padding: 10px;
+  min-height: 76px;
+}
+
+.summaryLabel {
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+
+.summaryValue {
+  font-size: 22px;
+}
+
+.mobileOnly {
+  display: inline;
+}
+
+.desktopOnly {
+  display: none;
+}
+
+.sectorsTable {
+  min-width: 0;
+  font-size: 11px;
+}
+
+.sectorsTable th,
+.sectorsTable td {
+  padding: 8px 4px;
+}
+
+.sectorsTable th {
+  font-size: 10px;
+}
+
+.sectorsMobileHidden {
+  display: none;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(37, 84, 255, 0.15);
+  border-top-color: #2554ff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@media (min-width: 641px) {
+  .summaryGrid {
+    gap: 6px;
+  }
+
+  .summaryCard {
+    border-radius: 10px;
+    padding: 12px;
+    min-height: 96px;
+  }
+
+  .summaryLabel {
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+
+  .summaryValue {
+    font-size: 28px;
+  }
+
+  .mobileOnly {
+    display: none;
+  }
+
+  .desktopOnly {
+    display: inline;
+  }
+
+  .sectorsTable {
+    min-width: 480px;
+    font-size: 13px;
+  }
+
+  .sectorsTable th,
+  .sectorsTable td {
+    padding: 10px;
+  }
+
+  .sectorsTable th {
+    font-size: 11px;
+  }
+
+  .sectorsMobileHidden {
+    display: table-cell;
+  }
+}
