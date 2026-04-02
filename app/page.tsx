@@ -79,6 +79,13 @@ const TOOLS: ToolItem[] = [
     href: "/tools/nikkei-contribution",
     icon: "🗺️",
   },
+  {
+    title: "TOPIX33業種",
+    short: "どの業種が上げ下げを主導したか",
+    detail: "TOPIX33業種の騰落率を日付ごとに確認。上昇・下落ランキングと全33業種一覧をまとめて見られます。",
+    href: "/tools/topix33",
+    icon: "📈",
+  },
 ];
 
 export default function HomePage() {
