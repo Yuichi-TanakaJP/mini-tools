@@ -134,17 +134,47 @@
   - [`docs/decision-log/2026-03-28-nikkei-contribution-data-and-ui.md`](./2026-03-28-nikkei-contribution-data-and-ui.md)
   - [`docs/decision-log/2026-03-29-market-tools-date-ui-and-holiday-handling.md`](./2026-03-29-market-tools-date-ui-and-holiday-handling.md)
 
-## 残課題
+## Data Contract（2026-04-02 確定）
 
-- TOPIX33 で扱う値を「騰落率」「寄与度風スコア」「売買代金加味」のどれにするか
-- `market_info` 側でどこまで整形するか
-- TOP の section 名を英語にするか日本語にするか
-- MVP でヒートマップまで入れるか、まずはランキング + 一覧に絞るか
+market_info 側で Phase 1 contract が実装済み。以下で確定。
+
+### ファイル / エンドポイント
+
+- local artifact: `output/final/index/topix33_manifest.json` / `output/final/index/topix33_YYYY-MM-DD.json`
+- public object prefix: `topix33/`
+- 想定 API path: `/topix33/manifest`, `/topix33/{date}`
+
+### フィールド定義
+
+| フィールド | 型 | 説明 |
+|---|---|---|
+| `chg_pct` | number | 前日比率（%） |
+| `chg` | number | price の前日比ポイント差（`change_abs` 由来） |
+| `sectors` | array | 全33業種の主 payload |
+| `top_positive` / `top_negative` | array | 補助配列。件数制限なし |
+| `summary` | object | advancers / decliners / unchanged を機械集計 |
+
+### 補足
+
+- `sector_code` は Phase 1 では正式外部コード未確定。`sector_name` 由来の安定 slug を使用。
+- `summary` の合計は必ずしも 33 にならない可能性がある（集計方法が機械的なため）。
+- publish 順序: day JSON → manifest の順。
+- `market_info-api` 側のエンドポイント実装は別タスク。当面は public object 直読みで動作確認を進める。
+
+## 残課題（2026-04-02 時点）
+
+- ~~TOPIX33 で扱う値を「騰落率」「寄与度風スコア」「売買代金加味」のどれにするか~~ → **騰落率（`chg_pct`）に決定**
+- ~~`market_info` 側でどこまで整形するか~~ → **Phase 1 contract 確定済み**
+- TOP の section 名を英語にするか日本語にするか → **現状カードのみ追加（セクション分割なし）で対応済み**
+- ~~MVP でヒートマップまで入れるか~~ → **ランキング + 全33業種テーブルに絞ることで決定**
+- live publish の実運用確認はこれから
+- `market_info-api` 側のエンドポイント実装（別タスク）
+- `sector_code` の正式外部コード対応（Phase 2 以降）
 
 ## 関連
 
-- Issue:
-- PR:
+- Issue: #179
+- PR: #181
 - 参照 docs:
   - [`docs/docs-writing-workflow.md`](../docs-writing-workflow.md)
   - [`docs/decision-log/2026-03-28-nikkei-contribution-data-and-ui.md`](./2026-03-28-nikkei-contribution-data-and-ui.md)
