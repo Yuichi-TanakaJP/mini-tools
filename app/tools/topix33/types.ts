@@ -34,6 +34,7 @@ export type Topix33DayData = {
 export type Topix33Manifest = {
   dates: string[];
   latest_date: string | null;
+  generated_at?: string;
 };
 
 export type JpxMarketClosedDay = {
