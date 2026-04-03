@@ -5,12 +5,27 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 function getSafeNextPath(rawNextPath: string | null) {
   if (!rawNextPath) return "/premium";
-  if (!rawNextPath.startsWith("/premium")) return "/premium";
-  if (rawNextPath.startsWith("//")) return "/premium";
   if (rawNextPath.includes("\\") || rawNextPath.includes("\r") || rawNextPath.includes("\n")) {
     return "/premium";
   }
-  return rawNextPath;
+
+  try {
+    const baseUrl = "https://mini-tools.local";
+    const normalizedUrl = new URL(rawNextPath, baseUrl);
+
+    if (normalizedUrl.origin !== baseUrl) {
+      return "/premium";
+    }
+
+    const normalizedPath = `${normalizedUrl.pathname}${normalizedUrl.search}${normalizedUrl.hash}`;
+    if (!normalizedPath.startsWith("/premium")) {
+      return "/premium";
+    }
+
+    return normalizedPath;
+  } catch {
+    return "/premium";
+  }
 }
 
 export default function LoginForm() {
