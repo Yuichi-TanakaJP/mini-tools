@@ -298,24 +298,23 @@ export default function ShareButtons({
 
           if (m === "premium") {
             return (
-              <button
+              <a
                 key={m}
-                type="button"
-                disabled
-                aria-label="プレミアム機能（準備中）"
-                title="プレミアム機能（準備中）"
+                href="/premium"
+                onClick={() => onShare("premium")}
+                aria-label="Premium へ移動"
+                title="Premium へ移動"
                 style={{
                   ...iconButtonStyle(size),
                   color: "#f59e0b",
-                  opacity: 0.55,
-                  cursor: "default",
+                  opacity: 0.92,
                 }}
               >
                 {renderIcon(m)}
                 {!iconsOnly ? (
                   <span style={labelStyle}>{labelFor(m)}</span>
                 ) : null}
-              </button>
+              </a>
             );
           }
 
