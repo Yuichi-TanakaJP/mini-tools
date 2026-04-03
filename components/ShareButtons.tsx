@@ -144,9 +144,9 @@ export default function ShareButtons({
         );
       case "premium":
         return (
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
             <path
-              d="M12 2l2.4 5.4L20 8.5l-4 4.1.9 5.9L12 16l-4.9 2.5.9-5.9-4-4.1 5.6-1.1L12 2z"
+              d="M3 19h18v2H3v-2zm0-3 3.5-8.5 4 4L12 4l1.5 7.5 4-4L21 16H3z"
               fill="currentColor"
             />
           </svg>
@@ -250,7 +250,7 @@ export default function ShareButtons({
       <div
         style={{
           display: "flex",
-          gap: 16,
+          gap: inline ? 4 : 16,
           flexWrap: "wrap",
           justifyContent: "center",
           width: "100%",
