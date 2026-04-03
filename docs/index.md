@@ -9,6 +9,9 @@
 
 設計・方針・トレードオフの判断理由を記録します。
 
+- [2026-04-04 TOPIX33 premium 可視化の見せ方方針](./decision-log/2026-04-04-topix33-premium-visualization-plan.md)
+- [2026-04-04 premium ログイン導線の暫定実装方針](./decision-log/2026-04-04-premium-login-placeholder-flow.md)
+- [2026-04-03 有料機能プレースホルダーの追加方針](./decision-log/2026-04-03-premium-feature-placeholder.md)
 - [2026-03-31 TOPIX33業種データ追加と market tools 導線の方針](./decision-log/2026-03-31-topix33-market-tool-plan.md)
 - [2026-03-29 market tools の日付 UI と休場日扱いの整理](./decision-log/2026-03-29-market-tools-date-ui-and-holiday-handling.md)
 - [2026-03-29 dev 環境の WSL 移行方針と OneDrive 運用解消](./decision-log/2026-03-29-dev-env-wsl-migration-and-onedrive-exit.md)
@@ -38,6 +41,8 @@
 
 - [Docs Writing Workflow](./docs-writing-workflow.md)
 - Market Tools 関連:
+- [2026-04-04 TOPIX33 premium 可視化の見せ方方針](./decision-log/2026-04-04-topix33-premium-visualization-plan.md)
+- [2026-04-04 premium ログイン導線の暫定実装方針](./decision-log/2026-04-04-premium-login-placeholder-flow.md)
 - [2026-03-31 TOPIX33業種データ追加と market tools 導線の方針](./decision-log/2026-03-31-topix33-market-tool-plan.md)
 - [2026-03-29 market tools の日付 UI と休場日扱いの整理](./decision-log/2026-03-29-market-tools-date-ui-and-holiday-handling.md)
 - [2026-03-28 日経225寄与度ツールのデータ連携と UI 判断](./decision-log/2026-03-28-nikkei-contribution-data-and-ui.md)

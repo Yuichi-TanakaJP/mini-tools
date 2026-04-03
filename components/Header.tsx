@@ -89,7 +89,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
 
           <ShareButtons
             text="mini-tools"
-            methods={["qr"]}
+            methods={["premium", "qr"]}
             tone="light"
             inline
           />

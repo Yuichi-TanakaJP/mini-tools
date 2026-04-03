@@ -6,7 +6,7 @@ import { track } from "@/lib/analytics";
 import { QRCodeCanvas } from "qrcode.react";
 import { createPortal } from "react-dom";
 
-type ShareMethod = "x" | "facebook" | "email" | "copy" | "qr";
+type ShareMethod = "x" | "facebook" | "email" | "copy" | "premium" | "qr";
 
 type Props = {
   text?: string;
@@ -19,7 +19,7 @@ type Props = {
   inline?: boolean;
 };
 
-const DEFAULT_METHODS: ShareMethod[] = ["x", "facebook", "email", "copy", "qr"];
+const DEFAULT_METHODS: ShareMethod[] = ["x", "facebook", "email", "copy"];
 
 export default function ShareButtons({
   text,
@@ -142,6 +142,15 @@ export default function ShareButtons({
             />
           </svg>
         );
+      case "premium":
+        return (
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path
+              d="M3 19h18v2H3v-2zm0-3 3.5-8.5 4 4L12 4l1.5 7.5 4-4L21 16H3z"
+              fill="currentColor"
+            />
+          </svg>
+        );
     }
   };
 
@@ -157,6 +166,8 @@ export default function ShareButtons({
         return "コピー";
       case "qr":
         return "QR";
+      case "premium":
+        return "Premium";
     }
   };
 
@@ -239,7 +250,7 @@ export default function ShareButtons({
       <div
         style={{
           display: "flex",
-          gap: 16,
+          gap: inline ? 4 : 16,
           flexWrap: "wrap",
           justifyContent: "center",
           width: "100%",
@@ -282,6 +293,28 @@ export default function ShareButtons({
                   <span style={labelStyle}>{labelFor(m)}</span>
                 ) : null}
               </button>
+            );
+          }
+
+          if (m === "premium") {
+            return (
+              <a
+                key={m}
+                href="/premium"
+                onClick={() => onShare("premium")}
+                aria-label="Premium へ移動"
+                title="Premium へ移動"
+                style={{
+                  ...iconButtonStyle(size),
+                  color: "#f59e0b",
+                  opacity: 0.92,
+                }}
+              >
+                {renderIcon(m)}
+                {!iconsOnly ? (
+                  <span style={labelStyle}>{labelFor(m)}</span>
+                ) : null}
+              </a>
             );
           }
 
