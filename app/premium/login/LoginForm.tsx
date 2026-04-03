@@ -3,10 +3,20 @@
 import { FormEvent, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+function getSafeNextPath(rawNextPath: string | null) {
+  if (!rawNextPath) return "/premium";
+  if (!rawNextPath.startsWith("/premium")) return "/premium";
+  if (rawNextPath.startsWith("//")) return "/premium";
+  if (rawNextPath.includes("\\") || rawNextPath.includes("\r") || rawNextPath.includes("\n")) {
+    return "/premium";
+  }
+  return rawNextPath;
+}
+
 export default function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextPath = searchParams.get("next") || "/premium";
+  const nextPath = getSafeNextPath(searchParams.get("next"));
 
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);

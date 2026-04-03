@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   PREMIUM_COOKIE_NAME,
+  PREMIUM_SESSION_MAX_AGE_SECONDS,
   createPremiumSessionValue,
   isPremiumAuthConfigured,
   verifyPremiumPassword,
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 8,
+    maxAge: PREMIUM_SESSION_MAX_AGE_SECONDS,
   });
 
   return response;

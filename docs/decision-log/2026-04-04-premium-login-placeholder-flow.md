@@ -12,6 +12,8 @@
 - `/premium` は保護ページとし、未認証時は `/premium/login?next=/premium` にリダイレクトする
 - `/premium/login` ではパスワード入力フォームを表示し、成功時に Cookie をセットして `/premium` へ遷移する
 - 認証情報は環境変数 `PREMIUM_ACCESS_PASSWORD` と `PREMIUM_ACCESS_SECRET` で管理する
+- Cookie は固定値ではなく、署名付きの期限付きセッション値を使う
+- ログイン後の `next` は `/premium` 配下の内部パスだけ許可する
 - premium ページは当面、TOPIX33 premium 構想の仮トップページとして使う
 - ログイン画面には `開発中` の表記を明示する
 
