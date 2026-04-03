@@ -6,7 +6,7 @@ import { track } from "@/lib/analytics";
 import { QRCodeCanvas } from "qrcode.react";
 import { createPortal } from "react-dom";
 
-type ShareMethod = "x" | "facebook" | "email" | "copy" | "qr";
+type ShareMethod = "x" | "facebook" | "email" | "copy" | "premium" | "qr";
 
 type Props = {
   text?: string;
@@ -19,7 +19,7 @@ type Props = {
   inline?: boolean;
 };
 
-const DEFAULT_METHODS: ShareMethod[] = ["x", "facebook", "email", "copy", "qr"];
+const DEFAULT_METHODS: ShareMethod[] = ["x", "facebook", "email", "copy", "premium", "qr"];
 
 export default function ShareButtons({
   text,
@@ -142,6 +142,15 @@ export default function ShareButtons({
             />
           </svg>
         );
+      case "premium":
+        return (
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path
+              d="M12 2l2.4 5.4L20 8.5l-4 4.1.9 5.9L12 16l-4.9 2.5.9-5.9-4-4.1 5.6-1.1L12 2z"
+              fill="currentColor"
+            />
+          </svg>
+        );
     }
   };
 
@@ -157,6 +166,8 @@ export default function ShareButtons({
         return "コピー";
       case "qr":
         return "QR";
+      case "premium":
+        return "Premium";
     }
   };
 
@@ -276,6 +287,29 @@ export default function ShareButtons({
                 aria-label="QRで共有"
                 title="QRで共有"
                 style={iconButtonStyle(size)}
+              >
+                {renderIcon(m)}
+                {!iconsOnly ? (
+                  <span style={labelStyle}>{labelFor(m)}</span>
+                ) : null}
+              </button>
+            );
+          }
+
+          if (m === "premium") {
+            return (
+              <button
+                key={m}
+                type="button"
+                disabled
+                aria-label="プレミアム機能（準備中）"
+                title="プレミアム機能（準備中）"
+                style={{
+                  ...iconButtonStyle(size),
+                  color: "#f59e0b",
+                  opacity: 0.55,
+                  cursor: "default",
+                }}
               >
                 {renderIcon(m)}
                 {!iconsOnly ? (

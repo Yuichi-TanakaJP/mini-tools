@@ -9,6 +9,7 @@
 
 設計・方針・トレードオフの判断理由を記録します。
 
+- [2026-04-03 有料機能プレースホルダーの追加方針](./decision-log/2026-04-03-premium-feature-placeholder.md)
 - [2026-03-31 TOPIX33業種データ追加と market tools 導線の方針](./decision-log/2026-03-31-topix33-market-tool-plan.md)
 - [2026-03-29 market tools の日付 UI と休場日扱いの整理](./decision-log/2026-03-29-market-tools-date-ui-and-holiday-handling.md)
 - [2026-03-29 dev 環境の WSL 移行方針と OneDrive 運用解消](./decision-log/2026-03-29-dev-env-wsl-migration-and-onedrive-exit.md)
