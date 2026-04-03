@@ -19,7 +19,7 @@ type Props = {
   inline?: boolean;
 };
 
-const DEFAULT_METHODS: ShareMethod[] = ["x", "facebook", "email", "copy", "premium", "qr"];
+const DEFAULT_METHODS: ShareMethod[] = ["x", "facebook", "email", "copy"];
 
 export default function ShareButtons({
   text,
