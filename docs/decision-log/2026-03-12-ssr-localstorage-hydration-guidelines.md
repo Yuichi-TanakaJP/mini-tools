@@ -33,3 +33,49 @@
 - `localStorage`, `window`, `navigator` 前提ロジックをページ直下に置かない。
 - 画面骨格は Server、ブラウザ依存部分のみ Client に分離する。
 - 初期描画差分を作る値（日時/乱数/環境依存値）は SSR 側で直接UIに出さない。
+
+---
+
+## 追記：2026-04-04 — `useState` lazy init と useEffect 後注入の使い分け
+
+### 背景
+
+`yutai-candidates`（優待カレンダー）に日興信用データ表示を追加した際、hydration mismatch が発生した。  
+原因は `useState` の lazy init で localStorage を読んでいたこと。
+
+```ts
+// NG：サーバーは空 Set、クライアントは localStorage から読む → mismatch
+const [pickedCodes, setPickedCodes] = useState<Set<string>>(() => loadPickedCodes());
+```
+
+### 決めたこと
+
+`"use client"` コンポーネントでも SSR は動く。初回 HTML はサーバーとクライアントで一致している必要がある。
+
+| 値の種類 | 対応 |
+|---------|------|
+| localStorage / window 依存の初期値 | `useState(空値)` + `useEffect` で後注入 |
+| サーバーデータ不要・完全クライアント完結 | `ssr: false`（ClientOnly 方式） |
+
+```ts
+// OK：サーバーとクライアントの初期描画を空で揃え、マウント後に注入
+const [pickedCodes, setPickedCodes] = useState<Set<string>>(new Set());
+
+useEffect(() => {
+  setPickedCodes(loadPickedCodes());
+}, []);
+```
+
+### ツール別の使い分け
+
+- `yutai-memo` / `yutai-expiry` / `charcount` / `total`：サーバーデータ不要 → `ssr: false`（ClientOnly）
+- `yutai-candidates`：サーバーから月別データを受け取る → SSR 有効のまま、localStorage は useEffect で後注入
+
+### 判断フロー
+
+```
+サーバーからデータを受け取るか？
+  ├─ No  → ssr: false（ClientOnly 方式）
+  └─ Yes → SSR 有効のまま
+             localStorage 依存の初期値は useState(空値) + useEffect で後注入
+```

@@ -10,7 +10,8 @@ const PICKED_KEY = "monthly_yutai_picks_v1";
 
 type StatusFilter = "all" | "picked" | "added" | "unselected";
 type LinkFilter = "all" | "with" | "without";
-type SortKey = "company" | "code" | "investment";
+type CrossFilter = "all" | "general" | "institutional" | "any";
+type SortKey = "company" | "code" | "investment" | "available_shares";
 
 function normalizeText(value: string) {
   return value.normalize("NFKC").toLowerCase();
@@ -47,6 +48,28 @@ function savePickedCodes(codes: Set<string>) {
   window.localStorage.setItem(PICKED_KEY, JSON.stringify([...codes]));
 }
 
+
+function renderCreditBadges(
+  nikkoCredit: import("./types").NikkoCreditData | null,
+  code: string,
+  styles: Record<string, React.CSSProperties>,
+): React.ReactNode {
+  if (!nikkoCredit) return null;
+  const credit = nikkoCredit.by_code[code];
+  if (!credit) return <div style={styles.creditRow}><span style={styles.creditChipNone}>日興対象外</span></div>;
+  const badges: React.ReactNode[] = [];
+  if (credit.general_short) {
+    badges.push(<span key="gen" style={styles.creditChipGeneral}>一般売可</span>);
+  }
+  if (credit.institutional_short) {
+    badges.push(<span key="inst" style={styles.creditChipInstitutional}>制度売可</span>);
+  }
+  if (badges.length === 0) {
+    badges.push(<span key="none" style={styles.creditChipNoCross}>クロス不可</span>);
+  }
+  return <div style={styles.creditRow}>{badges}</div>;
+}
+
 function hasOfficialLink(item: MonthlyYutaiCandidate) {
   return item.has_official_link && Boolean(item.official_benefit_url);
 }
@@ -65,15 +88,22 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const [tagFilter, setTagFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [linkFilter, setLinkFilter] = useState<LinkFilter>("all");
-  const [sortKey, setSortKey] = useState<SortKey>("company");
-  const [pickedCodes, setPickedCodes] = useState<Set<string>>(() => loadPickedCodes());
-  const [addedKeys, setAddedKeys] = useState<Set<string>>(() => {
-    const items = loadItems();
-    return new Set(
-      items.flatMap((item) => (item.months ?? []).map((month) => `${item.code ?? ""}:${month}`)),
-    );
-  });
+  const [crossFilter, setCrossFilter] = useState<CrossFilter>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("code");
+  const [pickedCodes, setPickedCodes] = useState<Set<string>>(new Set());
+  const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
   const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    // localStorage はサーバーで読めないため、マウント後に初期化する（hydration mismatch 回避）
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setPickedCodes(loadPickedCodes());
+    const items = loadItems();
+    setAddedKeys(new Set(
+      items.flatMap((item) => (item.months ?? []).map((month) => `${item.code ?? ""}:${month}`)),
+    ));
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, []);
 
   useEffect(() => {
     savePickedCodes(pickedCodes);
@@ -100,6 +130,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const filteredItems = useMemo(() => {
     const normalizedQuery = normalizeText(query.trim());
     const collator = new Intl.Collator("ja", { numeric: true, sensitivity: "base" });
+    const byCode = data.nikkoCredit?.by_code;
     return data.items
       .filter((item) => {
         if (tagFilter !== "all" && !item.benefit_category_tags.includes(tagFilter)) return false;
@@ -111,6 +142,13 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
         if (statusFilter === "picked" && !picked) return false;
         if (statusFilter === "added" && !added) return false;
         if (statusFilter === "unselected" && (picked || added)) return false;
+
+        if (crossFilter !== "all" && byCode) {
+          const credit = byCode[item.code];
+          if (crossFilter === "general" && !credit?.general_short) return false;
+          if (crossFilter === "institutional" && !credit?.institutional_short) return false;
+          if (crossFilter === "any" && !credit?.general_short && !credit?.institutional_short) return false;
+        }
 
         if (!normalizedQuery) return true;
         return normalizeText(
@@ -129,11 +167,16 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
         if (sortKey === "investment") {
           return (a.minimum_investment_yen ?? Number.POSITIVE_INFINITY) - (b.minimum_investment_yen ?? Number.POSITIVE_INFINITY);
         }
+        if (sortKey === "available_shares" && byCode) {
+          const aShares = byCode[a.code]?.available_shares ?? -1;
+          const bShares = byCode[b.code]?.available_shares ?? -1;
+          return bShares - aShares;
+        }
         const byName = collator.compare(a.company_name, b.company_name);
         if (byName !== 0) return byName;
         return (a.minimum_investment_yen ?? Number.POSITIVE_INFINITY) - (b.minimum_investment_yen ?? Number.POSITIVE_INFINITY);
       });
-  }, [addedKeys, data.items, linkFilter, pickedCodes, query, sortKey, statusFilter, tagFilter]);
+  }, [addedKeys, crossFilter, data.items, data.nikkoCredit, linkFilter, pickedCodes, query, sortKey, statusFilter, tagFilter]);
 
   function togglePick(code: string) {
     setPickedCodes((prev) => {
@@ -191,9 +234,9 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
         <section style={styles.hero}>
           <div style={styles.heroEyebrow}>
             <span style={styles.heroEyebrowDot} />
-            優待候補一覧 beta
+            優待カレンダー beta
           </div>
-          <h1 style={styles.heroTitle}>月別の優待候補を探す</h1>
+          <h1 style={styles.heroTitle}>権利確定月で優待銘柄を探す</h1>
           <p style={styles.heroNote}>
             月別優待データを一覧表示して、気になる銘柄だけをピックし優待メモへ追加できます。
           </p>
@@ -202,9 +245,9 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
               <span style={styles.metaOnlineDot} />
               {formatGeneratedAt(data.generatedAt)}
             </span>
-            {data.items.length > 0 && (
+            {data.nikkoCredit && (
               <span style={styles.metaChip}>
-                全 {data.items.length.toLocaleString("ja-JP")} 件
+                日興信用 {data.nikkoCredit.date} 時点
               </span>
             )}
           </div>
@@ -265,10 +308,21 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                 <option value="added">状態: メモ追加済み</option>
                 <option value="unselected">状態: 未選択</option>
               </select>
+              {data.nikkoCredit && (
+                <select value={crossFilter} onChange={(e) => setCrossFilter(e.target.value as CrossFilter)} style={styles.select}>
+                  <option value="all">クロス: すべて</option>
+                  <option value="any">クロス: 一般または制度</option>
+                  <option value="general">クロス: 一般信用のみ</option>
+                  <option value="institutional">クロス: 制度信用のみ</option>
+                </select>
+              )}
               <select value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)} style={styles.select}>
                 <option value="company">並び順: 会社名</option>
                 <option value="code">並び順: コード</option>
                 <option value="investment">並び順: 最低投資金額</option>
+                {data.nikkoCredit && (
+                  <option value="available_shares">並び順: 一般売建可能数量</option>
+                )}
               </select>
             </div>
           </div>
@@ -322,6 +376,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                               </>
                             )}
                           </div>
+                          {renderCreditBadges(data.nikkoCredit, item.code, styles)}
                         </div>
                         <div style={styles.stateChips}>
                           {picked && <span style={styles.pickedChip}>★ Pick</span>}
@@ -758,6 +813,52 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 11,
     fontWeight: 800,
     border: "1px solid rgba(34,197,94,0.20)",
+  },
+  creditRow: {
+    display: "flex",
+    gap: 6,
+    flexWrap: "wrap",
+    marginTop: 6,
+  },
+  creditChipGeneral: {
+    display: "inline-flex",
+    padding: "2px 8px",
+    borderRadius: 6,
+    background: "#dcfce7",
+    color: "#15803d",
+    fontSize: 11,
+    fontWeight: 800,
+    border: "1px solid rgba(34,197,94,0.25)",
+  },
+  creditChipInstitutional: {
+    display: "inline-flex",
+    padding: "2px 8px",
+    borderRadius: 6,
+    background: "#dbeafe",
+    color: "#1d4ed8",
+    fontSize: 11,
+    fontWeight: 800,
+    border: "1px solid rgba(59,130,246,0.25)",
+  },
+  creditChipNoCross: {
+    display: "inline-flex",
+    padding: "2px 8px",
+    borderRadius: 6,
+    background: "#f1f5f9",
+    color: "#94a3b8",
+    fontSize: 11,
+    fontWeight: 700,
+    border: "1px solid rgba(15,23,42,0.06)",
+  },
+  creditChipNone: {
+    display: "inline-flex",
+    padding: "2px 8px",
+    borderRadius: 6,
+    background: "#f8fafc",
+    color: "#cbd5e1",
+    fontSize: 11,
+    fontWeight: 700,
+    border: "1px solid rgba(15,23,42,0.04)",
   },
   tagRow: {
     display: "flex",

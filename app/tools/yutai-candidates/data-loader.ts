@@ -4,6 +4,7 @@ import type {
   MonthlyYutaiManifest,
   MonthlyYutaiMonthData,
   MonthlyYutaiPageData,
+  NikkoCreditData,
 } from "./types";
 
 /** JST の今日の年・月・日を返す */
@@ -168,8 +169,31 @@ export async function loadMonthlyYutaiMonthData(yearMonth: string): Promise<Mont
   }
 }
 
+async function loadLocalNikkoCreditSample(): Promise<NikkoCreditData | null> {
+  try {
+    const raw = await readFile(path.join(getDataDir(), "nikko_credit_sample.json"), "utf-8");
+    return JSON.parse(raw) as NikkoCreditData;
+  } catch {
+    return null;
+  }
+}
+
+async function loadNikkoCreditData(): Promise<NikkoCreditData | null> {
+  const apiBase = getApiBaseUrl();
+  if (!apiBase) return loadLocalNikkoCreditSample();
+
+  try {
+    return await fetchJson<NikkoCreditData>(`${apiBase}/nikko/credit`);
+  } catch {
+    return loadLocalNikkoCreditSample();
+  }
+}
+
 export async function loadMonthlyYutaiPageData(requestedMonthId?: string): Promise<MonthlyYutaiPageData> {
-  const manifest = await loadMonthlyYutaiManifest();
+  const [manifest, nikkoCredit] = await Promise.all([
+    loadMonthlyYutaiManifest(),
+    loadNikkoCreditData(),
+  ]);
 
   const availableMonths =
     manifest?.months?.map((m) => `${m.year}-${String(m.month).padStart(2, "0")}`) ?? [];
@@ -187,5 +211,6 @@ export async function loadMonthlyYutaiPageData(requestedMonthId?: string): Promi
     generatedAt: monthData?.generated_at ?? manifest?.generated_at ?? null,
     source: monthData?.source ?? manifest?.source ?? null,
     items: monthData?.records ?? [],
+    nikkoCredit,
   };
 }

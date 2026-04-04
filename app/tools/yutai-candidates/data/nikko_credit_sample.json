@@ -1,0 +1,49 @@
+{
+  "date": "2026-04-04",
+  "generated_at": "2026-04-04T12:00:00+09:00",
+  "record_count": 6,
+  "by_code": {
+    "2702": {
+      "institutional_buy": true,
+      "institutional_short": true,
+      "general_buy": true,
+      "general_short": true,
+      "available_shares": 900
+    },
+    "1305": {
+      "institutional_buy": true,
+      "institutional_short": true,
+      "general_buy": true,
+      "general_short": false,
+      "available_shares": null
+    },
+    "9831": {
+      "institutional_buy": true,
+      "institutional_short": false,
+      "general_buy": true,
+      "general_short": true,
+      "available_shares": 300
+    },
+    "3088": {
+      "institutional_buy": true,
+      "institutional_short": false,
+      "general_buy": false,
+      "general_short": false,
+      "available_shares": null
+    },
+    "7816": {
+      "institutional_buy": true,
+      "institutional_short": true,
+      "general_buy": true,
+      "general_short": true,
+      "available_shares": 0
+    },
+    "2413": {
+      "institutional_buy": false,
+      "institutional_short": false,
+      "general_buy": false,
+      "general_short": false,
+      "available_shares": null
+    }
+  }
+}
