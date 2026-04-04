@@ -38,10 +38,26 @@ export type MonthlyYutaiMonthData = {
   records: MonthlyYutaiCandidate[];
 };
 
+export type NikkoCreditRecord = {
+  institutional_buy: boolean;
+  institutional_short: boolean;
+  general_buy: boolean;
+  general_short: boolean;
+  available_shares: number | null;
+};
+
+export type NikkoCreditData = {
+  date: string;
+  generated_at: string;
+  record_count: number;
+  by_code: Record<string, NikkoCreditRecord>;
+};
+
 export type MonthlyYutaiPageData = {
   manifest: MonthlyYutaiManifest | null;
   selectedMonthId: string;
   generatedAt: string | null;
   source: string | null;
   items: MonthlyYutaiCandidate[];
+  nikkoCredit: NikkoCreditData | null;
 };
