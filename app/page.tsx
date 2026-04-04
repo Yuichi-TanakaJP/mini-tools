@@ -40,7 +40,7 @@ const TOOLS: ToolItem[] = [
   {
     title: "株主優待期限帳",
     short: "優待の期限を管理",
-    detail: "優待の有効期限（使える最終日）を管理。期限が近い順・月別表示対応。データは端末内に保存。",
+    detail: "受け取った優待の使用期限を管理。期限切れを防ぐ、使い忘れゼロへ。",
     href: "/tools/yutai-expiry",
     icon: "🎁",
   },
@@ -52,9 +52,9 @@ const TOOLS: ToolItem[] = [
     icon: "📝",
   },
   {
-    title: "優待候補一覧",
+    title: "優待カレンダー",
     short: "月別の候補を探す",
-    detail: "月別の優待銘柄候補を一覧で確認。気になる銘柄をピックして優待メモへ追加できます。",
+    detail: "権利確定月ごとに優待銘柄を一覧で確認。気になる銘柄をピックして優待メモへ追加できます。",
     href: "/tools/yutai-candidates",
     icon: "🔎",
   },

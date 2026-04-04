@@ -3,9 +3,9 @@ import ToolClient from "./ToolClient";
 import { loadMonthlyYutaiPageData } from "./data-loader";
 
 export const metadata: Metadata = {
-  title: "優待候補一覧 | mini-tools",
+  title: "優待カレンダー | mini-tools",
   description:
-    "月別の優待銘柄候補を一覧表示し、気になる銘柄をピックして優待メモへ追加できる候補探索ページです。",
+    "権利確定月ごとに優待銘柄を一覧表示し、気になる銘柄をピックして優待メモへ追加できます。",
   alternates: {
     canonical: "/tools/yutai-candidates",
   },
