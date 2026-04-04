@@ -62,9 +62,11 @@ export default function PremiumPreviewChart({
   const allValues = selectedSeries.flatMap((item) => item.values);
   const rawMin = allValues.length > 0 ? Math.min(...allValues) : 99;
   const rawMax = allValues.length > 0 ? Math.max(...allValues) : 101;
-  const axisMax = roundUpToStep(rawMax, 5);
-  const axisMin = roundDownToStep(rawMin, 5);
-  const axisRange = Math.max(axisMax - axisMin, 5);
+  const roundedAxisMax = roundUpToStep(rawMax, 5);
+  const roundedAxisMin = roundDownToStep(rawMin, 5);
+  const axisMax = roundedAxisMax === roundedAxisMin ? roundedAxisMax + 5 : roundedAxisMax;
+  const axisMin = roundedAxisMax === roundedAxisMin ? roundedAxisMin - 5 : roundedAxisMin;
+  const axisRange = axisMax - axisMin;
   const guideValues = [axisMax, axisMin + axisRange / 2, axisMin];
 
   function toggleSector(sectorName: string) {
