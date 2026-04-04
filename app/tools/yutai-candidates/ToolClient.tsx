@@ -92,6 +92,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const [sortKey, setSortKey] = useState<SortKey>("code");
   const [pickedCodes, setPickedCodes] = useState<Set<string>>(new Set());
   const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
+  const [hydrated, setHydrated] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -102,12 +103,15 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     setAddedKeys(new Set(
       items.flatMap((item) => (item.months ?? []).map((month) => `${item.code ?? ""}:${month}`)),
     ));
+    setHydrated(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   useEffect(() => {
+    // hydrated 前は空 Set を保存しない
+    if (!hydrated) return;
     savePickedCodes(pickedCodes);
-  }, [pickedCodes]);
+  }, [hydrated, pickedCodes]);
 
   const availableTags = useMemo(() => {
     return Array.from(

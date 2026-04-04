@@ -180,12 +180,14 @@ async function loadLocalNikkoCreditSample(): Promise<NikkoCreditData | null> {
 
 async function loadNikkoCreditData(): Promise<NikkoCreditData | null> {
   const apiBase = getApiBaseUrl();
+  // API未設定時のみサンプルにフォールバック（開発用）
   if (!apiBase) return loadLocalNikkoCreditSample();
 
   try {
     return await fetchJson<NikkoCreditData>(`${apiBase}/nikko/credit`);
   } catch {
-    return loadLocalNikkoCreditSample();
+    // APIあり・fetch失敗時はサンプルを返さず null にする（誤情報防止）
+    return null;
   }
 }
 
