@@ -1,5 +1,10 @@
 # 2026-03-28 日経225寄与度ツールのデータ連携と UI 判断
 
+> Note
+> このメモの UI 判断は引き続き有効ですが、取得入口の説明は当時の前提です。
+> 現行の標準取得入口は `NIKKEI_CONTRIBUTION_DATA_BASE_URL` ではなく `MARKET_INFO_API_BASE_URL/nikkei/*` です。
+> 最新方針は [2026-04-04 market tools の API 統一方針](./2026-04-04-market-tools-api-unification-plan.md) を参照します。
+
 ## 背景
 
 `market_info` 側で生成した `nikkei_contribution_YYYY-MM-DD.json` と

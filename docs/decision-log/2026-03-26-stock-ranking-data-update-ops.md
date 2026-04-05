@@ -1,5 +1,11 @@
 # 2026-03-26 株価ランキングのデータ連携手順メモ
 
+> Note
+> このメモは 2026-03-26 時点の運用整理です。
+> 現行の標準取得入口は `STOCK_RANKING_DATA_BASE_URL` ではなく `MARKET_INFO_API_BASE_URL` です。
+> 最新方針は [2026-04-04 market tools の API 統一方針](./2026-04-04-market-tools-api-unification-plan.md) と
+> [2026-04-05 jpx-closed endpoint の確定事項](./2026-04-05-jpx-closed-endpoint-finalization.md) を参照します。
+
 ## 背景
 
 `stock-ranking` は、`mini-tools` 側で [`app/tools/stock-ranking/data/manifest.json`](../../../app/tools/stock-ranking/data/manifest.json) を起点に利用可能日を判断し、各日付の JSON を読み込んで表示している。  
