@@ -11,6 +11,7 @@ const PICKED_KEY = "monthly_yutai_picks_v1";
 type StatusFilter = "all" | "picked" | "added" | "unselected";
 type LinkFilter = "all" | "with" | "without";
 type CrossFilter = "all" | "general" | "institutional" | "any";
+type SbiFilter = "all" | "sbi_any";
 type SortKey = "company" | "code" | "investment" | "available_shares";
 
 function normalizeText(value: string) {
@@ -70,6 +71,20 @@ function renderCreditBadges(
   return <div style={styles.creditRow}>{badges}</div>;
 }
 
+function renderSbiCreditBadge(
+  sbiCredit: import("./types").SbiCreditData | null,
+  code: string,
+  styles: Record<string, React.CSSProperties>,
+): React.ReactNode {
+  if (!sbiCredit) return null;
+  const record = sbiCredit.by_code[code];
+  if (!record || record.position_status === "unavailable") return null;
+  if (record.position_status === "limited") {
+    return <span style={styles.sbiCreditChipLimited}>SBI残少</span>;
+  }
+  return <span style={styles.sbiCreditChipAvailable}>SBI売可</span>;
+}
+
 function hasOfficialLink(item: MonthlyYutaiCandidate) {
   return item.has_official_link && Boolean(item.official_benefit_url);
 }
@@ -89,6 +104,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [linkFilter, setLinkFilter] = useState<LinkFilter>("all");
   const [crossFilter, setCrossFilter] = useState<CrossFilter>("all");
+  const [sbiFilter, setSbiFilter] = useState<SbiFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("code");
   const [pickedCodes, setPickedCodes] = useState<Set<string>>(new Set());
   const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
@@ -154,6 +170,11 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
           if (crossFilter === "any" && !credit?.general_short && !credit?.institutional_short) return false;
         }
 
+        if (sbiFilter === "sbi_any" && data.sbiCredit) {
+          const sbi = data.sbiCredit.by_code[item.code];
+          if (!sbi || sbi.position_status === "unavailable") return false;
+        }
+
         if (!normalizedQuery) return true;
         return normalizeText(
           [
@@ -180,7 +201,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
         if (byName !== 0) return byName;
         return (a.minimum_investment_yen ?? Number.POSITIVE_INFINITY) - (b.minimum_investment_yen ?? Number.POSITIVE_INFINITY);
       });
-  }, [addedKeys, crossFilter, data.items, data.nikkoCredit, linkFilter, pickedCodes, query, sortKey, statusFilter, tagFilter]);
+  }, [addedKeys, crossFilter, sbiFilter, data.items, data.nikkoCredit, data.sbiCredit, linkFilter, pickedCodes, query, sortKey, statusFilter, tagFilter]);
 
   function togglePick(code: string) {
     setPickedCodes((prev) => {
@@ -254,6 +275,11 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                 日興信用 {data.nikkoCredit.date} 時点
               </span>
             )}
+            {data.sbiCredit && (
+              <span style={styles.metaChip}>
+                SBI信用 {data.sbiCredit.date} 時点
+              </span>
+            )}
           </div>
         </section>
 
@@ -320,6 +346,12 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                   <option value="institutional">クロス: 制度信用のみ</option>
                 </select>
               )}
+              {data.sbiCredit && (
+                <select value={sbiFilter} onChange={(e) => setSbiFilter(e.target.value as SbiFilter)} style={styles.select}>
+                  <option value="all">SBI: すべて</option>
+                  <option value="sbi_any">SBI: 売建可</option>
+                </select>
+              )}
               <select value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)} style={styles.select}>
                 <option value="company">並び順: 会社名</option>
                 <option value="code">並び順: コード</option>
@@ -381,6 +413,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                             )}
                           </div>
                           {renderCreditBadges(data.nikkoCredit, item.code, styles)}
+                          {renderSbiCreditBadge(data.sbiCredit, item.code, styles)}
                         </div>
                         <div style={styles.stateChips}>
                           {picked && <span style={styles.pickedChip}>★ Pick</span>}
@@ -863,6 +896,28 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 11,
     fontWeight: 700,
     border: "1px solid rgba(15,23,42,0.04)",
+  },
+  sbiCreditChipAvailable: {
+    display: "inline-flex",
+    padding: "2px 8px",
+    borderRadius: 6,
+    background: "#f0fdf4",
+    color: "#166534",
+    fontSize: 11,
+    fontWeight: 800,
+    border: "1px solid rgba(34,197,94,0.2)",
+    marginTop: 4,
+  },
+  sbiCreditChipLimited: {
+    display: "inline-flex",
+    padding: "2px 8px",
+    borderRadius: 6,
+    background: "#fff7ed",
+    color: "#c2410c",
+    fontSize: 11,
+    fontWeight: 800,
+    border: "1px solid rgba(249,115,22,0.25)",
+    marginTop: 4,
   },
   tagRow: {
     display: "flex",

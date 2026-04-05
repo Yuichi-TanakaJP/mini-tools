@@ -53,6 +53,22 @@ export type NikkoCreditData = {
   by_code: Record<string, NikkoCreditRecord>;
 };
 
+export type SbiCreditRecord = {
+  position_status: "available" | "limited" | "unavailable";
+  unit_upper_limit: string;
+  is_hyper: boolean;
+  is_daily: boolean;
+  is_short: boolean;
+  is_long: boolean;
+};
+
+export type SbiCreditData = {
+  date: string;
+  generated_at: string;
+  record_count: number;
+  by_code: Record<string, SbiCreditRecord>;
+};
+
 export type MonthlyYutaiPageData = {
   manifest: MonthlyYutaiManifest | null;
   selectedMonthId: string;
@@ -60,4 +76,5 @@ export type MonthlyYutaiPageData = {
   source: string | null;
   items: MonthlyYutaiCandidate[];
   nikkoCredit: NikkoCreditData | null;
+  sbiCredit: SbiCreditData | null;
 };

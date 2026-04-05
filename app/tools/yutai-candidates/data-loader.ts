@@ -5,6 +5,7 @@ import type {
   MonthlyYutaiMonthData,
   MonthlyYutaiPageData,
   NikkoCreditData,
+  SbiCreditData,
 } from "./types";
 
 /** JST の今日の年・月・日を返す */
@@ -191,6 +192,31 @@ async function loadNikkoCreditData(): Promise<NikkoCreditData | null> {
   }
 }
 
+/**
+ * SBI一般信用データを取得する。
+ *
+ * SBI一般信用は15営業日の短期売りのため、latest.json には当月クロス対象銘柄のみが掲載される。
+ * - 当月・将来月を選択している場合: latest.json（= 当月時点の在庫）を使う
+ * - 過去月を選択している場合: monthly/{yearMonth}.json（月次アーカイブ）を使う
+ * API未設定時は null を返す（誤情報防止）。
+ */
+async function loadSbiCreditData(selectedMonthId: string): Promise<SbiCreditData | null> {
+  const apiBase = getApiBaseUrl();
+  if (!apiBase) return null;
+
+  const { year, month } = getJstToday();
+  const currentMonthId = `${year}-${String(month).padStart(2, "0")}`;
+  const url = selectedMonthId >= currentMonthId
+    ? `${apiBase}/sbi/credit/latest`
+    : `${apiBase}/sbi/credit/monthly/${selectedMonthId}`;
+
+  try {
+    return await fetchJson<SbiCreditData>(url);
+  } catch {
+    return null;
+  }
+}
+
 export async function loadMonthlyYutaiPageData(requestedMonthId?: string): Promise<MonthlyYutaiPageData> {
   const [manifest, nikkoCredit] = await Promise.all([
     loadMonthlyYutaiManifest(),
@@ -205,7 +231,10 @@ export async function loadMonthlyYutaiPageData(requestedMonthId?: string): Promi
       ? requestedMonthId
       : getSmartDefaultMonthId(availableMonths, manifest?.latest_month ?? "");
 
-  const monthData = await loadMonthlyYutaiMonthData(selectedMonthId);
+  const [monthData, sbiCredit] = await Promise.all([
+    loadMonthlyYutaiMonthData(selectedMonthId),
+    loadSbiCreditData(selectedMonthId),
+  ]);
 
   return {
     manifest,
@@ -214,5 +243,6 @@ export async function loadMonthlyYutaiPageData(requestedMonthId?: string): Promi
     source: monthData?.source ?? manifest?.source ?? null,
     items: monthData?.records ?? [],
     nikkoCredit,
+    sbiCredit,
   };
 }
