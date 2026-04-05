@@ -57,7 +57,7 @@ function renderCreditBadges(
 ): React.ReactNode {
   if (!nikkoCredit) return null;
   const credit = nikkoCredit.by_code[code];
-  if (!credit) return <div style={styles.creditRow}><span style={styles.creditChipNone}>日興対象外</span></div>;
+  if (!credit) return <span style={styles.creditChipNone}>日興対象外</span>;
   const badges: React.ReactNode[] = [];
   if (credit.general_short) {
     badges.push(<span key="gen" style={styles.creditChipGeneral}>一般売可</span>);
@@ -68,7 +68,7 @@ function renderCreditBadges(
   if (badges.length === 0) {
     badges.push(<span key="none" style={styles.creditChipNoCross}>クロス不可</span>);
   }
-  return <div style={styles.creditRow}>{badges}</div>;
+  return badges;
 }
 
 function renderSbiCreditBadge(
@@ -79,7 +79,7 @@ function renderSbiCreditBadge(
   if (!sbiCredit) return null;
   const record = sbiCredit.by_code[code];
   if (!isHandledBySbiShort(record)) return null;
-  return <span style={styles.sbiCreditChipAvailable}>SBI短期対象</span>;
+  return <span style={styles.sbiCreditChipAvailable}>SBI売可</span>;
 }
 
 function isHandledBySbiShort(
@@ -352,7 +352,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
               {data.sbiCredit && (
                 <select value={sbiFilter} onChange={(e) => setSbiFilter(e.target.value as SbiFilter)} style={styles.select}>
                   <option value="all">SBI: すべて</option>
-                  <option value="sbi_any">SBI: 短期対象あり</option>
+                  <option value="sbi_any">SBI: 売可あり</option>
                 </select>
               )}
               <select value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)} style={styles.select}>
@@ -415,8 +415,10 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                               </>
                             )}
                           </div>
-                          {renderCreditBadges(data.nikkoCredit, item.code, styles)}
-                          {renderSbiCreditBadge(data.sbiCredit, item.code, styles)}
+                          <div style={styles.creditRow}>
+                            {renderCreditBadges(data.nikkoCredit, item.code, styles)}
+                            {renderSbiCreditBadge(data.sbiCredit, item.code, styles)}
+                          </div>
                         </div>
                         <div style={styles.stateChips}>
                           {picked && <span style={styles.pickedChip}>★ Pick</span>}
@@ -518,6 +520,15 @@ const baseSecondaryButton: React.CSSProperties = {
   minWidth: 0,
   whiteSpace: "nowrap",
   textAlign: "center",
+};
+
+const baseCreditChip: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "2px 8px",
+  borderRadius: 6,
+  fontSize: 11,
+  lineHeight: 1,
 };
 
 const styles: Record<string, React.CSSProperties> = {
@@ -861,66 +872,46 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 6,
   },
   creditChipGeneral: {
-    display: "inline-flex",
-    padding: "2px 8px",
-    borderRadius: 6,
+    ...baseCreditChip,
     background: "#dcfce7",
     color: "#15803d",
-    fontSize: 11,
     fontWeight: 800,
     border: "1px solid rgba(34,197,94,0.25)",
   },
   creditChipInstitutional: {
-    display: "inline-flex",
-    padding: "2px 8px",
-    borderRadius: 6,
+    ...baseCreditChip,
     background: "#dbeafe",
     color: "#1d4ed8",
-    fontSize: 11,
     fontWeight: 800,
     border: "1px solid rgba(59,130,246,0.25)",
   },
   creditChipNoCross: {
-    display: "inline-flex",
-    padding: "2px 8px",
-    borderRadius: 6,
+    ...baseCreditChip,
     background: "#f1f5f9",
     color: "#94a3b8",
-    fontSize: 11,
     fontWeight: 700,
     border: "1px solid rgba(15,23,42,0.06)",
   },
   creditChipNone: {
-    display: "inline-flex",
-    padding: "2px 8px",
-    borderRadius: 6,
+    ...baseCreditChip,
     background: "#f8fafc",
     color: "#cbd5e1",
-    fontSize: 11,
     fontWeight: 700,
     border: "1px solid rgba(15,23,42,0.04)",
   },
   sbiCreditChipAvailable: {
-    display: "inline-flex",
-    padding: "2px 8px",
-    borderRadius: 6,
+    ...baseCreditChip,
     background: "#f0fdf4",
     color: "#166534",
-    fontSize: 11,
     fontWeight: 800,
     border: "1px solid rgba(34,197,94,0.2)",
-    marginTop: 4,
   },
   sbiCreditChipLimited: {
-    display: "inline-flex",
-    padding: "2px 8px",
-    borderRadius: 6,
+    ...baseCreditChip,
     background: "#fff7ed",
     color: "#c2410c",
-    fontSize: 11,
     fontWeight: 800,
     border: "1px solid rgba(249,115,22,0.25)",
-    marginTop: 4,
   },
   tagRow: {
     display: "flex",
