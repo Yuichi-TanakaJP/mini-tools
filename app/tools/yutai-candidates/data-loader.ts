@@ -192,17 +192,26 @@ async function loadNikkoCreditData(): Promise<NikkoCreditData | null> {
   }
 }
 
+async function loadLocalSbiCreditSample(): Promise<SbiCreditData | null> {
+  try {
+    const raw = await readFile(path.join(getDataDir(), "sbi_credit_sample.json"), "utf-8");
+    return JSON.parse(raw) as SbiCreditData;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * SBI一般信用データを取得する。
  *
  * SBI一般信用は15営業日の短期売りのため、latest.json には当月クロス対象銘柄のみが掲載される。
  * - 当月・将来月を選択している場合: latest.json（= 当月時点の在庫）を使う
  * - 過去月を選択している場合: monthly/{yearMonth}.json（月次アーカイブ）を使う
- * API未設定時は null を返す（誤情報防止）。
+ * API未設定時はサンプルにフォールバック（開発用）。
  */
 async function loadSbiCreditData(selectedMonthId: string): Promise<SbiCreditData | null> {
   const apiBase = getApiBaseUrl();
-  if (!apiBase) return null;
+  if (!apiBase) return loadLocalSbiCreditSample();
 
   const { year, month } = getJstToday();
   const currentMonthId = `${year}-${String(month).padStart(2, "0")}`;

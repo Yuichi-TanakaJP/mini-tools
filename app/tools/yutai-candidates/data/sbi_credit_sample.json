@@ -1,0 +1,55 @@
+{
+  "date": "2026-04-05",
+  "generated_at": "2026-04-05T00:00:00+09:00",
+  "record_count": 6,
+  "by_code": {
+    "2914": {
+      "position_status": "available",
+      "unit_upper_limit": "50 単元",
+      "is_hyper": false,
+      "is_daily": true,
+      "is_short": false,
+      "is_long": false
+    },
+    "8591": {
+      "position_status": "available",
+      "unit_upper_limit": "30 単元",
+      "is_hyper": false,
+      "is_daily": true,
+      "is_short": false,
+      "is_long": false
+    },
+    "7751": {
+      "position_status": "limited",
+      "unit_upper_limit": "5 単元",
+      "is_hyper": false,
+      "is_daily": true,
+      "is_short": false,
+      "is_long": false
+    },
+    "9433": {
+      "position_status": "limited",
+      "unit_upper_limit": "3 単元",
+      "is_hyper": false,
+      "is_daily": true,
+      "is_short": false,
+      "is_long": false
+    },
+    "1301": {
+      "position_status": "unavailable",
+      "unit_upper_limit": "--",
+      "is_hyper": false,
+      "is_daily": true,
+      "is_short": false,
+      "is_long": false
+    },
+    "3197": {
+      "position_status": "available",
+      "unit_upper_limit": "10 単元",
+      "is_hyper": false,
+      "is_daily": true,
+      "is_short": false,
+      "is_long": false
+    }
+  }
+}
