@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
@@ -8,6 +7,7 @@ import { redirect } from "next/navigation";
 import LogoutButton from "./LogoutButton";
 import PremiumPreviewChart from "./PremiumPreviewChart";
 import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
+import { loadJpxMarketClosedData } from "@/lib/jpx-market-closed";
 import { loadTopix33DayData, loadTopix33Manifest } from "@/app/tools/topix33/data-loader";
 import type {
   JpxMarketClosedResponse,
@@ -185,19 +185,6 @@ function buildFallbackPreviewData(): PremiumPreviewData {
   };
 }
 
-async function loadHolidayData() {
-  try {
-    const holidayPath = path.join(
-      process.cwd(),
-      "app/tools/earnings-calendar/data/jpx_market_closed_20260101_to_20271231.json"
-    );
-    const raw = await readFile(holidayPath, "utf-8");
-    return JSON.parse(raw) as JpxMarketClosedResponse;
-  } catch {
-    return null;
-  }
-}
-
 function getVisibleDates(
   dates: string[],
   holidays: JpxMarketClosedResponse | null
@@ -256,7 +243,7 @@ function getAvailableMonths(dates: string[]) {
 }
 
 async function loadPremiumPreviewData(requestedMonth?: string): Promise<PremiumPreviewData> {
-  const holidays = await loadHolidayData();
+  const holidays = await loadJpxMarketClosedData();
   const manifest = await loadTopix33Manifest();
   const visibleDates = getVisibleDates(manifest.dates, holidays);
 

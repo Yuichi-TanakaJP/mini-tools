@@ -337,13 +337,13 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                 <circle cx="12" cy="12" r="9" stroke="#94a3b8" strokeWidth="1.5" />
                 <path d="M12 8v4M12 16h.01" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
-              <div style={styles.emptyTitle}>月別優待データはまだ接続されていません</div>
-              <div style={styles.emptyNote}>
-                {"`app/tools/yutai-candidates/data/manifest.json`"} または{" "}
-                {"`MONTHLY_YUTAI_DATA_BASE_URL`"} を用意すると、manifest の{" "}
-                {"`months[].path`"} を正として一覧が表示されます。
-              </div>
-            </article>
+                <div style={styles.emptyTitle}>月別優待データはまだ接続されていません</div>
+                <div style={styles.emptyNote}>
+                  {"`app/tools/yutai-candidates/data/manifest.json`"} または{" "}
+                  {"`MARKET_INFO_API_BASE_URL`"} 経由の月別 API を用意すると、manifest の{" "}
+                  {"`months[].path`"} を正として一覧が表示されます。
+                </div>
+              </article>
           ) : filteredItems.length === 0 ? (
             <article style={styles.emptyCard}>
               <svg style={styles.emptyIcon} viewBox="0 0 24 24" fill="none" width={28} height={28}>

@@ -41,7 +41,6 @@ mini-tools (Next.js App Router)
 
 External / Storage
   ├─ market-info API
-  ├─ 公開 JSON 配信URL
   ├─ repo 同梱 JSON
   └─ Browser localStorage
 ```
@@ -163,16 +162,6 @@ premium 仮ログインは Cookie ベースです。
 - 主に market tools の日次データ取得に使う
 - 実体がどのインフラかは、この repo 単体では断定しない
 
-### 公開 JSON 配信 URL
-
-一部 tool は公開 base URL を想定しています。
-
-- `STOCK_RANKING_DATA_BASE_URL`
-- `NIKKEI_CONTRIBUTION_DATA_BASE_URL`
-- `MONTHLY_YUTAI_DATA_BASE_URL`
-
-ただし、実装によっては data-loader 側で `MARKET_INFO_API_BASE_URL` を優先している箇所もあり、設計が完全統一されているわけではありません。
-
 ### PWA / Service Worker
 
 - `next-pwa` を利用
@@ -207,7 +196,7 @@ premium は現時点では「仮ログイン + preview 画面」です。
 ## 現状の整理ポイント
 
 - market tools のデータ取得経路が少しずつ異なる
-- 外部 API と公開 JSON URL の使い分けが統一されきっていない
+- `MARKET_INFO_API_BASE_URL` に寄せつつ、fallback との役割分担を引き続き明確化したい
 - premium は preview 段階で、会員システムとしては未完成
 - docs を入口別に見ないと全体像が掴みにくい
 

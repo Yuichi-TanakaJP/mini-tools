@@ -1,9 +1,8 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import type { Metadata } from "next";
 import ToolClient from "./ToolClient";
 import { loadTopix33DayData, loadTopix33Manifest } from "./data-loader";
-import type { JpxMarketClosedResponse, Topix33PageData } from "./types";
+import type { Topix33PageData } from "./types";
+import { loadJpxMarketClosedData } from "@/lib/jpx-market-closed";
 
 export const metadata: Metadata = {
   title: "TOPIX33業種 | mini-tools",
@@ -26,18 +25,7 @@ function isWeekendDate(dateStr: string) {
 
 async function loadData(): Promise<Topix33PageData> {
   const manifest = await loadTopix33Manifest();
-  let holidays: JpxMarketClosedResponse | null = null;
-
-  try {
-    const holidayPath = path.join(
-      process.cwd(),
-      "app/tools/earnings-calendar/data/jpx_market_closed_20260101_to_20271231.json",
-    );
-    const holidayRaw = await readFile(holidayPath, "utf-8");
-    holidays = JSON.parse(holidayRaw) as JpxMarketClosedResponse;
-  } catch {
-    holidays = null;
-  }
+  const holidays = await loadJpxMarketClosedData();
 
   const holidayMap = new Map((holidays?.days ?? []).map((day) => [day.date, day]));
   const visibleDates = manifest.dates.filter((date) => {
