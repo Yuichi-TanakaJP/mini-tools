@@ -78,11 +78,14 @@ function renderSbiCreditBadge(
 ): React.ReactNode {
   if (!sbiCredit) return null;
   const record = sbiCredit.by_code[code];
-  if (!record || record.position_status === "unavailable") return null;
-  if (record.position_status === "limited") {
-    return <span style={styles.sbiCreditChipLimited}>SBI残少</span>;
-  }
-  return <span style={styles.sbiCreditChipAvailable}>SBI売可</span>;
+  if (!isHandledBySbiShort(record)) return null;
+  return <span style={styles.sbiCreditChipAvailable}>SBI短期対象</span>;
+}
+
+function isHandledBySbiShort(
+  record: import("./types").SbiCreditData["by_code"][string] | undefined,
+) {
+  return Boolean(record?.is_short);
 }
 
 function hasOfficialLink(item: MonthlyYutaiCandidate) {
@@ -172,7 +175,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
 
         if (sbiFilter === "sbi_any" && data.sbiCredit) {
           const sbi = data.sbiCredit.by_code[item.code];
-          if (!sbi || sbi.position_status === "unavailable") return false;
+          if (!isHandledBySbiShort(sbi)) return false;
         }
 
         if (!normalizedQuery) return true;
@@ -349,7 +352,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
               {data.sbiCredit && (
                 <select value={sbiFilter} onChange={(e) => setSbiFilter(e.target.value as SbiFilter)} style={styles.select}>
                   <option value="all">SBI: すべて</option>
-                  <option value="sbi_any">SBI: 売建可</option>
+                  <option value="sbi_any">SBI: 短期対象あり</option>
                 </select>
               )}
               <select value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)} style={styles.select}>
