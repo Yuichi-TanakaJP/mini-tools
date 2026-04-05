@@ -1,9 +1,8 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import type { Metadata } from "next";
 import ToolClient from "./ToolClient";
 import { loadContributionDayData, loadContributionManifest } from "./data-loader";
-import type { JpxMarketClosedResponse, NikkeiContributionPageData } from "./types";
+import type { NikkeiContributionPageData } from "./types";
+import { loadJpxMarketClosedData } from "@/lib/jpx-market-closed";
 
 export const metadata: Metadata = {
   title: "日経225寄与度 | mini-tools",
@@ -36,18 +35,7 @@ function isLikelyMarketClosed(dayData: NikkeiContributionPageData["initialDayDat
 
 async function loadData(): Promise<NikkeiContributionPageData> {
   const manifest = await loadContributionManifest();
-  let holidays: JpxMarketClosedResponse | null = null;
-
-  try {
-    const holidayPath = path.join(
-      process.cwd(),
-      "app/tools/earnings-calendar/data/jpx_market_closed_20260101_to_20271231.json",
-    );
-    const holidayRaw = await readFile(holidayPath, "utf-8");
-    holidays = JSON.parse(holidayRaw) as JpxMarketClosedResponse;
-  } catch {
-    holidays = null;
-  }
+  const holidays = await loadJpxMarketClosedData();
 
   const holidayMap = new Map((holidays?.days ?? []).map((day) => [day.date, day]));
   const visibleDates = manifest.dates.filter((date) => {
