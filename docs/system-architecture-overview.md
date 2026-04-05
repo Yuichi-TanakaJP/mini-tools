@@ -36,7 +36,7 @@ mini-tools (Next.js App Router)
   ├─ lib/*
   │   └─ premium 認証などの共通ロジック
   └─ app/tools/**/data-loader.ts
-      ├─ 外部 API / 公開 JSON / ローカル JSON を切り替える
+      ├─ 外部 API / ローカル JSON fallback を切り替える
       └─ page / route から共有利用される
 
 External / Storage
@@ -100,7 +100,7 @@ UI は主に `app/` と `components/` にあります。
 責務は次の通りです。
 
 - 環境変数を読んで取得先を決める
-- 外部 API / 公開 JSON / ローカル JSON の切替を行う
+- 外部 API / ローカル JSON fallback の切替を行う
 - fetch 失敗時の fallback を吸収する
 - `page.tsx` と `route.ts` で同じ取得ロジックを共有する
 
