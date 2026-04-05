@@ -10,6 +10,7 @@
 設計・方針・トレードオフの判断理由を記録します。
 
 - [2026-04-05 yutai-candidates の SBI 短期対象表示ルール](./decision-log/2026-04-05-yutai-candidates-sbi-short-handling.md)
+- [2026-04-05 海外決算カレンダー統合方針](./decision-log/2026-04-05-overseas-earnings-calendar-integration.md)
 - [2026-04-04 market tools の API 統一方針](./decision-log/2026-04-04-market-tools-api-unification-plan.md)
 - [2026-04-05 jpx-closed endpoint の確定事項](./decision-log/2026-04-05-jpx-closed-endpoint-finalization.md)
 - [2026-04-04 TOPIX33 premium 可視化の見せ方方針](./decision-log/2026-04-04-topix33-premium-visualization-plan.md)
@@ -48,6 +49,7 @@
 - [Market Tools データ取得経路一覧](./market-tools-data-fetch-paths.md)
 - Market Tools 関連:
 - [2026-04-05 yutai-candidates の SBI 短期対象表示ルール](./decision-log/2026-04-05-yutai-candidates-sbi-short-handling.md)
+- [2026-04-05 海外決算カレンダー統合方針](./decision-log/2026-04-05-overseas-earnings-calendar-integration.md)
 - [2026-04-04 market tools の API 統一方針](./decision-log/2026-04-04-market-tools-api-unification-plan.md)
 - [2026-04-05 jpx-closed endpoint の確定事項](./decision-log/2026-04-05-jpx-closed-endpoint-finalization.md)
 - [2026-04-04 TOPIX33 premium 可視化の見せ方方針](./decision-log/2026-04-04-topix33-premium-visualization-plan.md)

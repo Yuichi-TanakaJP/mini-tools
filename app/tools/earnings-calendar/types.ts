@@ -23,6 +23,30 @@ export type EarningsCalendarResponse = {
   calendar: EarningsCalendarDay[];
 };
 
+export type OverseasEarningsCalendarItem = {
+  event_id?: string;
+  local_time?: string;
+  ticker?: string;
+  stock_name?: string;
+  exchange_code?: string;
+  fiscal_term_name?: string;
+  fiscal_term?: string;
+  sch_flg?: string;
+  country_code?: string;
+};
+
+export type OverseasEarningsCalendarDay = {
+  date: string;
+  count: number;
+  detail_status: EarningsCalendarDetailStatus;
+  items: OverseasEarningsCalendarItem[];
+};
+
+export type OverseasEarningsCalendarResponse = {
+  as_of_date: string;
+  calendar: OverseasEarningsCalendarDay[];
+};
+
 export type EarningsCalendarManifestMonth = {
   id: string;
   year: number;
@@ -41,10 +65,18 @@ export type EarningsCalendarManifest = {
   months: EarningsCalendarManifestMonth[];
 };
 
-export type EarningsCalendarPageData = {
-  manifest: EarningsCalendarManifest;
+export type EarningsCalendarMarket = "domestic" | "overseas";
+
+export type EarningsCalendarMarketData = {
+  manifest: EarningsCalendarManifest | null;
   monthData: Record<string, EarningsCalendarResponse>;
-  holidays: JpxMarketClosedResponse;
+  latest: EarningsCalendarResponse | null;
+  holidays: JpxMarketClosedResponse | null;
+};
+
+export type EarningsCalendarPageData = {
+  domestic: EarningsCalendarMarketData;
+  overseas: EarningsCalendarMarketData;
 };
 
 export type JpxMarketClosedDay = {

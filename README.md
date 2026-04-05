@@ -77,15 +77,20 @@ npm run dev
     - `/yutai/monthly/{yearMonth}`
     - `/nikko/credit`
     - `/market-calendar/jpx-closed`
+    - `/earnings-calendar/overseas/latest`
+    - `/earnings-calendar/overseas/manifest`
+    - `/earnings-calendar/overseas/monthly/{yearMonth}`
   - `jpx-closed` の response shape は従来の thin JSON と互換
   - `as_of_date`, `from`, `to`, `days[]`
   - `days[]` は `date`, `market_closed`, `label`
+  - `earnings-calendar/overseas` は `manifest + monthly` を主導線として使い、`latest` は補助表示に使う
   - 未設定時は各 tool の同梱 JSON / sample fallback を使う
   - 参照:
     - `app/tools/topix33/data-loader.ts`
     - `app/tools/nikkei-contribution/data-loader.ts`
     - `app/tools/stock-ranking/data-loader.ts`
     - `app/tools/yutai-candidates/data-loader.ts`
+    - `app/tools/earnings-calendar/data-loader.ts`
     - `lib/jpx-market-closed.ts`
 
 Vercel では次の env を設定しておく運用を推奨します。

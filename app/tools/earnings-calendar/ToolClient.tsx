@@ -1,9 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import type {
   EarningsCalendarDay,
   EarningsCalendarItem,
+  EarningsCalendarMarket,
+  EarningsCalendarMarketData,
+  EarningsCalendarManifest,
   EarningsCalendarManifestMonth,
   EarningsCalendarPageData,
   JpxMarketClosedDay,
@@ -31,6 +35,13 @@ type CalendarMonth = {
   cells: CalendarCell[];
 };
 
+type MarketOption = {
+  key: EarningsCalendarMarket;
+  label: string;
+  shortLabel: string;
+  data: EarningsCalendarMarketData;
+};
+
 const WEEK_LABELS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
 function parseDateKey(key: string) {
@@ -47,11 +58,6 @@ function getWeekdayJa(year: number, month: number, day: number) {
   return ["日", "月", "火", "水", "木", "金", "土"][
     new Date(Date.UTC(year, month - 1, day)).getUTCDay()
   ];
-}
-
-function formatSelectedLabel(key: string) {
-  const { year, month, day } = parseDateKey(key);
-  return `${month}/${day}（${getWeekdayJa(year, month, day)}）`;
 }
 
 function formatSelectedTitle(key: string) {
@@ -266,13 +272,17 @@ function buildMonth(
   };
 }
 
-function buildMonths(data: EarningsCalendarPageData, initialFocusDate: string): CalendarMonth[] {
-  const holidayMap = new Map(data.holidays.days.map((day) => [day.date, day]));
+function buildMonths(data: EarningsCalendarMarketData, initialFocusDate: string): CalendarMonth[] {
+  if (!data.manifest) {
+    return [];
+  }
+
+  const holidayMap = new Map((data.holidays?.days ?? []).map((day) => [day.date, day]));
   const built = data.manifest.months
     .map((entry) => {
       const source = data.monthData[entry.id];
       if (!source) return null;
-      return buildMonth(entry, source.calendar, holidayMap, data.manifest.as_of_date, initialFocusDate);
+      return buildMonth(entry, source.calendar, holidayMap, data.manifest!.as_of_date, initialFocusDate);
     })
     .filter((month): month is CalendarMonth => month !== null);
 
@@ -293,13 +303,18 @@ function buildMonths(data: EarningsCalendarPageData, initialFocusDate: string): 
   const rangeStart = earliestLoaded
     ? { year: earliestLoaded.year, month: earliestLoaded.month }
     : { year: asOfYear, month: asOfMonth };
-  const requestedRangeEnd = addMonths(asOfYear, asOfMonth, 12);
-  const { year: holidayToYear, month: holidayToMonth } = parseDateKey(data.holidays.to);
-  const rangeEnd =
-    requestedRangeEnd.year < holidayToYear ||
-    (requestedRangeEnd.year === holidayToYear && requestedRangeEnd.month <= holidayToMonth)
-      ? requestedRangeEnd
-      : { year: holidayToYear, month: holidayToMonth };
+  const rangeEnd = data.holidays
+    ? (() => {
+        const requestedRangeEnd = addMonths(asOfYear, asOfMonth, 12);
+        const { year: holidayToYear, month: holidayToMonth } = parseDateKey(data.holidays.to);
+        return requestedRangeEnd.year < holidayToYear ||
+          (requestedRangeEnd.year === holidayToYear && requestedRangeEnd.month <= holidayToMonth)
+          ? requestedRangeEnd
+          : { year: holidayToYear, month: holidayToMonth };
+      })()
+    : latestLoaded
+      ? { year: latestLoaded.year, month: latestLoaded.month }
+      : { year: asOfYear, month: asOfMonth };
 
   const months: CalendarMonth[] = [];
   let cursor = { ...rangeStart };
@@ -326,12 +341,12 @@ function buildMonths(data: EarningsCalendarPageData, initialFocusDate: string): 
   return months;
 }
 
-function getEmptyStateMessage(day: CalendarCell) {
+function getEmptyStateMessage(day: CalendarCell, market: EarningsCalendarMarket) {
   if (day.marketClosed) {
     return day.marketClosedLabel ? `JPX休場日です（${day.marketClosedLabel}）` : "JPX休場日です";
   }
   if (day.detailStatus === "missing" || (day.count > 0 && day.items.length === 0)) {
-    return "個別銘柄のデータは未反映です";
+    return market === "overseas" ? "個別銘柄データはまだ反映されていません" : "個別銘柄のデータは未反映です";
   }
   return "決算予定はありません";
 }
@@ -346,46 +361,91 @@ function getEmptyStateTitle(day: CalendarCell) {
   return "決算一覧はありません";
 }
 
+function getInitialFocusDate(data: EarningsCalendarMarketData) {
+  if (!data.manifest) {
+    return todayJstKey();
+  }
+
+  const today = todayJstKey();
+  const todayMonth = today.slice(0, 7);
+  return data.manifest.months.some((month) => month.id === todayMonth) ? today : data.manifest.as_of_date;
+}
+
 export default function ToolClient({ data }: { data: EarningsCalendarPageData }) {
-  const initialFocusDate = useMemo(() => {
-    const today = todayJstKey();
-    const todayMonth = today.slice(0, 7);
-    return data.manifest.months.some((month) => month.id === todayMonth) ? today : data.manifest.as_of_date;
-  }, [data.manifest.as_of_date, data.manifest.months]);
-  const months = useMemo(() => buildMonths(data, initialFocusDate), [data, initialFocusDate]);
-  const initialMonthIndex = useMemo(() => {
-    const targetMonth = initialFocusDate.slice(0, 7);
-    const found = months.findIndex((month) => month.id === targetMonth);
-    return found >= 0 ? found : 0;
-  }, [initialFocusDate, months]);
-  const [monthIndex, setMonthIndex] = useState(initialMonthIndex);
-  const month = months[monthIndex] ?? null;
-  const [selectedKey, setSelectedKey] = useState(months[initialMonthIndex]?.selectedKey ?? "");
+  const markets = useMemo<MarketOption[]>(
+    () =>
+      ([
+        {
+          key: "domestic",
+          label: "国内",
+          shortLabel: "日本株",
+          data: data.domestic,
+        },
+        {
+          key: "overseas",
+          label: "海外",
+          shortLabel: "海外株",
+          data: data.overseas,
+        },
+      ] satisfies MarketOption[]).filter((market) => market.data.manifest),
+    [data],
+  );
 
-  const selectedDay = useMemo(() => {
-    if (!month) return null;
-    return (
-      month.cells.find((cell) => cell.key === selectedKey) ??
-      month.cells.find((cell) => cell.key === month.selectedKey) ??
-      month.cells.find((cell) => !cell.muted && cell.count > 0) ??
-      month.cells.find((cell) => !cell.muted) ??
-      month.cells[0]
-    );
-  }, [month, selectedKey]);
+  const marketMonths = useMemo(
+    () =>
+      Object.fromEntries(
+        ([
+          ["domestic", data.domestic],
+          ["overseas", data.overseas],
+        ] as const).map(([key, marketData]) => [key, buildMonths(marketData, getInitialFocusDate(marketData))]),
+      ) as Record<EarningsCalendarMarket, CalendarMonth[]>,
+    [data],
+  );
 
-  if (!month || !selectedDay) {
+  const initialStates = useMemo(
+    () =>
+      ([
+        ["domestic", data.domestic],
+        ["overseas", data.overseas],
+      ] as const).reduce(
+        (acc, [key, marketData]) => {
+          const focusDate = getInitialFocusDate(marketData);
+          const months = marketMonths[key];
+          const initialMonthIndex = Math.max(
+            0,
+            months.findIndex((month) => month.id === focusDate.slice(0, 7)),
+          );
+          acc[key] = {
+            monthIndex: initialMonthIndex >= 0 ? initialMonthIndex : 0,
+            selectedKey: months[initialMonthIndex]?.selectedKey ?? "",
+          };
+          return acc;
+        },
+        {} as Record<EarningsCalendarMarket, { monthIndex: number; selectedKey: string }>,
+      ),
+    [data, marketMonths],
+  );
+
+  const [selectedMarket, setSelectedMarket] = useState<EarningsCalendarMarket>(markets[0]?.key ?? "domestic");
+  const [marketState, setMarketState] = useState(initialStates);
+  const activeMarket = markets.find((market) => market.key === selectedMarket) ?? null;
+  const months = activeMarket ? marketMonths[activeMarket.key] : [];
+  const activeState = activeMarket ? marketState[activeMarket.key] : null;
+  const month = activeMarket && activeState ? months[activeState.monthIndex] ?? null : null;
+
+  const selectedDay =
+    !month || !activeState
+      ? null
+      : month.cells.find((cell) => cell.key === activeState.selectedKey) ??
+        month.cells.find((cell) => cell.key === month.selectedKey) ??
+        month.cells.find((cell) => !cell.muted && cell.count > 0) ??
+        month.cells.find((cell) => !cell.muted) ??
+        month.cells[0];
+
+  if (!activeMarket || !month || !selectedDay) {
     return (
       <main style={styles.page}>
         <div style={styles.mobileShell}>
-          <header style={styles.headerRow}>
-            <div style={styles.brandRow}>
-              <div style={styles.brandMark} aria-hidden>
-                ■
-              </div>
-              <div style={styles.brandName}>mini-tools</div>
-            </div>
-          </header>
-
           <section style={styles.heroBlock}>
             <div style={styles.heroEyebrow}>決算カレンダー beta</div>
             <h1 style={styles.heroTitle}>決算カレンダー</h1>
@@ -397,7 +457,7 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
           <article style={styles.emptyCard}>
             <div style={styles.emptyTitle}>決算データがまだありません</div>
             <div style={styles.emptyNote}>
-              market_info 側の出力が空だった場合に備えた空状態です。データが更新されたらここに月間カレンダーが表示されます。
+              国内版は同梱 JSON、海外版は market-info API を参照します。データ取得先が整うとここに月間カレンダーが表示されます。
             </div>
           </article>
         </div>
@@ -408,14 +468,37 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
   const selectedItems = selectedDay.items;
   const selectedCount = selectedDay.count;
 
+  function updateMarketState(
+    marketKey: EarningsCalendarMarket,
+    updater: (current: { monthIndex: number; selectedKey: string }) => {
+      monthIndex: number;
+      selectedKey: string;
+    },
+  ) {
+    setMarketState((current) => ({
+      ...current,
+      [marketKey]: updater(current[marketKey]),
+    }));
+  }
+
   function moveMonth(direction: -1 | 1) {
-    if (months.length <= 1) return;
-    setMonthIndex((current) => {
-      const next = Math.min(months.length - 1, Math.max(0, current + direction));
-      if (next === current) return current;
-      setSelectedKey(months[next].selectedKey);
-      return next;
+    if (!activeMarket || months.length <= 1) return;
+    updateMarketState(activeMarket.key, (current) => {
+      const nextIndex = Math.min(months.length - 1, Math.max(0, current.monthIndex + direction));
+      if (nextIndex === current.monthIndex) return current;
+      return {
+        monthIndex: nextIndex,
+        selectedKey: months[nextIndex]?.selectedKey ?? current.selectedKey,
+      };
     });
+  }
+
+  function selectDay(nextKey: string) {
+    if (!activeMarket) return;
+    updateMarketState(activeMarket.key, (current) => ({
+      ...current,
+      selectedKey: nextKey,
+    }));
   }
 
   return (
@@ -425,9 +508,31 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
           <div style={styles.heroEyebrow}>決算カレンダー beta</div>
           <h1 style={styles.heroTitle}>決算カレンダー</h1>
           <p style={styles.heroNote}>
-            月ごとの予定を見ながら、気になる日の決算銘柄を下で確認できます。
+            国内株と海外株の決算予定を月ごとに見ながら、気になる日の銘柄を下で確認できます。
           </p>
         </section>
+
+        {markets.length > 1 ? (
+          <section style={styles.tabRow}>
+            {markets.map((market) => {
+              const isActive = market.key === selectedMarket;
+              return (
+                <button
+                  key={market.key}
+                  type="button"
+                  style={{
+                    ...styles.tabButton,
+                    ...(isActive ? styles.tabButtonActive : {}),
+                  }}
+                  onClick={() => setSelectedMarket(market.key)}
+                >
+                  <span style={styles.tabTitle}>{market.label}</span>
+                  <span style={styles.tabNote}>{market.shortLabel}</span>
+                </button>
+              );
+            })}
+          </section>
+        ) : null}
 
         <section style={styles.calendarCard}>
           <div style={styles.calendarTop}>
@@ -435,10 +540,10 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
               type="button"
               style={{
                 ...styles.navBtn,
-                ...(monthIndex <= 0 ? styles.navBtnDisabled : {}),
+                ...(activeState && activeState.monthIndex <= 0 ? styles.navBtnDisabled : {}),
               }}
               onClick={() => moveMonth(-1)}
-              disabled={monthIndex <= 0}
+              disabled={!activeState || activeState.monthIndex <= 0}
               aria-label="前月へ"
             >
               ‹
@@ -448,10 +553,10 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
               type="button"
               style={{
                 ...styles.navBtn,
-                ...(monthIndex >= months.length - 1 ? styles.navBtnDisabled : {}),
+                ...(activeState && activeState.monthIndex >= months.length - 1 ? styles.navBtnDisabled : {}),
               }}
               onClick={() => moveMonth(1)}
-              disabled={monthIndex >= months.length - 1}
+              disabled={!activeState || activeState.monthIndex >= months.length - 1}
               aria-label="次月へ"
             >
               ›
@@ -459,9 +564,10 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
           </div>
 
           <div style={styles.calendarMeta}>
-            <span style={styles.metaChip}>日本株</span>
+            <span style={styles.metaChip}>{activeMarket.shortLabel}</span>
             <span style={styles.metaChipMuted}>月間ビュー</span>
             <span style={styles.metaChipStrong}>今月 {month.totalCount}件</span>
+            {month.partial ? <span style={styles.metaChipWarn}>一部反映</span> : null}
           </div>
 
           <div style={styles.weekHeader}>
@@ -490,7 +596,7 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
                     ...(isClickable ? styles.dayClickable : {}),
                   }}
                   disabled={!isClickable}
-                  onClick={() => setSelectedKey(item.key)}
+                  onClick={() => selectDay(item.key)}
                 >
                   <div style={styles.dayNumber}>{item.day}</div>
                   {item.count > 0 ? (
@@ -529,7 +635,7 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
           {selectedItems.length === 0 ? (
             <article style={styles.emptyCard}>
               <div style={styles.emptyTitle}>{getEmptyStateTitle(selectedDay)}</div>
-              <div style={styles.emptyNote}>{getEmptyStateMessage(selectedDay)}</div>
+              <div style={styles.emptyNote}>{getEmptyStateMessage(selectedDay, activeMarket.key)}</div>
             </article>
           ) : (
             selectedItems.map((item, index) => (
@@ -564,7 +670,7 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
+const styles: Record<string, CSSProperties> = {
   page: {
     minHeight: "100vh",
     padding: "18px 12px 56px",
@@ -626,6 +732,41 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
     lineHeight: 1.6,
     color: "#667085",
+  },
+  tabRow: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 10,
+    marginBottom: 12,
+  },
+  tabButton: {
+    border: "1px solid rgba(15, 23, 42, 0.08)",
+    borderRadius: 16,
+    background: "rgba(255, 255, 255, 0.84)",
+    padding: "8px 14px 7px",
+    textAlign: "left",
+    cursor: "pointer",
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+    minHeight: 0,
+  },
+  tabButtonActive: {
+    background: "#f3f7ff",
+    border: "1px solid rgba(37, 84, 255, 0.2)",
+    boxShadow: "0 10px 26px rgba(37, 84, 255, 0.08)",
+  },
+  tabTitle: {
+    fontSize: 13,
+    fontWeight: 800,
+    color: "#1f2937",
+    lineHeight: 1.2,
+  },
+  tabNote: {
+    fontSize: 10,
+    color: "#64748b",
+    fontWeight: 700,
+    lineHeight: 1.2,
   },
   calendarCard: {
     background: "#fff",
@@ -696,6 +837,16 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 999,
     background: "#e7edff",
     color: "#2f47ca",
+    fontSize: 11,
+    fontWeight: 800,
+  },
+  metaChipWarn: {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "4px 8px",
+    borderRadius: 999,
+    background: "#fff7ed",
+    color: "#c2410c",
     fontSize: 11,
     fontWeight: 800,
   },

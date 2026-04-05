@@ -96,6 +96,7 @@ UI は主に `app/` と `components/` にあります。
 - [app/tools/nikkei-contribution/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/nikkei-contribution/data-loader.ts)
 - [app/tools/stock-ranking/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-ranking/data-loader.ts)
 - [app/tools/yutai-candidates/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/yutai-candidates/data-loader.ts)
+- [app/tools/earnings-calendar/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/earnings-calendar/data-loader.ts)
 
 責務は次の通りです。
 
@@ -185,6 +186,7 @@ premium は現時点では「仮ログイン + preview 画面」です。
 - `mini-tools` は Next.js 単一アプリで動いている
 - tool ごとに server component と client component を使い分けている
 - market tools は外部 API またはローカル JSON fallback を使う
+- 決算カレンダーは国内版を同梱 JSON、海外版を market-info API で読み分ける
 - premium は Cookie ベースの簡易認証
 
 ### この repo だけでは断定できないこと
