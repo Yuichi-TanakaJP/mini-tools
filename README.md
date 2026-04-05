@@ -64,32 +64,34 @@ npm run dev
 - `NEXT_PUBLIC_SITE_URL`
   - 共有URL（QR/コピー/SNS）の基準URLに使用
   - 参照: `components/ShareButtons.tsx`
-- `STOCK_RANKING_DATA_BASE_URL`
-  - `stock-ranking` が外部配信の `manifest.json` / 日次JSON を読むときの基準URL
-  - 通常は `https://<public-base-url>` のように prefix なしで指定する
-  - `.../stock-ranking` のような JSON 配信ディレクトリ URL を直接指定しても動く
-  - 未設定時は repo 内の `app/tools/stock-ranking/data/` を読む
-  - 参照: `app/tools/stock-ranking/data-loader.ts`
-- `NIKKEI_CONTRIBUTION_DATA_BASE_URL`
-  - `nikkei-contribution` が外部配信の `nikkei_contribution_manifest.json` / 日次JSON を読むときの基準URL
-  - 通常は `https://<public-base-url>` のように prefix なしで指定する
-  - `.../nikkei-contribution` のような JSON 配信ディレクトリ URL を直接指定しても動く
-  - 未設定時はコード内の既定公開 URL を読む
-  - Vercel でも配信先を明示するため、公開 URL を env に設定しておく運用を推奨
-  - 参照: `app/tools/nikkei-contribution/data-loader.ts`
-- `MONTHLY_YUTAI_DATA_BASE_URL`
-  - `yutai-candidates` が外部配信の `manifest.json` / 月別JSON を読むときの入口URL
-  - `.../yutai/monthly` のようなディレクトリURLと `.../yutai/monthly/manifest.json` のような manifest URL 直指定の両方に対応
-  - 月別JSONは `manifest.months[].path` を正として解決する
-  - 未設定時は repo 内の `app/tools/yutai-candidates/data/` を読む
-  - 参照: `app/tools/yutai-candidates/data-loader.ts`
+- `MARKET_INFO_API_BASE_URL`
+  - market tools の標準取得入口
+  - 対象 endpoint:
+    - `/topix33/manifest`
+    - `/topix33/{date}`
+    - `/nikkei/manifest`
+    - `/nikkei/{date}`
+    - `/ranking/manifest`
+    - `/ranking/{date}`
+    - `/yutai/manifest`
+    - `/yutai/monthly/{yearMonth}`
+    - `/nikko/credit`
+    - `/market-calendar/jpx-closed`
+  - `jpx-closed` の response shape は従来の thin JSON と互換
+  - `as_of_date`, `from`, `to`, `days[]`
+  - `days[]` は `date`, `market_closed`, `label`
+  - 未設定時は各 tool の同梱 JSON / sample fallback を使う
+  - 参照:
+    - `app/tools/topix33/data-loader.ts`
+    - `app/tools/nikkei-contribution/data-loader.ts`
+    - `app/tools/stock-ranking/data-loader.ts`
+    - `app/tools/yutai-candidates/data-loader.ts`
+    - `lib/jpx-market-closed.ts`
 
 Vercel では次の env を設定しておく運用を推奨します。
 
 - `NEXT_PUBLIC_SITE_URL`
-- `STOCK_RANKING_DATA_BASE_URL`
-- `NIKKEI_CONTRIBUTION_DATA_BASE_URL`
-- `MONTHLY_YUTAI_DATA_BASE_URL`
+- `MARKET_INFO_API_BASE_URL`
 - `NEXT_PUBLIC_GA_ID`（GA を使う場合のみ）
 
 これらは公開 URL や公開 ID 用であり、アクセスキーや secret のような機密情報は含めません。

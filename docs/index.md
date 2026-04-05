@@ -10,6 +10,7 @@
 設計・方針・トレードオフの判断理由を記録します。
 
 - [2026-04-04 market tools の API 統一方針](./decision-log/2026-04-04-market-tools-api-unification-plan.md)
+- [2026-04-05 jpx-closed endpoint の確定事項](./decision-log/2026-04-05-jpx-closed-endpoint-finalization.md)
 - [2026-04-04 TOPIX33 premium 可視化の見せ方方針](./decision-log/2026-04-04-topix33-premium-visualization-plan.md)
 - [2026-04-04 premium ログイン導線の暫定実装方針](./decision-log/2026-04-04-premium-login-placeholder-flow.md)
 - [2026-04-03 有料機能プレースホルダーの追加方針](./decision-log/2026-04-03-premium-feature-placeholder.md)
@@ -45,6 +46,7 @@
 - [Market Tools データ取得経路一覧](./market-tools-data-fetch-paths.md)
 - Market Tools 関連:
 - [2026-04-04 market tools の API 統一方針](./decision-log/2026-04-04-market-tools-api-unification-plan.md)
+- [2026-04-05 jpx-closed endpoint の確定事項](./decision-log/2026-04-05-jpx-closed-endpoint-finalization.md)
 - [2026-04-04 TOPIX33 premium 可視化の見せ方方針](./decision-log/2026-04-04-topix33-premium-visualization-plan.md)
 - [2026-04-04 premium ログイン導線の暫定実装方針](./decision-log/2026-04-04-premium-login-placeholder-flow.md)
 - [2026-03-31 TOPIX33業種データ追加と market tools 導線の方針](./decision-log/2026-03-31-topix33-market-tool-plan.md)

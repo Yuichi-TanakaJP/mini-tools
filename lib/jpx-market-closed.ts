@@ -39,20 +39,15 @@ async function loadLocalJpxMarketClosedData(): Promise<JpxMarketClosedResponse |
 }
 
 export async function loadJpxMarketClosedData(): Promise<JpxMarketClosedResponse | null> {
-  const localData = await loadLocalJpxMarketClosedData();
   const apiBase = getApiBaseUrl();
 
   if (!apiBase) {
-    return localData;
-  }
-
-  if (localData) {
-    return localData;
+    return loadLocalJpxMarketClosedData();
   }
 
   try {
     return await fetchJson<JpxMarketClosedResponse>(`${apiBase}/market-calendar/jpx-closed`);
   } catch {
-    return null;
+    return loadLocalJpxMarketClosedData();
   }
 }
