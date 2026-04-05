@@ -2,6 +2,11 @@
 
 Last-Updated: 2026-03-26 JST
 
+> Note
+> このメモは 2026-03-26 時点の外部公開 JSON 前提の移行計画です。
+> 現行方針は [2026-04-04 market tools の API 統一方針](./decision-log/2026-04-04-market-tools-api-unification-plan.md) を優先し、
+> `stock-ranking` の標準取得入口は `MARKET_INFO_API_BASE_URL/ranking/*` を使います。
+
 ## 目的
 
 `stock-ranking` を、`mini-tools` リポジトリ内の静的JSON更新運用から、`market_info` が生成した外部公開JSONを読む運用へ移行する。  
