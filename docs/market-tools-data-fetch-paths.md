@@ -29,7 +29,7 @@
 | `nikkei-contribution` | サーバーで `loadContributionManifest()` / `loadContributionDayData()` | クライアントは `/tools/nikkei-contribution/data/[date]` を叩き、route 内で同じ loader を呼ぶ | `MARKET_INFO_API_BASE_URL` | あり。未設定時 / fetch 失敗時は `app/tools/nikkei-contribution/data` のローカル JSON | `topix33` とほぼ同じ構成 |
 | `stock-ranking` | サーバーで `loadRankingManifest()` / `loadRankingDayData()` と共通休場日 loader を呼ぶ | クライアントは `/tools/stock-ranking/data/[date]` を叩き、route 内で同じ loader を呼ぶ | `MARKET_INFO_API_BASE_URL` | あり。未設定時 / fetch 失敗時は `app/tools/stock-ranking/data` とローカル休場日 JSON を使う | 休場日 API は `GET /market-calendar/jpx-closed` を使う |
 | `yutai-candidates` | サーバーで `loadMonthlyYutaiPageData()` | クライアント再 fetch は基本なし。月切替は route 遷移でサーバー再評価 | `MARKET_INFO_API_BASE_URL` | あり。manifest / month data はローカル JSON fallback。`nikko/credit` は API 未設定時のみ sample fallback | SBI は `is_short=true` の扱い有無だけを表示し、在庫状態では除外しない |
-| `earnings-calendar` | サーバーで `app/tools/earnings-calendar/data` のローカル JSON を直接読む | クライアント再 fetch なし | なし | ローカルデータ前提 | 現時点では外部 API を直接読まない |
+| `earnings-calendar` | サーバーで `loadEarningsCalendarPageData()` を呼ぶ | クライアント再 fetch なし | `MARKET_INFO_API_BASE_URL` | あり。国内は同梱 JSON、海外は API 未設定/失敗時は非表示 | 国内は repo 同梱 JSON、海外は `earnings-calendar/overseas/*` API を読む |
 
 ## `topix33` の具体的な流れ
 

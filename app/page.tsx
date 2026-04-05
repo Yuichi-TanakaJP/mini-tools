@@ -60,8 +60,8 @@ const TOOLS: ToolItem[] = [
   },
   {
     title: "決算カレンダー",
-    short: "日本株の決算予定を確認",
-    detail: "日本株の決算予定をカレンダーで確認。日付ごとに銘柄と決算種別を一覧表示。",
+    short: "国内 / 海外の決算予定を確認",
+    detail: "国内株と海外株の決算予定をカレンダーで確認。日付ごとに銘柄と決算種別を一覧表示。",
     href: "/tools/earnings-calendar",
     icon: "🗓️",
   },
