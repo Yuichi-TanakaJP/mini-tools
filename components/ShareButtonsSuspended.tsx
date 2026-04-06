@@ -13,7 +13,17 @@ function placeholderWidth(props: Props): number {
 export default function ShareButtonsSuspended(props: Props) {
   const width = placeholderWidth(props);
   return (
-    <Suspense fallback={<div style={{ width, height: props.size ?? 44 }} />}>
+    <Suspense
+      fallback={
+        <div
+          style={{
+            width,
+            height: props.size ?? 44,
+            marginTop: props.inline ? 0 : 12,
+          }}
+        />
+      }
+    >
       <ShareButtons {...props} />
     </Suspense>
   );
