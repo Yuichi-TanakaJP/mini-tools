@@ -34,8 +34,10 @@ function isLikelyMarketClosed(dayData: NikkeiContributionPageData["initialDayDat
 }
 
 async function loadData(): Promise<NikkeiContributionPageData> {
-  const manifest = await loadContributionManifest();
-  const holidays = await loadJpxMarketClosedData();
+  const [manifest, holidays] = await Promise.all([
+    loadContributionManifest(),
+    loadJpxMarketClosedData(),
+  ]);
 
   const holidayMap = new Map((holidays?.days ?? []).map((day) => [day.date, day]));
   const visibleDates = manifest.dates.filter((date) => {

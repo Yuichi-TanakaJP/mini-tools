@@ -24,8 +24,10 @@ function isWeekendDate(dateStr: string) {
 }
 
 async function loadData(): Promise<Topix33PageData> {
-  const manifest = await loadTopix33Manifest();
-  const holidays = await loadJpxMarketClosedData();
+  const [manifest, holidays] = await Promise.all([
+    loadTopix33Manifest(),
+    loadJpxMarketClosedData(),
+  ]);
 
   const holidayMap = new Map((holidays?.days ?? []).map((day) => [day.date, day]));
   const visibleDates = manifest.dates.filter((date) => {

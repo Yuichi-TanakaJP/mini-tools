@@ -9,6 +9,7 @@
 
 設計・方針・トレードオフの判断理由を記録します。
 
+- [2026-04-07 loading.tsx 追加と並列 fetch 化](./decision-log/2026-04-07-loading-ui-and-parallel-fetch.md)
 - [2026-04-05 yutai-candidates の SBI 短期対象表示ルール](./decision-log/2026-04-05-yutai-candidates-sbi-short-handling.md)
 - [2026-04-05 海外決算カレンダー統合方針](./decision-log/2026-04-05-overseas-earnings-calendar-integration.md)
 - [2026-04-04 market tools の API 統一方針](./decision-log/2026-04-04-market-tools-api-unification-plan.md)
@@ -48,6 +49,7 @@
 - [mini-tools システム構成概要](./system-architecture-overview.md)
 - [Market Tools データ取得経路一覧](./market-tools-data-fetch-paths.md)
 - Market Tools 関連:
+- [2026-04-07 loading.tsx 追加と並列 fetch 化](./decision-log/2026-04-07-loading-ui-and-parallel-fetch.md)
 - [2026-04-05 yutai-candidates の SBI 短期対象表示ルール](./decision-log/2026-04-05-yutai-candidates-sbi-short-handling.md)
 - [2026-04-05 海外決算カレンダー統合方針](./decision-log/2026-04-05-overseas-earnings-calendar-integration.md)
 - [2026-04-04 market tools の API 統一方針](./decision-log/2026-04-04-market-tools-api-unification-plan.md)
