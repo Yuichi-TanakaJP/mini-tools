@@ -11,12 +11,15 @@ type HeaderProps = {
 
 export default function Header({ title, subtitle }: HeaderProps) {
   return (
-    <header>
+    <header
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 10,
+      }}
+    >
       <div
         style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
           backdropFilter: "blur(14px)",
           background: "rgba(8, 10, 18, 0.90)",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
