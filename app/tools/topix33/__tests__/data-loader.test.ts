@@ -48,7 +48,7 @@ describe("loadTopix33Manifest", () => {
   });
 
   it("API 未設定のとき、ローカルファイルのマニフェストを返す", async () => {
-    mockReadFile.mockResolvedValue(JSON.stringify(SAMPLE_MANIFEST) as never);
+    mockReadFile.mockResolvedValue(JSON.stringify(SAMPLE_MANIFEST));
 
     const result = await loadTopix33Manifest();
 
@@ -72,7 +72,7 @@ describe("loadTopix33Manifest", () => {
   it("API 設定あり・404 のとき、ローカル fallback を返す", async () => {
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
     vi.mocked(fetch).mockResolvedValue(makeFetch404());
-    mockReadFile.mockResolvedValue(JSON.stringify(SAMPLE_MANIFEST) as never);
+    mockReadFile.mockResolvedValue(JSON.stringify(SAMPLE_MANIFEST));
 
     const result = await loadTopix33Manifest();
 
@@ -82,7 +82,7 @@ describe("loadTopix33Manifest", () => {
   it("API 設定あり・timeout のとき、ローカル fallback を返す", async () => {
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
     vi.mocked(fetch).mockRejectedValue(new DOMException("AbortError", "AbortError"));
-    mockReadFile.mockResolvedValue(JSON.stringify(SAMPLE_MANIFEST) as never);
+    mockReadFile.mockResolvedValue(JSON.stringify(SAMPLE_MANIFEST));
 
     const result = await loadTopix33Manifest();
 
@@ -119,7 +119,7 @@ describe("loadTopix33DayData", () => {
   });
 
   it("API 未設定のとき、ローカルファイルのデータを返す", async () => {
-    mockReadFile.mockResolvedValue(JSON.stringify(SAMPLE_DAY_DATA) as never);
+    mockReadFile.mockResolvedValue(JSON.stringify(SAMPLE_DAY_DATA));
 
     const result = await loadTopix33DayData("2025-04-02");
 
@@ -143,7 +143,7 @@ describe("loadTopix33DayData", () => {
   it("API 設定あり・404 のとき、ローカル fallback を返す", async () => {
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
     vi.mocked(fetch).mockResolvedValue(makeFetch404());
-    mockReadFile.mockResolvedValue(JSON.stringify(SAMPLE_DAY_DATA) as never);
+    mockReadFile.mockResolvedValue(JSON.stringify(SAMPLE_DAY_DATA));
 
     const result = await loadTopix33DayData("2025-04-02");
 
@@ -153,7 +153,7 @@ describe("loadTopix33DayData", () => {
   it("API 設定あり・timeout のとき、ローカル fallback を返す", async () => {
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
     vi.mocked(fetch).mockRejectedValue(new DOMException("AbortError", "AbortError"));
-    mockReadFile.mockResolvedValue(JSON.stringify(SAMPLE_DAY_DATA) as never);
+    mockReadFile.mockResolvedValue(JSON.stringify(SAMPLE_DAY_DATA));
 
     const result = await loadTopix33DayData("2025-04-02");
 

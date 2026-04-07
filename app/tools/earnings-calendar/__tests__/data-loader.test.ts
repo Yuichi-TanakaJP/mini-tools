@@ -106,9 +106,9 @@ const SAMPLE_OVERSEAS_RAW: OverseasEarningsCalendarResponse = {
 function makeLocalFiles() {
   mockReadFile.mockImplementation(async (filePath) => {
     const p = String(filePath);
-    if (p.includes("manifest.json")) return JSON.stringify(SAMPLE_DOMESTIC_MANIFEST);
-    if (p.includes("2025-04.json")) return JSON.stringify(SAMPLE_DOMESTIC_MONTH_DATA);
-    if (p.includes("latest.json")) return JSON.stringify(SAMPLE_DOMESTIC_LATEST);
+    if (p.endsWith("latest.json")) return JSON.stringify(SAMPLE_DOMESTIC_LATEST);
+    if (p.endsWith("manifest.json")) return JSON.stringify(SAMPLE_DOMESTIC_MANIFEST);
+    if (p.endsWith("2025-04.json")) return JSON.stringify(SAMPLE_DOMESTIC_MONTH_DATA);
     if (p.includes("jpx_market_closed")) return JSON.stringify(SAMPLE_HOLIDAYS);
     throw new Error("ENOENT: " + p);
   });
