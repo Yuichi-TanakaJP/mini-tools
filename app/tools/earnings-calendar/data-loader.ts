@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { loadUsMarketClosedData } from "@/lib/us-market-closed";
 import type {
   EarningsCalendarManifest,
   EarningsCalendarItem,
@@ -178,11 +179,13 @@ async function loadOverseasData(): Promise<EarningsCalendarMarketData> {
     }),
   );
 
+  const holidays = await loadUsMarketClosedData();
+
   return {
     manifest,
     monthData: Object.fromEntries(monthEntries.filter((entry) => entry !== null)),
     latest,
-    holidays: null,
+    holidays,
   };
 }
 

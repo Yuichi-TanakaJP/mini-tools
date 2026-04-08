@@ -343,7 +343,8 @@ function buildMonths(data: EarningsCalendarMarketData, initialFocusDate: string)
 
 function getEmptyStateMessage(day: CalendarCell, market: EarningsCalendarMarket) {
   if (day.marketClosed) {
-    return day.marketClosedLabel ? `JPX休場日です（${day.marketClosedLabel}）` : "JPX休場日です";
+    const prefix = market === "overseas" ? "US" : "JPX";
+    return day.marketClosedLabel ? `${prefix}休場日です（${day.marketClosedLabel}）` : `${prefix}休場日です`;
   }
   if (day.detailStatus === "missing" || (day.count > 0 && day.items.length === 0)) {
     return market === "overseas" ? "個別銘柄データはまだ反映されていません" : "個別銘柄のデータは未反映です";
