@@ -1,0 +1,57 @@
+# 決算カレンダー UAT チェックリスト
+
+## 確認画面・URL
+
+| 環境 | URL |
+|---|---|
+| 本番 | `https://mini-tools-rho.vercel.app/tools/earnings-calendar` |
+| Preview | Vercel PR コメントの URL + `/tools/earnings-calendar` |
+| ローカル | `http://localhost:3000/tools/earnings-calendar` |
+
+## データ取得の仕組み（確認の前提知識）
+
+| タブ | 取得元 | API 障害時の挙動 |
+|---|---|---|
+| 国内 | repo 同梱 JSON (`data/` 以下) | 影響なし（API 不要） |
+| 海外 | `MARKET_INFO_API_BASE_URL/earnings-calendar/overseas/*` | 海外タブがデータなし扱い |
+| US 休場日 | `MARKET_INFO_API_BASE_URL/market-calendar/us-closed` | null fallback（休場日マークなし） |
+| JPX 休場日 | repo 同梱 JSON (`data/jpx_market_closed_*.json`) | 影響なし（同梱 JSON を使用） |
+
+## 正常系チェックポイント
+
+### 国内タブ
+
+- [ ] ページが正常表示される（HTTP 200）
+- [ ] 月タブが複数表示され、切り替えが動作する
+- [ ] 各日付のセルに銘柄数が表示される
+- [ ] 日付をクリックすると当日の決算一覧（銘柄コード・銘柄名・市場・決算種別）が表示される
+- [ ] JPX 休場日はカレンダー上でグレーアウトまたは「休場」表示になる
+
+### 海外タブ
+
+- [ ] 海外タブに切り替えた際にデータが表示される
+- [ ] 月タブが表示され、切り替えが動作する
+- [ ] 日付をクリックすると海外銘柄の一覧（ティッカー・銘柄名・取引所・決算種別）が表示される
+- [ ] US 休場日は休場表示になる（`MARKET_INFO_API_BASE_URL` が設定されている場合のみ）
+
+## 異常系チェックポイント
+
+| シナリオ | 期待する挙動 |
+|---|---|
+| `MARKET_INFO_API_BASE_URL` 未設定 | 国内タブは正常表示。海外タブはデータなし（空表示またはメッセージ）。US 休場日マークなし |
+| 海外 API が 5 秒でタイムアウト | 国内タブは正常表示。海外タブはデータなし |
+| 海外 API が 4xx / 5xx を返す | 国内タブは正常表示。海外タブはデータなし |
+| 存在しない月を開こうとした場合 | 「その月のデータはまだありません」に準じた表示（raw エラーを見せない） |
+
+## 環境ごとの注意点
+
+| 環境 | 注意点 |
+|---|---|
+| 本番 | `MARKET_INFO_API_BASE_URL` が設定済みなので海外タブ・US 休場日とも正常動作する想定 |
+| Preview | Vercel 環境変数が引き継がれるため、基本的に本番と同等 |
+| ローカル | `.env` に `MARKET_INFO_API_BASE_URL` を設定しないと海外タブはデータなし。意図的に API なし状態を確認したい場合は `.env` から変数を外す |
+
+## 関連 docs
+
+- [海外決算カレンダー統合方針](../decision-log/2026-04-05-overseas-earnings-calendar-integration.md)
+- [決算カレンダーのデータ contract と運用メモ](../decision-log/2026-03-22-earnings-calendar-data-contract.md)

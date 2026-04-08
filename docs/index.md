@@ -67,6 +67,21 @@
 
 ---
 
+## 🧪 UAT チェックリスト（動作確認手順）
+
+PR マージ後・リリース前の確認観点をツールごとにまとめたチェックリストです。
+
+- [UAT インデックス](./uat/index.md)
+  - [決算カレンダー](./uat/earnings-calendar.md)
+  - [株価ランキング](./uat/stock-ranking.md)
+  - [日経225寄与度](./uat/nikkei-contribution.md)
+  - [TOPIX33業種](./uat/topix33.md)
+  - [優待カレンダー](./uat/yutai-candidates.md)
+  - [株主優待期限帳](./uat/yutai-expiry.md)
+  - [優待銘柄メモ帳](./uat/yutai-memo.md)
+
+---
+
 ## 運用ルール（簡易）
 
 - **Decision Log**：設計判断が発生したときだけ追加
