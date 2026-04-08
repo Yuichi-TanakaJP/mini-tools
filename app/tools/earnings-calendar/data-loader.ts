@@ -172,14 +172,15 @@ async function loadOverseasData(): Promise<EarningsCalendarMarketData> {
     };
   }
 
-  const monthEntries = await Promise.all(
-    manifest.months.map(async (entry) => {
-      const monthData = await loadOverseasMonthData(entry.id);
-      return monthData ? ([entry.id, monthData] as const) : null;
-    }),
-  );
-
-  const holidays = await loadUsMarketClosedData();
+  const [monthEntries, holidays] = await Promise.all([
+    Promise.all(
+      manifest.months.map(async (entry) => {
+        const monthData = await loadOverseasMonthData(entry.id);
+        return monthData ? ([entry.id, monthData] as const) : null;
+      }),
+    ),
+    loadUsMarketClosedData(),
+  ]);
 
   return {
     manifest,
