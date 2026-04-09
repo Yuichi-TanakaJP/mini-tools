@@ -174,7 +174,7 @@ export default function ShareButtons({
 
   const renderQrModal = () => {
     if (!qrOpen) return null;
-    if (typeof document === "undefined") return null; // ★ これが肝
+    if (typeof document === "undefined") return null; // createPortal は SSR 環境では使えないためガード
 
     const raw = currentUrl || "";
     let u = raw;
@@ -328,7 +328,7 @@ export default function ShareButtons({
         })}
       </div>
 
-      {renderQrModal()}
+      {qrOpen && renderQrModal()}
     </div>
   );
 }
