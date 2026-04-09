@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { track } from "@/lib/analytics";
 import { QRCodeCanvas } from "qrcode.react";
 import { createPortal } from "react-dom";
+import styles from "./ShareButtons.module.css";
 
 type ShareMethod = "x" | "facebook" | "email" | "copy" | "premium" | "qr";
 
@@ -187,35 +188,26 @@ export default function ShareButtons({
     }
 
     return createPortal(
-      <div style={overlayStyle} onClick={() => setQrOpen(false)}>
-        <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
-          <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 10 }}>
-            このページを共有
-          </div>
+      <div className={styles.overlay} onClick={() => setQrOpen(false)}>
+        <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+          <div className={styles.modalLabel}>このページを共有</div>
 
-          <div style={{ display: "flex", justifyContent: "center" }}>
+          <div className={styles.modalQrWrapper}>
             <QRCodeCanvas value={u} size={180} />
           </div>
 
-          <div
-            style={{
-              marginTop: 12,
-              display: "flex",
-              gap: 8,
-              justifyContent: "center",
-            }}
-          >
+          <div className={styles.modalActions}>
             <button
               type="button"
               onClick={() => onCopy(u)}
-              style={modalBtnStyle}
+              className={styles.modalBtn}
             >
               URLコピー
             </button>
             <button
               type="button"
               onClick={() => setQrOpen(false)}
-              style={modalBtnStyle}
+              className={styles.modalBtn}
             >
               閉じる
             </button>
@@ -228,7 +220,7 @@ export default function ShareButtons({
 
   return (
     <div
-      className="share-buttons-root"
+      className={styles.root}
       style={
         {
           marginTop: inline ? 0 : 12,
@@ -241,20 +233,11 @@ export default function ShareButtons({
         } as React.CSSProperties
       }
     >
-      {label ? (
-        <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 8 }}>
-          {label}
-        </div>
-      ) : null}
+      {label ? <div className={styles.label}>{label}</div> : null}
 
       <div
-        style={{
-          display: "flex",
-          gap: inline ? 4 : 16,
-          flexWrap: "wrap",
-          justifyContent: "center",
-          width: "100%",
-        }}
+        className={styles.buttonGroup}
+        style={{ gap: inline ? 4 : 16 }}
       >
         {methods.map((m) => {
           if (m === "copy") {
@@ -265,11 +248,12 @@ export default function ShareButtons({
                 onClick={() => onCopy(getShareUrl())}
                 aria-label="リンクをコピー"
                 title="リンクをコピー"
-                style={iconButtonStyle(size)}
+                className={styles.iconButton}
+                style={{ width: size, height: size }}
               >
                 {renderIcon(m)}
                 {!iconsOnly ? (
-                  <span style={labelStyle}>{labelFor(m)}</span>
+                  <span className={styles.labelText}>{labelFor(m)}</span>
                 ) : null}
               </button>
             );
@@ -286,11 +270,12 @@ export default function ShareButtons({
                 }}
                 aria-label="QRで共有"
                 title="QRで共有"
-                style={iconButtonStyle(size)}
+                className={styles.iconButton}
+                style={{ width: size, height: size }}
               >
                 {renderIcon(m)}
                 {!iconsOnly ? (
-                  <span style={labelStyle}>{labelFor(m)}</span>
+                  <span className={styles.labelText}>{labelFor(m)}</span>
                 ) : null}
               </button>
             );
@@ -304,15 +289,12 @@ export default function ShareButtons({
                 onClick={() => onShare("premium")}
                 aria-label="Premium へ移動"
                 title="Premium へ移動"
-                style={{
-                  ...iconButtonStyle(size),
-                  color: "#f59e0b",
-                  opacity: 0.92,
-                }}
+                className={`${styles.iconButton} ${styles.iconButtonPremium}`}
+                style={{ width: size, height: size }}
               >
                 {renderIcon(m)}
                 {!iconsOnly ? (
-                  <span style={labelStyle}>{labelFor(m)}</span>
+                  <span className={styles.labelText}>{labelFor(m)}</span>
                 ) : null}
               </a>
             );
@@ -334,11 +316,12 @@ export default function ShareButtons({
               onClick={() => onShare(m)}
               aria-label={`${labelFor(m)}でシェア`}
               title={`${labelFor(m)}でシェア`}
-              style={iconButtonStyle(size)}
+              className={styles.iconButton}
+              style={{ width: size, height: size }}
             >
               {renderIcon(m)}
               {!iconsOnly ? (
-                <span style={labelStyle}>{labelFor(m)}</span>
+                <span className={styles.labelText}>{labelFor(m)}</span>
               ) : null}
             </a>
           );
@@ -346,95 +329,6 @@ export default function ShareButtons({
       </div>
 
       {renderQrModal()}
-
-      <style>{css}</style>
     </div>
   );
 }
-
-const labelStyle: React.CSSProperties = { fontSize: 12, opacity: 0.8 };
-
-function iconButtonStyle(size: number): React.CSSProperties {
-  return {
-    width: size,
-    height: size,
-    borderRadius: 999,
-    border: "none",
-    background: "transparent",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    textDecoration: "none",
-    color: "var(--share-button-color, rgba(0,0,0,0.78))",
-    cursor: "pointer",
-    userSelect: "none",
-    transition: "transform .12s ease, opacity .12s ease",
-    padding: 0,
-  };
-}
-
-const overlayStyle: React.CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(0,0,0,0.55)",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  paddingLeft: "16px",
-  paddingRight: "16px",
-  paddingBottom: "16px",
-  overflowY: "auto",
-  zIndex: 1000,
-};
-
-const modalStyle: React.CSSProperties = {
-  background: "#fff",
-  padding: 16,
-  borderRadius: 12,
-  width: "min(92vw, 360px)",
-  boxShadow: "0 12px 40px rgba(0,0,0,0.25)",
-  textAlign: "center",
-};
-
-const modalBtnStyle: React.CSSProperties = {
-  border: "1px solid rgba(0,0,0,0.12)",
-  background: "rgba(0,0,0,0.03)",
-  padding: "8px 12px",
-  borderRadius: 10,
-  cursor: "pointer",
-};
-
-const css = `
-  .share-buttons-root a,
-  .share-buttons-root button {
-    background: transparent;
-    border: none;
-    outline: none;
-    box-shadow: none;
-    appearance: none;
-    -webkit-appearance: none;
-  }
-
-  .share-buttons-root a:focus,
-  .share-buttons-root a:focus-visible,
-  .share-buttons-root button:focus,
-  .share-buttons-root button:focus-visible {
-    outline: none;
-    box-shadow: var(--share-button-focus-ring, 0 0 0 3px rgba(37,84,255,0.28));
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    .share-buttons-root a[aria-label*="でシェア"]:hover,
-    .share-buttons-root button[aria-label*="コピー"]:hover,
-    .share-buttons-root button[aria-label*="QR"]:hover {
-      transform: translateY(-1px);
-      opacity: 1;
-    }
-    .share-buttons-root a[aria-label*="でシェア"]:active,
-    .share-buttons-root button[aria-label*="コピー"]:active,
-    .share-buttons-root button[aria-label*="QR"]:active {
-      transform: translateY(0px);
-      opacity: 0.85;
-    }
-  }
-`;
