@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { getApiBaseUrl } from "@/lib/market-api";
 import type { NikkeiContributionDayData, NikkeiContributionManifest } from "./types";
 
 const EMPTY_MANIFEST: NikkeiContributionManifest = {
@@ -9,10 +10,6 @@ const EMPTY_MANIFEST: NikkeiContributionManifest = {
 
 function getDataDir() {
   return path.join(process.cwd(), "app/tools/nikkei-contribution/data");
-}
-
-function getApiBaseUrl() {
-  return process.env.MARKET_INFO_API_BASE_URL?.trim().replace(/\/+$/, "") ?? "";
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
