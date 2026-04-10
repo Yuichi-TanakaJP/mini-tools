@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { loadUsMarketClosedData } from "@/lib/us-market-closed";
+import { getApiBaseUrl, fetchJson } from "@/lib/market-api";
 import type {
   EarningsCalendarManifest,
   EarningsCalendarItem,
@@ -17,29 +18,6 @@ function getDataDir() {
   return path.join(process.cwd(), "app/tools/earnings-calendar/data");
 }
 
-function getApiBaseUrl() {
-  return process.env.MARKET_INFO_API_BASE_URL?.trim().replace(/\/+$/, "") ?? "";
-}
-
-async function fetchJson<T>(url: string): Promise<T> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-  try {
-    const res = await fetch(url, {
-      signal: controller.signal,
-      next: { revalidate: 300 },
-    });
-
-    if (!res.ok) {
-      throw new Error(`Failed to fetch ${url}: HTTP ${res.status}`);
-    }
-
-    return (await res.json()) as T;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
 
 async function loadLocalDomesticManifest(): Promise<EarningsCalendarManifest> {
   const raw = await readFile(path.join(getDataDir(), "manifest.json"), "utf-8");
