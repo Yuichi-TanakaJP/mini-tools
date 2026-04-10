@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { track } from "@/lib/analytics";
 import { QRCodeCanvas } from "qrcode.react";
@@ -22,6 +22,31 @@ type Props = {
 
 const DEFAULT_METHODS: ShareMethod[] = ["x", "facebook", "email", "copy"];
 
+/**
+ * pathname + searchParams から共有用の絶対 URL を生成する。
+ * NEXT_PUBLIC_SITE_URL があればそれを base にし、なければ window.location.origin にフォールバックする。
+ * url prop が渡された場合はそれをそのまま使う。
+ */
+function resolveShareUrl(
+  urlProp: string | undefined,
+  pathname: string,
+  searchParams: URLSearchParams | null
+): string {
+  if (urlProp) return urlProp;
+
+  const qs = searchParams?.toString();
+  const pathWithQuery = `${pathname}${qs ? `?${qs}` : ""}`;
+  const base =
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+    (typeof window !== "undefined" ? window.location.origin : "");
+
+  try {
+    return new URL(pathWithQuery, base).href;
+  } catch {
+    return pathWithQuery;
+  }
+}
+
 export default function ShareButtons({
   text,
   url,
@@ -37,42 +62,13 @@ export default function ShareButtons({
 
   const [qrOpen, setQrOpen] = useState(false);
 
-  const currentUrl = useMemo(() => {
-    if (url) return url;
-
-    const qs = searchParams?.toString();
-    const base = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
-
-    // base があるなら絶対URL、なければ相対URLでフォールバック
-    const pathWithQuery = `${pathname}${qs ? `?${qs}` : ""}`;
-    return base ? `${base}${pathWithQuery}` : pathWithQuery;
-  }, [url, pathname, searchParams]);
-
-  type ShareUrlMode = "public" | "current";
-
-  const getShareUrl = useCallback(
-    (mode: ShareUrlMode = "public") => {
-      // public: 共有用（本番URL優先）
-      if (mode === "public") {
-        try {
-          // NEXT_PUBLIC_SITE_URL があればそれを優先
-          const base =
-            process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
-          return new URL(currentUrl || "", base).href;
-        } catch {
-          return process.env.NEXT_PUBLIC_SITE_URL || window.location.href;
-        }
-      }
-
-      // current: 今見ているURL（開発・検証向け）
-      return window.location.href;
-    },
-    [currentUrl]
+  const shareUrl = useMemo(
+    () => resolveShareUrl(url, pathname, searchParams),
+    [url, pathname, searchParams]
   );
 
   const shareLinks = useMemo(() => {
-    const u = getShareUrl();
-    const encUrl = encodeURIComponent(u);
+    const encUrl = encodeURIComponent(shareUrl);
     const encText = encodeURIComponent(text ?? "");
 
     return {
@@ -80,16 +76,16 @@ export default function ShareButtons({
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${encUrl}`,
       email: `mailto:?subject=${encText}&body=${encUrl}`,
     };
-  }, [getShareUrl, text]);
+  }, [shareUrl, text]);
 
   const onShare = (method: ShareMethod) => {
     track("share_clicked", { method });
   };
 
-  const onCopy = async (url: string) => {
+  const onCopy = async () => {
     onShare("copy");
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(shareUrl);
       alert("リンクをコピーしました！");
     } catch {
       alert("コピーに失敗しました（ブラウザ設定をご確認ください）");
@@ -173,19 +169,7 @@ export default function ShareButtons({
   };
 
   const renderQrModal = () => {
-    if (!qrOpen) return null;
     if (typeof document === "undefined") return null; // createPortal は SSR 環境では使えないためガード
-
-    const raw = currentUrl || "";
-    let u = raw;
-
-    try {
-      // rawが相対でも絶対でもOK。最終的に絶対URLへ正規化
-      u = new URL(raw, window.location.origin).href;
-    } catch {
-      // 念のためフォールバック
-      u = window.location.href;
-    }
 
     return createPortal(
       <div className={styles.overlay} onClick={() => setQrOpen(false)}>
@@ -193,13 +177,13 @@ export default function ShareButtons({
           <div className={styles.modalLabel}>このページを共有</div>
 
           <div className={styles.modalQrWrapper}>
-            <QRCodeCanvas value={u} size={180} />
+            <QRCodeCanvas value={shareUrl} size={180} />
           </div>
 
           <div className={styles.modalActions}>
             <button
               type="button"
-              onClick={() => onCopy(u)}
+              onClick={() => onCopy()}
               className={styles.modalBtn}
             >
               URLコピー
@@ -245,7 +229,7 @@ export default function ShareButtons({
               <button
                 key={m}
                 type="button"
-                onClick={() => onCopy(getShareUrl())}
+                onClick={onCopy}
                 aria-label="リンクをコピー"
                 title="リンクをコピー"
                 className={styles.iconButton}
