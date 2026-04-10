@@ -37,12 +37,14 @@ function resolveShareUrl(
   const qs = searchParams?.toString();
   const pathWithQuery = `${pathname}${qs ? `?${qs}` : ""}`;
   const base =
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+    process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "") ||
     (typeof window !== "undefined" ? window.location.origin : "");
 
   try {
     return new URL(pathWithQuery, base).href;
   } catch {
+    // base が取得できない SSR 初期レンダリング時は相対パスにフォールバック。
+    // クライアント再レンダリング時には window.location.origin が base に入るため絶対 URL になる。
     return pathWithQuery;
   }
 }
