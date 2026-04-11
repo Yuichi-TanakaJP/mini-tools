@@ -409,7 +409,7 @@ export default function ToolClient({ data }: { data: Topix33PageData }) {
         </div>
 
         {isLoading && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "4px 0" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "4px 0" }}>
             <div className={styles.spinner} />
             <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>読み込み中…</span>
           </div>

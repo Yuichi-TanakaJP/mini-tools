@@ -404,8 +404,9 @@ export default function ToolClient({ data }: { data: RankingPageData }) {
             {loadError}
           </div>
         ) : isLoading && !loadedDays[selectedDate] ? (
-          <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--color-text-muted)", fontSize: 14 }}>
-            読み込み中...
+          <div style={{ padding: "32px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+            <div className="loading-spinner" />
+            <span style={{ color: "var(--color-text-muted)", fontSize: 13 }}>読み込み中...</span>
           </div>
         ) : (
         <RankingTable records={filtered} rankingType={selectedRanking} />
