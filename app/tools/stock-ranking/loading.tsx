@@ -1,48 +1,45 @@
 export default function Loading() {
+  const sk = {
+    background: "var(--color-border)",
+    animation: "skeleton-pulse 1.4s ease-in-out infinite",
+  } as const;
+
   return (
-    <div style={{ maxWidth: 800, margin: "0 auto", padding: "0 16px 64px" }}>
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 16px 64px" }}>
+      {/* Header */}
       <div style={{ padding: "32px 0 24px" }}>
-        <div style={{
-          width: 160,
-          height: 28,
-          borderRadius: 6,
-          background: "var(--color-border)",
-          marginBottom: 8,
-          animation: "skeleton-pulse 1.4s ease-in-out infinite",
-        }} />
-        <div style={{
-          width: 240,
-          height: 14,
-          borderRadius: 6,
-          background: "var(--color-border)",
-          animation: "skeleton-pulse 1.4s ease-in-out infinite",
-        }} />
+        <div style={{ ...sk, width: 160, height: 28, borderRadius: 6, marginBottom: 8 }} />
+        <div style={{ ...sk, width: 240, height: 14, borderRadius: 4 }} />
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-        {[80, 100, 80].map((w, i) => (
-          <div key={i} style={{
-            width: w,
-            height: 32,
-            borderRadius: 8,
-            background: "var(--color-border)",
-            animation: "skeleton-pulse 1.4s ease-in-out infinite",
-          }} />
+      {/* Date nav: ← date select → */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        marginBottom: 16,
+      }}>
+        <div style={{ ...sk, width: 34, height: 34, borderRadius: 999 }} />
+        <div style={{ ...sk, width: 160, height: 34, borderRadius: 8 }} />
+        <div style={{ ...sk, width: 34, height: 34, borderRadius: 999 }} />
+      </div>
+
+      {/* Market tabs: プライム / スタンダード / グロース */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        {[88, 108, 80].map((w, i) => (
+          <div key={i} style={{ ...sk, width: w, height: 32, borderRadius: 8 }} />
         ))}
       </div>
 
+      {/* Ranking tabs: 値上がり率 / 値下がり率 / 売買高 */}
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-        {[90, 110, 72].map((w, i) => (
-          <div key={i} style={{
-            width: w,
-            height: 32,
-            borderRadius: 8,
-            background: "var(--color-border)",
-            animation: "skeleton-pulse 1.4s ease-in-out infinite",
-          }} />
+        {[92, 96, 72].map((w, i) => (
+          <div key={i} style={{ ...sk, width: w, height: 32, borderRadius: 8 }} />
         ))}
       </div>
 
+      {/* Ranking table */}
       <div style={{
         borderRadius: 12,
         border: "1px solid var(--color-border)",
@@ -57,29 +54,10 @@ export default function Loading() {
             padding: "12px 16px",
             borderBottom: i < 9 ? "1px solid var(--color-border)" : "none",
           }}>
-            <div style={{
-              width: 24,
-              height: 16,
-              borderRadius: 4,
-              background: "var(--color-border)",
-              flexShrink: 0,
-              animation: "skeleton-pulse 1.4s ease-in-out infinite",
-            }} />
-            <div style={{
-              flex: 1,
-              height: 16,
-              borderRadius: 4,
-              background: "var(--color-border)",
-              animation: "skeleton-pulse 1.4s ease-in-out infinite",
-            }} />
-            <div style={{
-              width: 60,
-              height: 16,
-              borderRadius: 4,
-              background: "var(--color-border)",
-              flexShrink: 0,
-              animation: "skeleton-pulse 1.4s ease-in-out infinite",
-            }} />
+            <div style={{ ...sk, width: 24, height: 16, borderRadius: 4, flexShrink: 0 }} />
+            <div style={{ ...sk, flex: 1, height: 16, borderRadius: 4 }} />
+            <div style={{ ...sk, width: 60, height: 16, borderRadius: 4, flexShrink: 0 }} />
+            <div style={{ ...sk, width: 60, height: 16, borderRadius: 4, flexShrink: 0 }} />
           </div>
         ))}
       </div>
