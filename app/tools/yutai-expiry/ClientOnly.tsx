@@ -1,9 +1,7 @@
 "use client";
 
-import dynamic from "next/dynamic";
+import { createClientOnlyTool } from "@/components/createClientOnlyTool";
 
-const ToolClient = dynamic(() => import("./ToolClient"), { ssr: false });
+const ClientOnly = createClientOnlyTool(() => import("./ToolClient"));
 
-export default function ClientOnly() {
-  return <ToolClient />;
-}
+export default ClientOnly;

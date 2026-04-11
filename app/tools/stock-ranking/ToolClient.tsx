@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { RankingDayData, RankingPageData, RankingMarket, RankingType, RankingRecord } from "./types";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { useDailyMarketData } from "@/app/tools/_shared/use-daily-market-data";
 
 const MARKETS: RankingMarket[] = ["プライム", "スタンダード", "グロース"];
 const RANKINGS: RankingType[] = ["値上がり率", "値下がり率", "売買高"];
@@ -196,50 +197,11 @@ export default function ToolClient({ data }: { data: RankingPageData }) {
   const [selectedDate, setSelectedDate] = useState<string>(manifest.latest);
   const [selectedMarket, setSelectedMarket] = useState<RankingMarket>("プライム");
   const [selectedRanking, setSelectedRanking] = useState<RankingType>("値上がり率");
-  const [loadedDays, setLoadedDays] = useState<Record<string, RankingDayData>>(() => {
-    if (!initialDayData) return {};
-    return { [initialDayData.date]: initialDayData };
+  const { loadedDays, isLoading, loadError } = useDailyMarketData<RankingDayData>({
+    activeDate: selectedDate,
+    initialDayData,
+    routePrefix: "/tools/stock-ranking/data",
   });
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (loadedDays[selectedDate]) {
-      setLoadError(null);
-      return;
-    }
-
-    let active = true;
-
-    async function loadSelectedDate() {
-      setIsLoading(true);
-      setLoadError(null);
-
-      try {
-        const res = await fetch(`/tools/stock-ranking/data/${selectedDate}`);
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-
-        const day = (await res.json()) as RankingDayData;
-        if (!active) return;
-        setLoadedDays((current) => ({ ...current, [day.date]: day }));
-      } catch {
-        if (!active) return;
-        setLoadError("データを読み込めませんでした。時間をおいて再度お試しください。");
-      } finally {
-        if (active) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void loadSelectedDate();
-
-    return () => {
-      active = false;
-    };
-  }, [loadedDays, selectedDate]);
 
   const filtered = useMemo<RankingRecord[]>(() => {
     const day = loadedDays[selectedDate];

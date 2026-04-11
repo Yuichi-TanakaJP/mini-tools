@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import styles from "./ToolClient.module.css";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import type {
@@ -10,6 +10,7 @@ import type {
   Topix33RankItem,
   Topix33SectorRecord,
 } from "./types";
+import { useDailyMarketData } from "@/app/tools/_shared/use-daily-market-data";
 
 function formatDate(dateStr: string) {
   const [y, m, d] = dateStr.split("-");
@@ -223,12 +224,6 @@ function SectorsTable({ sectors }: { sectors: Topix33SectorRecord[] }) {
 export default function ToolClient({ data }: { data: Topix33PageData }) {
   const { manifest, initialDayData, holidays } = data;
   const [selectedDate, setSelectedDate] = useState<string>(manifest.latest_date ?? "");
-  const [loadedDays, setLoadedDays] = useState<Record<string, Topix33DayData>>(() => {
-    if (!initialDayData) return {};
-    return { [initialDayData.date]: initialDayData };
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
   const holidayMap = useMemo(() => {
     return new Map((holidays?.days ?? []).map((day) => [day.date, day]));
@@ -250,45 +245,16 @@ export default function ToolClient({ data }: { data: Topix33PageData }) {
       ? displayDates[currentDateIndex + 1]
       : null;
   const nextDate = currentDateIndex > 0 ? displayDates[currentDateIndex - 1] : null;
-
-  useEffect(() => {
-    if (!currentSelectedDate || loadedDays[currentSelectedDate]) {
-      setLoadError(null);
-      return;
-    }
-
-    let active = true;
-
-    async function loadSelectedDate() {
-      setIsLoading(true);
-      setLoadError(null);
-
-      try {
-        const res = await fetch(`/tools/topix33/data/${currentSelectedDate}`);
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-        const day = (await res.json()) as Topix33DayData;
-        if (!active) return;
-        setLoadedDays((current) => ({ ...current, [day.date]: day }));
-      } catch {
-        if (!active) return;
-        setLoadError("データを読み込めませんでした。時間をおいて再度お試しください。");
-      } finally {
-        if (active) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void loadSelectedDate();
-
-    return () => {
-      active = false;
-    };
-  }, [currentSelectedDate, loadedDays]);
-
-  const dayData = currentSelectedDate ? loadedDays[currentSelectedDate] ?? null : null;
+  const {
+    loadedDays,
+    isLoading,
+    loadError,
+    currentDayData: dayData,
+  } = useDailyMarketData<Topix33DayData>({
+    activeDate: currentSelectedDate,
+    initialDayData,
+    routePrefix: "/tools/topix33/data",
+  });
 
   const rankingMaxAbs = useMemo(() => {
     if (!dayData) return 1;

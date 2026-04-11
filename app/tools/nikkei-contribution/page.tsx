@@ -3,6 +3,10 @@ import ToolClient from "./ToolClient";
 import { loadContributionDayData, loadContributionManifest } from "./data-loader";
 import type { NikkeiContributionPageData } from "./types";
 import { loadJpxMarketClosedData } from "@/lib/jpx-market-closed";
+import {
+  filterVisibleTradingDates,
+  findFirstUsableDayData,
+} from "@/app/tools/_shared/market-trading-dates";
 
 export const metadata: Metadata = {
   title: "日経225寄与度 | mini-tools",
@@ -12,16 +16,6 @@ export const metadata: Metadata = {
     canonical: "/tools/nikkei-contribution",
   },
 };
-
-function getDayOfWeek(dateStr: string) {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  return new Date(y, m - 1, d).getDay();
-}
-
-function isWeekendDate(dateStr: string) {
-  const day = getDayOfWeek(dateStr);
-  return day === 0 || day === 6;
-}
 
 function isLikelyMarketClosed(dayData: NikkeiContributionPageData["initialDayData"]) {
   if (!dayData || dayData.records.length === 0) {
@@ -39,28 +33,15 @@ async function loadData(): Promise<NikkeiContributionPageData> {
     loadJpxMarketClosedData(),
   ]);
 
-  const holidayMap = new Map((holidays?.days ?? []).map((day) => [day.date, day]));
-  const visibleDates = manifest.dates.filter((date) => {
-    if (holidayMap.get(date)?.market_closed) {
-      return false;
-    }
-
-    return !isWeekendDate(date);
-  });
-
-  let initialDayData = null;
-  const excludedLeadingDates = new Set<string>();
-
-  for (const date of visibleDates) {
-    const dayData = await loadContributionDayData(date);
-    if (!dayData || isLikelyMarketClosed(dayData)) {
-      excludedLeadingDates.add(date);
-      continue;
-    }
-
-    initialDayData = dayData;
-    break;
-  }
+  const visibleDates = filterVisibleTradingDates(manifest.dates, holidays);
+  const { matched, skippedDates } = await findFirstUsableDayData(
+    visibleDates,
+    loadContributionDayData,
+    (dayData): dayData is NonNullable<NikkeiContributionPageData["initialDayData"]> =>
+      !!dayData && !isLikelyMarketClosed(dayData),
+  );
+  const initialDayData = matched?.dayData ?? null;
+  const excludedLeadingDates = new Set(skippedDates);
 
   const filteredDates = visibleDates.filter((date) => !excludedLeadingDates.has(date));
   const filteredManifest = {

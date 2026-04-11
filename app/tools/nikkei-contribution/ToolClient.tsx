@@ -10,6 +10,7 @@ import type {
   NikkeiContributionRankItem,
   NikkeiContributionRecord,
 } from "./types";
+import { useDailyMarketData } from "@/app/tools/_shared/use-daily-market-data";
 
 function formatDate(dateStr: string) {
   const [y, m, d] = dateStr.split("-");
@@ -764,13 +765,16 @@ function RecordsTable({ records }: { records: NikkeiContributionRecord[] }) {
 export default function ToolClient({ data }: { data: NikkeiContributionPageData }) {
   const { manifest, initialDayData, holidays } = data;
   const [selectedDate, setSelectedDate] = useState<string>(manifest.latest_date ?? "");
-  const [loadedDays, setLoadedDays] = useState<Record<string, NikkeiContributionDayData>>(() => {
-    if (!initialDayData) return {};
-    return { [initialDayData.date]: initialDayData };
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedCode, setSelectedCode] = useState<string | null>(initialDayData?.records[0]?.code ?? null);
+  const {
+    loadedDays,
+    isLoading,
+    loadError,
+  } = useDailyMarketData<NikkeiContributionDayData>({
+    activeDate: selectedDate,
+    initialDayData,
+    routePrefix: "/tools/nikkei-contribution/data",
+  });
   const holidayMap = useMemo(() => {
     return new Map((holidays?.days ?? []).map((day) => [day.date, day]));
   }, [holidays]);
@@ -801,45 +805,6 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
       ? displayDates[currentDateIndex + 1]
       : null;
   const nextDate = currentDateIndex > 0 ? displayDates[currentDateIndex - 1] : null;
-
-  useEffect(() => {
-    if (!currentSelectedDate || loadedDays[currentSelectedDate]) {
-      setLoadError(null);
-      return;
-    }
-
-    let active = true;
-
-    async function loadSelectedDate() {
-      setIsLoading(true);
-      setLoadError(null);
-
-      try {
-        const res = await fetch(`/tools/nikkei-contribution/data/${currentSelectedDate}`);
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-
-        const day = (await res.json()) as NikkeiContributionDayData;
-        if (!active) return;
-        setLoadedDays((current) => ({ ...current, [day.date]: day }));
-      } catch {
-        if (!active) return;
-        setLoadError("データを読み込めませんでした。時間をおいて再度お試しください。");
-      } finally {
-        if (active) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void loadSelectedDate();
-
-    return () => {
-      active = false;
-    };
-  }, [currentSelectedDate, loadedDays]);
-
   const dayData = currentSelectedDate ? loadedDays[currentSelectedDate] ?? null : null;
   const selectedRecord = useMemo(() => {
     if (!dayData) return null;
@@ -862,13 +827,6 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
       ...dayData.top_negative.map((item) => Math.abs(item.contribution)),
     );
   }, [dayData]);
-  useEffect(() => {
-    if (!dayData) return;
-    if (!selectedCode || !dayData.records.some((record) => record.code === selectedCode)) {
-      setSelectedCode(dayData.records[0]?.code ?? null);
-    }
-  }, [dayData, selectedCode]);
-
   return (
     <main style={{ maxWidth: 1180, margin: "0 auto", padding: "0 16px 64px" }}>
       <section style={{ padding: "32px 0 24px" }}>
