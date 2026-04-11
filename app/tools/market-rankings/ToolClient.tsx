@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type {
   MarketRankingMarket,
@@ -169,11 +169,13 @@ function RankingTable({
   records,
   sortState,
   onSort,
+  isMobile,
 }: {
   rankingType: MarketRankingType;
   records: MarketRankingRecord[];
   sortState: SortState;
   onSort: (key: SortKey) => void;
+  isMobile: boolean;
 }) {
   if (records.length === 0) {
     return (
@@ -187,7 +189,7 @@ function RankingTable({
     rankingType === "market-cap" ? "時価総額(億円)" : "配当利回り(%)";
   const secondaryMetricLabel =
     rankingType === "market-cap" ? "配当利回り(%)" : "時価総額(億円)";
-  const columns: { key: SortKey; label: string; align: "left" | "right" }[] = [
+  const columns = [
     { key: "rank", label: "順位", align: "right" },
     { key: "name", label: "銘柄", align: "left" },
     { key: "industry", label: "業種", align: "left" },
@@ -196,14 +198,17 @@ function RankingTable({
     { key: "price", label: "現在値", align: "right" },
     { key: "changeAmount", label: "前日比", align: "right" },
     { key: "changeRate", label: "騰落率", align: "right" },
-  ];
+  ] satisfies { key: SortKey; label: string; align: "left" | "right" }[];
+  const visibleColumns = columns.filter(
+    (column) => !isMobile || (column.key !== "changeAmount" && column.key !== "changeRate"),
+  );
 
   return (
     <div style={styles.tableWrap}>
-      <table style={styles.table}>
+      <table style={isMobile ? styles.tableMobile : styles.table}>
         <thead>
           <tr>
-            {columns.map((column) => {
+            {visibleColumns.map((column) => {
               const active = sortState?.key === column.key;
               const arrow = active ? (sortState.direction === "asc" ? "▲" : "▼") : "↕";
               return (
@@ -226,35 +231,39 @@ function RankingTable({
             const rateColor = getRateColor(record.changeRate);
             return (
               <tr key={`${record.code}-${record.rank}`} style={styles.row}>
-                <td style={styles.tdRightMuted}>{record.rank}</td>
-                <td style={styles.tdLeft}>
-                  <div style={styles.name}>{record.name}</div>
+                <td style={isMobile ? styles.tdRightMutedMobile : styles.tdRightMuted}>{record.rank}</td>
+                <td style={isMobile ? styles.tdLeftMobile : styles.tdLeft}>
+                  <div style={isMobile ? styles.nameMobile : styles.name}>{record.name}</div>
                   <div style={styles.code}>{record.code}</div>
                 </td>
-                <td style={styles.tdLeftSub}>{record.industry}</td>
-                <td style={styles.tdRightStrong}>
+                <td style={isMobile ? styles.tdLeftSubMobile : styles.tdLeftSub}>{record.industry}</td>
+                <td style={isMobile ? styles.tdRightStrongMobile : styles.tdRightStrong}>
                   {rankingType === "market-cap"
                     ? formatNumber(record.marketCapOkuYen, 1)
                     : formatNumber(record.dividendYieldPct, 2)}
                 </td>
-                <td style={styles.tdRightSub}>
+                <td style={isMobile ? styles.tdRightSubMobile : styles.tdRightSub}>
                   {rankingType === "market-cap"
                     ? formatNumber(record.dividendYieldPct, 2)
                     : formatNumber(record.marketCapOkuYen, 1)}
                 </td>
-                <td style={styles.tdRight}>
+                <td style={isMobile ? styles.tdRightMobile : styles.tdRight}>
                   {formatPrice(record.price)}
                   <span style={styles.unit}>円</span>
                   <div style={styles.subTime}>{record.priceTime || "—"}</div>
                 </td>
-                <td style={{ ...styles.tdRight, color: rateColor, fontWeight: 700 }}>
-                  {formatChangeAmount(record.changeAmount)}
-                </td>
-                <td style={styles.tdRight}>
-                  <span style={{ ...styles.rateBadge, color: rateColor, background: `${rateColor}12` }}>
-                    {formatPercent(record.changeRate)}
-                  </span>
-                </td>
+                {!isMobile ? (
+                  <td style={{ ...styles.tdRight, color: rateColor, fontWeight: 700 }}>
+                    {formatChangeAmount(record.changeAmount)}
+                  </td>
+                ) : null}
+                {!isMobile ? (
+                  <td style={styles.tdRight}>
+                    <span style={{ ...styles.rateBadge, color: rateColor, background: `${rateColor}12` }}>
+                      {formatPercent(record.changeRate)}
+                    </span>
+                  </td>
+                ) : null}
               </tr>
             );
           })}
@@ -269,6 +278,18 @@ export default function ToolClient({ data }: { data: MarketRankingPageData }) {
   const searchParams = useSearchParams();
   const [selectedMarket, setSelectedMarket] = useState<MarketRankingMarket>("prime");
   const [sortState, setSortState] = useState<SortState>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mediaQuery = window.matchMedia("(max-width: 640px)");
+    const update = () => setIsMobile(mediaQuery.matches);
+
+    update();
+    mediaQuery.addEventListener("change", update);
+    return () => mediaQuery.removeEventListener("change", update);
+  }, []);
 
   const availableMonths = data.manifest?.months ?? [];
   const availableMarkets = useMemo(
@@ -456,6 +477,7 @@ export default function ToolClient({ data }: { data: MarketRankingPageData }) {
                       records={sortedRecords}
                       sortState={sortState}
                       onSort={handleSort}
+                      isMobile={isMobile}
                     />
                   </div>
                 </>
@@ -704,6 +726,12 @@ const styles: Record<string, React.CSSProperties> = {
     borderCollapse: "collapse",
     fontSize: 13,
   },
+  tableMobile: {
+    width: "100%",
+    minWidth: 0,
+    borderCollapse: "collapse",
+    fontSize: 12,
+  },
   thLeft: {
     padding: "10px 12px",
     textAlign: "left",
@@ -769,14 +797,31 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "10px 12px",
     textAlign: "left",
   },
+  tdLeftMobile: {
+    padding: "8px 8px",
+    textAlign: "left",
+  },
   tdLeftSub: {
     padding: "10px 12px",
     textAlign: "left",
     color: "#475569",
     whiteSpace: "nowrap",
   },
+  tdLeftSubMobile: {
+    padding: "8px 6px",
+    textAlign: "left",
+    color: "#475569",
+    whiteSpace: "nowrap",
+    fontSize: 11,
+  },
   tdRight: {
     padding: "10px 12px",
+    textAlign: "right",
+    whiteSpace: "nowrap",
+    color: "#0f172a",
+  },
+  tdRightMobile: {
+    padding: "8px 8px",
     textAlign: "right",
     whiteSpace: "nowrap",
     color: "#0f172a",
@@ -788,8 +833,21 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#0f172a",
     fontWeight: 800,
   },
+  tdRightStrongMobile: {
+    padding: "8px 6px",
+    textAlign: "right",
+    whiteSpace: "nowrap",
+    color: "#0f172a",
+    fontWeight: 800,
+  },
   tdRightSub: {
     padding: "10px 12px",
+    textAlign: "right",
+    whiteSpace: "nowrap",
+    color: "#475569",
+  },
+  tdRightSubMobile: {
+    padding: "8px 6px",
     textAlign: "right",
     whiteSpace: "nowrap",
     color: "#475569",
@@ -801,9 +859,22 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#64748b",
     fontWeight: 700,
   },
+  tdRightMutedMobile: {
+    padding: "8px 6px",
+    textAlign: "right",
+    whiteSpace: "nowrap",
+    color: "#64748b",
+    fontWeight: 700,
+  },
   name: {
     fontWeight: 800,
     color: "#0f172a",
+  },
+  nameMobile: {
+    fontWeight: 800,
+    color: "#0f172a",
+    fontSize: 12,
+    lineHeight: 1.3,
   },
   code: {
     marginTop: 2,
