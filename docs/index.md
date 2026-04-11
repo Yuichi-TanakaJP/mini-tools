@@ -9,6 +9,7 @@
 
 設計・方針・トレードオフの判断理由を記録します。
 
+- [2026-04-11 共通化 Issue の着手順メモ](./decision-log/2026-04-11-commonization-priority.md)
 - [2026-04-11 ローディングUIのスピナー2段パターン統一](./decision-log/2026-04-11-loading-spinner-pattern.md)
 - [2026-04-07 loading.tsx 追加と並列 fetch 化](./decision-log/2026-04-07-loading-ui-and-parallel-fetch.md)
 - [2026-04-05 yutai-candidates の SBI 短期対象表示ルール](./decision-log/2026-04-05-yutai-candidates-sbi-short-handling.md)
@@ -38,6 +39,7 @@
 
 日々の開発作業や試行錯誤の記録です。
 
+- [2026-04-11 commonization PR handoff](./devlog/2026-04-11-commonization-handoff.md)
 - [2026-04-05 market tools 本番確認メモ](./devlog/2026-04-05-market-tools-production-verification.md)
 - [2026-01-11 QR 共有 UI 改善ログ](./devlog/2026-01-11-qr-share-ui-improvement.md)
 - [2026-01-10 Git 学習ログ](./devlog/2026-01-10_git-learning-log.md)
