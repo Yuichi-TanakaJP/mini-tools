@@ -1,9 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
-import ShareButtons from "@/components/ShareButtonsSuspended";
-import MonetizeBar from "@/components/MonetizeBar";
+import SimpleInputToolLayout from "@/components/SimpleInputToolLayout";
 import { track } from "@/lib/analytics";
 
 const STORAGE_KEY = "mini_tools_charcount_text_v1";
@@ -161,58 +159,16 @@ export default function ToolClient() {
   const progressPct = isEmpty ? 0 : Math.min((stats.xEstimated / 140) * 100, 100);
 
   return (
-    <main style={{ maxWidth: 820, margin: "0 auto", padding: "16px 16px 48px" }}>
-
-      {/* ナビ */}
-      <div style={{ marginBottom: 20 }}>
-        <Link
-          href="/"
-          onClick={() => track("nav_clicked", { to: "home_from_tool" })}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "6px 12px",
-            borderRadius: 999,
-            border: "1px solid var(--color-border-strong)",
-            textDecoration: "none",
-            color: "var(--color-text-sub)",
-            fontSize: 13,
-            fontWeight: 600,
-          }}
-        >
-          ← ツール一覧
-        </Link>
-      </div>
-
-      {/* ヒーロー */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "4px 10px",
-          borderRadius: 999,
-          background: "var(--color-accent-sub)",
-          color: "var(--color-accent)",
-          fontSize: 11,
-          fontWeight: 800,
-          marginBottom: 10,
-        }}>
-          𝕏 X投稿向け
-        </div>
-        <h1 style={{ fontSize: 26, fontWeight: 800, margin: "0 0 6px", letterSpacing: -0.4 }}>
-          X投稿文字数カウント
-        </h1>
-        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: "var(--color-text-sub)" }}>
-          140字に収めたい投稿文を貼るだけで確認できます。URL・絵文字も正確に推定。
-        </p>
-      </div>
-
-      {/* 2カラムレイアウト */}
-      <div className="charcount-layout">
-
-        {/* 左: 入力エリア */}
+    <SimpleInputToolLayout
+      badge="𝕏 X投稿向け"
+      title="X投稿文字数カウント"
+      description="140字に収めたい投稿文を貼るだけで確認できます。URL・絵文字も正確に推定。"
+      shareText="X投稿文字数カウント：140字に収まるかを確認できる"
+      footerNote="※入力はこの端末（ブラウザ）にのみ保存されます（localStorage）。"
+      maxWidth={820}
+      resultColumnWidth={260}
+      mobileBreakpoint={600}
+      inputPanel={
         <div className="charcount-input-col">
           <div style={{
             background: "var(--color-bg-card)",
@@ -264,8 +220,8 @@ export default function ToolClient() {
             </div>
           </div>
         </div>
-
-        {/* 右: 結果エリア */}
+      }
+      resultPanel={
         <div className="charcount-result-col">
           <div style={{
             background: "var(--color-bg-card)",
@@ -450,33 +406,7 @@ export default function ToolClient() {
             </div>
           </div>
         </div>
-      </div>
-
-      <div style={{ marginTop: 32 }}>
-        <ShareButtons text="X投稿文字数カウント：140字に収まるかを確認できる" />
-        <MonetizeBar />
-      </div>
-
-      <div style={{ marginTop: 16, fontSize: 12, color: "var(--color-text-muted)" }}>
-        ※入力はこの端末（ブラウザ）にのみ保存されます（localStorage）。
-      </div>
-
-      <style>{`
-        .charcount-layout {
-          display: grid;
-          grid-template-columns: 1fr 260px;
-          gap: 16px;
-          align-items: start;
-        }
-        @media (max-width: 600px) {
-          .charcount-layout {
-            grid-template-columns: 1fr;
-          }
-          .charcount-result-col {
-            order: -1;
-          }
-        }
-      `}</style>
-    </main>
+      }
+    />
   );
 }

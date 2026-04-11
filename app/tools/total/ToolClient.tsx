@@ -1,10 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import ShareButtons from "@/components/ShareButtonsSuspended";
-import MonetizeBar from "@/components/MonetizeBar";
+import SimpleInputToolLayout from "@/components/SimpleInputToolLayout";
 import { track } from "@/lib/analytics";
-import Link from "next/link";
 
 const STORAGE_KEY = "mini_tools_total_lines_v1";
 
@@ -67,58 +65,15 @@ export default function ToolClient() {
   const isEmpty = lines.trim().length === 0;
 
   return (
-    <main style={{ maxWidth: 760, margin: "0 auto", padding: "16px 16px 48px" }}>
-
-      {/* ナビ */}
-      <div style={{ marginBottom: 20 }}>
-        <Link
-          href="/"
-          onClick={() => track("nav_clicked", { to: "home_from_tool" })}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "6px 12px",
-            borderRadius: 999,
-            border: "1px solid var(--color-border-strong)",
-            textDecoration: "none",
-            color: "var(--color-text-sub)",
-            fontSize: 13,
-            fontWeight: 600,
-          }}
-        >
-          ← ツール一覧
-        </Link>
-      </div>
-
-      {/* ヒーロー */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "4px 10px",
-          borderRadius: 999,
-          background: "var(--color-accent-sub)",
-          color: "var(--color-accent)",
-          fontSize: 11,
-          fontWeight: 800,
-          marginBottom: 10,
-        }}>
-          🧮 合計計算
-        </div>
-        <h1 style={{ fontSize: 26, fontWeight: 800, margin: "0 0 6px", letterSpacing: -0.4 }}>
-          数字を貼るだけで合計
-        </h1>
-        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: "var(--color-text-sub)" }}>
-          1行1つの数字を入れるだけ。カンマ・円・マイナスも自動で読み取ります。
-        </p>
-      </div>
-
-      {/* 2カラムレイアウト */}
-      <div className="total-layout">
-
-        {/* 左: 入力エリア */}
+    <SimpleInputToolLayout
+      badge="🧮 合計計算"
+      title="数字を貼るだけで合計"
+      description="1行1つの数字を入れるだけ。カンマ・円・マイナスも自動で読み取ります。"
+      shareText="合計計算ツール：数字を貼るだけで合計できる"
+      maxWidth={760}
+      resultColumnWidth={220}
+      mobileBreakpoint={560}
+      inputPanel={
         <div className="total-input-col">
           <div style={{
             background: "var(--color-bg-card)",
@@ -167,8 +122,8 @@ export default function ToolClient() {
             </div>
           </div>
         </div>
-
-        {/* 右: 結果エリア */}
+      }
+      resultPanel={
         <div className="total-result-col">
           <div style={{
             background: "var(--color-bg-card)",
@@ -264,29 +219,7 @@ export default function ToolClient() {
             </div>
           </div>
         </div>
-      </div>
-
-      <div style={{ marginTop: 32 }}>
-        <ShareButtons text="合計計算ツール：数字を貼るだけで合計できる" />
-        <MonetizeBar />
-      </div>
-
-      <style>{`
-        .total-layout {
-          display: grid;
-          grid-template-columns: 1fr 220px;
-          gap: 16px;
-          align-items: start;
-        }
-        @media (max-width: 560px) {
-          .total-layout {
-            grid-template-columns: 1fr;
-          }
-          .total-result-col {
-            order: -1;
-          }
-        }
-      `}</style>
-    </main>
+      }
+    />
   );
 }
