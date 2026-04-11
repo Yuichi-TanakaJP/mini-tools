@@ -14,6 +14,7 @@
 - [2026-04-11 小さな入力系 tool の page shell 共通化](./decision-log/2026-04-11-small-tools-page-shell-commonization.md)
 - [2026-04-11 dev 環境 UI スモークテスト基盤](./decision-log/2026-04-11-ui-smoke-test-foundation.md)
 - [2026-04-11 ローディングUIのスピナー2段パターン統一](./decision-log/2026-04-11-loading-spinner-pattern.md)
+- [2026-04-11 市場ランキング月次ツールの追加方針](./decision-log/2026-04-11-market-rankings-monthly-tool.md)
 - [2026-04-07 loading.tsx 追加と並列 fetch 化](./decision-log/2026-04-07-loading-ui-and-parallel-fetch.md)
 - [2026-04-05 yutai-candidates の SBI 短期対象表示ルール](./decision-log/2026-04-05-yutai-candidates-sbi-short-handling.md)
 - [2026-04-05 海外決算カレンダー統合方針](./decision-log/2026-04-05-overseas-earnings-calendar-integration.md)
