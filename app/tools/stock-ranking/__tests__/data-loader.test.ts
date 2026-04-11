@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { RankingManifest, RankingDayData } from "../types";
 
 vi.mock("node:fs/promises", () => ({
   readFile: vi.fn(),
@@ -7,18 +6,9 @@ vi.mock("node:fs/promises", () => ({
 
 import { readFile } from "node:fs/promises";
 import { loadRankingManifest, loadRankingDayData } from "../data-loader";
+import { SAMPLE_DAY_DATA, SAMPLE_MANIFEST } from "./fixtures";
 
 const mockReadFile = vi.mocked(readFile);
-
-const SAMPLE_MANIFEST: RankingManifest = {
-  dates: ["2025-04-01", "2025-04-02"],
-  latest: "2025-04-02",
-};
-
-const SAMPLE_DAY_DATA: RankingDayData = {
-  date: "2025-04-02",
-  records: [],
-};
 
 function makeFetchOk(body: unknown): Response {
   return {
