@@ -78,5 +78,8 @@ export function useDailyMarketData<T extends DatedDayData>({
     isLoading,
     loadError,
     currentDayData: activeDate ? loadedDays[activeDate] ?? null : null,
+    storeDayData: (day: T) => {
+      setLoadedDays((current) => ({ ...current, [day.date]: day }));
+    },
   };
 }

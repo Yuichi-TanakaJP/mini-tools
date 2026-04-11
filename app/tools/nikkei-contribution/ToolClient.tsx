@@ -766,10 +766,12 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
   const { manifest, initialDayData, holidays } = data;
   const [selectedDate, setSelectedDate] = useState<string>(manifest.latest_date ?? "");
   const [selectedCode, setSelectedCode] = useState<string | null>(initialDayData?.records[0]?.code ?? null);
+  const [isFallbackLoading, setIsFallbackLoading] = useState(false);
   const {
     loadedDays,
     isLoading,
     loadError,
+    storeDayData,
   } = useDailyMarketData<NikkeiContributionDayData>({
     activeDate: selectedDate,
     initialDayData,
@@ -805,7 +807,48 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
       ? displayDates[currentDateIndex + 1]
       : null;
   const nextDate = currentDateIndex > 0 ? displayDates[currentDateIndex - 1] : null;
+
+  useEffect(() => {
+    if (!currentSelectedDate || currentSelectedDate === selectedDate || loadedDays[currentSelectedDate]) {
+      setIsFallbackLoading(false);
+      return;
+    }
+
+    let active = true;
+
+    async function loadFallbackDate() {
+      setIsFallbackLoading(true);
+      try {
+        const res = await fetch(`/tools/nikkei-contribution/data/${currentSelectedDate}`);
+        if (!res.ok) {
+          return;
+        }
+
+        const day = (await res.json()) as NikkeiContributionDayData;
+        if (!active) {
+          return;
+        }
+
+        storeDayData(day);
+      } catch {
+        // Keep the existing selectedDate result and let the UI continue to show the
+        // current fallback state if the secondary fetch fails.
+      } finally {
+        if (active) {
+          setIsFallbackLoading(false);
+        }
+      }
+    }
+
+    void loadFallbackDate();
+
+    return () => {
+      active = false;
+    };
+  }, [currentSelectedDate, loadedDays, selectedDate, storeDayData]);
+
   const dayData = currentSelectedDate ? loadedDays[currentSelectedDate] ?? null : null;
+  const isDataLoading = isLoading || isFallbackLoading;
   const selectedRecord = useMemo(() => {
     if (!dayData) return null;
     return dayData.records.find((record) => record.code === selectedCode) ?? dayData.records[0] ?? null;
@@ -1034,7 +1077,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
 
       {loadError ? (
         <div style={{ padding: "20px 0", color: "var(--color-text-muted)" }}>{loadError}</div>
-      ) : isLoading && !dayData ? (
+      ) : isDataLoading && !dayData ? (
         <LoadingSpinner />
       ) : !dayData ? (
         <div
