@@ -242,15 +242,23 @@ function RankingTable({
         <tbody>
           {records.map((record) => {
             const rateColor = getRateColor(record.changeRate);
+            const primaryMetricStyle =
+              rankingType === "dividend-yield"
+                ? isMobile
+                  ? styles.tdCenterStrongMobile
+                  : styles.tdCenterStrong
+                : isMobile
+                ? styles.tdRightStrongMobile
+                : styles.tdRightStrong;
             return (
               <tr key={`${record.code}-${record.rank}`} style={styles.row}>
-                <td style={isMobile ? styles.tdRightMutedMobile : styles.tdRightMuted}>{record.rank}</td>
+                <td style={isMobile ? styles.tdCenterMutedMobile : styles.tdCenterMuted}>{record.rank}</td>
                 <td style={isMobile ? styles.tdLeftMobile : styles.tdLeft}>
                   <div style={isMobile ? styles.nameMobile : styles.name}>{record.name}</div>
                   <div style={styles.code}>{record.code}</div>
                 </td>
                 <td style={isMobile ? styles.tdLeftSubMobile : styles.tdLeftSub}>{record.industry}</td>
-                <td style={isMobile ? styles.tdRightStrongMobile : styles.tdRightStrong}>
+                <td style={primaryMetricStyle}>
                   {rankingType === "market-cap"
                     ? formatNumber(record.marketCapOkuYen, 1)
                     : formatNumber(record.dividendYieldPct, 2)}
@@ -900,6 +908,20 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#0f172a",
     fontWeight: 800,
   },
+  tdCenterStrong: {
+    padding: "10px 12px",
+    textAlign: "center",
+    whiteSpace: "nowrap",
+    color: "#0f172a",
+    fontWeight: 800,
+  },
+  tdCenterStrongMobile: {
+    padding: "8px 6px",
+    textAlign: "center",
+    whiteSpace: "nowrap",
+    color: "#0f172a",
+    fontWeight: 800,
+  },
   tdRightSub: {
     padding: "10px 12px",
     textAlign: "right",
@@ -926,15 +948,37 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#64748b",
     fontWeight: 700,
   },
+  tdCenterMuted: {
+    padding: "10px 12px",
+    textAlign: "center",
+    whiteSpace: "nowrap",
+    color: "#64748b",
+    fontWeight: 700,
+  },
+  tdCenterMutedMobile: {
+    padding: "8px 6px",
+    textAlign: "center",
+    whiteSpace: "nowrap",
+    color: "#64748b",
+    fontWeight: 700,
+  },
   name: {
+    display: "block",
     fontWeight: 800,
     color: "#0f172a",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
   },
   nameMobile: {
+    display: "block",
     fontWeight: 800,
     color: "#0f172a",
     fontSize: 12,
     lineHeight: 1.3,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
   },
   code: {
     marginTop: 2,
