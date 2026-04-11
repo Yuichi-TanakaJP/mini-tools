@@ -186,9 +186,9 @@ function RankingTable({
   }
 
   const primaryMetricLabel =
-    rankingType === "market-cap" ? "時価総額(億円)" : "配当利回り(%)";
+    rankingType === "market-cap" ? "時価総額(億円)" : "配当利回り";
   const secondaryMetricLabel =
-    rankingType === "market-cap" ? "配当利回り(%)" : "時価総額(億円)";
+    rankingType === "market-cap" ? "配当利回り" : "時価総額(億円)";
   const columns = [
     { key: "rank", label: "順位", align: "right" },
     { key: "name", label: "銘柄", align: "left" },
@@ -210,16 +210,29 @@ function RankingTable({
           <tr>
             {visibleColumns.map((column) => {
               const active = sortState?.key === column.key;
-              const arrow = active ? (sortState.direction === "asc" ? "▲" : "▼") : "↕";
+              const thStyle = isMobile
+                ? column.align === "left"
+                  ? styles.thLeftMobile
+                  : styles.thRightMobile
+                : column.align === "left"
+                ? styles.thLeft
+                : styles.thRight;
               return (
-                <th key={column.key} style={column.align === "left" ? styles.thLeft : styles.thRight}>
+                <th key={column.key} style={thStyle}>
                   <button
                     type="button"
                     onClick={() => onSort(column.key)}
-                    style={column.align === "left" ? styles.sortButtonLeft : styles.sortButtonRight}
+                    style={
+                      column.align === "left"
+                        ? active
+                          ? styles.sortButtonLeftActive
+                          : styles.sortButtonLeft
+                        : active
+                        ? styles.sortButtonRightActive
+                        : styles.sortButtonRight
+                    }
                   >
                     <span>{column.label}</span>
-                    <span style={active ? styles.sortIconActive : styles.sortIcon}>{arrow}</span>
                   </button>
                 </th>
               );
@@ -376,7 +389,7 @@ export default function ToolClient({ data }: { data: MarketRankingPageData }) {
           </div>
         </section>
 
-        <section style={styles.panel}>
+        <section style={styles.controlsPanel}>
           {!data.manifest ? (
             <article style={styles.emptyCard}>
               <div style={styles.emptyTitle}>月次ランキング API が未接続です</div>
@@ -441,54 +454,58 @@ export default function ToolClient({ data }: { data: MarketRankingPageData }) {
                   })}
                 </div>
               </div>
-
-              {data.monthDataFailed ? (
-                <article style={styles.errorCard}>
-                  <div style={styles.errorTitle}>
-                    {formatMonth(data.selectedMonth)} の
-                    {TYPE_OPTIONS.find((option) => option.id === data.rankingType)?.label}
-                    データを取得できませんでした
-                  </div>
-                  <p style={styles.errorText}>
-                    2026年4月11日時点で
-                    <code style={styles.inlineCode}> /market-rankings/{data.rankingType}/monthly/{data.selectedMonth}</code>
-                    が失敗していました。mini-tools 側ではなく API 側のレスポンス異常に見えます。
-                  </p>
-                </article>
-              ) : (
-                <>
-                  <div style={styles.summaryRow}>
-                    <div>
-                      <div style={styles.summaryLabel}>
-                        {TYPE_OPTIONS.find((option) => option.id === data.rankingType)?.label} / {MARKET_LABELS[activeMarket]}
-                      </div>
-                      <div style={styles.summarySub}>
-                        最大100件の月次ランキング
-                      </div>
-                    </div>
-                    <div style={styles.countChip}>
-                      {sortedRecords.length.toLocaleString("ja-JP")}件
-                    </div>
-                  </div>
-
-                  <div style={styles.tableCard}>
-                    <RankingTable
-                      rankingType={data.rankingType}
-                      records={sortedRecords}
-                      sortState={sortState}
-                      onSort={handleSort}
-                      isMobile={isMobile}
-                    />
-                  </div>
-                </>
-              )}
-
-              <p style={styles.note}>
-                配当利回りタブにも時価総額、時価総額タブにも配当利回りが含まれます。API の共通列構造をそのまま表示しています。
-              </p>
             </>
           )}
         </section>
+
+        {data.manifest ? (
+          <section style={styles.tableSection}>
+            {data.monthDataFailed ? (
+              <article style={styles.errorCard}>
+                <div style={styles.errorTitle}>
+                  {formatMonth(data.selectedMonth)} の
+                  {TYPE_OPTIONS.find((option) => option.id === data.rankingType)?.label}
+                  データを取得できませんでした
+                </div>
+                <p style={styles.errorText}>
+                  2026年4月11日時点で
+                  <code style={styles.inlineCode}> /market-rankings/{data.rankingType}/monthly/{data.selectedMonth}</code>
+                  が失敗していました。mini-tools 側ではなく API 側のレスポンス異常に見えます。
+                </p>
+              </article>
+            ) : (
+              <>
+                <div style={styles.summaryRow}>
+                  <div>
+                    <div style={styles.summaryLabel}>
+                      {TYPE_OPTIONS.find((option) => option.id === data.rankingType)?.label} / {MARKET_LABELS[activeMarket]}
+                    </div>
+                    <div style={styles.summarySub}>
+                      最大100件の月次ランキング
+                    </div>
+                  </div>
+                  <div style={styles.countChip}>
+                    {sortedRecords.length.toLocaleString("ja-JP")}件
+                  </div>
+                </div>
+
+                <div style={styles.tableCard}>
+                  <RankingTable
+                    rankingType={data.rankingType}
+                    records={sortedRecords}
+                    sortState={sortState}
+                    onSort={handleSort}
+                    isMobile={isMobile}
+                  />
+                </div>
+              </>
+            )}
+
+            <p style={styles.note}>
+              配当利回りタブにも時価総額、時価総額タブにも配当利回りが含まれます。API の共通列構造をそのまま表示しています。
+            </p>
+          </section>
+        ) : null}
       </div>
     </main>
   );
@@ -553,10 +570,19 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 11,
     fontWeight: 700,
   },
-  panel: {
+  controlsPanel: {
     background: "#ffffff",
     borderRadius: 28,
     padding: "22px 22px 24px",
+    border: "1px solid rgba(15,23,42,0.06)",
+    boxShadow:
+      "0 1px 2px rgba(15,23,42,0.04), 0 12px 32px rgba(15,23,42,0.06), 0 28px 60px rgba(15,23,42,0.04)",
+    marginBottom: 16,
+  },
+  tableSection: {
+    background: "#ffffff",
+    borderRadius: 28,
+    padding: "18px 14px 20px",
     border: "1px solid rgba(15,23,42,0.06)",
     boxShadow:
       "0 1px 2px rgba(15,23,42,0.04), 0 12px 32px rgba(15,23,42,0.06), 0 28px 60px rgba(15,23,42,0.04)",
@@ -754,12 +780,33 @@ const styles: Record<string, React.CSSProperties> = {
     background: "#f8fafc",
     whiteSpace: "nowrap",
   },
+  thLeftMobile: {
+    padding: "8px 8px",
+    textAlign: "left",
+    fontSize: 11,
+    color: "#64748b",
+    fontWeight: 800,
+    letterSpacing: 0.2,
+    borderBottom: "1px solid rgba(15,23,42,0.08)",
+    background: "#f8fafc",
+    whiteSpace: "nowrap",
+  },
+  thRightMobile: {
+    padding: "8px 6px",
+    textAlign: "right",
+    fontSize: 11,
+    color: "#64748b",
+    fontWeight: 800,
+    letterSpacing: 0.2,
+    borderBottom: "1px solid rgba(15,23,42,0.08)",
+    background: "#f8fafc",
+    whiteSpace: "nowrap",
+  },
   sortButtonLeft: {
     width: "100%",
     display: "flex",
     alignItems: "center",
     justifyContent: "flex-start",
-    gap: 6,
     border: "none",
     background: "transparent",
     padding: 0,
@@ -772,7 +819,6 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     alignItems: "center",
     justifyContent: "flex-end",
-    gap: 6,
     border: "none",
     background: "transparent",
     padding: 0,
@@ -780,15 +826,29 @@ const styles: Record<string, React.CSSProperties> = {
     color: "inherit",
     cursor: "pointer",
   },
-  sortIcon: {
-    fontSize: 10,
-    color: "#cbd5e1",
-    lineHeight: 1,
-  },
-  sortIconActive: {
-    fontSize: 10,
+  sortButtonLeftActive: {
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    border: "none",
+    background: "transparent",
+    padding: 0,
+    font: "inherit",
     color: "#0f766e",
-    lineHeight: 1,
+    cursor: "pointer",
+  },
+  sortButtonRightActive: {
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    border: "none",
+    background: "transparent",
+    padding: 0,
+    font: "inherit",
+    color: "#0f766e",
+    cursor: "pointer",
   },
   row: {
     borderBottom: "1px solid rgba(15,23,42,0.06)",
