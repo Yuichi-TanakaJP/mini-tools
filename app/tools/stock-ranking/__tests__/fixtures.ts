@@ -9,10 +9,8 @@ export const SAMPLE_DAY_DATA: RankingDayData = {
   date: "2025-04-02",
   records: [
     {
-      date: "2025-04-02",
       market: "プライム",
       ranking: "値上がり率",
-      page: 1,
       rank: 1,
       name: "テスト銘柄",
       code: "1234",
