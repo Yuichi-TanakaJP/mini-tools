@@ -27,7 +27,7 @@
 | --- | --- | --- | --- | --- | --- |
 | `topix33` | サーバーで `loadTopix33Manifest()` / `loadTopix33DayData()` | クライアントは `/tools/topix33/data/[date]` を叩き、route 内で同じ loader を呼ぶ | `MARKET_INFO_API_BASE_URL` | あり。未設定時 / fetch 失敗時は `app/tools/topix33/data` のローカル JSON | 同じデータソースを、SSR と client route の 2 入口で使っている |
 | `nikkei-contribution` | サーバーで `loadContributionManifest()` / `loadContributionDayData()` | クライアントは `/tools/nikkei-contribution/data/[date]` を叩き、route 内で同じ loader を呼ぶ | `MARKET_INFO_API_BASE_URL` | あり。未設定時 / fetch 失敗時は `app/tools/nikkei-contribution/data` のローカル JSON | `topix33` とほぼ同じ構成 |
-| `stock-ranking` | サーバーで `loadRankingManifest()` / `loadRankingDayData()` と共通休場日 loader を呼ぶ | クライアントは `/tools/stock-ranking/data/[date]` を叩き、route 内で同じ loader を呼ぶ | `MARKET_INFO_API_BASE_URL` | あり。未設定時 / fetch 失敗時は `app/tools/stock-ranking/data` とローカル休場日 JSON を使う | 休場日 API は `GET /market-calendar/jpx-closed` を使う |
+| `stock-ranking` | サーバーで `loadRankingManifest()` / `loadRankingDayData()` と共通休場日 loader を呼ぶ | クライアントは `/tools/stock-ranking/data/[date]` を叩き、route 内で同じ loader を呼ぶ | `MARKET_INFO_API_BASE_URL` | あり。未設定時 / fetch 失敗時は `app/tools/stock-ranking/data` とローカル休場日 JSON を使う | fallback は開発・緊急退避用。repo 同梱 JSON は履歴保管の主用途にしない |
 | `yutai-candidates` | サーバーで `loadMonthlyYutaiPageData()` | クライアント再 fetch は基本なし。月切替は route 遷移でサーバー再評価 | `MARKET_INFO_API_BASE_URL` | あり。manifest / month data はローカル JSON fallback。`nikko/credit` は API 未設定時のみ sample fallback | SBI は `is_short=true` の扱い有無だけを表示し、在庫状態では除外しない |
 | `earnings-calendar` | サーバーで `loadEarningsCalendarPageData()` を呼ぶ | クライアント再 fetch なし | `MARKET_INFO_API_BASE_URL` | あり。国内は同梱 JSON、海外は API 未設定/失敗時は非表示 | 国内は repo 同梱 JSON、海外は `earnings-calendar/overseas/*` API を読む |
 
@@ -77,6 +77,13 @@
 - fallback の原則
 - cache-control / `revalidate` の原則
 - 「外部 API の JSON をそのまま返す route」と「加工して返す route」の区別
+
+## fallback 方針の補足
+
+- market tools の本番主経路は `MARKET_INFO_API_BASE_URL`
+- repo 同梱 JSON fallback は当面残すが、役割は `開発` と `緊急退避`
+- 特に `stock-ranking` は、repo 同梱 JSON を履歴アーカイブとして増やし続けない
+- `public/data/jpx_listed_companies.json` は現時点では repo 同梱維持でよい
 
 ## 関連ファイル
 
