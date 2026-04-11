@@ -62,24 +62,30 @@
 
 | ファイル | 変更内容 |
 |---|---|
-| `app/globals.css` | `@keyframes skeleton-pulse` / `@keyframes spin` / `.loading-spinner` クラスを追加 |
-| `app/tools/topix33/ToolClient.tsx` | スピナー+テキストを横並び→縦並びに修正 |
-| `app/tools/stock-ranking/ToolClient.tsx` | テキストのみ→スピナー2段に修正 |
+| `app/globals.css` | `@keyframes skeleton-pulse` / `@keyframes spin` を追加 |
+| `components/LoadingSpinner.tsx` | 2段スピナー共通コンポーネントを新規作成 |
+| `components/LoadingSpinner.module.css` | スピナースタイルを集約 |
+| `app/tools/topix33/ToolClient.tsx` | スピナーをナビ内→コンテンツエリアへ移動、`<LoadingSpinner />` に置き換え |
+| `app/tools/stock-ranking/ToolClient.tsx` | テキストのみ→`<LoadingSpinner />` に置き換え |
+| `app/tools/nikkei-contribution/ToolClient.tsx` | `<LoadingSpinner />` に置き換え、spinnerSmall を削除 |
+| `app/tools/nikkei-contribution/ToolClient.module.css` | `.spinner` / `.spinnerSmall` / `@keyframes spin` を削除 |
+| `app/tools/topix33/ToolClient.module.css` | `.spinner` / `@keyframes spin` を削除 |
+
+### nikkei-contribution の spinnerSmall を削除した理由
+
+コードを精査した結果、`isLoading` は `loadedDays[currentSelectedDate]` が空のときだけ true になる設計だった。
+つまり「キャッシュあり → isLoading は false → スピナーは一切出ない」「キャッシュなし → 2段スピナーと spinnerSmall が同時に出る」の2パターンしか存在せず、spinnerSmall が単独で出る場面はなかった。
+ユーザーへの情報付加がゼロのため削除。
 
 ### 変更しなかったファイル・理由
 
 | ファイル | 理由 |
 |---|---|
-| `app/tools/nikkei-contribution/ToolClient.tsx` | 既に2段で基準通り（変更不要） |
-| `app/tools/nikkei-contribution/ToolClient.tsx:990` | ナビ内の小スピナー（ステータスバッジ代替）で問題なし |
-| `app/tools/topix33/ToolClient.tsx:411` | 今回修正済み |
 | charcount / total / yutai-expiry / yutai-memo の `loading.tsx` | ロード時間ほぼゼロのため追加不要 |
 
 ## 残課題
 
-- スピナーのスタイルが `globals.css`（`.loading-spinner`）と CSS Module（`styles.spinner`）に分かれている
-  - 将来的に `<LoadingSpinner />` 共通コンポーネントに統一することを検討してよい
-  - 現時点では差し迫った問題ではないため保留
+なし。
 
 ## 関連
 

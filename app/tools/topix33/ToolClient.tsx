@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import styles from "./ToolClient.module.css";
+import LoadingSpinner from "@/components/LoadingSpinner";
 import type {
   JpxMarketClosedDay,
   Topix33DayData,
@@ -408,18 +409,14 @@ export default function ToolClient({ data }: { data: Topix33PageData }) {
           </button>
         </div>
 
-        {isLoading && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "4px 0" }}>
-            <div className={styles.spinner} />
-            <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>読み込み中…</span>
-          </div>
-        )}
         {loadError && !isLoading && (
           <div style={{ textAlign: "center", fontSize: 13, color: "#991b1b", padding: "4px 0" }}>
             {loadError}
           </div>
         )}
       </section>
+
+      {isLoading && !dayData && <LoadingSpinner />}
 
       {/* サマリー */}
       {dayData?.summary && (

@@ -75,27 +75,6 @@
   display: none;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.spinner {
-  width: 28px;
-  height: 28px;
-  border: 3px solid rgba(37, 84, 255, 0.15);
-  border-top-color: #2554ff;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  flex-shrink: 0;
-}
-
-.spinnerSmall {
-  width: 16px;
-  height: 16px;
-  border-width: 2px;
-}
 
 @media (min-width: 641px) {
   .summaryGrid,

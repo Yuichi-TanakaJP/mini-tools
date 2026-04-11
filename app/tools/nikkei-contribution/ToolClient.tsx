@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import styles from "./ToolClient.module.css";
+import LoadingSpinner from "@/components/LoadingSpinner";
 import type {
   JpxMarketClosedDay,
   NikkeiContributionDayData,
@@ -986,9 +987,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
               />
             </svg>
           </button>
-          {isLoading ? (
-            <div className={`${styles.spinner} ${styles.spinnerSmall}`} aria-label="読み込み中" />
-          ) : dayData?.market_status ? (
+          {dayData?.market_status ? (
             <span
               style={{
                 padding: "4px 10px",
@@ -1078,10 +1077,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
       {loadError ? (
         <div style={{ padding: "20px 0", color: "var(--color-text-muted)" }}>{loadError}</div>
       ) : isLoading && !dayData ? (
-        <div style={{ padding: "56px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-          <div className={styles.spinner} />
-          <span style={{ color: "var(--color-text-muted)", fontSize: 13 }}>読み込み中...</span>
-        </div>
+        <LoadingSpinner />
       ) : !dayData ? (
         <div
           style={{

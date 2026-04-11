@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { RankingDayData, RankingPageData, RankingMarket, RankingType, RankingRecord } from "./types";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 const MARKETS: RankingMarket[] = ["プライム", "スタンダード", "グロース"];
 const RANKINGS: RankingType[] = ["値上がり率", "値下がり率", "売買高"];
@@ -404,10 +405,7 @@ export default function ToolClient({ data }: { data: RankingPageData }) {
             {loadError}
           </div>
         ) : isLoading && !loadedDays[selectedDate] ? (
-          <div style={{ padding: "32px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-            <div className="loading-spinner" />
-            <span style={{ color: "var(--color-text-muted)", fontSize: 13 }}>読み込み中...</span>
-          </div>
+          <LoadingSpinner />
         ) : (
         <RankingTable records={filtered} rankingType={selectedRanking} />
         )}
