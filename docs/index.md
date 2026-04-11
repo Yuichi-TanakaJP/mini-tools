@@ -39,6 +39,7 @@
 
 日々の開発作業や試行錯誤の記録です。
 
+- [2026-04-11 commonization PR handoff](./devlog/2026-04-11-commonization-handoff.md)
 - [2026-04-05 market tools 本番確認メモ](./devlog/2026-04-05-market-tools-production-verification.md)
 - [2026-01-11 QR 共有 UI 改善ログ](./devlog/2026-01-11-qr-share-ui-improvement.md)
 - [2026-01-10 Git 学習ログ](./devlog/2026-01-10_git-learning-log.md)
