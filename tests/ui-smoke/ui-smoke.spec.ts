@@ -44,7 +44,10 @@ test.describe("ui smoke", () => {
       page.on("requestfailed", (request) => {
         const failureText = request.failure()?.errorText ?? "unknown";
         const url = request.url();
-        if (url.includes("google-analytics.com/g/collect")) {
+        if (
+          url.includes("google-analytics.com/g/collect") ||
+          url.includes("www.googletagmanager.com/gtag/js")
+        ) {
           return;
         }
         requestFailures.push(`${request.method()} ${url} :: ${failureText}`);
