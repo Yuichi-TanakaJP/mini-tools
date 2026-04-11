@@ -271,7 +271,6 @@ function RankingTable({
                 <td style={isMobile ? styles.tdRightMobile : styles.tdRight}>
                   {formatPrice(record.price)}
                   <span style={styles.unit}>円</span>
-                  <div style={styles.subTime}>{record.priceTime || "—"}</div>
                 </td>
                 {!isMobile ? (
                   <td style={{ ...styles.tdRight, color: rateColor, fontWeight: 700 }}>
@@ -497,15 +496,13 @@ export default function ToolClient({ data }: { data: MarketRankingPageData }) {
                   </div>
                 </div>
 
-                <div style={styles.tableCard}>
-                  <RankingTable
-                    rankingType={data.rankingType}
-                    records={sortedRecords}
-                    sortState={sortState}
-                    onSort={handleSort}
-                    isMobile={isMobile}
-                  />
-                </div>
+                <RankingTable
+                  rankingType={data.rankingType}
+                  records={sortedRecords}
+                  sortState={sortState}
+                  onSort={handleSort}
+                  isMobile={isMobile}
+                />
               </>
             )}
 
@@ -588,12 +585,7 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 16,
   },
   tableSection: {
-    background: "#ffffff",
-    borderRadius: 28,
-    padding: "18px 14px 20px",
-    border: "1px solid rgba(15,23,42,0.06)",
-    boxShadow:
-      "0 1px 2px rgba(15,23,42,0.04), 0 12px 32px rgba(15,23,42,0.06), 0 28px 60px rgba(15,23,42,0.04)",
+    padding: "8px 0 0",
   },
   section: {
     marginBottom: 18,
@@ -744,13 +736,10 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12,
     fontWeight: 800,
   },
-  tableCard: {
-    border: "1px solid rgba(15,23,42,0.08)",
-    borderRadius: 18,
-    overflow: "hidden",
-    background: "#ffffff",
-  },
   tableWrap: {
+    border: "1px solid rgba(15,23,42,0.08)",
+    borderRadius: 16,
+    background: "rgba(255,255,255,0.72)",
     overflowX: "auto",
     WebkitOverflowScrolling: "touch",
   },
