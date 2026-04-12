@@ -18,10 +18,19 @@ async function loadData(): Promise<UsRankingPageData> {
     return { manifest: null, initialDayData: null };
   }
 
-  const latest = manifest.latest;
-  const initialDayData = latest ? await loadUsRankingDayData(latest) : null;
+  // manifest.latest が未発行の場合に備え、dates を順に試して最初に取得できた日付を使う
+  let initialDayData = null;
+  let resolvedLatest = manifest.latest;
+  for (const date of manifest.dates.slice(0, 5)) {
+    const data = await loadUsRankingDayData(date);
+    if (data) {
+      initialDayData = data;
+      resolvedLatest = date;
+      break;
+    }
+  }
 
-  return { manifest, initialDayData };
+  return { manifest: { ...manifest, latest: resolvedLatest }, initialDayData };
 }
 
 export default async function Page() {
