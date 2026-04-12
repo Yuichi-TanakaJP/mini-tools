@@ -9,6 +9,7 @@
 
 設計・方針・トレードオフの判断理由を記録します。
 
+- [2026-04-12 米国株ランキング phase 1 のデータ contract と実装方針](./decision-log/2026-04-12-us-stock-ranking-phase1.md)
 - [2026-04-11 共通化 Issue の着手順メモ](./decision-log/2026-04-11-commonization-priority.md)
 - [2026-04-11 JSON 同梱データと fallback 方針整理](./decision-log/2026-04-11-json-fallback-policy.md)
 - [2026-04-11 小さな入力系 tool の page shell 共通化](./decision-log/2026-04-11-small-tools-page-shell-commonization.md)
