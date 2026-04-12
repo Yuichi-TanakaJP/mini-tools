@@ -1,4 +1,4 @@
-export type UsRankingType = "値上がり率" | "値下がり率" | "売買代金";
+export type UsRankingType = "値上り率" | "値下り率" | "売買代金";
 
 export type UsRankingRecord = {
   exchange: string;

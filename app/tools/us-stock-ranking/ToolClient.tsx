@@ -10,7 +10,7 @@ import type {
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { useDailyMarketData } from "@/app/tools/_shared/use-daily-market-data";
 
-const RANKINGS: UsRankingType[] = ["値上がり率", "値下がり率", "売買代金"];
+const RANKINGS: UsRankingType[] = ["値上り率", "値下り率", "売買代金"];
 
 function formatDate(dateStr: string) {
   const [y, m, d] = dateStr.split("-");
@@ -253,7 +253,7 @@ export default function ToolClient({ data }: { data: UsRankingPageData }) {
   const { manifest, initialDayData } = data;
 
   const [selectedDate, setSelectedDate] = useState<string>(manifest?.latest ?? "");
-  const [selectedRanking, setSelectedRanking] = useState<UsRankingType>("値上がり率");
+  const [selectedRanking, setSelectedRanking] = useState<UsRankingType>("値上り率");
 
   const { loadedDays, isLoading, loadError } = useDailyMarketData<UsRankingDayData>({
     activeDate: selectedDate,
