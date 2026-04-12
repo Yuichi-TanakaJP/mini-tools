@@ -1,10 +1,8 @@
 "use client";
 
 import { useId, type ReactNode } from "react";
-import Link from "next/link";
 import ShareButtons from "@/components/ShareButtonsSuspended";
 import MonetizeBar from "@/components/MonetizeBar";
-import { track } from "@/lib/analytics";
 
 type SimpleInputToolLayoutProps = {
   badge: ReactNode;
@@ -37,27 +35,6 @@ export default function SimpleInputToolLayout({
 
   return (
     <main style={{ maxWidth, margin: "0 auto", padding: "16px 16px 48px" }}>
-      <div style={{ marginBottom: 20 }}>
-        <Link
-          href="/"
-          onClick={() => track("nav_clicked", { to: "home_from_tool" })}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "6px 12px",
-            borderRadius: 999,
-            border: "1px solid var(--color-border-strong)",
-            textDecoration: "none",
-            color: "var(--color-text-sub)",
-            fontSize: 13,
-            fontWeight: 600,
-          }}
-        >
-          ← ツール一覧
-        </Link>
-      </div>
-
       <div style={{ marginBottom: 24 }}>
         <div
           style={{
