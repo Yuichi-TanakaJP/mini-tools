@@ -242,20 +242,17 @@ function RankingTable({
         <tbody>
           {records.map((record) => {
             const rateColor = getRateColor(record.changeRate);
-            const primaryMetricStyle =
-              rankingType === "dividend-yield"
-                ? isMobile
-                  ? styles.tdCenterStrongMobile
-                  : styles.tdCenterStrong
-                : isMobile
-                ? styles.tdRightStrongMobile
-                : styles.tdRightStrong;
+            const primaryMetricStyle = isMobile
+              ? styles.tdCenterStrongMobile
+              : styles.tdCenterStrong;
             return (
               <tr key={`${record.code}-${record.rank}`} style={styles.row}>
                 <td style={isMobile ? styles.tdCenterMutedMobile : styles.tdCenterMuted}>{record.rank}</td>
                 <td style={isMobile ? styles.tdLeftMobile : styles.tdLeft}>
-                  <div style={isMobile ? styles.nameMobile : styles.name}>{record.name}</div>
-                  <div style={styles.code}>{record.code}</div>
+                  <div style={styles.nameRow}>
+                    <div style={isMobile ? styles.nameMobile : styles.name}>{record.name}</div>
+                    <span style={styles.codeChip}>{record.code}</span>
+                  </div>
                 </td>
                 <td style={isMobile ? styles.tdLeftSubMobile : styles.tdLeftSub}>{record.industry}</td>
                 <td style={primaryMetricStyle}>
@@ -951,8 +948,16 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#64748b",
     fontWeight: 700,
   },
+  nameRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    minWidth: 0,
+  },
   name: {
     display: "block",
+    minWidth: 0,
+    flex: "1 1 auto",
     fontWeight: 800,
     color: "#0f172a",
     whiteSpace: "nowrap",
@@ -961,6 +966,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
   nameMobile: {
     display: "block",
+    minWidth: 0,
+    flex: "1 1 auto",
     fontWeight: 800,
     color: "#0f172a",
     fontSize: 12,
@@ -969,10 +976,16 @@ const styles: Record<string, React.CSSProperties> = {
     overflow: "hidden",
     textOverflow: "ellipsis",
   },
-  code: {
-    marginTop: 2,
-    fontSize: 11,
+  codeChip: {
+    display: "inline-flex",
+    alignItems: "center",
+    flexShrink: 0,
+    padding: "1px 6px",
+    borderRadius: 999,
+    background: "#f1f5f9",
     color: "#64748b",
+    fontSize: 10,
+    fontWeight: 700,
   },
   unit: {
     marginLeft: 2,
