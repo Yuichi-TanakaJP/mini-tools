@@ -29,14 +29,15 @@ function fmtRate(n: number) {
   return `${sign(n)}${n.toFixed(2)}%`;
 }
 
+// tradedValue は千USD単位（CSV カラム: 売買代金(千)）
 function fmtTradedValue(n: number) {
-  if (n >= 1_000_000_000) {
-    return `$${(n / 1_000_000_000).toFixed(2)}B`;
-  }
   if (n >= 1_000_000) {
-    return `$${(n / 1_000_000).toFixed(1)}M`;
+    return `$${(n / 1_000_000).toFixed(2)}B`;
   }
-  return `$${n.toLocaleString("en-US")}`;
+  if (n >= 1_000) {
+    return `$${(n / 1_000).toFixed(1)}M`;
+  }
+  return `$${(n * 1_000).toLocaleString("en-US")}`;
 }
 
 type TabBarProps = {
