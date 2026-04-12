@@ -29,7 +29,7 @@ function fmtRate(n: number) {
   return `${sign(n)}${n.toFixed(2)}%`;
 }
 
-// tradedValue は千USD単位（CSV カラム: 売買代金(千)）
+// tradedValue は千USD単位。fallback で ×1000 して実ドル値に換算
 function fmtTradedValue(n: number) {
   if (n >= 1_000_000) {
     return `$${(n / 1_000_000).toFixed(2)}B`;
