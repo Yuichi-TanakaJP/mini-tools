@@ -20,6 +20,10 @@ async function loadData(): Promise<RankingPageData> {
     loadJpxMarketClosedData(),
   ]);
 
+  if (!manifest) {
+    return { manifest: null, initialDayData: null };
+  }
+
   const visibleDates = filterVisibleTradingDates(manifest.dates, holidays);
   const latest = visibleDates[0] ?? manifest.latest;
   const initialDayData = latest ? await loadRankingDayData(latest) : null;

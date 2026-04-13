@@ -194,7 +194,7 @@ function RankingTable({ records, rankingType }: RankingTableProps) {
 export default function ToolClient({ data }: { data: RankingPageData }) {
   const { manifest, initialDayData } = data;
 
-  const [selectedDate, setSelectedDate] = useState<string>(manifest.latest);
+  const [selectedDate, setSelectedDate] = useState<string>(manifest?.latest ?? "");
   const [selectedMarket, setSelectedMarket] = useState<RankingMarket>("プライム");
   const [selectedRanking, setSelectedRanking] = useState<RankingType>("値上がり率");
   const { loadedDays, isLoading, loadError } = useDailyMarketData<RankingDayData>({
@@ -210,12 +210,38 @@ export default function ToolClient({ data }: { data: RankingPageData }) {
       (r) => r.market === selectedMarket && r.ranking === selectedRanking,
     );
   }, [loadedDays, selectedDate, selectedMarket, selectedRanking]);
-  const currentDateIndex = manifest.dates.indexOf(selectedDate);
+  const dates = manifest?.dates ?? [];
+  const currentDateIndex = dates.indexOf(selectedDate);
   const prevDate =
-    currentDateIndex >= 0 && currentDateIndex < manifest.dates.length - 1
-      ? manifest.dates[currentDateIndex + 1]
+    currentDateIndex >= 0 && currentDateIndex < dates.length - 1
+      ? dates[currentDateIndex + 1]
       : null;
-  const nextDate = currentDateIndex > 0 ? manifest.dates[currentDateIndex - 1] : null;
+  const nextDate = currentDateIndex > 0 ? dates[currentDateIndex - 1] : null;
+
+  if (!manifest) {
+    return (
+      <main style={{ maxWidth: 900, margin: "0 auto", padding: "0 16px 64px" }}>
+        <section style={{ padding: "32px 0 24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <span style={{ fontSize: 26 }}>📊</span>
+            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900, letterSpacing: -0.5 }}>
+              株価ランキング
+            </h1>
+          </div>
+        </section>
+        <div
+          style={{
+            padding: "32px 20px",
+            textAlign: "center",
+            color: "var(--color-text-muted)",
+            fontSize: 14,
+          }}
+        >
+          データを取得できませんでした。時間をおいて再度お試しください。
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main style={{ maxWidth: 900, margin: "0 auto", padding: "0 16px 64px" }}>
@@ -284,7 +310,7 @@ export default function ToolClient({ data }: { data: RankingPageData }) {
               cursor: "pointer",
             }}
           >
-            {manifest.dates.map((d) => (
+            {dates.map((d) => (
               <option key={d} value={d}>
                 {formatDate(d)}
               </option>

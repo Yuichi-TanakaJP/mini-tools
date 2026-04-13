@@ -7,9 +7,13 @@ function getDataDir() {
   return path.join(process.cwd(), "app/tools/stock-ranking/data");
 }
 
-async function loadLocalRankingManifest(): Promise<RankingManifest> {
-  const raw = await readFile(path.join(getDataDir(), "manifest.json"), "utf-8");
-  return JSON.parse(raw) as RankingManifest;
+async function loadLocalRankingManifest(): Promise<RankingManifest | null> {
+  try {
+    const raw = await readFile(path.join(getDataDir(), "manifest.json"), "utf-8");
+    return JSON.parse(raw) as RankingManifest;
+  } catch {
+    return null;
+  }
 }
 
 async function loadLocalRankingDayData(dateStr: string): Promise<RankingDayData | null> {
@@ -23,7 +27,7 @@ async function loadLocalRankingDayData(dateStr: string): Promise<RankingDayData 
   }
 }
 
-export async function loadRankingManifest(): Promise<RankingManifest> {
+export async function loadRankingManifest(): Promise<RankingManifest | null> {
   const apiBase = getApiBaseUrl();
 
   if (!apiBase) {
