@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { RankingDayData, RankingPageData, RankingMarket, RankingType, RankingRecord } from "./types";
+import type { RankingDayData, RankingManifest, RankingMarket, RankingType, RankingRecord } from "./types";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { useDailyMarketData } from "@/app/tools/_shared/use-daily-market-data";
 
@@ -191,9 +191,13 @@ function RankingTable({ records, rankingType }: RankingTableProps) {
   );
 }
 
-export default function ToolClient({ data }: { data: RankingPageData }) {
-  const { manifest, initialDayData } = data;
-
+export default function ToolClient({
+  manifest,
+  initialDayData,
+}: {
+  manifest: RankingManifest;
+  initialDayData: RankingDayData | null;
+}) {
   const [selectedDate, setSelectedDate] = useState<string>(manifest.latest);
   const [selectedMarket, setSelectedMarket] = useState<RankingMarket>("プライム");
   const [selectedRanking, setSelectedRanking] = useState<RankingType>("値上がり率");

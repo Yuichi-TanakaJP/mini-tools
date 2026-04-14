@@ -41,6 +41,6 @@ export type JpxMarketClosedResponse = {
 };
 
 export type RankingPageData = {
-  manifest: RankingManifest;
+  manifest: RankingManifest | null;
   initialDayData: RankingDayData | null;
 };

@@ -74,15 +74,43 @@ describe("loadRankingManifest", () => {
     expect(result).toEqual(SAMPLE_MANIFEST);
   });
 
-  // NOTE: loadLocalRankingManifest に try/catch がないため、
-  // ローカルファイル欠損時は throw する（他ローダーと挙動が異なる）。
-  // これは既知の設計差異であり、別 Issue で揃えるか検討する。
-  it("API 設定あり・fetch 失敗かつローカルファイル欠損のとき throw する（既知の挙動）", async () => {
+  it("API 設定あり・fetch 失敗かつローカルファイル欠損のとき null を返す", async () => {
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
     vi.mocked(fetch).mockRejectedValue(new Error("network error"));
-    mockReadFile.mockRejectedValue(new Error("ENOENT"));
+    const error = new Error("ENOENT") as Error & { code?: string };
+    error.code = "ENOENT";
+    mockReadFile.mockRejectedValue(error);
 
-    await expect(loadRankingManifest()).rejects.toThrow("ENOENT");
+    const result = await loadRankingManifest();
+
+    expect(result).toBeNull();
+  });
+
+  it("API 未設定かつローカルファイル欠損のとき null を返す", async () => {
+    const error = new Error("ENOENT") as Error & { code?: string };
+    error.code = "ENOENT";
+    mockReadFile.mockRejectedValue(error);
+
+    const result = await loadRankingManifest();
+
+    expect(result).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("ローカル manifest が壊れているときは throw する", async () => {
+    mockReadFile.mockResolvedValue("{invalid json");
+
+    await expect(loadRankingManifest()).rejects.toThrow();
+  });
+
+  it("API 設定あり・fetch 失敗かつローカル権限エラーのとき throw する", async () => {
+    process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
+    vi.mocked(fetch).mockRejectedValue(new Error("network error"));
+    const error = new Error("EACCES") as Error & { code?: string };
+    error.code = "EACCES";
+    mockReadFile.mockRejectedValue(error);
+
+    await expect(loadRankingManifest()).rejects.toThrow("EACCES");
   });
 });
 
