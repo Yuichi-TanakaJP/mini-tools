@@ -55,6 +55,7 @@
 
 - [Docs Writing Workflow](./docs-writing-workflow.md)
 - [mini-tools システム構成概要](./system-architecture-overview.md)
+- [React Server / Client 設計分担](./react-server-client-design.md)
 - [Market Tools データ取得経路一覧](./market-tools-data-fetch-paths.md)
 - Market Tools 関連:
 - [2026-04-07 loading.tsx 追加と並列 fetch 化](./decision-log/2026-04-07-loading-ui-and-parallel-fetch.md)
