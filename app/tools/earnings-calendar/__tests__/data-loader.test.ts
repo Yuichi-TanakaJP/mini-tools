@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { JpxMarketClosedResponse } from "@/lib/market-calendar-types";
 import type {
   EarningsCalendarManifest,
   EarningsCalendarResponse,
   OverseasEarningsCalendarResponse,
-  JpxMarketClosedResponse,
 } from "../types";
 
 vi.mock("node:fs/promises", () => ({

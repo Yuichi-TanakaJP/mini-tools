@@ -6,7 +6,7 @@ import { loadJpxMarketClosedData } from "@/lib/jpx-market-closed";
 import {
   filterVisibleTradingDates,
   findFirstUsableDayData,
-} from "@/app/tools/_shared/market-trading-dates";
+} from "@/lib/market-trading-dates";
 
 export const metadata: Metadata = {
   title: "日経225寄与度 | mini-tools",

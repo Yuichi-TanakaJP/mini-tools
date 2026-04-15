@@ -1,11 +1,4 @@
-type MarketClosedDay = {
-  date: string;
-  market_closed: boolean;
-};
-
-type MarketClosedResponse = {
-  days: MarketClosedDay[];
-};
+import type { JpxMarketClosedResponse } from "@/lib/market-calendar-types";
 
 type FirstUsableDayDataResult<T> = {
   matched: {
@@ -27,7 +20,7 @@ function isWeekendDate(dateStr: string) {
 
 export function filterVisibleTradingDates(
   dates: string[],
-  holidays: MarketClosedResponse | null,
+  holidays: JpxMarketClosedResponse | null,
 ) {
   const closedDateSet = new Set(
     (holidays?.days ?? [])

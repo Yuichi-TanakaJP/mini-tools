@@ -1,3 +1,5 @@
+import type { JpxMarketClosedResponse } from "@/lib/market-calendar-types";
+
 export type Topix33SectorRecord = {
   sector_code: string;
   sector_name: string;
@@ -37,21 +39,10 @@ export type Topix33Manifest = {
   generated_at?: string;
 };
 
-export type JpxMarketClosedDay = {
-  date: string;
-  market_closed: boolean;
-  label: string;
-};
-
-export type JpxMarketClosedResponse = {
-  as_of_date: string;
-  from: string;
-  to: string;
-  days: JpxMarketClosedDay[];
-};
-
 export type Topix33PageData = {
   manifest: Topix33Manifest;
   initialDayData: Topix33DayData | null;
   holidays: JpxMarketClosedResponse | null;
 };
+
+export type { JpxMarketClosedDay, JpxMarketClosedResponse } from "@/lib/market-calendar-types";

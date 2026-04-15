@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getApiBaseUrl, fetchJson } from "@/lib/market-api";
-import type { JpxMarketClosedResponse } from "@/app/tools/earnings-calendar/types";
+import type { JpxMarketClosedResponse } from "@/lib/market-calendar-types";
 
 const LOCAL_HOLIDAY_DATA_PATH =
   "app/tools/earnings-calendar/data/jpx_market_closed_20260101_to_20271231.json";
