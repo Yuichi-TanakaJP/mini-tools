@@ -212,6 +212,7 @@ export function getBenefitsServerSnapshot(): BenefitItemV2[] {
 }
 
 export function writeBenefits(next: BenefitItemV2[]) {
+  if (typeof window === "undefined") return;
   // 保存（あなたの既存関数でもOK）
   window.localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(next));
 
