@@ -45,7 +45,7 @@
 
 ## 後続タスク
 
-- `#219` `charcount` / `total` の page shell 共通化
+- ~~`#219` `charcount` / `total` の page shell 共通化~~ → **完了**（`components/SimpleInputToolLayout.tsx` として実装済み）
 - `#214` JSON 同梱データと fallback 方針整理
 - `#220` dev 環境 UI スモークテストと artifact 収集
 

@@ -33,3 +33,8 @@
 
 - 現時点では `charcount` と `total` を対象にする
 - 他の小さな入力系 tool へ広げる場合も、まずは page shell の一致度を見てから適用する
+
+## 実装完了（#219）
+
+- `components/SimpleInputToolLayout.tsx` として実装済み
+- `app/tools/charcount/ToolClient.tsx` / `app/tools/total/ToolClient.tsx` に適用済み
