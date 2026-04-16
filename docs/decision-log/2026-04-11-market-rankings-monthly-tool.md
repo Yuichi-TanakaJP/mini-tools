@@ -25,3 +25,22 @@
 - ホームの tool 一覧
 - `sitemap`
 - `.env.local.example`
+
+## URL パラメータ方式の設計判断
+
+### なぜ internal route（`data/[date]/route.ts`）を持たないか
+
+他の日次ツール（`stock-ranking` / `topix33` / `nikkei-contribution`）は、日付切り替えのために `data/[date]/route.ts` + クライアント fetch の 2 段構成を持つ。
+`market-rankings` はこのパターンを採用せず、月切り替えを **URL パラメータ（`?type=...&month=...`）+ `router.push()`** で実現している。
+
+理由：
+- 月次データであるため `useDailyMarketData` hook（日次前提）は合わない
+- `router.push()` により query string が変わると Next.js がサーバー再評価するため、internal route を別途用意しなくてもサーバー側で月を正規化できる
+- URL パラメータ方式により、ブラウザバック・URL シェアで月・type の選択状態が自然に保持される
+- `manifest.months` は数件程度であり、全件を SSR で渡しても問題ない規模感
+
+### 月・type の正規化ルール
+
+- 無効な `month` クエリが来た場合は `manifest.latest` にフォールバックする
+- 無効な `type` クエリが来た場合は `market-cap` にフォールバックする
+- 正規化は `page.tsx`（Server Component）側で行う

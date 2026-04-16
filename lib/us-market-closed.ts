@@ -1,5 +1,5 @@
 import { getApiBaseUrl, fetchJson } from "@/lib/market-api";
-import type { JpxMarketClosedResponse } from "@/app/tools/earnings-calendar/types";
+import type { JpxMarketClosedResponse } from "@/lib/market-calendar-types";
 
 export async function loadUsMarketClosedData(): Promise<JpxMarketClosedResponse | null> {
   const apiBase = getApiBaseUrl();

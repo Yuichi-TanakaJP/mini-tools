@@ -1,3 +1,5 @@
+import type { JpxMarketClosedResponse } from "@/lib/market-calendar-types";
+
 export type RankingMarket = "プライム" | "スタンダード" | "グロース";
 export type RankingType = "値上がり率" | "値下がり率" | "売買高";
 
@@ -27,20 +29,9 @@ export type RankingManifest = {
   latest: string;
 };
 
-export type JpxMarketClosedDay = {
-  date: string;
-  label: string;
-  market_closed: boolean;
-};
-
-export type JpxMarketClosedResponse = {
-  as_of_date: string;
-  from: string;
-  to: string;
-  days: JpxMarketClosedDay[];
-};
-
 export type RankingPageData = {
   manifest: RankingManifest | null;
   initialDayData: RankingDayData | null;
 };
+
+export type { JpxMarketClosedDay, JpxMarketClosedResponse } from "@/lib/market-calendar-types";

@@ -206,12 +206,15 @@ sequenceDiagram
 | topix33 | `/topix33/manifest` `/topix33/day/{date}` |
 | stock-ranking | `/stock-ranking/manifest` `/stock-ranking/day/{date}` |
 | nikkei-contribution | `/nikkei-contribution/manifest` `/nikkei-contribution/day/{date}` |
-| us-stock-ranking | `/us-stock-ranking/manifest` `/us-stock-ranking/day/{date}` |
+| us-stock-ranking | `/us-ranking/manifest` `/us-ranking/{date}` |
 | earnings-calendar（海外） | `/earnings-calendar/overseas/manifest` `/earnings-calendar/overseas/latest` `/earnings-calendar/overseas/monthly/{ym}` |
 | yutai-candidates | manifest, monthly, credit 各エンドポイント |
 | market-rankings | `/market-rankings/{type}/manifest` `/market-rankings/{type}/monthly/{ym}` |
 
-API 未設定（`MARKET_INFO_API_BASE_URL` が空）の場合、各 data-loader はローカル JSON fallback に切り替える。
+API 未設定（`MARKET_INFO_API_BASE_URL` が空）の場合の挙動は tool ごとに異なる。
+
+- `topix33` / `stock-ranking` / `nikkei-contribution` などはローカル JSON fallback に切り替える
+- `market-rankings` / `us-stock-ranking` は fallback を持たず、未接続またはデータ取得不可の UI を表示する
 
 ### 2. リポジトリ同梱 JSON（`app/tools/**/data/`）
 
@@ -221,8 +224,8 @@ API 未設定（`MARKET_INFO_API_BASE_URL` が空）の場合、各 data-loader 
 | stock-ranking | API 失敗時の fallback |
 | nikkei-contribution | API 失敗時の fallback |
 | topix33 | API 失敗時の fallback |
-| market-rankings | API 失敗時の fallback |
-| us-stock-ranking | API 失敗時の fallback |
+| market-rankings | 同梱 JSON なし。API 未接続時は未接続表示 |
+| us-stock-ranking | 同梱 JSON なし。API 未接続時はデータ取得不可表示 |
 
 ### 3. Browser localStorage
 

@@ -1,3 +1,5 @@
+import type { JpxMarketClosedResponse } from "@/lib/market-calendar-types";
+
 export type NikkeiContributionRecord = {
   code: string;
   sector: string;
@@ -45,21 +47,10 @@ export type NikkeiContributionManifest = {
   latest_date: string | null;
 };
 
-export type JpxMarketClosedDay = {
-  date: string;
-  market_closed: boolean;
-  label: string;
-};
-
-export type JpxMarketClosedResponse = {
-  as_of_date: string;
-  from: string;
-  to: string;
-  days: JpxMarketClosedDay[];
-};
-
 export type NikkeiContributionPageData = {
   manifest: NikkeiContributionManifest;
   initialDayData: NikkeiContributionDayData | null;
   holidays: JpxMarketClosedResponse | null;
 };
+
+export type { JpxMarketClosedDay, JpxMarketClosedResponse } from "@/lib/market-calendar-types";

@@ -33,6 +33,10 @@
 --color-error:        #dc2626;             /* エラー・オーバー */
 --color-success:      #16a34a;             /* 成功（Toast等） */
 --color-warning:      #d97706;             /* 警告（期限近い等） */
+
+--color-rise-bg:      #fee2e2;             /* 上昇バッジ背景 */
+--color-fall-bg:      #dbeafe;             /* 下落バッジ背景 */
+--color-fall-text:    #2563eb;             /* 下落文字色 */
 ```
 
 **雰囲気:** 明るい・信頼感・金融サービス寄り

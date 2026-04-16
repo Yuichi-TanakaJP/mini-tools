@@ -29,12 +29,15 @@ mini-tools (Next.js App Router)
   ├─ app/**/route.ts
   │   ├─ premium login/logout API
   │   └─ 日付別 JSON を返す internal data route
+  ├─ app/tools/_shared/*
+  │   ├─ market tools 共通の日付 route builder
+  │   └─ 日次データ取得 state hook
   ├─ components/*
   │   ├─ Header
   │   ├─ ShareButtons
   │   └─ 各種 UI 部品
   ├─ lib/*
-  │   └─ premium 認証などの共通ロジック
+  │   └─ premium 認証や market trading dates などの共通ロジック
   └─ app/tools/**/data-loader.ts
       ├─ 外部 API / ローカル JSON fallback を切り替える
       └─ page / route から共有利用される
@@ -76,6 +79,8 @@ UI は主に `app/` と `components/` にあります。
 
 - [app/tools/topix33/page.tsx](/c:/Users/yutaz/dev/mini-tools/app/tools/topix33/page.tsx)
 - [app/tools/stock-ranking/page.tsx](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-ranking/page.tsx)
+- [app/tools/us-stock-ranking/page.tsx](/c:/Users/yutaz/dev/mini-tools/app/tools/us-stock-ranking/page.tsx)
+- [app/tools/market-rankings/page.tsx](/c:/Users/yutaz/dev/mini-tools/app/tools/market-rankings/page.tsx)
 - [app/premium/page.tsx](/c:/Users/yutaz/dev/mini-tools/app/premium/page.tsx)
 
 ### client component の役割
@@ -95,6 +100,8 @@ UI は主に `app/` と `components/` にあります。
 - [app/tools/topix33/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/topix33/data-loader.ts)
 - [app/tools/nikkei-contribution/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/nikkei-contribution/data-loader.ts)
 - [app/tools/stock-ranking/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-ranking/data-loader.ts)
+- [app/tools/us-stock-ranking/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/us-stock-ranking/data-loader.ts)
+- [app/tools/market-rankings/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/market-rankings/data-loader.ts)
 - [app/tools/yutai-candidates/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/yutai-candidates/data-loader.ts)
 - [app/tools/earnings-calendar/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/earnings-calendar/data-loader.ts)
 
@@ -104,6 +111,7 @@ UI は主に `app/` と `components/` にあります。
 - 外部 API / ローカル JSON fallback の切替を行う
 - fetch 失敗時の fallback を吸収する
 - `page.tsx` と `route.ts` で同じ取得ロジックを共有する
+- market tools 間の共通処理は `app/tools/_shared/` と `lib/` に寄せる
 
 詳細は [Market Tools データ取得経路一覧](./market-tools-data-fetch-paths.md) を参照します。
 
@@ -161,6 +169,7 @@ premium 仮ログインは Cookie ベースです。
 
 - `MARKET_INFO_API_BASE_URL` を使う tool が参照
 - 主に market tools の日次データ取得に使う
+- `market-rankings` や `us-stock-ranking` は API 専用で、repo 同梱 fallback を持たない
 - 実体がどのインフラかは、この repo 単体では断定しない
 
 ### PWA / Service Worker
@@ -185,7 +194,7 @@ premium は現時点では「仮ログイン + preview 画面」です。
 
 - `mini-tools` は Next.js 単一アプリで動いている
 - tool ごとに server component と client component を使い分けている
-- market tools は外部 API またはローカル JSON fallback を使う
+- market tools は API fallback あり / API 専用 / localStorage 専用の複数パターンを持つ
 - 決算カレンダーは国内版を同梱 JSON、海外版を market-info API で読み分ける
 - premium は Cookie ベースの簡易認証
 

@@ -9,10 +9,8 @@ import PremiumPreviewChart from "./PremiumPreviewChart";
 import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
 import { loadJpxMarketClosedData } from "@/lib/jpx-market-closed";
 import { loadTopix33DayData, loadTopix33Manifest } from "@/app/tools/topix33/data-loader";
-import type {
-  JpxMarketClosedResponse,
-  Topix33DayData,
-} from "@/app/tools/topix33/types";
+import type { JpxMarketClosedResponse } from "@/lib/market-calendar-types";
+import type { Topix33DayData } from "@/app/tools/topix33/types";
 
 export const metadata: Metadata = {
   title: "Premium Preview | mini-tools",

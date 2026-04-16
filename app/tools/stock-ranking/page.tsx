@@ -3,7 +3,7 @@ import ToolClient from "./ToolClient";
 import { loadRankingDayData, loadRankingManifest } from "./data-loader";
 import type { RankingPageData } from "./types";
 import { loadJpxMarketClosedData } from "@/lib/jpx-market-closed";
-import { filterVisibleTradingDates } from "@/app/tools/_shared/market-trading-dates";
+import { filterVisibleTradingDates } from "@/lib/market-trading-dates";
 
 export const metadata: Metadata = {
   title: "株価ランキング | mini-tools",
