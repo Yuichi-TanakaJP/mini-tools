@@ -68,17 +68,18 @@
 
 ## 現状の課題
 
-- `topix33` / `nikkei-contribution` / `stock-ranking` / `us-stock-ranking` の日次 route は `_shared/`、営業日 helper は `lib/` に寄せられたが、月次系・ローカル保存系とは取得パターンが異なる
+- `topix33` / `nikkei-contribution` / `stock-ranking` / `us-stock-ranking` の日次 route は `_shared/`（`buildDateDataRoute`）、営業日 helper は `lib/`（`market-trading-dates.ts`）に PR #221 で整理済み
+- ただし月次系（`market-rankings`）・ローカル保存系（`yutai-candidates`）は取得パターンが異なり、`_shared/` の恩恵を受けない
 - `MARKET_INFO_API_BASE_URL` の upstream 実体は repo 単体では見えないが、mini-tools 側の入口は endpoint 単位で固定される
 - fallback ポリシーは「JP market tools は repo 同梱 JSON あり」「`us-stock-ranking` / `market-rankings` は API 専用」と tool ごとの差分が明示的に残っている
-- 月次系は query string ベース、日次系は internal route ベースで、操作後の再取得経路が 2 パターンある
+- 月次系は query string ベース、日次系は internal route ベースで、操作後の再取得経路が 2 パターンある（設計判断は decision-log 参照）
 
 ## 今後そろえたい観点
 
 - 初回表示と画面操作後で、取得経路をどこまで統一するか
-- internal route を置く tool / 置かない tool の基準
-- fallback の原則
-- cache-control / `revalidate` の原則
+- **internal route を置く tool / 置かない tool の基準**（現状: 日次データを client 側で切り替える tool は internal route を持つ。月次系は query string + server 再評価で代替）
+- fallback の原則（現状: JP 日次系は同梱 JSON あり、US・月次系は API 専用）
+- **cache-control / `revalidate` の原則**（現状: `fetchJson` は 300 秒 revalidate、`buildDateDataRoute` は `Cache-Control: s-maxage=300` を設定済み）
 - 「外部 API の JSON をそのまま返す route」と「加工して返す route」の区別
 
 ## fallback 方針の補足
