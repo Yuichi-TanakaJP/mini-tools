@@ -211,6 +211,10 @@ export default function ToolClient() {
     }
   }, []);
 
+  const resetControls = useCallback(() => {
+    keysRef.current = {};
+  }, []);
+
   function syncPlayer(next: Player) {
     playerRef.current = next;
     setPlayer(next);
@@ -249,6 +253,7 @@ export default function ToolClient() {
     scoreRef.current = 0;
     livesRef.current = 3;
     invincibleRef.current = false;
+    resetControls();
     if (invincibleTimeoutRef.current !== null) {
       window.clearTimeout(invincibleTimeoutRef.current);
       invincibleTimeoutRef.current = null;
@@ -275,9 +280,13 @@ export default function ToolClient() {
     setIsInvincible(false);
     setMessage("発進！うさぎ軍団をかわそう");
     setGameState("playing");
-  }, []);
+  }, [resetControls]);
 
   useEffect(() => {
+    const clearControls = () => {
+      resetControls();
+    };
+
     const onKeyDown = (event: KeyboardEvent) => {
       const isSpace =
         event.key === " " || event.key === "Spacebar" || event.code === "Space";
@@ -316,12 +325,16 @@ export default function ToolClient() {
 
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", clearControls);
+    document.addEventListener("visibilitychange", clearControls);
 
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", clearControls);
+      document.removeEventListener("visibilitychange", clearControls);
     };
-  }, [fireBullet, gameState, setControlPressed, startGame]);
+  }, [fireBullet, gameState, resetControls, setControlPressed, startGame]);
 
   useEffect(() => {
     if (gameState !== "playing") {
