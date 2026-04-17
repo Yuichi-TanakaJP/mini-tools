@@ -375,7 +375,7 @@ export default function ToolClient({ data }: { data: UsRankingPageData }) {
           >
             種別
           </span>
-          <TabBar
+          <TabBar<UsRankingType>
             options={RANKINGS}
             value={selectedRanking}
             onChange={setSelectedRanking}

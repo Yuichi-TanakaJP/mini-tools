@@ -278,7 +278,7 @@ export default function ToolClient({
           <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text-muted)", minWidth: 40 }}>
             市場
           </span>
-          <TabBar
+          <TabBar<RankingMarket>
             options={MARKETS}
             value={selectedMarket}
             onChange={setSelectedMarket}
@@ -290,7 +290,7 @@ export default function ToolClient({
           <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text-muted)", minWidth: 40 }}>
             種別
           </span>
-          <TabBar
+          <TabBar<RankingType>
             options={RANKINGS}
             value={selectedRanking}
             onChange={setSelectedRanking}
