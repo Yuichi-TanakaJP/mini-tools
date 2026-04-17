@@ -1,4 +1,4 @@
-import type { JpxMarketClosedResponse } from "@/lib/market-calendar-types";
+import type { JpxMarketClosedResponse } from "@/app/tools/_shared/market-calendar-types";
 
 export type NikkeiContributionRecord = {
   code: string;
@@ -52,5 +52,3 @@ export type NikkeiContributionPageData = {
   initialDayData: NikkeiContributionDayData | null;
   holidays: JpxMarketClosedResponse | null;
 };
-
-export type { JpxMarketClosedDay, JpxMarketClosedResponse } from "@/lib/market-calendar-types";

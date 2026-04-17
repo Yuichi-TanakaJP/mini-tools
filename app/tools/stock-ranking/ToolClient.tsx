@@ -3,22 +3,15 @@
 import { useMemo, useState } from "react";
 import type { RankingDayData, RankingManifest, RankingMarket, RankingType, RankingRecord } from "./types";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import TabBar from "@/app/tools/_shared/TabBar";
+import { formatToolDate, signPrefix } from "@/app/tools/_shared/tool-client-format";
 import { useDailyMarketData } from "@/app/tools/_shared/use-daily-market-data";
 
 const MARKETS: RankingMarket[] = ["プライム", "スタンダード", "グロース"];
 const RANKINGS: RankingType[] = ["値上がり率", "値下がり率", "売買高"];
 
-function formatDate(dateStr: string) {
-  const [y, m, d] = dateStr.split("-");
-  return `${y}年${Number(m)}月${Number(d)}日`;
-}
-
-function sign(n: number) {
-  return n > 0 ? "+" : "";
-}
-
 function fmtRate(n: number) {
-  return `${sign(n)}${n.toFixed(2)}%`;
+  return `${signPrefix(n)}${n.toFixed(2)}%`;
 }
 
 function fmtPrice(n: number) {
@@ -31,43 +24,6 @@ function fmtVolume(n: number) {
 
 function fmtValue(n: number) {
   return `${(n / 100).toFixed(1)}億円`;
-}
-
-type TabBarProps = {
-  options: string[];
-  value: string;
-  onChange: (v: string) => void;
-};
-
-function TabBar({ options, value, onChange }: TabBarProps) {
-  return (
-    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-      {options.map((opt) => {
-        const active = opt === value;
-        return (
-          <button
-            key={opt}
-            onClick={() => onChange(opt)}
-            style={{
-              padding: "6px 14px",
-              borderRadius: 8,
-              border: active
-                ? "1.5px solid var(--color-accent)"
-                : "1.5px solid var(--color-border-strong)",
-              background: active ? "var(--color-accent-sub)" : "var(--color-bg-card)",
-              color: active ? "var(--color-accent)" : "var(--color-text-sub)",
-              fontWeight: active ? 700 : 500,
-              fontSize: 13,
-              cursor: "pointer",
-              transition: "all 0.15s",
-            }}
-          >
-            {opt}
-          </button>
-        );
-      })}
-    </div>
-  );
 }
 
 type RankingTableProps = {
@@ -156,7 +112,7 @@ function RankingTable({ records, rankingType }: RankingTableProps) {
                 </td>
                 {/* 前日比 */}
                 <td style={{ padding: "8px 10px", textAlign: "right", color: rateColor, fontWeight: 600, whiteSpace: "nowrap" }}>
-                  {sign(r.change)}{fmtPrice(r.change)}
+                  {signPrefix(r.change)}{fmtPrice(r.change)}
                 </td>
                 {/* 騰落率 */}
                 <td style={{ padding: "8px 10px", textAlign: "right", whiteSpace: "nowrap" }}>
@@ -290,7 +246,7 @@ export default function ToolClient({
           >
             {manifest.dates.map((d) => (
               <option key={d} value={d}>
-                {formatDate(d)}
+                {formatToolDate(d)}
               </option>
             ))}
           </select>
@@ -322,10 +278,10 @@ export default function ToolClient({
           <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text-muted)", minWidth: 40 }}>
             市場
           </span>
-          <TabBar
+          <TabBar<RankingMarket>
             options={MARKETS}
             value={selectedMarket}
-            onChange={(v) => setSelectedMarket(v as RankingMarket)}
+            onChange={setSelectedMarket}
           />
         </div>
 
@@ -334,10 +290,10 @@ export default function ToolClient({
           <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text-muted)", minWidth: 40 }}>
             種別
           </span>
-          <TabBar
+          <TabBar<RankingType>
             options={RANKINGS}
             value={selectedRanking}
-            onChange={(v) => setSelectedRanking(v as RankingType)}
+            onChange={setSelectedRanking}
           />
         </div>
       </div>

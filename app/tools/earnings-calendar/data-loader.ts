@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { loadUsMarketClosedData } from "@/lib/us-market-closed";
 import { getApiBaseUrl, fetchJson } from "@/lib/market-api";
-import type { JpxMarketClosedResponse } from "@/lib/market-calendar-types";
+import type { JpxMarketClosedResponse } from "@/app/tools/_shared/market-calendar-types";
 import type {
   EarningsCalendarManifest,
   EarningsCalendarItem,

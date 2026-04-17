@@ -1,4 +1,4 @@
-import type { JpxMarketClosedResponse } from "@/lib/market-calendar-types";
+import type { JpxMarketClosedResponse } from "@/app/tools/_shared/market-calendar-types";
 
 export type Topix33SectorRecord = {
   sector_code: string;
@@ -44,5 +44,3 @@ export type Topix33PageData = {
   initialDayData: Topix33DayData | null;
   holidays: JpxMarketClosedResponse | null;
 };
-
-export type { JpxMarketClosedDay, JpxMarketClosedResponse } from "@/lib/market-calendar-types";

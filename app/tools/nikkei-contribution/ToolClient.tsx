@@ -4,18 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import styles from "./ToolClient.module.css";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import type {
-  JpxMarketClosedDay,
   NikkeiContributionDayData,
   NikkeiContributionPageData,
   NikkeiContributionRankItem,
   NikkeiContributionRecord,
 } from "./types";
+import type { JpxMarketClosedDay } from "@/app/tools/_shared/market-calendar-types";
+import { formatToolDate, signPrefix } from "@/app/tools/_shared/tool-client-format";
 import { useDailyMarketData } from "@/app/tools/_shared/use-daily-market-data";
-
-function formatDate(dateStr: string) {
-  const [y, m, d] = dateStr.split("-");
-  return `${y}年${Number(m)}月${Number(d)}日`;
-}
 
 function getDayOfWeek(dateStr: string) {
   const [y, m, d] = dateStr.split("-").map(Number);
@@ -43,16 +39,12 @@ function isLikelyMarketClosed(dayData: NikkeiContributionDayData | null | undefi
   return !hasMovement;
 }
 
-function sign(n: number) {
-  return n > 0 ? "+" : "";
-}
-
 function fmtPct(n: number) {
-  return `${sign(n)}${n.toFixed(2)}%`;
+  return `${signPrefix(n)}${n.toFixed(2)}%`;
 }
 
 function fmtPt(n: number) {
-  return `${sign(n)}${n.toFixed(1)}pt`;
+  return `${signPrefix(n)}${n.toFixed(1)}pt`;
 }
 
 function fmtNumber(n: number) {
@@ -577,7 +569,7 @@ function ImpactMap({ records, selectedCode, onSelect }: ImpactMapProps) {
                   <span style={{ color: "rgba(148,163,184,0.95)" }}>ウェイト</span>
                   <span style={{ fontWeight: 800 }}>{hoveredPlacement.record.weight_pct.toFixed(2)}%</span>
                   <span style={{ color: "rgba(148,163,184,0.95)" }}>前日比</span>
-                  <span style={{ fontWeight: 800 }}>{sign(hoveredPlacement.record.chg)}{fmtNumber(hoveredPlacement.record.chg)}</span>
+                  <span style={{ fontWeight: 800 }}>{signPrefix(hoveredPlacement.record.chg)}{fmtNumber(hoveredPlacement.record.chg)}</span>
                 </div>
                   </div>
                 );
@@ -726,7 +718,7 @@ function RecordsTable({ records }: { records: NikkeiContributionRecord[] }) {
                     return (
                       <td key={`${record.code}-${column.key}`} style={{ textAlign: "right", whiteSpace: "nowrap", color: getBarTone(record.chg_pct).text }}>
                         <span className={styles.desktopOnly}>{fmtPct(record.chg_pct)}</span>
-                        <span className={styles.mobileOnly}>{`${sign(record.chg_pct)}${record.chg_pct.toFixed(1)}%`}</span>
+                        <span className={styles.mobileOnly}>{`${signPrefix(record.chg_pct)}${record.chg_pct.toFixed(1)}%`}</span>
                       </td>
                     );
                   }
@@ -734,7 +726,7 @@ function RecordsTable({ records }: { records: NikkeiContributionRecord[] }) {
                   if (column.key === "chg") {
                     return (
                       <td key={`${record.code}-${column.key}`} className={styles.recordsMobileHidden} style={{ textAlign: "right", whiteSpace: "nowrap", color: getBarTone(record.chg).text }}>
-                        {sign(record.chg)}{fmtNumber(record.chg)}
+                        {signPrefix(record.chg)}{fmtNumber(record.chg)}
                       </td>
                     );
                   }
@@ -954,7 +946,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
             ) : (
               displayDates.map((date) => (
                 <option key={date} value={date}>
-                  {formatDate(date)}
+                  {formatToolDate(date)}
                 </option>
               ))
             )}
@@ -1132,7 +1124,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
                 </div>
                 <div style={{ background: "var(--color-bg-input)", border: "1px solid var(--color-border)", borderRadius: 6, padding: 10 }}>
                   <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginBottom: 4 }}>前日比</div>
-                  <div style={{ fontWeight: 800 }}>{sign(selectedRecord.chg)}{fmtNumber(selectedRecord.chg)}</div>
+                  <div style={{ fontWeight: 800 }}>{signPrefix(selectedRecord.chg)}{fmtNumber(selectedRecord.chg)}</div>
                 </div>
               </div>
             </section>
