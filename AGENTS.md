@@ -131,6 +131,9 @@ git switch main
 git merge --ff-only origin/main
 ```
 
+- マージ後に branch 整理を抜け漏れしやすい場合は、`pwsh -File .\scripts\git-branch-cleanup.ps1` を実行して merged local branch の一覧を確認する。
+- 実際に削除するときは `pwsh -File .\scripts\git-branch-cleanup.ps1 -DeleteMerged` を使う。
+
 ## 9. ブランチ削除（local / remote）
 
 1. まず `main` にマージ済みか確認する。
@@ -147,6 +150,8 @@ git branch -d feature/<topic>
 ```powershell
 git push origin --delete feature/<topic>
 ```
+
+- 日常運用では、まず `scripts/git-branch-cleanup.ps1` のプレビューで対象 branch を確認してから削除する。
 
 ## 10. トラブル時
 
