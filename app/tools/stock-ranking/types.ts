@@ -1,4 +1,4 @@
-import type { JpxMarketClosedResponse } from "@/lib/market-calendar-types";
+import type { JpxMarketClosedResponse } from "@/app/tools/_shared/market-calendar-types";
 
 export type RankingMarket = "プライム" | "スタンダード" | "グロース";
 export type RankingType = "値上がり率" | "値下がり率" | "売買高";
@@ -33,5 +33,3 @@ export type RankingPageData = {
   manifest: RankingManifest | null;
   initialDayData: RankingDayData | null;
 };
-
-export type { JpxMarketClosedDay, JpxMarketClosedResponse } from "@/lib/market-calendar-types";

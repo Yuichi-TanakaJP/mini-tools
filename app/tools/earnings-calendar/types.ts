@@ -1,4 +1,4 @@
-import type { JpxMarketClosedResponse } from "@/lib/market-calendar-types";
+import type { JpxMarketClosedResponse } from "@/app/tools/_shared/market-calendar-types";
 
 export type EarningsCalendarItem = {
   event_id?: string;
@@ -80,5 +80,3 @@ export type EarningsCalendarPageData = {
   domestic: EarningsCalendarMarketData;
   overseas: EarningsCalendarMarketData;
 };
-
-export type { JpxMarketClosedDay, JpxMarketClosedResponse } from "@/lib/market-calendar-types";

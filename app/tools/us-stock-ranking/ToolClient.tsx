@@ -8,25 +8,18 @@ import type {
   UsRankingType,
 } from "./types";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import TabBar from "@/app/tools/_shared/TabBar";
+import { formatToolDate, signPrefix } from "@/app/tools/_shared/tool-client-format";
 import { useDailyMarketData } from "@/app/tools/_shared/use-daily-market-data";
 
 const RANKINGS: UsRankingType[] = ["値上り率", "値下り率", "売買代金"];
-
-function formatDate(dateStr: string) {
-  const [y, m, d] = dateStr.split("-");
-  return `${y}年${Number(m)}月${Number(d)}日`;
-}
-
-function sign(n: number) {
-  return n > 0 ? "+" : "";
-}
 
 function fmtPrice(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtRate(n: number) {
-  return `${sign(n)}${n.toFixed(2)}%`;
+  return `${signPrefix(n)}${n.toFixed(2)}%`;
 }
 
 // tradedValue は千USD単位。fallback で ×1000 して実ドル値に換算
@@ -38,43 +31,6 @@ function fmtTradedValue(n: number) {
     return `$${(n / 1_000).toFixed(1)}M`;
   }
   return `$${(n * 1_000).toLocaleString("en-US")}`;
-}
-
-type TabBarProps = {
-  options: string[];
-  value: string;
-  onChange: (v: string) => void;
-};
-
-function TabBar({ options, value, onChange }: TabBarProps) {
-  return (
-    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-      {options.map((opt) => {
-        const active = opt === value;
-        return (
-          <button
-            key={opt}
-            onClick={() => onChange(opt)}
-            style={{
-              padding: "6px 14px",
-              borderRadius: 8,
-              border: active
-                ? "1.5px solid var(--color-accent)"
-                : "1.5px solid var(--color-border-strong)",
-              background: active ? "var(--color-accent-sub)" : "var(--color-bg-card)",
-              color: active ? "var(--color-accent)" : "var(--color-text-sub)",
-              fontWeight: active ? 700 : 500,
-              fontSize: 13,
-              cursor: "pointer",
-              transition: "all 0.15s",
-            }}
-          >
-            {opt}
-          </button>
-        );
-      })}
-    </div>
-  );
 }
 
 type RankingTableProps = {
@@ -201,7 +157,7 @@ function RankingTable({ records }: RankingTableProps) {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {sign(r.change)}{fmtPrice(r.change)}
+                  {signPrefix(r.change)}{fmtPrice(r.change)}
                 </td>
                 {/* 騰落率 */}
                 <td
@@ -380,7 +336,7 @@ export default function ToolClient({ data }: { data: UsRankingPageData }) {
           >
             {dates.map((d) => (
               <option key={d} value={d}>
-                {formatDate(d)}
+                {formatToolDate(d)}
               </option>
             ))}
           </select>
@@ -422,7 +378,7 @@ export default function ToolClient({ data }: { data: UsRankingPageData }) {
           <TabBar
             options={RANKINGS}
             value={selectedRanking}
-            onChange={(v) => setSelectedRanking(v as UsRankingType)}
+            onChange={setSelectedRanking}
           />
         </div>
       </div>

@@ -4,18 +4,14 @@ import { useMemo, useState } from "react";
 import styles from "./ToolClient.module.css";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import type {
-  JpxMarketClosedDay,
   Topix33DayData,
   Topix33PageData,
   Topix33RankItem,
   Topix33SectorRecord,
 } from "./types";
+import type { JpxMarketClosedDay } from "@/app/tools/_shared/market-calendar-types";
+import { formatToolDate, signPrefix } from "@/app/tools/_shared/tool-client-format";
 import { useDailyMarketData } from "@/app/tools/_shared/use-daily-market-data";
-
-function formatDate(dateStr: string) {
-  const [y, m, d] = dateStr.split("-");
-  return `${y}年${Number(m)}月${Number(d)}日`;
-}
 
 function getDayOfWeek(dateStr: string) {
   const [y, m, d] = dateStr.split("-").map(Number);
@@ -31,12 +27,8 @@ function isMarketClosedDate(dateStr: string, holidayMap: Map<string, JpxMarketCl
   return holidayMap.get(dateStr)?.market_closed ?? false;
 }
 
-function sign(n: number) {
-  return n > 0 ? "+" : "";
-}
-
 function fmtPct(n: number) {
-  return `${sign(n)}${n.toFixed(2)}%`;
+  return `${signPrefix(n)}${n.toFixed(2)}%`;
 }
 
 function getBarTone(n: number) {
@@ -210,7 +202,7 @@ function SectorsTable({ sectors }: { sectors: Topix33SectorRecord[] }) {
                   {fmtPct(sector.chg_pct)}
                 </td>
                 <td className={styles.sectorsMobileHidden} style={{ textAlign: "right", whiteSpace: "nowrap", color: getBarTone(sector.chg).text }}>
-                  {sign(sector.chg)}{sector.chg.toFixed(2)}
+                  {signPrefix(sector.chg)}{sector.chg.toFixed(2)}
                 </td>
               </tr>
             );
@@ -345,7 +337,7 @@ export default function ToolClient({ data }: { data: Topix33PageData }) {
             ) : (
               displayDates.map((date) => (
                 <option key={date} value={date}>
-                  {formatDate(date)}
+                  {formatToolDate(date)}
                 </option>
               ))
             )}

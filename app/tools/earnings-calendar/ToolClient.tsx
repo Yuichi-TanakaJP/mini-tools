@@ -10,8 +10,8 @@ import type {
   EarningsCalendarManifest,
   EarningsCalendarManifestMonth,
   EarningsCalendarPageData,
-  JpxMarketClosedDay,
 } from "./types";
+import type { JpxMarketClosedDay } from "@/app/tools/_shared/market-calendar-types";
 
 type CalendarCell = {
   key: string;
