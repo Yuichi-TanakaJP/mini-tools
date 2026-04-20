@@ -20,6 +20,16 @@ function Invoke-Git {
   return $output
 }
 
+function Test-BranchMergedToOriginMain {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Branch
+  )
+
+  & git merge-base --is-ancestor $Branch origin/main
+  return $LASTEXITCODE -eq 0
+}
+
 $currentBranch = (Invoke-Git -Args @("branch", "--show-current")).Trim()
 
 if ($currentBranch -ne "main") {
@@ -54,9 +64,28 @@ if (-not $DeleteMerged) {
 
 Write-Host ""
 Write-Host "[branch-cleanup] Deleting merged local branches..."
+$skippedBranches = @()
 foreach ($branch in $mergedBranches) {
-  Invoke-Git -Args @("branch", "-d", $branch) | Out-Null
-  Write-Host "  deleted: $branch"
+  try {
+    Invoke-Git -Args @("branch", "-d", $branch) | Out-Null
+    Write-Host "  deleted: $branch"
+    continue
+  } catch {
+    if (Test-BranchMergedToOriginMain -Branch $branch) {
+      $skippedBranches += $branch
+      Write-Host "  skipped: $branch (merged into origin/main but not deletable with 'git branch -d')"
+      continue
+    }
+
+    throw
+  }
+}
+
+if ($skippedBranches.Count -gt 0) {
+  Write-Host ""
+  Write-Host "[branch-cleanup] Manual follow-up needed for these branches:"
+  $skippedBranches | ForEach-Object { Write-Host "  - $_" }
+  Write-Host "[branch-cleanup] Review them and delete manually with 'git branch -D <branch>' only if safe."
 }
 
 Write-Host ""
