@@ -11,6 +11,8 @@ const BULLET_HEIGHT = 18;
 const ENEMY_WIDTH = 42;
 const ENEMY_HEIGHT = 38;
 const STAR_COUNT = 40;
+const COMPACT_PORTRAIT_MAX_WIDTH = 500;
+const TOUCH_PANEL_MIN_VIEWPORT = 768;
 
 type GameState = "idle" | "playing" | "gameover";
 
@@ -549,9 +551,9 @@ export default function ToolClient() {
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
       const isCompactPortrait =
-        viewportWidth <= 430 && viewportHeight > viewportWidth;
+        viewportWidth <= COMPACT_PORTRAIT_MAX_WIDTH && viewportHeight > viewportWidth;
       const heightCap = isCompactPortrait
-        ? Math.min(Math.max(viewportHeight * 0.46, 360), 500)
+        ? Math.min(Math.max(viewportHeight * 0.52, 380), 560)
         : HEIGHT;
       const nextScale = Math.min(
         element.clientWidth / WIDTH,
@@ -586,8 +588,12 @@ export default function ToolClient() {
         : "待機中";
   const isCompactPortrait =
     viewportSize.width > 0 &&
-    viewportSize.width <= 430 &&
+    viewportSize.width <= COMPACT_PORTRAIT_MAX_WIDTH &&
     viewportSize.height > viewportSize.width;
+  const showTouchPanel =
+    isCompactPortrait ||
+    viewportSize.width === 0 ||
+    viewportSize.width >= TOUCH_PANEL_MIN_VIEWPORT;
 
   return (
     <main style={styles.page}>
@@ -773,6 +779,7 @@ export default function ToolClient() {
               </div>
             </div>
 
+            {showTouchPanel && (
             <div
               style={{
                 ...styles.touchPanel,
@@ -787,30 +794,28 @@ export default function ToolClient() {
                 }}
               >
                 <div style={styles.touchPad}>
-                  <div style={styles.touchPadTop}>
-                    <TouchButton
-                      label="↑"
-                      compact={isCompactPortrait}
-                      onPressChange={(pressed) => setControlPressed("ArrowUp", pressed)}
-                    />
-                  </div>
-                  <div style={styles.touchPadMiddle}>
-                    <TouchButton
-                      label="←"
-                      compact={isCompactPortrait}
-                      onPressChange={(pressed) => setControlPressed("ArrowLeft", pressed)}
-                    />
-                    <TouchButton
-                      label="↓"
-                      compact={isCompactPortrait}
-                      onPressChange={(pressed) => setControlPressed("ArrowDown", pressed)}
-                    />
-                    <TouchButton
-                      label="→"
-                      compact={isCompactPortrait}
-                      onPressChange={(pressed) => setControlPressed("ArrowRight", pressed)}
-                    />
-                  </div>
+                  <div />
+                  <TouchButton
+                    label="↑"
+                    compact={isCompactPortrait}
+                    onPressChange={(pressed) => setControlPressed("ArrowUp", pressed)}
+                  />
+                  <div />
+                  <TouchButton
+                    label="←"
+                    compact={isCompactPortrait}
+                    onPressChange={(pressed) => setControlPressed("ArrowLeft", pressed)}
+                  />
+                  <TouchButton
+                    label="↓"
+                    compact={isCompactPortrait}
+                    onPressChange={(pressed) => setControlPressed("ArrowDown", pressed)}
+                  />
+                  <TouchButton
+                    label="→"
+                    compact={isCompactPortrait}
+                    onPressChange={(pressed) => setControlPressed("ArrowRight", pressed)}
+                  />
                 </div>
 
                 <div style={styles.touchActionCol}>
@@ -829,6 +834,7 @@ export default function ToolClient() {
                 </div>
               </div>
             </div>
+            )}
           </section>
         </div>
       </div>
@@ -1176,33 +1182,30 @@ const styles: Record<string, CSSProperties> = {
     letterSpacing: 0.2,
   },
   touchGrid: {
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 1.4fr) minmax(120px, 0.9fr)",
+    display: "flex",
     gap: 12,
     alignItems: "stretch",
+    maxWidth: 420,
+    margin: "0 auto",
   },
   touchGridCompact: {
-    gridTemplateColumns: "minmax(0, 1fr) 96px",
     gap: 8,
   },
   touchPad: {
+    flex: 1,
+    minWidth: 0,
     display: "grid",
-    gap: 8,
-  },
-  touchPadTop: {
-    display: "flex",
-    justifyContent: "center",
-  },
-  touchPadMiddle: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gridTemplateColumns: "repeat(3, 1fr)",
     gap: 8,
   },
   touchActionCol: {
+    flexShrink: 0,
+    width: "clamp(72px, 28%, 110px)",
     display: "flex",
+    flexDirection: "column",
   },
   touchButton: {
-    minHeight: 56,
+    height: 52,
     padding: "0 16px",
     borderRadius: 18,
     border: "1px solid rgba(37, 84, 255, 0.12)",
@@ -1216,13 +1219,15 @@ const styles: Record<string, CSSProperties> = {
     WebkitUserSelect: "none",
   },
   touchButtonCompact: {
-    minHeight: 46,
+    height: 44,
     padding: "0 10px",
     borderRadius: 14,
     fontSize: 20,
   },
   touchButtonWide: {
+    flex: 1,
     width: "100%",
+    height: "auto",
     fontSize: 18,
   },
   touchButtonAccent: {
