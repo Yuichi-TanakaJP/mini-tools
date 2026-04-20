@@ -11,7 +11,7 @@ const BULLET_HEIGHT = 18;
 const ENEMY_WIDTH = 42;
 const ENEMY_HEIGHT = 38;
 const STAR_COUNT = 40;
-const COMPACT_PORTRAIT_MAX_WIDTH = 500;
+const COMPACT_MAX_WIDTH = 640;
 const TOUCH_PANEL_MIN_VIEWPORT = 768;
 
 type GameState = "idle" | "playing" | "gameover";
@@ -551,7 +551,7 @@ export default function ToolClient() {
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
       const isCompactPortrait =
-        viewportWidth <= COMPACT_PORTRAIT_MAX_WIDTH && viewportHeight > viewportWidth;
+        viewportWidth <= COMPACT_MAX_WIDTH && viewportHeight > viewportWidth;
       const heightCap = isCompactPortrait
         ? Math.min(Math.max(viewportHeight * 0.52, 380), 560)
         : HEIGHT;
@@ -586,14 +586,10 @@ export default function ToolClient() {
       : gameState === "gameover"
         ? "ゲームオーバー"
         : "待機中";
-  const isCompactPortrait =
-    viewportSize.width > 0 &&
-    viewportSize.width <= COMPACT_PORTRAIT_MAX_WIDTH &&
-    viewportSize.height > viewportSize.width;
+  const isCompact =
+    viewportSize.width > 0 && viewportSize.width <= COMPACT_MAX_WIDTH;
   const showTouchPanel =
-    isCompactPortrait ||
-    viewportSize.width === 0 ||
-    viewportSize.width >= TOUCH_PANEL_MIN_VIEWPORT;
+    isCompact || viewportSize.width === 0 || viewportSize.width >= TOUCH_PANEL_MIN_VIEWPORT;
 
   return (
     <main style={styles.page}>
@@ -601,14 +597,14 @@ export default function ToolClient() {
         <section
           style={{
             ...styles.hero,
-            ...(isCompactPortrait ? styles.heroCompact : {}),
+            ...(isCompact ? styles.heroCompact : {}),
           }}
         >
           <div style={styles.eyebrow}>extras / mini game</div>
           <h1
             style={{
               ...styles.title,
-              ...(isCompactPortrait ? styles.titleCompact : {}),
+              ...(isCompact ? styles.titleCompact : {}),
             }}
           >
             ペンギン・バニーシューター
@@ -616,7 +612,7 @@ export default function ToolClient() {
           <p
             style={{
               ...styles.note,
-              ...(isCompactPortrait ? styles.noteCompact : {}),
+              ...(isCompact ? styles.noteCompact : {}),
             }}
           >
             矢印キーでペンギンを動かし、Space でショット。絵文字だけで遊べる最短版のミニゲームです。
@@ -626,13 +622,13 @@ export default function ToolClient() {
         <div
           style={{
             ...styles.layout,
-            ...(isCompactPortrait ? styles.layoutCompact : {}),
+            ...(isCompact ? styles.layoutCompact : {}),
           }}
         >
           <section
             style={{
               ...styles.sideColumn,
-              ...(isCompactPortrait ? styles.sideColumnCompact : {}),
+              ...(isCompact ? styles.sideColumnCompact : {}),
             }}
           >
             <article style={styles.card}>
@@ -665,7 +661,7 @@ export default function ToolClient() {
                 onClick={startGame}
                 style={{
                   ...styles.primaryButton,
-                  ...(isCompactPortrait ? styles.primaryButtonCompact : {}),
+                  ...(isCompact ? styles.primaryButtonCompact : {}),
                 }}
               >
                 {gameState === "idle" ? "スタート" : "リスタート"}
@@ -675,7 +671,7 @@ export default function ToolClient() {
             <div
               style={{
                 ...styles.statGrid,
-                ...(isCompactPortrait ? styles.statGridCompact : {}),
+                ...(isCompact ? styles.statGridCompact : {}),
               }}
             >
               <article style={styles.statCard}>
@@ -705,7 +701,7 @@ export default function ToolClient() {
           <section
             style={{
               ...styles.gameCard,
-              ...(isCompactPortrait ? styles.gameCardCompact : {}),
+              ...(isCompact ? styles.gameCardCompact : {}),
             }}
           >
             <div ref={gameViewportRef} style={styles.gameViewport}>
@@ -783,37 +779,37 @@ export default function ToolClient() {
             <div
               style={{
                 ...styles.touchPanel,
-                ...(isCompactPortrait ? styles.touchPanelCompact : {}),
+                ...(isCompact ? styles.touchPanelCompact : {}),
               }}
             >
               <div style={styles.touchPanelTitle}>スマホ操作</div>
               <div
                 style={{
                   ...styles.touchGrid,
-                  ...(isCompactPortrait ? styles.touchGridCompact : {}),
+                  ...(isCompact ? styles.touchGridCompact : {}),
                 }}
               >
                 <div style={styles.touchPad}>
                   <div />
                   <TouchButton
                     label="↑"
-                    compact={isCompactPortrait}
+                    compact={isCompact}
                     onPressChange={(pressed) => setControlPressed("ArrowUp", pressed)}
                   />
                   <div />
                   <TouchButton
                     label="←"
-                    compact={isCompactPortrait}
+                    compact={isCompact}
                     onPressChange={(pressed) => setControlPressed("ArrowLeft", pressed)}
                   />
                   <TouchButton
                     label="↓"
-                    compact={isCompactPortrait}
+                    compact={isCompact}
                     onPressChange={(pressed) => setControlPressed("ArrowDown", pressed)}
                   />
                   <TouchButton
                     label="→"
-                    compact={isCompactPortrait}
+                    compact={isCompact}
                     onPressChange={(pressed) => setControlPressed("ArrowRight", pressed)}
                   />
                 </div>
@@ -823,7 +819,7 @@ export default function ToolClient() {
                     label="発射"
                     wide
                     accent
-                    compact={isCompactPortrait}
+                    compact={isCompact}
                     onPressChange={(pressed) => {
                       if (pressed && gameState === "idle") {
                         startGame();
