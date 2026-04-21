@@ -131,6 +131,12 @@ git switch main
 git merge --ff-only origin/main
 ```
 
+- merge 後の標準フローは次の順番に固定する。
+  1. `gh pr view <PR番号> --json ...` でマージ状態を確認する
+  2. `git fetch --prune` → `git switch main` → `git merge --ff-only origin/main` でローカル `main` を最新化する
+  3. local branch cleanup は、個別に `git branch --merged` / `git branch -d` を打ち直さず、`scripts/git-branch-cleanup.ps1` を入口として使う
+  4. remote branch を消す必要がある場合だけ、最後に `git push origin --delete <branch>` を別途実行する
+- すでに手動で `git fetch --prune` / `git switch main` / `git merge --ff-only origin/main` を実行した直後に、同じ目的で cleanup script を重ねて回さない。local branch cleanup を始める地点から script に切り替える。
 - マージ後に branch 整理を抜け漏れしやすい場合は、`pwsh -File .\scripts\git-branch-cleanup.ps1` を実行して merged local branch の一覧を確認する。
 - 実際に削除するときは `pwsh -File .\scripts\git-branch-cleanup.ps1 -DeleteMerged` を使う。
 - このスクリプトはまず安全な `git branch -d` を試し、rebase / squash merge などで `-d` できない branch は一覧表示して手動確認へ回す。
