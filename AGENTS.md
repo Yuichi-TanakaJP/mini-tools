@@ -134,6 +134,7 @@ git merge --ff-only origin/main
 - マージ後に branch 整理を抜け漏れしやすい場合は、`pwsh -File .\scripts\git-branch-cleanup.ps1` を実行して merged local branch の一覧を確認する。
 - 実際に削除するときは `pwsh -File .\scripts\git-branch-cleanup.ps1 -DeleteMerged` を使う。
 - このスクリプトはまず安全な `git branch -d` を試し、rebase / squash merge などで `-d` できない branch は一覧表示して手動確認へ回す。
+- Codex からこのスクリプトを実行する場合は、`git fetch --prune` / `git merge --ff-only origin/main` / `git branch -d` を含むため、最初から権限付き実行を申請する。実行は承認後に行う。
 
 ## 9. ブランチ削除（local / remote）
 
@@ -154,6 +155,7 @@ git push origin --delete feature/<topic>
 
 - 日常運用では、まず `scripts/git-branch-cleanup.ps1` のプレビューで対象 branch を確認してから削除する。
 - `scripts/git-branch-cleanup.ps1 -DeleteMerged` を使っても消えなかった branch は、自動で無理に削除しない。`origin/main` への取り込み状況を確認したうえで、必要な場合だけ手動で `git branch -D <branch>` を使う。
+- remote branch の削除はこのスクリプトでは行わない。必要な場合は別途 `git push origin --delete <branch>` を使う。
 
 ## 10. トラブル時
 
