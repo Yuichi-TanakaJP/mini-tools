@@ -11,6 +11,8 @@ const BULLET_HEIGHT = 18;
 const ENEMY_WIDTH = 42;
 const ENEMY_HEIGHT = 38;
 const STAR_COUNT = 40;
+const COMPACT_MAX_WIDTH = 640;
+const TOUCH_PANEL_MIN_VIEWPORT = 768;
 
 type GameState = "idle" | "playing" | "gameover";
 
@@ -549,9 +551,9 @@ export default function ToolClient() {
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
       const isCompactPortrait =
-        viewportWidth <= 430 && viewportHeight > viewportWidth;
+        viewportWidth <= COMPACT_MAX_WIDTH && viewportHeight > viewportWidth;
       const heightCap = isCompactPortrait
-        ? Math.min(Math.max(viewportHeight * 0.46, 360), 500)
+        ? Math.min(Math.max(viewportHeight * 0.52, 380), 560)
         : HEIGHT;
       const nextScale = Math.min(
         element.clientWidth / WIDTH,
@@ -584,10 +586,10 @@ export default function ToolClient() {
       : gameState === "gameover"
         ? "ゲームオーバー"
         : "待機中";
-  const isCompactPortrait =
-    viewportSize.width > 0 &&
-    viewportSize.width <= 430 &&
-    viewportSize.height > viewportSize.width;
+  const isCompact =
+    viewportSize.width > 0 && viewportSize.width <= COMPACT_MAX_WIDTH;
+  const showTouchPanel =
+    isCompact || viewportSize.width === 0 || viewportSize.width >= TOUCH_PANEL_MIN_VIEWPORT;
 
   return (
     <main style={styles.page}>
@@ -595,14 +597,14 @@ export default function ToolClient() {
         <section
           style={{
             ...styles.hero,
-            ...(isCompactPortrait ? styles.heroCompact : {}),
+            ...(isCompact ? styles.heroCompact : {}),
           }}
         >
           <div style={styles.eyebrow}>extras / mini game</div>
           <h1
             style={{
               ...styles.title,
-              ...(isCompactPortrait ? styles.titleCompact : {}),
+              ...(isCompact ? styles.titleCompact : {}),
             }}
           >
             ペンギン・バニーシューター
@@ -610,7 +612,7 @@ export default function ToolClient() {
           <p
             style={{
               ...styles.note,
-              ...(isCompactPortrait ? styles.noteCompact : {}),
+              ...(isCompact ? styles.noteCompact : {}),
             }}
           >
             矢印キーでペンギンを動かし、Space でショット。絵文字だけで遊べる最短版のミニゲームです。
@@ -620,13 +622,13 @@ export default function ToolClient() {
         <div
           style={{
             ...styles.layout,
-            ...(isCompactPortrait ? styles.layoutCompact : {}),
+            ...(isCompact ? styles.layoutCompact : {}),
           }}
         >
           <section
             style={{
               ...styles.sideColumn,
-              ...(isCompactPortrait ? styles.sideColumnCompact : {}),
+              ...(isCompact ? styles.sideColumnCompact : {}),
             }}
           >
             <article style={styles.card}>
@@ -659,7 +661,7 @@ export default function ToolClient() {
                 onClick={startGame}
                 style={{
                   ...styles.primaryButton,
-                  ...(isCompactPortrait ? styles.primaryButtonCompact : {}),
+                  ...(isCompact ? styles.primaryButtonCompact : {}),
                 }}
               >
                 {gameState === "idle" ? "スタート" : "リスタート"}
@@ -669,7 +671,7 @@ export default function ToolClient() {
             <div
               style={{
                 ...styles.statGrid,
-                ...(isCompactPortrait ? styles.statGridCompact : {}),
+                ...(isCompact ? styles.statGridCompact : {}),
               }}
             >
               <article style={styles.statCard}>
@@ -699,7 +701,7 @@ export default function ToolClient() {
           <section
             style={{
               ...styles.gameCard,
-              ...(isCompactPortrait ? styles.gameCardCompact : {}),
+              ...(isCompact ? styles.gameCardCompact : {}),
             }}
           >
             <div ref={gameViewportRef} style={styles.gameViewport}>
@@ -773,44 +775,43 @@ export default function ToolClient() {
               </div>
             </div>
 
+            {showTouchPanel && (
             <div
               style={{
                 ...styles.touchPanel,
-                ...(isCompactPortrait ? styles.touchPanelCompact : {}),
+                ...(isCompact ? styles.touchPanelCompact : {}),
               }}
             >
               <div style={styles.touchPanelTitle}>スマホ操作</div>
               <div
                 style={{
                   ...styles.touchGrid,
-                  ...(isCompactPortrait ? styles.touchGridCompact : {}),
+                  ...(isCompact ? styles.touchGridCompact : {}),
                 }}
               >
                 <div style={styles.touchPad}>
-                  <div style={styles.touchPadTop}>
-                    <TouchButton
-                      label="↑"
-                      compact={isCompactPortrait}
-                      onPressChange={(pressed) => setControlPressed("ArrowUp", pressed)}
-                    />
-                  </div>
-                  <div style={styles.touchPadMiddle}>
-                    <TouchButton
-                      label="←"
-                      compact={isCompactPortrait}
-                      onPressChange={(pressed) => setControlPressed("ArrowLeft", pressed)}
-                    />
-                    <TouchButton
-                      label="↓"
-                      compact={isCompactPortrait}
-                      onPressChange={(pressed) => setControlPressed("ArrowDown", pressed)}
-                    />
-                    <TouchButton
-                      label="→"
-                      compact={isCompactPortrait}
-                      onPressChange={(pressed) => setControlPressed("ArrowRight", pressed)}
-                    />
-                  </div>
+                  <div />
+                  <TouchButton
+                    label="↑"
+                    compact={isCompact}
+                    onPressChange={(pressed) => setControlPressed("ArrowUp", pressed)}
+                  />
+                  <div />
+                  <TouchButton
+                    label="←"
+                    compact={isCompact}
+                    onPressChange={(pressed) => setControlPressed("ArrowLeft", pressed)}
+                  />
+                  <TouchButton
+                    label="↓"
+                    compact={isCompact}
+                    onPressChange={(pressed) => setControlPressed("ArrowDown", pressed)}
+                  />
+                  <TouchButton
+                    label="→"
+                    compact={isCompact}
+                    onPressChange={(pressed) => setControlPressed("ArrowRight", pressed)}
+                  />
                 </div>
 
                 <div style={styles.touchActionCol}>
@@ -818,7 +819,7 @@ export default function ToolClient() {
                     label="発射"
                     wide
                     accent
-                    compact={isCompactPortrait}
+                    compact={isCompact}
                     onPressChange={(pressed) => {
                       if (pressed && gameState === "idle") {
                         startGame();
@@ -829,6 +830,7 @@ export default function ToolClient() {
                 </div>
               </div>
             </div>
+            )}
           </section>
         </div>
       </div>
@@ -1176,33 +1178,30 @@ const styles: Record<string, CSSProperties> = {
     letterSpacing: 0.2,
   },
   touchGrid: {
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 1.4fr) minmax(120px, 0.9fr)",
+    display: "flex",
     gap: 12,
     alignItems: "stretch",
+    maxWidth: 420,
+    margin: "0 auto",
   },
   touchGridCompact: {
-    gridTemplateColumns: "minmax(0, 1fr) 96px",
     gap: 8,
   },
   touchPad: {
+    flex: 1,
+    minWidth: 0,
     display: "grid",
-    gap: 8,
-  },
-  touchPadTop: {
-    display: "flex",
-    justifyContent: "center",
-  },
-  touchPadMiddle: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gridTemplateColumns: "repeat(3, 1fr)",
     gap: 8,
   },
   touchActionCol: {
+    flexShrink: 0,
+    width: "clamp(72px, 28%, 110px)",
     display: "flex",
+    flexDirection: "column",
   },
   touchButton: {
-    minHeight: 56,
+    height: 52,
     padding: "0 16px",
     borderRadius: 18,
     border: "1px solid rgba(37, 84, 255, 0.12)",
@@ -1216,13 +1215,15 @@ const styles: Record<string, CSSProperties> = {
     WebkitUserSelect: "none",
   },
   touchButtonCompact: {
-    minHeight: 46,
+    height: 44,
     padding: "0 10px",
     borderRadius: 14,
     fontSize: 20,
   },
   touchButtonWide: {
+    flex: 1,
     width: "100%",
+    height: "auto",
     fontSize: 18,
   },
   touchButtonAccent: {
