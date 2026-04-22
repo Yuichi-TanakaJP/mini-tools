@@ -10,6 +10,7 @@
 設計・方針・トレードオフの判断理由を記録します。
 
 - [2026-04-20 ペンギン・バニーシューター タッチパネルレイアウト設計](./decision-log/2026-04-20-penguin-touch-panel-layout.md)
+- [2026-04-23 yutai-candidates の権利付き最終日 UI 表示](./decision-log/2026-04-23-yutai-candidates-kenri-last-date-ui.md)
 - [2026-04-18 Git ブランチ整理のガードレール追加](./decision-log/2026-04-18-git-branch-cleanup-guardrail.md)
 - [2026-04-17 ペンギン・バニーシューター最短導入方針](./decision-log/2026-04-17-penguin-rabbit-shooter-minimal-intro.md)
 - [2026-04-12 米国株ランキング phase 1 のデータ contract と実装方針](./decision-log/2026-04-12-us-stock-ranking-phase1.md)
