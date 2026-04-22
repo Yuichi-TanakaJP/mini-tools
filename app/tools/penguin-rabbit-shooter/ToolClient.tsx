@@ -67,9 +67,9 @@ function pseudoRandom(seed: number) {
 function createStars(): Star[] {
   return Array.from({ length: STAR_COUNT }, (_, index) => ({
     id: index,
-    x: pseudoRandom(index + 1) * WIDTH,
-    y: pseudoRandom(index + 101) * HEIGHT,
-    r: pseudoRandom(index + 201) * 2 + 1,
+    x: Math.round(pseudoRandom(index + 1) * WIDTH),
+    y: Math.round(pseudoRandom(index + 101) * HEIGHT),
+    r: Math.round(pseudoRandom(index + 201) * 2 + 1),
     speed: pseudoRandom(index + 301) * 1.5 + 0.5,
   }));
 }
