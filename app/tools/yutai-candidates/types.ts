@@ -72,6 +72,7 @@ export type SbiCreditData = {
 export type MonthlyYutaiPageData = {
   manifest: MonthlyYutaiManifest | null;
   selectedMonthId: string;
+  selectedMonthKenriLastDate: string | null;
   generatedAt: string | null;
   source: string | null;
   items: MonthlyYutaiCandidate[];

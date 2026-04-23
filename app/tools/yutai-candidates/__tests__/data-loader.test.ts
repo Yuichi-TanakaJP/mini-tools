@@ -266,6 +266,7 @@ describe("loadMonthlyYutaiPageData", () => {
 
     expect(result.manifest).toEqual(SAMPLE_MANIFEST);
     expect(result.selectedMonthId).toBe("2025-04");
+    expect(result.selectedMonthKenriLastDate).toBe("2025-04-25");
     expect(result.items).toEqual([]);
     expect(result.nikkoCredit).toEqual(SAMPLE_NIKKO_CREDIT);
     expect(result.sbiCredit).toEqual(SAMPLE_SBI_CREDIT);
@@ -288,6 +289,7 @@ describe("loadMonthlyYutaiPageData", () => {
     expect(result).toBeDefined();
     expect(result.nikkoCredit).toBeNull();
     expect(result.sbiCredit).toBeNull();
+    expect(result.selectedMonthKenriLastDate).toBe("2025-04-25");
     expect(result.items).toEqual([]);
   });
 

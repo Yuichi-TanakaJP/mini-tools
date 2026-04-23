@@ -32,6 +32,17 @@ function formatGeneratedAt(value: string | null) {
   }).format(new Date(time));
 }
 
+function formatKenriLastDate(value: string | null) {
+  if (!value) return "権利付き最終日: 計算不可";
+  const time = Date.parse(`${value}T00:00:00+09:00`);
+  if (Number.isNaN(time)) return "権利付き最終日: 計算不可";
+  return `権利付き最終日: ${new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+    timeZone: "Asia/Tokyo",
+  }).format(new Date(time))}`;
+}
+
 function loadPickedCodes() {
   if (typeof window === "undefined") return new Set<string>();
   try {
@@ -289,7 +300,14 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
         <section style={styles.panel}>
           {availableMonths.length > 0 && (
             <div style={styles.monthSection}>
-              <div style={styles.sectionLabel}>表示月</div>
+              <div style={styles.monthSectionTop}>
+                <div>
+                  <div style={styles.sectionLabel}>表示月</div>
+                  <div style={styles.monthSectionNote}>
+                    {formatKenriLastDate(data.selectedMonthKenriLastDate)}
+                  </div>
+                </div>
+              </div>
               <div style={styles.monthChipList}>
                 {availableMonths.map((month) => {
                   const active = month.id === data.selectedMonthId;
@@ -611,13 +629,26 @@ const styles: Record<string, React.CSSProperties> = {
     paddingBottom: 16,
     borderBottom: "1px solid rgba(15,23,42,0.06)",
   },
-  sectionLabel: {
+  monthSectionTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "flex-end",
     marginBottom: 10,
+  },
+  sectionLabel: {
+    marginBottom: 4,
     fontSize: 11,
     fontWeight: 800,
     color: "#94a3b8",
     letterSpacing: 0.8,
     textTransform: "uppercase",
+  },
+  monthSectionNote: {
+    fontSize: 13,
+    lineHeight: 1.5,
+    color: "#475569",
+    fontWeight: 700,
   },
   monthChipList: {
     display: "grid",

@@ -56,6 +56,10 @@ function isBusinessDay(year: number, month: number, day: number): boolean {
   return !JP_LATE_MONTH_NON_TRADING.has(key);
 }
 
+function formatIsoDate(year: number, month: number, day: number): string {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 /**
  * 権利付き最終日（日）を返す。
  * = 月末最終営業日 - 2 営業日
@@ -72,6 +76,15 @@ function getKenriLastDay(year: number, month: number): number {
     if (isBusinessDay(year, month, day)) remaining--;
   }
   return day;
+}
+
+function getKenriLastDateForMonthId(monthId: string): string | null {
+  const match = monthId.match(/^(\d{4})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) return null;
+  return formatIsoDate(year, month, getKenriLastDay(year, month));
 }
 
 /**
@@ -225,6 +238,7 @@ export async function loadMonthlyYutaiPageData(requestedMonthId?: string): Promi
   return {
     manifest,
     selectedMonthId,
+    selectedMonthKenriLastDate: getKenriLastDateForMonthId(selectedMonthId),
     generatedAt: monthData?.generated_at ?? manifest?.generated_at ?? null,
     source: monthData?.source ?? manifest?.source ?? null,
     items: monthData?.records ?? [],
