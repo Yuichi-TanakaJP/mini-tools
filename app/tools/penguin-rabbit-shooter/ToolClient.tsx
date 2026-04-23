@@ -789,30 +789,15 @@ export default function ToolClient() {
                   ...(isCompact ? styles.touchGridCompact : {}),
                 }}
               >
-                <div style={styles.touchPad}>
-                  <div />
-                  <TouchButton
-                    label="↑"
-                    compact={isCompact}
-                    onPressChange={(pressed) => setControlPressed("ArrowUp", pressed)}
-                  />
-                  <div />
-                  <TouchButton
-                    label="←"
-                    compact={isCompact}
-                    onPressChange={(pressed) => setControlPressed("ArrowLeft", pressed)}
-                  />
-                  <TouchButton
-                    label="↓"
-                    compact={isCompact}
-                    onPressChange={(pressed) => setControlPressed("ArrowDown", pressed)}
-                  />
-                  <TouchButton
-                    label="→"
-                    compact={isCompact}
-                    onPressChange={(pressed) => setControlPressed("ArrowRight", pressed)}
-                  />
-                </div>
+                <DPad
+                  compact={isCompact}
+                  onDirectionChange={(dirs) => {
+                    setControlPressed("ArrowUp", dirs.up);
+                    setControlPressed("ArrowDown", dirs.down);
+                    setControlPressed("ArrowLeft", dirs.left);
+                    setControlPressed("ArrowRight", dirs.right);
+                  }}
+                />
 
                 <div style={styles.touchActionCol}>
                   <TouchButton
@@ -889,6 +874,63 @@ function TouchButton({
     >
       {label}
     </button>
+  );
+}
+
+function DPad({
+  compact,
+  onDirectionChange,
+}: {
+  compact: boolean;
+  onDirectionChange: (dirs: { up: boolean; down: boolean; left: boolean; right: boolean }) => void;
+}) {
+  const padRef = useRef<HTMLDivElement>(null);
+  const originRef = useRef<{ x: number; y: number } | null>(null);
+  const [knob, setKnob] = useState({ x: 0, y: 0 });
+  const threshold = compact ? 16 : 20;
+  const knobRange = compact ? 28 : 36;
+
+  const release = () => {
+    originRef.current = null;
+    setKnob({ x: 0, y: 0 });
+    onDirectionChange({ up: false, down: false, left: false, right: false });
+  };
+
+  return (
+    <div
+      ref={padRef}
+      style={{ ...styles.dpad, ...(compact ? styles.dpadCompact : {}) }}
+      onPointerDown={(e) => {
+        padRef.current?.setPointerCapture(e.pointerId);
+        originRef.current = { x: e.clientX, y: e.clientY };
+        setKnob({ x: 0, y: 0 });
+      }}
+      onPointerMove={(e) => {
+        if (!originRef.current) return;
+        const dx = e.clientX - originRef.current.x;
+        const dy = e.clientY - originRef.current.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx);
+        const r = Math.min(dist, knobRange);
+        setKnob({ x: Math.cos(angle) * r, y: Math.sin(angle) * r });
+        onDirectionChange({
+          up: dy < -threshold,
+          down: dy > threshold,
+          left: dx < -threshold,
+          right: dx > threshold,
+        });
+      }}
+      onPointerUp={release}
+      onPointerCancel={release}
+    >
+      <div
+        style={{
+          ...styles.dpadKnob,
+          ...(compact ? styles.dpadKnobCompact : {}),
+          transform: `translate(${knob.x}px, ${knob.y}px)`,
+        }}
+      />
+    </div>
   );
 }
 
@@ -1187,12 +1229,37 @@ const styles: Record<string, CSSProperties> = {
   touchGridCompact: {
     gap: 8,
   },
-  touchPad: {
+  dpad: {
     flex: 1,
     minWidth: 0,
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: 8,
+    height: 112,
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 20,
+    border: "1px solid rgba(37, 84, 255, 0.12)",
+    background: "#f0f4ff",
+    boxShadow: "0 8px 18px rgba(15, 23, 42, 0.06)",
+    touchAction: "none",
+    userSelect: "none",
+    WebkitUserSelect: "none",
+  },
+  dpadCompact: {
+    height: 96,
+    borderRadius: 16,
+  },
+  dpadKnob: {
+    width: 44,
+    height: 44,
+    borderRadius: 999,
+    background: "rgba(255, 255, 255, 0.95)",
+    boxShadow: "0 2px 10px rgba(15, 23, 42, 0.2)",
+    pointerEvents: "none",
+  },
+  dpadKnobCompact: {
+    width: 36,
+    height: 36,
   },
   touchActionCol: {
     flexShrink: 0,
