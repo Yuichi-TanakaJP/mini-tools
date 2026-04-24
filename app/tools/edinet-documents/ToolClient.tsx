@@ -56,7 +56,7 @@ function formatDate(dateStr: string): string {
 type DocTypeFilter = "all" | string;
 
 function DocRow({ item, muted }: { item: EdinetDocItem; muted: boolean }) {
-  const edinetUrl = `https://disclosure2.edinet-fsa.go.jp/WZEK0040.aspx?S1${item.doc_id.replace(/^S/, "")},,`;
+  const edinetUrl = `https://disclosure2.edinet-fsa.go.jp/WZEK0040.aspx?${item.doc_id},,`;
 
   return (
     <tr
@@ -85,16 +85,25 @@ function DocRow({ item, muted }: { item: EdinetDocItem; muted: boolean }) {
           {item.filer_name}
         </div>
         {item.sec_code && (
-          <div
+          <a
+            href={`https://finance.yahoo.co.jp/quote/${item.sec_code}0.T`}
+            target="_blank"
+            rel="noopener noreferrer"
             style={{
+              display: "inline-block",
               fontSize: 11,
-              color: "var(--color-text-muted)",
-              fontWeight: 500,
-              marginTop: 2,
+              color: "var(--color-accent)",
+              fontWeight: 600,
+              marginTop: 3,
+              textDecoration: "none",
+              padding: "1px 6px",
+              borderRadius: 4,
+              border: "1px solid var(--color-accent)",
+              background: "var(--color-accent-sub)",
             }}
           >
-            {item.sec_code}
-          </div>
+            {item.sec_code} ↗
+          </a>
         )}
       </td>
       <td
