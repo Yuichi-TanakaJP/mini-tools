@@ -101,6 +101,13 @@ const TOOLS: ToolItem[] = [
     icon: "📈",
   },
   {
+    title: "EDINET書類一覧",
+    short: "有報・大量保有報告書をまとめて確認",
+    detail: "金融庁EDINETに提出された有価証券報告書・大量保有報告書などを日次で一覧表示。上場企業フィルター・書類種別絞込み対応。",
+    href: "/tools/edinet-documents",
+    icon: "📄",
+  },
+  {
     title: "ペンギン・バニーシューター",
     short: "絵文字で遊ぶミニゲーム",
     detail: "ペンギンを動かして、うさぎをショット。絵文字ベースで気軽に遊べるおまけゲーム。",
