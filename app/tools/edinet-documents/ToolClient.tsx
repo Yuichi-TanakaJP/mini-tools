@@ -86,7 +86,7 @@ function DocRow({ item, muted }: { item: EdinetDocItem; muted: boolean }) {
         </div>
         {item.sec_code && (
           <a
-            href={`https://finance.yahoo.co.jp/quote/${item.sec_code}0.T`}
+            href={`https://finance.yahoo.co.jp/quote/${item.sec_code.slice(0, 4)}.T`}
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -102,7 +102,7 @@ function DocRow({ item, muted }: { item: EdinetDocItem; muted: boolean }) {
               background: "var(--color-accent-sub)",
             }}
           >
-            {item.sec_code} ↗
+            {item.sec_code.slice(0, 4)} ↗
           </a>
         )}
       </td>
