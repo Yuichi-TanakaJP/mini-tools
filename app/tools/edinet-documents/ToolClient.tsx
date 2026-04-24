@@ -53,7 +53,6 @@ function formatDate(dateStr: string): string {
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-type DocTypeFilter = "all" | string;
 
 function DocRow({ item, muted }: { item: EdinetDocItem; muted: boolean }) {
   const edinetUrl = `https://disclosure2.edinet-fsa.go.jp/WZEK0040.aspx?${item.doc_id},,`;
@@ -86,7 +85,7 @@ function DocRow({ item, muted }: { item: EdinetDocItem; muted: boolean }) {
         </div>
         {item.sec_code && (
           <a
-            href={`https://finance.yahoo.co.jp/quote/${item.sec_code.slice(0, 4)}.T`}
+            href={`https://finance.yahoo.co.jp/quote/${item.sec_code.replace(/0+$/, "")}.T`}
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -169,7 +168,7 @@ function DocRow({ item, muted }: { item: EdinetDocItem; muted: boolean }) {
 export default function ToolClient({ data }: { data: EdinetDocumentListResponse }) {
   const [secCodeOnly, setSecCodeOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [docTypeFilter, setDocTypeFilter] = useState<DocTypeFilter>("all");
+  const [docTypeFilter, setDocTypeFilter] = useState("all");
 
   const docTypeCounts = useMemo(() => {
     const counts = new Map<string, number>();
