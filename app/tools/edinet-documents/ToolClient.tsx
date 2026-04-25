@@ -67,7 +67,7 @@ function DocRow({ item, muted }: { item: EdinetDocItem; muted: boolean }) {
       <td
         style={{
           padding: "10px 8px",
-          fontSize: 13,
+          fontSize: 12,
           fontWeight: 700,
           color: "var(--color-text)",
           maxWidth: 180,
@@ -109,33 +109,9 @@ function DocRow({ item, muted }: { item: EdinetDocItem; muted: boolean }) {
         style={{
           padding: "10px 8px",
           fontSize: 12,
-          color: "var(--color-text-sub)",
-          maxWidth: 240,
-        }}
-      >
-        <a
-          href={edinetUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            color: "inherit",
-            textDecoration: "none",
-            display: "block",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-          title={item.doc_description}
-        >
-          {item.doc_description || getDocTypeLabel(item.doc_type_code)}
-        </a>
-      </td>
-      <td
-        style={{
-          padding: "10px 8px",
-          fontSize: 12,
           color: "var(--color-text-muted)",
           whiteSpace: "nowrap",
+          textAlign: "right",
         }}
       >
         {formatDate(item.submit_datetime)}
@@ -146,20 +122,27 @@ function DocRow({ item, muted }: { item: EdinetDocItem; muted: boolean }) {
           fontSize: 11,
           color: "var(--color-text-muted)",
           whiteSpace: "nowrap",
+          textAlign: "right",
         }}
       >
-        <span
+        <a
+          href={edinetUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={item.doc_description || getDocTypeLabel(item.doc_type_code)}
           style={{
             display: "inline-block",
             padding: "2px 6px",
             borderRadius: 999,
             background: "var(--color-bg-input)",
             border: "1px solid var(--color-border)",
+            color: "inherit",
             fontWeight: 600,
+            textDecoration: "none",
           }}
         >
           {getDocTypeLabel(item.doc_type_code)}
-        </span>
+        </a>
       </td>
     </tr>
   );
@@ -400,16 +383,14 @@ export default function ToolClient({ data }: { data: EdinetDocumentListResponse 
               }}
             >
               <colgroup>
-                <col style={{ width: "24%" }} />
-                <col style={{ width: "36%" }} />
-                <col style={{ width: "14%" }} />
-                <col style={{ width: "26%" }} />
+                <col style={{ width: "50%" }} />
+                <col style={{ width: "21%" }} />
+                <col style={{ width: "29%" }} />
               </colgroup>
               <thead>
                 <tr style={{ borderBottom: "2px solid var(--color-border-strong)" }}>
                   {[
                     { label: "提出者" },
-                    { label: "書類名" },
                     { label: "提出日時" },
                     { label: "種別" },
                   ].map(({ label }) => (
@@ -417,7 +398,7 @@ export default function ToolClient({ data }: { data: EdinetDocumentListResponse 
                       key={label}
                       style={{
                         padding: "10px 8px",
-                        textAlign: "left",
+                        textAlign: label === "提出者" ? "left" : "right",
                         fontSize: 12,
                         fontWeight: 700,
                         color: "var(--color-text-muted)",
@@ -448,7 +429,7 @@ export default function ToolClient({ data }: { data: EdinetDocumentListResponse 
           lineHeight: 1.6,
         }}
       >
-        ※ データは金融庁EDINET APIから取得しています。書類名のリンクからEDINETの詳細ページへ移動できます。
+        ※ データは金融庁EDINET APIから取得しています。種別のリンクからEDINETの詳細ページへ移動できます。
       </p>
     </main>
   );

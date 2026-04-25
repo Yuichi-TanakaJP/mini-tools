@@ -724,6 +724,23 @@ export default async function PremiumPage({
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <Link
+            href="/premium/portfolio"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: 46,
+              padding: "0 18px",
+              borderRadius: 14,
+              background: "#102033",
+              color: "#fff",
+              textDecoration: "none",
+              fontWeight: 800,
+            }}
+          >
+            保有銘柄ダッシュボード
+          </Link>
+          <Link
             href="/tools/topix33"
             style={{
               display: "inline-flex",
