@@ -89,11 +89,32 @@ async function loadDomesticData(): Promise<EarningsCalendarMarketData> {
   const apiManifest = await loadApiDomesticManifest();
 
   if (apiManifest) {
+    // 月別データが API から取れない場合は同梱 JSON で補完するため、先にローカル manifest を読む
+    let localManifest: EarningsCalendarManifest | null = null;
+    try {
+      localManifest = await loadLocalDomesticManifest();
+    } catch {
+      // 同梱 JSON がなくても続行
+    }
+
     const [monthEntries, latest, holidays] = await Promise.all([
       Promise.all(
         apiManifest.months.map(async (entry) => {
-          const monthData = await loadApiDomesticMonthData(entry.id);
-          return monthData ? ([entry.id, monthData] as const) : null;
+          const apiData = await loadApiDomesticMonthData(entry.id);
+          if (apiData) return [entry.id, apiData] as const;
+          // API の月別取得が失敗した場合、同梱 JSON の同一月にフォールバック
+          if (localManifest) {
+            const localEntry = localManifest.months.find((m) => m.id === entry.id);
+            if (localEntry) {
+              try {
+                const localData = await loadLocalDomesticMonthDataByPath(localEntry.path);
+                return [entry.id, localData] as const;
+              } catch {
+                // 同梱 JSON も取得できなければスキップ
+              }
+            }
+          }
+          return null;
         }),
       ),
       loadApiDomesticLatest(),

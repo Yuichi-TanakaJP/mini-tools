@@ -183,6 +183,24 @@ describe("loadEarningsCalendarPageData", () => {
     expect(result.domestic.monthData["2025-04"]).toEqual(SAMPLE_DOMESTIC_MONTH_DATA);
   });
 
+  it("domestic manifest 成功・monthly 失敗のとき同梱 JSON の同一月で補完する", async () => {
+    process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
+    makeLocalFiles();
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes("/earnings-calendar/domestic/manifest")) return makeFetchOk(SAMPLE_DOMESTIC_MANIFEST);
+      if (u.includes("/earnings-calendar/domestic/latest")) return makeFetchOk(SAMPLE_DOMESTIC_LATEST);
+      if (u.includes("/earnings-calendar/domestic/monthly/")) return makeFetch404();
+      if (u.includes("/earnings-calendar/overseas/")) return makeFetch404();
+      return makeFetch404();
+    });
+
+    const result = await loadEarningsCalendarPageData();
+
+    expect(result.domestic.manifest).toEqual(SAMPLE_DOMESTIC_MANIFEST);
+    expect(result.domestic.monthData["2025-04"]).toEqual(SAMPLE_DOMESTIC_MONTH_DATA);
+  });
+
   it("API 未設定のとき overseas は空構造を返す（fetch しない）", async () => {
     makeLocalFiles();
 
