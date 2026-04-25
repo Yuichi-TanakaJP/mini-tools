@@ -50,7 +50,65 @@ async function loadLocalDomesticHolidays(): Promise<JpxMarketClosedResponse | nu
   }
 }
 
+async function loadApiDomesticManifest(): Promise<EarningsCalendarManifest | null> {
+  const apiBase = getApiBaseUrl();
+  if (!apiBase) return null;
+
+  try {
+    return await fetchJson<EarningsCalendarManifest>(`${apiBase}/earnings-calendar/domestic/manifest`);
+  } catch {
+    return null;
+  }
+}
+
+async function loadApiDomesticMonthData(yearMonth: string): Promise<EarningsCalendarResponse | null> {
+  const apiBase = getApiBaseUrl();
+  if (!apiBase) return null;
+
+  try {
+    return await fetchJson<EarningsCalendarResponse>(
+      `${apiBase}/earnings-calendar/domestic/monthly/${yearMonth}`,
+    );
+  } catch {
+    return null;
+  }
+}
+
+async function loadApiDomesticLatest(): Promise<EarningsCalendarResponse | null> {
+  const apiBase = getApiBaseUrl();
+  if (!apiBase) return null;
+
+  try {
+    return await fetchJson<EarningsCalendarResponse>(`${apiBase}/earnings-calendar/domestic/latest`);
+  } catch {
+    return null;
+  }
+}
+
 async function loadDomesticData(): Promise<EarningsCalendarMarketData> {
+  const apiManifest = await loadApiDomesticManifest();
+
+  if (apiManifest) {
+    const [monthEntries, latest, holidays] = await Promise.all([
+      Promise.all(
+        apiManifest.months.map(async (entry) => {
+          const monthData = await loadApiDomesticMonthData(entry.id);
+          return monthData ? ([entry.id, monthData] as const) : null;
+        }),
+      ),
+      loadApiDomesticLatest(),
+      loadLocalDomesticHolidays(),
+    ]);
+
+    return {
+      manifest: apiManifest,
+      monthData: Object.fromEntries(monthEntries.filter((entry) => entry !== null)),
+      latest,
+      holidays,
+    };
+  }
+
+  // API 未設定 or 失敗時は同梱 JSON にフォールバック
   const manifest = await loadLocalDomesticManifest();
   const monthEntries = await Promise.all(
     manifest.months.map(async (entry) => {

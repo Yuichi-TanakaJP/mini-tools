@@ -136,7 +136,7 @@ describe("loadEarningsCalendarPageData", () => {
     vi.unstubAllGlobals();
   });
 
-  it("domestic は常にローカルファイルから取得する", async () => {
+  it("API 未設定のとき domestic はローカルファイルから取得する（fetch しない）", async () => {
     makeLocalFiles();
 
     const result = await loadEarningsCalendarPageData();
@@ -146,6 +146,41 @@ describe("loadEarningsCalendarPageData", () => {
     expect(result.domestic.latest).toEqual(SAMPLE_DOMESTIC_LATEST);
     expect(result.domestic.holidays).toEqual(SAMPLE_HOLIDAYS);
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("API 設定あり・domestic manifest 正常のとき API からデータを返す", async () => {
+    process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
+    makeLocalFiles();
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes("/earnings-calendar/domestic/manifest")) return makeFetchOk(SAMPLE_DOMESTIC_MANIFEST);
+      if (u.includes("/earnings-calendar/domestic/latest")) return makeFetchOk(SAMPLE_DOMESTIC_LATEST);
+      if (u.includes("/earnings-calendar/domestic/monthly/")) return makeFetchOk(SAMPLE_DOMESTIC_MONTH_DATA);
+      if (u.includes("/earnings-calendar/overseas/")) return makeFetch404();
+      return makeFetch404();
+    });
+
+    const result = await loadEarningsCalendarPageData();
+
+    expect(result.domestic.manifest).toEqual(SAMPLE_DOMESTIC_MANIFEST);
+    expect(result.domestic.monthData["2025-04"]).toEqual(SAMPLE_DOMESTIC_MONTH_DATA);
+    expect(result.domestic.latest).toEqual(SAMPLE_DOMESTIC_LATEST);
+  });
+
+  it("API 設定あり・domestic manifest 失敗のときローカル JSON にフォールバックする", async () => {
+    process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
+    makeLocalFiles();
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes("/earnings-calendar/domestic/")) return makeFetch404();
+      if (u.includes("/earnings-calendar/overseas/")) return makeFetch404();
+      return makeFetch404();
+    });
+
+    const result = await loadEarningsCalendarPageData();
+
+    expect(result.domestic.manifest).toEqual(SAMPLE_DOMESTIC_MANIFEST);
+    expect(result.domestic.monthData["2025-04"]).toEqual(SAMPLE_DOMESTIC_MONTH_DATA);
   });
 
   it("API 未設定のとき overseas は空構造を返す（fetch しない）", async () => {

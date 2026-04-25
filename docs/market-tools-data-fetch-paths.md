@@ -31,7 +31,7 @@
 | `us-stock-ranking` | サーバーで `loadUsRankingManifest()` を読み、`manifest.dates` を最大 5 件試して最初に取得できた日次データを初期表示に使う | クライアントは `/tools/us-stock-ranking/data/[date]` を叩き、route 内で同じ loader を呼ぶ | `MARKET_INFO_API_BASE_URL` | なし。未設定時 / fetch 失敗時は「データ取得不可」表示 | API パスは `/us-stock-ranking/*` ではなく `/us-ranking/*` |
 | `market-rankings` | サーバーで `loadMarketRankingManifest()` / `loadMarketRankingMonthData()` を呼び、`type` / `month` を正規化して初期表示を決める | クライアント再 fetch は基本なし。`type` / `month` の変更は query string を更新して server を再評価する | `MARKET_INFO_API_BASE_URL` | なし。未設定時は「API 未接続」表示、対象月 fetch 失敗時は error card 表示 | 月次 API 前提。repo 同梱 JSON は持たない |
 | `yutai-candidates` | サーバーで `loadMonthlyYutaiPageData()` | クライアント再 fetch は基本なし。月切替は route 遷移でサーバー再評価 | `MARKET_INFO_API_BASE_URL` | あり。manifest / month data はローカル JSON fallback。`nikko/credit` は API 未設定時のみ sample fallback | SBI は `is_short=true` の扱い有無だけを表示し、在庫状態では除外しない |
-| `earnings-calendar` | サーバーで `loadEarningsCalendarPageData()` を呼ぶ | クライアント再 fetch なし | `MARKET_INFO_API_BASE_URL` | あり。国内は同梱 JSON、海外は API 未設定/失敗時は非表示 | 国内は repo 同梱 JSON、海外は `earnings-calendar/overseas/*` API を読む |
+| `earnings-calendar` | サーバーで `loadEarningsCalendarPageData()` を呼ぶ | クライアント再 fetch なし | `MARKET_INFO_API_BASE_URL` | あり。国内・海外ともに API 失敗時フォールバック（国内のみ同梱 JSON へ）、海外は API 未設定/失敗時は非表示 | 国内・海外ともに `earnings-calendar/{domestic\|overseas}/*` API を優先取得し、国内は API 失敗時のみ repo 同梱 JSON にフォールバック |
 
 ## `topix33` の具体的な流れ
 
