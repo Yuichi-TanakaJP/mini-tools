@@ -458,7 +458,7 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
           <article style={styles.emptyCard}>
             <div style={styles.emptyTitle}>決算データがまだありません</div>
             <div style={styles.emptyNote}>
-              国内版は同梱 JSON、海外版は market-info API を参照します。データ取得先が整うとここに月間カレンダーが表示されます。
+              market-info API を参照します。データ取得先が整うとここに月間カレンダーが表示されます。
             </div>
           </article>
         </div>
