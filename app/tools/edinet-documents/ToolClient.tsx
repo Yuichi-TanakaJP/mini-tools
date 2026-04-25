@@ -56,6 +56,8 @@ function formatDate(dateStr: string): string {
 
 function DocRow({ item, muted }: { item: EdinetDocItem; muted: boolean }) {
   const edinetUrl = `https://disclosure2.edinet-fsa.go.jp/WZEK0040.aspx?${item.doc_id},,`;
+  const docTypeLabel = getDocTypeLabel(item.doc_type_code);
+  const docTitle = item.doc_description || docTypeLabel;
 
   return (
     <tr
@@ -121,7 +123,6 @@ function DocRow({ item, muted }: { item: EdinetDocItem; muted: boolean }) {
           padding: "10px 8px",
           fontSize: 11,
           color: "var(--color-text-muted)",
-          whiteSpace: "nowrap",
           textAlign: "right",
         }}
       >
@@ -129,7 +130,7 @@ function DocRow({ item, muted }: { item: EdinetDocItem; muted: boolean }) {
           href={edinetUrl}
           target="_blank"
           rel="noopener noreferrer"
-          title={item.doc_description || getDocTypeLabel(item.doc_type_code)}
+          title={docTitle}
           style={{
             display: "inline-block",
             padding: "2px 6px",
@@ -141,8 +142,27 @@ function DocRow({ item, muted }: { item: EdinetDocItem; muted: boolean }) {
             textDecoration: "none",
           }}
         >
-          {getDocTypeLabel(item.doc_type_code)}
+          {docTypeLabel}
         </a>
+        {docTitle !== docTypeLabel ? (
+          <div
+            title={docTitle}
+            style={{
+              marginTop: 4,
+              marginLeft: "auto",
+              maxWidth: "100%",
+              color: "var(--color-text-muted)",
+              fontSize: 10,
+              fontWeight: 600,
+              lineHeight: 1.35,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {docTitle}
+          </div>
+        ) : null}
       </td>
     </tr>
   );
