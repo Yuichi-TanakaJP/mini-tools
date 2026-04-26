@@ -104,6 +104,14 @@ function normalizeTimeLabel(time: string) {
   return time.replace(/\s*\/\s*（?予定）?$/, "").replace(/\s*\/\s*\(予定\)$/, "");
 }
 
+function buildYahooFinanceUrl(item: EarningsCalendarItem, market: EarningsCalendarMarket) {
+  const code = item.code.trim();
+  if (!code) return null;
+
+  const quoteCode = market === "domestic" ? `${code.replace(/\.T$/i, "")}.T` : code;
+  return `https://finance.yahoo.co.jp/quote/${encodeURIComponent(quoteCode)}`;
+}
+
 function createEmptyMonth(
   id: string,
   updatedAt: string,
@@ -639,29 +647,44 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
               <div style={styles.emptyNote}>{getEmptyStateMessage(selectedDay, activeMarket.key)}</div>
             </article>
           ) : (
-            selectedItems.map((item, index) => (
-              <article
-                key={
-                  item.event_id ??
-                  `${selectedDay.key}-${item.code}-${item.time}-${item.announcement_type}-${index}`
-                }
-                style={styles.itemCard}
-              >
-                <div style={styles.itemMain}>
-                  <div style={styles.itemName}>{item.name}</div>
-                  <div style={styles.itemMetaRow}>
-                    <span>{item.code}</span>
-                    <span>{normalizeMarket(item.market)}</span>
-                    <span>{item.announcement_type}</span>
-                  </div>
-                </div>
+            selectedItems.map((item, index) => {
+              const yahooFinanceUrl = buildYahooFinanceUrl(item, activeMarket.key);
 
-                <div style={styles.itemTimeBlock}>
-                  <div style={styles.timeLabel}>時刻</div>
-                  <div style={styles.timeValue}>{normalizeTimeLabel(item.time || "--:--")}</div>
-                </div>
-              </article>
-            ))
+              return (
+                <article
+                  key={
+                    item.event_id ??
+                    `${selectedDay.key}-${item.code}-${item.time}-${item.announcement_type}-${index}`
+                  }
+                  style={styles.itemCard}
+                >
+                  <div style={styles.itemMain}>
+                    <div style={styles.itemName}>{item.name}</div>
+                    <div style={styles.itemMetaRow}>
+                      <span>{item.code}</span>
+                      <span>{normalizeMarket(item.market)}</span>
+                      <span>{item.announcement_type}</span>
+                      {yahooFinanceUrl ? (
+                        <a
+                          href={yahooFinanceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={styles.financeLink}
+                          aria-label={`${item.name || item.code}をYahooファイナンスで開く`}
+                        >
+                          Yahoo ↗
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div style={styles.itemTimeBlock}>
+                    <div style={styles.timeLabel}>時刻</div>
+                    <div style={styles.timeValue}>{normalizeTimeLabel(item.time || "--:--")}</div>
+                  </div>
+                </article>
+              );
+            })
           )}
         </section>
 
@@ -979,6 +1002,19 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 12,
     color: "#6b7280",
     lineHeight: 1.4,
+  },
+  financeLink: {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "1px 7px",
+    borderRadius: 999,
+    border: "1px solid rgba(37, 84, 255, 0.18)",
+    background: "#eef2ff",
+    color: "#3146d4",
+    fontSize: 11,
+    fontWeight: 800,
+    textDecoration: "none",
+    lineHeight: 1.6,
   },
   itemTimeBlock: {
     textAlign: "right",
