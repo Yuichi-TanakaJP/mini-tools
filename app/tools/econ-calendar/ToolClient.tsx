@@ -604,13 +604,16 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 13,
     fontWeight: 800,
     color: "#374151",
-    minWidth: 38,
+    width: 60,
+    flexShrink: 0,
     fontVariantNumeric: "tabular-nums",
   },
   eventFlag: {
     fontSize: 12,
     color: "#6b7280",
     fontWeight: 700,
+    width: 28,
+    flexShrink: 0,
   },
   eventIndicator: {
     flex: "1 1 0",
