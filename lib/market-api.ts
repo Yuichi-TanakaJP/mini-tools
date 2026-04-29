@@ -9,16 +9,16 @@ export function getApiBaseUrl(): string {
 
 /**
  * JSON を fetch して型付きで返す。5秒タイムアウト付き。
- * Next.js の revalidate キャッシュ（300秒）を使う。
+ * revalidate はデータの更新頻度に合わせて呼び出し側で指定する（デフォルト 300 秒）。
  */
-export async function fetchJson<T>(url: string): Promise<T> {
+export async function fetchJson<T>(url: string, revalidate = 300): Promise<T> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 5000);
 
   try {
     const res = await fetch(url, {
       signal: controller.signal,
-      next: { revalidate: 300 },
+      next: { revalidate },
     });
 
     if (!res.ok) {
