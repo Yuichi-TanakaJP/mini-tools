@@ -72,22 +72,6 @@ function formatPublishedAt(iso: string): string {
   }
 }
 
-function parsePct(s: string | null): number | null {
-  if (!s) return null;
-  const n = parseFloat(s.replace(/[^0-9.-]/g, ""));
-  return isNaN(n) ? null : n;
-}
-
-function getSurprise(
-  result: string | null,
-  forecast: string | null,
-): "beat" | "miss" | null {
-  const r = parsePct(result);
-  const f = parsePct(forecast);
-  if (r === null || f === null) return null;
-  if (Math.abs(r - f) < 0.001) return null;
-  return r > f ? "beat" : "miss";
-}
 
 function ImpactDots({ impact }: { impact: number }) {
   const color = IMPACT_COLOR[impact] ?? "#94a3b8";
@@ -124,8 +108,9 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
   );
   const [todayOnly, setTodayOnly] = useState(false);
 
+  // API 側の cache TTL (5分) に合わせて 300s でポーリング
   useEffect(() => {
-    const id = setInterval(() => router.refresh(), 60_000);
+    const id = setInterval(() => router.refresh(), 300_000);
     return () => clearInterval(id);
   }, [router]);
 
@@ -155,6 +140,8 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
     return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [filteredEvents]);
 
+  // time フィールドが JST か UTC かは API スキーマで要確認。
+  // 現在は result === null の当日イベントをそのまま列挙しており、時刻比較は行っていない。
   const nextUpcoming = useMemo(() => {
     if (!weekly) return null;
     return (
@@ -331,7 +318,6 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
 
                 <div style={styles.eventList}>
                   {dayEvents.map((event, idx) => {
-                    const surprise = getSurprise(event.result, event.forecast);
                     const hasResult = !!event.result;
                     const flag = COUNTRY_FLAGS[event.country_tag] ?? "";
 
@@ -379,17 +365,9 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
                                 ...(hasResult
                                   ? styles.resultNumber
                                   : styles.resultPending),
-                                ...(surprise === "beat"
-                                  ? styles.resultBeat
-                                  : {}),
-                                ...(surprise === "miss"
-                                  ? styles.resultMiss
-                                  : {}),
                               }}
                             >
-                              {hasResult
-                                ? `${surprise === "beat" ? "↑ " : surprise === "miss" ? "↓ " : ""}${event.result}`
-                                : "—"}
+                              {hasResult ? event.result : "—"}
                             </span>
                           </div>
                         </div>
@@ -403,7 +381,7 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
         )}
 
         <div style={styles.footerNote}>
-          60秒ごとに自動更新 · データ: market-info API
+          5分ごとに自動更新 · データ: market-info API
         </div>
       </div>
     </main>
@@ -656,12 +634,6 @@ const styles: Record<string, CSSProperties> = {
   },
   resultPending: {
     color: "#d1d5db",
-  },
-  resultBeat: {
-    color: "#16a34a",
-  },
-  resultMiss: {
-    color: "#dc2626",
   },
   emptyCard: {
     background: "#fff",

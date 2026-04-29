@@ -11,7 +11,7 @@ async function fetchEconJson<T>(url: string): Promise<T> {
   try {
     const res = await fetch(url, {
       signal: controller.signal,
-      next: { revalidate: 60 },
+      next: { revalidate: 300 },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return (await res.json()) as T;
