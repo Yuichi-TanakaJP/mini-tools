@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import type { EconCalendarPageData, EconCalendarEvent } from "./types";
+
+type FlatEvent = EconCalendarEvent & { date: string };
 
 const COUNTRY_FLAGS: Record<string, string> = {
   US: "🇺🇸",
@@ -73,8 +74,9 @@ function formatPublishedAt(iso: string): string {
 }
 
 
-function ImpactDots({ impact }: { impact: number }) {
-  const color = IMPACT_COLOR[impact] ?? "#94a3b8";
+function ImpactDots({ impact }: { impact: number | null }) {
+  const level = impact ?? 0;
+  const color = IMPACT_COLOR[level] ?? "#94a3b8";
   return (
     <span style={{ display: "inline-flex", gap: 3, alignItems: "center" }}>
       {[1, 2, 3, 4, 5].map((i) => (
@@ -85,7 +87,7 @@ function ImpactDots({ impact }: { impact: number }) {
             width: 7,
             height: 7,
             borderRadius: "50%",
-            background: i <= impact ? color : "#e5e7eb",
+            background: i <= level ? color : "#e5e7eb",
           }}
         />
       ))}
@@ -96,11 +98,13 @@ function ImpactDots({ impact }: { impact: number }) {
 type ImpactFilter = "all" | "3+" | "4+" | "5";
 
 export default function ToolClient({ data }: { data: EconCalendarPageData }) {
-  const router = useRouter();
   const { weekly, meta } = data;
-  const events = weekly?.events ?? [];
+  const events = useMemo<FlatEvent[]>(
+    () => weekly?.calendar.flatMap((day) => day.events.map((e) => ({ ...e, date: day.date }))) ?? [],
+    [weekly]
+  );
 
-  const today = useMemo(todayJst, []);
+  const today = useMemo(() => todayJst(), []);
 
   const [impactFilter, setImpactFilter] = useState<ImpactFilter>("all");
   const [selectedCountries, setSelectedCountries] = useState<Set<string>>(
@@ -108,30 +112,26 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
   );
   const [todayOnly, setTodayOnly] = useState(false);
 
-  // API 側の cache TTL (5分) に合わせて 300s でポーリング
-  useEffect(() => {
-    const id = setInterval(() => router.refresh(), 300_000);
-    return () => clearInterval(id);
-  }, [router]);
-
   const allCountries = useMemo(() => {
-    return Array.from(new Set(events.map((e) => e.country_tag))).sort();
+    return Array.from(
+      new Set(events.map((e) => e.country_tag).filter((t): t is string => t !== null))
+    ).sort();
   }, [events]);
 
   const filteredEvents = useMemo(() => {
     return events.filter((e) => {
       if (todayOnly && e.date !== today) return false;
-      if (impactFilter === "3+" && e.impact < 3) return false;
-      if (impactFilter === "4+" && e.impact < 4) return false;
+      if (impactFilter === "3+" && (e.impact ?? 0) < 3) return false;
+      if (impactFilter === "4+" && (e.impact ?? 0) < 4) return false;
       if (impactFilter === "5" && e.impact !== 5) return false;
-      if (selectedCountries.size > 0 && !selectedCountries.has(e.country_tag))
+      if (selectedCountries.size > 0 && !selectedCountries.has(e.country_tag ?? ""))
         return false;
       return true;
     });
   }, [events, today, todayOnly, impactFilter, selectedCountries]);
 
   const groupedByDate = useMemo(() => {
-    const groups = new Map<string, EconCalendarEvent[]>();
+    const groups = new Map<string, FlatEvent[]>();
     for (const event of filteredEvents) {
       const existing = groups.get(event.date) ?? [];
       existing.push(event);
@@ -140,16 +140,13 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
     return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [filteredEvents]);
 
-  // time フィールドが JST か UTC かは API スキーマで要確認。
-  // 現在は result === null の当日イベントをそのまま列挙しており、時刻比較は行っていない。
   const nextUpcoming = useMemo(() => {
-    if (!weekly) return null;
     return (
-      weekly.events
-        .filter((e) => e.date === today && !e.result && e.time && e.impact >= 4)
-        .sort((a, b) => a.time.localeCompare(b.time))[0] ?? null
+      events
+        .filter((e) => e.date === today && !e.result && e.time && (e.impact ?? 0) >= 4)
+        .sort((a, b) => (a.time ?? "").localeCompare(b.time ?? ""))[0] ?? null
     );
-  }, [weekly, today]);
+  }, [events, today]);
 
   function toggleCountry(tag: string) {
     setSelectedCountries((prev) => {
@@ -161,11 +158,10 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
   }
 
   const weekLabel = weekly
-    ? `${weekly.week.from.slice(5).replace("-", "/")} 〜 ${weekly.week.to.slice(5).replace("-", "/")}`
+    ? `${weekly.week_start.slice(5).replace("-", "/")} 〜 ${weekly.week_end.slice(5).replace("-", "/")}`
     : "";
 
-  const publishedAt =
-    meta?.published_at ?? weekly?.published_at ?? null;
+  const publishedAt = meta?.published_at ?? null;
 
   return (
     <main style={styles.page}>
@@ -183,9 +179,9 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
             <span style={styles.metaText}>
               最終更新: {formatPublishedAt(publishedAt)}
             </span>
-            {(meta?.changed_count ?? 0) > 0 ? (
+            {(meta?.diff?.actuals_updated_count ?? 0) > 0 ? (
               <span style={styles.diffBadge}>
-                前回から {meta!.changed_count} 件変更
+                前回から {meta!.diff!.actuals_updated_count} 件変更
               </span>
             ) : null}
           </div>
@@ -211,7 +207,7 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
                 {nextUpcoming.previous ? (
                   <span style={styles.upcomingValueItem}>
                     前回{" "}
-                    <strong style={{ opacity: 1 }}>
+                    <strong>
                       {nextUpcoming.previous}
                     </strong>
                   </span>
@@ -219,7 +215,7 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
                 {nextUpcoming.forecast ? (
                   <span style={styles.upcomingValueItem}>
                     予想{" "}
-                    <strong style={{ opacity: 1 }}>
+                    <strong>
                       {nextUpcoming.forecast}
                     </strong>
                   </span>
@@ -381,7 +377,7 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
         )}
 
         <div style={styles.footerNote}>
-          5分ごとに自動更新 · データ: market-info API
+          データ: market-info API · 平日 1日1回更新
         </div>
       </div>
     </main>
