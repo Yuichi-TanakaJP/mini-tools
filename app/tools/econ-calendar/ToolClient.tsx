@@ -32,6 +32,16 @@ const IMPACT_COLOR: Record<number, string> = {
   1: "#cbd5e1",
 };
 
+function parsePrevious(prev: string | null): { main: string; revised: string | null } {
+  if (!prev || prev === "--") return { main: prev ?? "—", revised: null };
+  const idx = prev.indexOf("⇒");
+  if (idx === -1) return { main: prev, revised: null };
+  return {
+    main: prev.slice(idx + 1).trim(),
+    revised: prev.slice(0, idx).trim(),
+  };
+}
+
 function todayJst(): string {
   const parts = new Intl.DateTimeFormat("en", {
     timeZone: "Asia/Tokyo",
@@ -137,7 +147,13 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
       existing.push(event);
       groups.set(event.date, existing);
     }
-    return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
+    const pad = (t: string | null) => (t ?? "").replace(/^(\d):/, "0$1:");
+    return Array.from(groups.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, evs]) => [
+        date,
+        [...evs].sort((a, b) => pad(a.time).localeCompare(pad(b.time))),
+      ] as [string, FlatEvent[]]);
   }, [filteredEvents]);
 
   const nextUpcoming = useMemo(() => {
@@ -194,8 +210,7 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
             <div style={styles.upcomingRow}>
               <span style={styles.upcomingTime}>{nextUpcoming.time}</span>
               <span style={styles.upcomingFlag}>
-                {COUNTRY_FLAGS[nextUpcoming.country_tag] ??
-                  nextUpcoming.country_tag}
+                {COUNTRY_FLAGS[nextUpcoming.country_tag ?? ""] ?? nextUpcoming.country_tag}
               </span>
               <ImpactDots impact={nextUpcoming.impact} />
             </div>
@@ -206,18 +221,12 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
               <div style={styles.upcomingValues}>
                 {nextUpcoming.previous ? (
                   <span style={styles.upcomingValueItem}>
-                    前回{" "}
-                    <strong>
-                      {nextUpcoming.previous}
-                    </strong>
+                    前回 <strong>{nextUpcoming.previous}</strong>
                   </span>
                 ) : null}
                 {nextUpcoming.forecast ? (
                   <span style={styles.upcomingValueItem}>
-                    予想{" "}
-                    <strong>
-                      {nextUpcoming.forecast}
-                    </strong>
+                    予想 <strong>{nextUpcoming.forecast}</strong>
                   </span>
                 ) : null}
               </div>
@@ -271,8 +280,7 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
                       }}
                       onClick={() => toggleCountry(tag)}
                     >
-                      {COUNTRY_FLAGS[tag] ? `${COUNTRY_FLAGS[tag]} ` : ""}
-                      {tag}
+                      {COUNTRY_FLAGS[tag] ?? tag}
                     </button>
                   ))}
                 </div>
@@ -316,6 +324,7 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
                   {dayEvents.map((event, idx) => {
                     const hasResult = !!event.result;
                     const flag = COUNTRY_FLAGS[event.country_tag] ?? "";
+                    const { main: prevMain, revised: prevRevised } = parsePrevious(event.previous);
 
                     return (
                       <article
@@ -325,46 +334,43 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
                           ...(hasResult ? styles.eventCardDone : {}),
                         }}
                       >
+                        {/* 上段: 時刻・国・重要度 */}
                         <div style={styles.eventMeta}>
                           <span style={styles.eventTime}>
                             {event.time || "—"}
                           </span>
-                          <span style={styles.eventFlag} title={event.country}>
-                            {flag ? `${flag} ` : ""}
-                            {event.country_tag}
+                          <span style={styles.eventFlag} title={event.country ?? ""}>
+                            {flag || event.country_tag}
                           </span>
                           <ImpactDots impact={event.impact} />
                         </div>
 
-                        <div style={styles.eventIndicator}>
-                          {event.indicator}
-                        </div>
-
-                        <div style={styles.valueRow}>
-                          <div style={styles.valueCell}>
-                            <span style={styles.valueLabel}>前回</span>
-                            <span style={styles.valueNumber}>
-                              {event.previous ?? "—"}
-                            </span>
+                        {/* 下段: 指標名（左・縦中央）＋ 前回・予想・結果（右・固定幅） */}
+                        <div style={styles.eventBody}>
+                          <div style={styles.eventIndicator}>
+                            {event.indicator}
                           </div>
-                          <div style={styles.valueCell}>
-                            <span style={styles.valueLabel}>予想</span>
-                            <span style={styles.valueNumber}>
-                              {event.forecast ?? "—"}
-                            </span>
-                          </div>
-                          <div style={styles.valueCell}>
-                            <span style={styles.valueLabel}>結果</span>
-                            <span
-                              style={{
+                          <div style={styles.valueRow}>
+                            <div style={styles.valueCell}>
+                              <span style={styles.valueLabel}>前回</span>
+                              <span style={styles.valueNumber}>{prevMain}</span>
+                              {prevRevised ? (
+                                <span style={styles.valuePrevSub}>({prevRevised})</span>
+                              ) : null}
+                            </div>
+                            <div style={styles.valueCell}>
+                              <span style={styles.valueLabel}>予想</span>
+                              <span style={styles.valueNumber}>{event.forecast ?? "—"}</span>
+                            </div>
+                            <div style={styles.valueCell}>
+                              <span style={styles.valueLabel}>結果</span>
+                              <span style={{
                                 ...styles.valueNumber,
-                                ...(hasResult
-                                  ? styles.resultNumber
-                                  : styles.resultPending),
-                              }}
-                            >
-                              {hasResult ? event.result : "—"}
-                            </span>
+                                ...(hasResult ? styles.resultNumber : styles.resultPending),
+                              }}>
+                                {hasResult ? event.result : "—"}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </article>
@@ -445,39 +451,46 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 800,
   },
   upcomingCard: {
-    background: "linear-gradient(135deg, #2554ff 0%, #4f79ff 100%)",
-    borderRadius: 20,
-    padding: "14px 16px",
+    background: "#fff",
+    borderRadius: 16,
+    padding: "12px 16px",
     marginBottom: 16,
-    color: "#fff",
+    borderLeft: "4px solid #2554ff",
+    boxShadow: "0 2px 8px rgba(37, 84, 255, 0.08)",
+    border: "1px solid rgba(37, 84, 255, 0.15)",
+    borderLeftWidth: 4,
+    borderLeftColor: "#2554ff",
   },
   upcomingLabel: {
     fontSize: 10,
     fontWeight: 800,
     letterSpacing: 0.5,
-    opacity: 0.75,
-    marginBottom: 8,
+    color: "#2554ff",
+    marginBottom: 6,
     textTransform: "uppercase",
   },
   upcomingRow: {
     display: "flex",
     alignItems: "center",
     gap: 8,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   upcomingTime: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 900,
     letterSpacing: -0.5,
+    color: "#1f2937",
   },
   upcomingFlag: {
-    fontSize: 18,
+    fontSize: 16,
+    color: "#374151",
   },
   upcomingIndicator: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: 800,
     lineHeight: 1.3,
-    marginBottom: 8,
+    color: "#1f2937",
+    marginBottom: 6,
   },
   upcomingValues: {
     display: "flex",
@@ -486,7 +499,7 @@ const styles: Record<string, CSSProperties> = {
   },
   upcomingValueItem: {
     fontSize: 12,
-    opacity: 0.82,
+    color: "#6b7280",
   },
   filterSection: {
     marginBottom: 16,
@@ -580,7 +593,12 @@ const styles: Record<string, CSSProperties> = {
     display: "flex",
     alignItems: "center",
     gap: 8,
-    marginBottom: 4,
+    marginBottom: 6,
+  },
+  eventBody: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
   },
   eventTime: {
     fontSize: 13,
@@ -595,28 +613,31 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 700,
   },
   eventIndicator: {
-    fontSize: 14,
-    fontWeight: 800,
+    flex: "1 1 0",
+    minWidth: 0,
+    fontSize: 13,
+    fontWeight: 700,
     color: "#1f2937",
-    lineHeight: 1.3,
-    marginBottom: 8,
+    lineHeight: 1.4,
   },
   valueRow: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: 6,
+    display: "flex",
+    gap: 12,
+    flexShrink: 0,
   },
   valueCell: {
     display: "flex",
-    flexDirection: "column",
-    gap: 2,
+    flexDirection: "column" as const,
+    alignItems: "flex-end",
+    gap: 1,
+    width: 48,
   },
   valueLabel: {
     fontSize: 9,
     fontWeight: 800,
     color: "#9ca3af",
     letterSpacing: 0.3,
-    textTransform: "uppercase",
+    textTransform: "uppercase" as const,
   },
   valueNumber: {
     fontSize: 13,
@@ -624,9 +645,15 @@ const styles: Record<string, CSSProperties> = {
     color: "#374151",
     fontVariantNumeric: "tabular-nums",
   },
+  valuePrevSub: {
+    fontSize: 10,
+    color: "#9ca3af",
+    fontVariantNumeric: "tabular-nums",
+  },
+
   resultNumber: {
     fontWeight: 800,
-    color: "#374151",
+    color: "#1f2937",
   },
   resultPending: {
     color: "#d1d5db",
