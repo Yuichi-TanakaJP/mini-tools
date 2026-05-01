@@ -416,16 +416,17 @@ export default function ToolClient({ data }: { data: MarketRankingPageData }) {
               <div style={styles.section}>
                 <div style={styles.sectionLabel}>表示月</div>
                 {(() => {
+                  // availableMonths は降順（新しい月が先頭）のため idx-1 が未来、idx+1 が過去
                   const idx = availableMonths.indexOf(data.selectedMonth);
-                  const hasPrev = idx > 0;
-                  const hasNext = idx < availableMonths.length - 1;
+                  const hasPast = idx < availableMonths.length - 1;
+                  const hasFuture = idx > 0;
                   return (
                     <div style={styles.monthNav}>
                       <button
                         type="button"
-                        disabled={!hasPrev}
-                        onClick={() => hasPrev && replaceQuery({ month: availableMonths[idx - 1] })}
-                        style={hasPrev ? styles.monthNavArrow : styles.monthNavArrowDisabled}
+                        disabled={!hasPast}
+                        onClick={() => hasPast && replaceQuery({ month: availableMonths[idx + 1] })}
+                        style={hasPast ? styles.monthNavArrow : styles.monthNavArrowDisabled}
                         aria-label="前の月"
                       >
                         ←
@@ -433,9 +434,9 @@ export default function ToolClient({ data }: { data: MarketRankingPageData }) {
                       <span style={styles.monthNavLabel}>{formatMonth(data.selectedMonth)}</span>
                       <button
                         type="button"
-                        disabled={!hasNext}
-                        onClick={() => hasNext && replaceQuery({ month: availableMonths[idx + 1] })}
-                        style={hasNext ? styles.monthNavArrow : styles.monthNavArrowDisabled}
+                        disabled={!hasFuture}
+                        onClick={() => hasFuture && replaceQuery({ month: availableMonths[idx - 1] })}
+                        style={hasFuture ? styles.monthNavArrow : styles.monthNavArrowDisabled}
                         aria-label="次の月"
                       >
                         →
