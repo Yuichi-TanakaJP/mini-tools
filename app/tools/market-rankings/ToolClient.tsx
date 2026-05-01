@@ -290,6 +290,55 @@ function RankingTable({
   );
 }
 
+function MonthNav({
+  months,
+  selected,
+  onChange,
+}: {
+  months: string[];
+  selected: string;
+  onChange: (month: string) => void;
+}) {
+  // months は降順（新しい月が先頭）のため idx-1 が未来、idx+1 が過去
+  const idx = months.indexOf(selected);
+  if (idx === -1) return null;
+  const hasPast = idx < months.length - 1;
+  const hasFuture = idx > 0;
+  const arrowBase: React.CSSProperties = {
+    width: 32,
+    height: 32,
+    borderRadius: 999,
+    fontSize: 15,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  };
+  return (
+    <div style={styles.monthNav}>
+      <button
+        type="button"
+        disabled={!hasPast}
+        onClick={() => onChange(months[idx + 1])}
+        style={hasPast ? { ...arrowBase, ...styles.monthNavArrow } : { ...arrowBase, ...styles.monthNavArrowDisabled }}
+        aria-label="前の月"
+      >
+        ←
+      </button>
+      <span style={styles.monthNavLabel}>{formatMonth(selected)}</span>
+      <button
+        type="button"
+        disabled={!hasFuture}
+        onClick={() => onChange(months[idx - 1])}
+        style={hasFuture ? { ...arrowBase, ...styles.monthNavArrow } : { ...arrowBase, ...styles.monthNavArrowDisabled }}
+        aria-label="次の月"
+      >
+        →
+      </button>
+    </div>
+  );
+}
+
 export default function ToolClient({ data }: { data: MarketRankingPageData }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -415,35 +464,11 @@ export default function ToolClient({ data }: { data: MarketRankingPageData }) {
 
               <div style={styles.section}>
                 <div style={styles.sectionLabel}>表示月</div>
-                {(() => {
-                  // availableMonths は降順（新しい月が先頭）のため idx-1 が未来、idx+1 が過去
-                  const idx = availableMonths.indexOf(data.selectedMonth);
-                  const hasPast = idx < availableMonths.length - 1;
-                  const hasFuture = idx > 0;
-                  return (
-                    <div style={styles.monthNav}>
-                      <button
-                        type="button"
-                        disabled={!hasPast}
-                        onClick={() => hasPast && replaceQuery({ month: availableMonths[idx + 1] })}
-                        style={hasPast ? styles.monthNavArrow : styles.monthNavArrowDisabled}
-                        aria-label="前の月"
-                      >
-                        ←
-                      </button>
-                      <span style={styles.monthNavLabel}>{formatMonth(data.selectedMonth)}</span>
-                      <button
-                        type="button"
-                        disabled={!hasFuture}
-                        onClick={() => hasFuture && replaceQuery({ month: availableMonths[idx - 1] })}
-                        style={hasFuture ? styles.monthNavArrow : styles.monthNavArrowDisabled}
-                        aria-label="次の月"
-                      >
-                        →
-                      </button>
-                    </div>
-                  );
-                })()}
+                <MonthNav
+                  months={availableMonths}
+                  selected={data.selectedMonth}
+                  onChange={(month) => replaceQuery({ month })}
+                />
               </div>
 
               <div style={styles.section}>
@@ -672,32 +697,16 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#0f766e",
   },
   monthNavArrow: {
-    width: 32,
-    height: 32,
-    borderRadius: 999,
     border: "1px solid rgba(15,23,42,0.12)",
     background: "#f8fafc",
     color: "#475569",
-    fontSize: 15,
     cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
   },
   monthNavArrowDisabled: {
-    width: 32,
-    height: 32,
-    borderRadius: 999,
     border: "1px solid rgba(15,23,42,0.06)",
     background: "transparent",
     color: "#cbd5e1",
-    fontSize: 15,
     cursor: "default",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
   },
   marketTabs: {
     display: "flex",
