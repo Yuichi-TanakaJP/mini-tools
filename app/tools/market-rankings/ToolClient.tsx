@@ -415,21 +415,34 @@ export default function ToolClient({ data }: { data: MarketRankingPageData }) {
 
               <div style={styles.section}>
                 <div style={styles.sectionLabel}>表示月</div>
-                <div style={styles.monthList}>
-                  {availableMonths.map((month) => {
-                    const active = month === data.selectedMonth;
-                    return (
+                {(() => {
+                  const idx = availableMonths.indexOf(data.selectedMonth);
+                  const hasPrev = idx > 0;
+                  const hasNext = idx < availableMonths.length - 1;
+                  return (
+                    <div style={styles.monthNav}>
                       <button
-                        key={month}
                         type="button"
-                        onClick={() => replaceQuery({ month })}
-                        style={active ? styles.monthButtonActive : styles.monthButton}
+                        disabled={!hasPrev}
+                        onClick={() => hasPrev && replaceQuery({ month: availableMonths[idx - 1] })}
+                        style={hasPrev ? styles.monthNavArrow : styles.monthNavArrowDisabled}
+                        aria-label="前の月"
                       >
-                        {formatMonth(month)}
+                        ←
                       </button>
-                    );
-                  })}
-                </div>
+                      <span style={styles.monthNavLabel}>{formatMonth(data.selectedMonth)}</span>
+                      <button
+                        type="button"
+                        disabled={!hasNext}
+                        onClick={() => hasNext && replaceQuery({ month: availableMonths[idx + 1] })}
+                        style={hasNext ? styles.monthNavArrow : styles.monthNavArrowDisabled}
+                        aria-label="次の月"
+                      >
+                        →
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div style={styles.section}>
@@ -645,30 +658,45 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     color: "#0f766e",
   },
-  monthList: {
+  monthNav: {
     display: "flex",
-    flexWrap: "wrap",
+    alignItems: "center",
     gap: 8,
   },
-  monthButton: {
-    padding: "8px 12px",
+  monthNavLabel: {
+    flex: 1,
+    textAlign: "center" as const,
+    fontSize: 14,
+    fontWeight: 700,
+    color: "#0f766e",
+  },
+  monthNavArrow: {
+    width: 32,
+    height: 32,
     borderRadius: 999,
-    border: "1px solid rgba(15,23,42,0.08)",
+    border: "1px solid rgba(15,23,42,0.12)",
     background: "#f8fafc",
     color: "#475569",
-    fontSize: 13,
-    fontWeight: 700,
+    fontSize: 15,
     cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
   },
-  monthButtonActive: {
-    padding: "8px 12px",
+  monthNavArrowDisabled: {
+    width: 32,
+    height: 32,
     borderRadius: 999,
-    border: "1.5px solid #0f766e",
-    background: "#ecfeff",
-    color: "#0f766e",
-    fontSize: 13,
-    fontWeight: 800,
+    border: "1px solid rgba(15,23,42,0.06)",
+    background: "transparent",
+    color: "#cbd5e1",
+    fontSize: 15,
     cursor: "default",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
   },
   marketTabs: {
     display: "flex",
