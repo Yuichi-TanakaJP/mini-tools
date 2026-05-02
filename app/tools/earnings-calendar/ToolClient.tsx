@@ -7,7 +7,6 @@ import type {
   EarningsCalendarItem,
   EarningsCalendarMarket,
   EarningsCalendarMarketData,
-  EarningsCalendarManifest,
   EarningsCalendarManifestMonth,
   EarningsCalendarPageData,
 } from "./types";
@@ -437,6 +436,34 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
 
   const [selectedMarket, setSelectedMarket] = useState<EarningsCalendarMarket>(markets[0]?.key ?? "domestic");
   const [marketState, setMarketState] = useState(initialStates);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return null;
+    const results: Array<{
+      date: string;
+      item: EarningsCalendarItem;
+      marketKey: EarningsCalendarMarket;
+      marketLabel: string;
+    }> = [];
+    for (const market of markets) {
+      const mMonths = marketMonths[market.key];
+      for (const m of mMonths) {
+        for (const cell of m.cells) {
+          if (cell.muted) continue;
+          for (const item of cell.items) {
+            if (item.name?.toLowerCase().includes(q) || item.code?.toLowerCase().includes(q)) {
+              results.push({ date: cell.key, item, marketKey: market.key, marketLabel: market.shortLabel });
+              if (results.length >= 60) return results;
+            }
+          }
+        }
+      }
+    }
+    return results;
+  }, [searchQuery, markets, marketMonths]);
+
   const activeMarket = markets.find((market) => market.key === selectedMarket) ?? null;
   const months = activeMarket ? marketMonths[activeMarket.key] : [];
   const activeState = activeMarket ? marketState[activeMarket.key] : null;
@@ -510,6 +537,25 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
     }));
   }
 
+  function jumpToDate(marketKey: EarningsCalendarMarket, dateKey: string) {
+    setSearchQuery("");
+    setSelectedMarket(marketKey);
+    const monthId = dateKey.slice(0, 7);
+    const targetMonths = marketMonths[marketKey];
+    const monthIndex = targetMonths.findIndex((m) => m.id === monthId);
+    if (monthIndex >= 0) {
+      setMarketState((current) => ({
+        ...current,
+        [marketKey]: { monthIndex, selectedKey: dateKey },
+      }));
+    }
+  }
+
+  function formatDateShort(key: string) {
+    const { year, month: mon, day } = parseDateKey(key);
+    return `${year}/${String(mon).padStart(2, "0")}/${String(day).padStart(2, "0")}（${getWeekdayJa(year, mon, day)}）`;
+  }
+
   return (
     <main style={styles.page}>
       <div style={styles.mobileShell}>
@@ -521,7 +567,86 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
           </p>
         </section>
 
-        {markets.length > 1 ? (
+        <section style={styles.searchBar}>
+          <div style={styles.searchInputWrap}>
+            <span style={styles.searchIcon}>🔍</span>
+            <input
+              type="text"
+              placeholder="銘柄名・コードで検索"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={styles.searchInput}
+              aria-label="銘柄検索"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                style={styles.searchClear}
+                onClick={() => setSearchQuery("")}
+                aria-label="検索をクリア"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </section>
+
+        {searchResults !== null ? (
+          <section>
+            <div style={styles.searchResultsHeader}>
+              {searchResults.length === 0 ? (
+                <span style={styles.searchResultsCount}>「{searchQuery.trim()}」に一致する銘柄はありません</span>
+              ) : (
+                <span style={styles.searchResultsCount}>
+                  「{searchQuery.trim()}」の検索結果 {searchResults.length >= 60 ? "60件以上" : `${searchResults.length}件`}
+                </span>
+              )}
+            </div>
+            <div style={styles.itemList}>
+              {searchResults.map(({ date, item, marketKey, marketLabel }, index) => {
+                const yahooUrl = buildYahooFinanceUrl(item, marketKey);
+                return (
+                  <article
+                    key={item.event_id ?? `search-${date}-${item.code}-${index}`}
+                    style={{ ...styles.itemCard, cursor: "pointer" }}
+                    onClick={() => jumpToDate(marketKey, date)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && jumpToDate(marketKey, date)}
+                  >
+                    <div style={styles.itemMain}>
+                      <div style={styles.itemName}>{item.name || item.code}</div>
+                      <div style={styles.itemMetaRow}>
+                        <span>{item.code}</span>
+                        <span style={styles.metaChip}>{marketLabel}</span>
+                        <span>{item.announcement_type}</span>
+                        {yahooUrl ? (
+                          <a
+                            href={yahooUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={styles.financeLink}
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label={`${item.name || item.code}をYahooファイナンスで開く`}
+                          >
+                            Yahoo ↗
+                          </a>
+                        ) : null}
+                      </div>
+                      <div style={styles.searchResultDate}>{formatDateShort(date)}</div>
+                    </div>
+                    <div style={styles.itemTimeBlock}>
+                      <div style={styles.timeLabel}>時刻</div>
+                      <div style={styles.timeValue}>{normalizeTimeLabel(item.time || "--:--")}</div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+
+        {searchResults === null && markets.length > 1 ? (
           <section style={styles.tabRow}>
             {markets.map((market) => {
               const isActive = market.key === selectedMarket;
@@ -543,7 +668,7 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
           </section>
         ) : null}
 
-        <section style={styles.calendarCard}>
+        {searchResults === null ? <><section style={styles.calendarCard}>
           <div style={styles.calendarTop}>
             <button
               type="button"
@@ -689,6 +814,7 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
         </section>
 
         <div style={styles.updatedAt}>データ更新日: {month.updatedAt}</div>
+        </> : null}
       </div>
     </main>
   );
@@ -1052,5 +1178,56 @@ const styles: Record<string, CSSProperties> = {
     textAlign: "center",
     fontSize: 12,
     color: "#6b7280",
+  },
+  searchBar: {
+    marginBottom: 14,
+  },
+  searchInputWrap: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    background: "#fff",
+    borderRadius: 14,
+    padding: "9px 12px",
+    boxShadow: "0 4px 16px rgba(15, 23, 42, 0.06)",
+    border: "1px solid rgba(15, 23, 42, 0.07)",
+  },
+  searchIcon: {
+    fontSize: 14,
+    flexShrink: 0,
+  },
+  searchInput: {
+    flex: 1,
+    border: "none",
+    outline: "none",
+    fontSize: 14,
+    color: "#1f2937",
+    background: "transparent",
+    minWidth: 0,
+  },
+  searchClear: {
+    flexShrink: 0,
+    border: "none",
+    background: "none",
+    cursor: "pointer",
+    color: "#9ca3af",
+    fontSize: 13,
+    padding: "0 2px",
+    lineHeight: 1,
+  },
+  searchResultsHeader: {
+    marginBottom: 10,
+    paddingLeft: 2,
+  },
+  searchResultsCount: {
+    fontSize: 12,
+    color: "#64748b",
+    fontWeight: 700,
+  },
+  searchResultDate: {
+    marginTop: 4,
+    fontSize: 12,
+    color: "#3146d4",
+    fontWeight: 700,
   },
 };
