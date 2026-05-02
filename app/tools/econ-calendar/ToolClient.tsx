@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import type { CSSProperties } from "react";
-import type { EconCalendarPageData, EconCalendarEvent } from "./types";
+import type { EconCalendarPageData, EconCalendarEvent, EconCalendarWeeklyResponse } from "./types";
 
 type FlatEvent = EconCalendarEvent & { date: string };
+type ViewMode = "week" | "month";
 
 const COUNTRY_FLAGS: Record<string, string> = {
   US: "🇺🇸",
@@ -83,6 +84,9 @@ function formatPublishedAt(iso: string): string {
   }
 }
 
+function weekLabel(weekStart: string, weekEnd: string): string {
+  return `${weekStart.slice(5).replace("-", "/")} 〜 ${weekEnd.slice(5).replace("-", "/")}`;
+}
 
 function ImpactDots({ impact }: { impact: number | null }) {
   const level = impact ?? 0;
@@ -107,20 +111,95 @@ function ImpactDots({ impact }: { impact: number | null }) {
 
 type ImpactFilter = "all" | "3+" | "4+" | "5";
 
+async function fetchWeek(weekStart: string): Promise<EconCalendarWeeklyResponse | null> {
+  try {
+    const res = await fetch(`/api/econ-calendar/${weekStart}`);
+    if (!res.ok) return null;
+    return (await res.json()) as EconCalendarWeeklyResponse;
+  } catch {
+    return null;
+  }
+}
+
 export default function ToolClient({ data }: { data: EconCalendarPageData }) {
-  const { weekly, meta } = data;
-  const events = useMemo<FlatEvent[]>(
-    () => weekly?.calendar.flatMap((day) => day.events.map((e) => ({ ...e, date: day.date }))) ?? [],
-    [weekly]
-  );
+  const { meta, manifest } = data;
+
+  const [viewMode, setViewMode] = useState<ViewMode>("week");
+  const [currentWeekly, setCurrentWeekly] = useState<EconCalendarWeeklyResponse | null>(data.weekly);
+  const [weekLoading, setWeekLoading] = useState(false);
+
+  // 月表示: 選択月 "YYYY-MM" と月内の全イベント（複数週をマージ）
+  const availableMonths = useMemo(() => {
+    if (!manifest) return [];
+    const months = Array.from(new Set(manifest.weeks.map((w) => w.slice(0, 7)))).sort().reverse();
+    return months;
+  }, [manifest]);
+
+  const currentMonthDefault = useMemo(() => {
+    return availableMonths[0] ?? new Date().toISOString().slice(0, 7);
+  }, [availableMonths]);
+
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => currentMonthDefault);
+  const [monthData, setMonthData] = useState<Map<string, EconCalendarWeeklyResponse>>(new Map());
+  const [monthLoading, setMonthLoading] = useState(false);
 
   const today = useMemo(() => todayJst(), []);
 
+  // 週表示フィルター
   const [impactFilter, setImpactFilter] = useState<ImpactFilter>("all");
-  const [selectedCountries, setSelectedCountries] = useState<Set<string>>(
-    new Set(),
-  );
+  const [selectedCountries, setSelectedCountries] = useState<Set<string>>(new Set());
   const [todayOnly, setTodayOnly] = useState(false);
+
+  // 週ナビゲーション
+  const currentWeekStart = currentWeekly?.week_start ?? null;
+  const weekIndex = useMemo(() => {
+    if (!manifest || !currentWeekStart) return -1;
+    return manifest.weeks.indexOf(currentWeekStart);
+  }, [manifest, currentWeekStart]);
+
+  const prevWeekStart = manifest && weekIndex >= 0 && weekIndex < manifest.weeks.length - 1
+    ? manifest.weeks[weekIndex + 1]
+    : null;
+  const nextWeekStart = manifest && weekIndex > 0
+    ? manifest.weeks[weekIndex - 1]
+    : null;
+
+  const navigateWeek = useCallback(async (weekStart: string) => {
+    setWeekLoading(true);
+    const result = await fetchWeek(weekStart);
+    if (result) setCurrentWeekly(result);
+    setWeekLoading(false);
+  }, []);
+
+  // 月表示: 選択月が変わったら対象週を取得
+  const loadMonth = useCallback(async (month: string) => {
+    if (!manifest) return;
+    setMonthLoading(true);
+    const weeksInMonth = manifest.weeks.filter((w) => w.startsWith(month));
+    const toFetch = weeksInMonth.filter((w) => !monthData.has(w));
+    if (toFetch.length > 0) {
+      const results = await Promise.all(toFetch.map(fetchWeek));
+      setMonthData((prev) => {
+        const next = new Map(prev);
+        toFetch.forEach((w, i) => {
+          if (results[i]) next.set(w, results[i]!);
+        });
+        return next;
+      });
+    }
+    setMonthLoading(false);
+  }, [manifest, monthData]);
+
+  const handleMonthChange = useCallback((month: string) => {
+    setSelectedMonth(month);
+    loadMonth(month);
+  }, [loadMonth]);
+
+  // 週表示: イベント集計
+  const events = useMemo<FlatEvent[]>(
+    () => currentWeekly?.calendar.flatMap((day) => day.events.map((e) => ({ ...e, date: day.date }))) ?? [],
+    [currentWeekly]
+  );
 
   const allCountries = useMemo(() => {
     return Array.from(
@@ -164,6 +243,35 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
     );
   }, [events, today]);
 
+  // 月表示: 全イベントを日付順に集計
+  const monthEvents = useMemo<FlatEvent[]>(() => {
+    if (!manifest) return [];
+    const weeksInMonth = manifest.weeks.filter((w) => w.startsWith(selectedMonth));
+    const all: FlatEvent[] = [];
+    for (const w of weeksInMonth) {
+      const wd = monthData.get(w);
+      if (!wd) continue;
+      for (const day of wd.calendar) {
+        if (!day.date.startsWith(selectedMonth)) continue;
+        for (const e of day.events) {
+          all.push({ ...e, date: day.date });
+        }
+      }
+    }
+    const pad = (t: string | null) => (t ?? "").replace(/^(\d):/, "0$1:");
+    return all.sort((a, b) => a.date.localeCompare(b.date) || pad(a.time).localeCompare(pad(b.time)));
+  }, [manifest, selectedMonth, monthData]);
+
+  const monthGroupedByDate = useMemo(() => {
+    const groups = new Map<string, FlatEvent[]>();
+    for (const e of monthEvents) {
+      const existing = groups.get(e.date) ?? [];
+      existing.push(e);
+      groups.set(e.date, existing);
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [monthEvents]);
+
   function toggleCountry(tag: string) {
     setSelectedCountries((prev) => {
       const next = new Set(prev);
@@ -173,11 +281,10 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
     });
   }
 
-  const weekLabel = weekly
-    ? `${weekly.week_start.slice(5).replace("-", "/")} 〜 ${weekly.week_end.slice(5).replace("-", "/")}`
-    : "";
-
   const publishedAt = meta?.published_at ?? null;
+  const currentLabel = currentWeekly
+    ? weekLabel(currentWeekly.week_start, currentWeekly.week_end)
+    : "";
 
   return (
     <main style={styles.page}>
@@ -185,201 +292,338 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
         {/* ヒーロー */}
         <section style={styles.heroBlock}>
           <div style={styles.heroEyebrow}>経済指標カレンダー</div>
-          <h1 style={styles.heroTitle}>今週の経済指標</h1>
-          {weekLabel ? <div style={styles.weekLabel}>{weekLabel}</div> : null}
+          <h1 style={styles.heroTitle}>経済指標</h1>
         </section>
 
-        {/* メタバー: 最終更新 + 変更バッジ */}
-        {publishedAt ? (
-          <div style={styles.metaBar}>
-            <span style={styles.metaText}>
-              最終更新: {formatPublishedAt(publishedAt)}
-            </span>
-            {(meta?.diff?.actuals_updated_count ?? 0) > 0 ? (
-              <span style={styles.diffBadge}>
-                前回から {meta!.diff!.actuals_updated_count} 件変更
-              </span>
-            ) : null}
-          </div>
-        ) : null}
+        {/* ビュー切り替えタブ */}
+        <div style={styles.viewTabs}>
+          <button
+            type="button"
+            style={{ ...styles.viewTab, ...(viewMode === "week" ? styles.viewTabActive : {}) }}
+            onClick={() => setViewMode("week")}
+          >
+            週表示
+          </button>
+          <button
+            type="button"
+            style={{ ...styles.viewTab, ...(viewMode === "month" ? styles.viewTabActive : {}) }}
+            onClick={() => {
+              setViewMode("month");
+              if (manifest) loadMonth(selectedMonth);
+            }}
+          >
+            月表示
+          </button>
+        </div>
 
-        {/* 次の注目指標バナー */}
-        {nextUpcoming ? (
-          <section style={styles.upcomingCard}>
-            <div style={styles.upcomingLabel}>次の注目指標</div>
-            <div style={styles.upcomingRow}>
-              <span style={styles.upcomingTime}>{nextUpcoming.time}</span>
-              <span style={styles.upcomingFlag}>
-                {COUNTRY_FLAGS[nextUpcoming.country_tag ?? ""] ?? nextUpcoming.country_tag}
+        {/* ======= 週表示 ======= */}
+        {viewMode === "week" && (
+          <>
+            {/* 週ナビゲーター */}
+            <div style={styles.weekNav}>
+              <button
+                type="button"
+                style={{ ...styles.weekNavBtn, ...(prevWeekStart ? {} : styles.weekNavBtnDisabled) }}
+                disabled={!prevWeekStart || weekLoading}
+                onClick={() => prevWeekStart && navigateWeek(prevWeekStart)}
+              >
+                ‹ 前の週
+              </button>
+              <span style={styles.weekNavLabel}>
+                {weekLoading ? "読み込み中…" : currentLabel}
               </span>
-              <ImpactDots impact={nextUpcoming.impact} />
+              <button
+                type="button"
+                style={{ ...styles.weekNavBtn, ...(nextWeekStart ? {} : styles.weekNavBtnDisabled) }}
+                disabled={!nextWeekStart || weekLoading}
+                onClick={() => nextWeekStart && navigateWeek(nextWeekStart)}
+              >
+                次の週 ›
+              </button>
             </div>
-            <div style={styles.upcomingIndicator}>
-              {nextUpcoming.indicator}
-            </div>
-            {(nextUpcoming.previous || nextUpcoming.forecast) ? (
-              <div style={styles.upcomingValues}>
-                {nextUpcoming.previous ? (
-                  <span style={styles.upcomingValueItem}>
-                    前回 <strong>{nextUpcoming.previous}</strong>
-                  </span>
-                ) : null}
-                {nextUpcoming.forecast ? (
-                  <span style={styles.upcomingValueItem}>
-                    予想 <strong>{nextUpcoming.forecast}</strong>
+
+            {/* メタバー */}
+            {publishedAt ? (
+              <div style={styles.metaBar}>
+                <span style={styles.metaText}>
+                  最終更新: {formatPublishedAt(publishedAt)}
+                </span>
+                {(meta?.diff?.actuals_updated_count ?? 0) > 0 ? (
+                  <span style={styles.diffBadge}>
+                    前回から {meta!.diff!.actuals_updated_count} 件変更
                   </span>
                 ) : null}
               </div>
             ) : null}
-          </section>
-        ) : null}
 
-        {/* フィルター */}
-        {events.length > 0 ? (
-          <section style={styles.filterSection}>
-            <div style={styles.filterRow}>
-              <span style={styles.filterLabel}>重要度</span>
-              <div style={styles.chips}>
-                {(["all", "3+", "4+", "5"] as ImpactFilter[]).map((f) => (
-                  <button
-                    key={f}
-                    type="button"
-                    style={{
-                      ...styles.chip,
-                      ...(impactFilter === f ? styles.chipActive : {}),
-                    }}
-                    onClick={() => setImpactFilter(f)}
-                  >
-                    {f === "all" ? "すべて" : f === "5" ? "最重要" : `${f} 以上`}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  style={{
-                    ...styles.chip,
-                    ...(todayOnly ? styles.chipToday : {}),
-                  }}
-                  onClick={() => setTodayOnly((v) => !v)}
-                >
-                  今日のみ
-                </button>
-              </div>
-            </div>
+            {/* 次の注目指標バナー */}
+            {nextUpcoming ? (
+              <section style={styles.upcomingCard}>
+                <div style={styles.upcomingLabel}>次の注目指標</div>
+                <div style={styles.upcomingRow}>
+                  <span style={styles.upcomingTime}>{nextUpcoming.time}</span>
+                  <span style={styles.upcomingFlag}>
+                    {COUNTRY_FLAGS[nextUpcoming.country_tag ?? ""] ?? nextUpcoming.country_tag}
+                  </span>
+                  <ImpactDots impact={nextUpcoming.impact} />
+                </div>
+                <div style={styles.upcomingIndicator}>
+                  {nextUpcoming.indicator}
+                </div>
+                {(nextUpcoming.previous || nextUpcoming.forecast) ? (
+                  <div style={styles.upcomingValues}>
+                    {nextUpcoming.previous ? (
+                      <span style={styles.upcomingValueItem}>
+                        前回 <strong>{nextUpcoming.previous}</strong>
+                      </span>
+                    ) : null}
+                    {nextUpcoming.forecast ? (
+                      <span style={styles.upcomingValueItem}>
+                        予想 <strong>{nextUpcoming.forecast}</strong>
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
 
-            {allCountries.length > 1 ? (
-              <div style={styles.filterRow}>
-                <span style={styles.filterLabel}>国</span>
-                <div style={styles.chips}>
-                  {allCountries.map((tag) => (
+            {/* フィルター */}
+            {events.length > 0 ? (
+              <section style={styles.filterSection}>
+                <div style={styles.filterRow}>
+                  <span style={styles.filterLabel}>重要度</span>
+                  <div style={styles.chips}>
+                    {(["all", "3+", "4+", "5"] as ImpactFilter[]).map((f) => (
+                      <button
+                        key={f}
+                        type="button"
+                        style={{
+                          ...styles.chip,
+                          ...(impactFilter === f ? styles.chipActive : {}),
+                        }}
+                        onClick={() => setImpactFilter(f)}
+                      >
+                        {f === "all" ? "すべて" : f === "5" ? "最重要" : `${f} 以上`}
+                      </button>
+                    ))}
                     <button
-                      key={tag}
                       type="button"
                       style={{
                         ...styles.chip,
-                        ...(selectedCountries.has(tag) ? styles.chipActive : {}),
+                        ...(todayOnly ? styles.chipToday : {}),
                       }}
-                      onClick={() => toggleCountry(tag)}
+                      onClick={() => setTodayOnly((v) => !v)}
                     >
-                      {COUNTRY_FLAGS[tag] ?? tag}
+                      今日のみ
                     </button>
-                  ))}
+                  </div>
                 </div>
-              </div>
+
+                {allCountries.length > 1 ? (
+                  <div style={styles.filterRow}>
+                    <span style={styles.filterLabel}>国</span>
+                    <div style={styles.chips}>
+                      {allCountries.map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          style={{
+                            ...styles.chip,
+                            ...(selectedCountries.has(tag) ? styles.chipActive : {}),
+                          }}
+                          onClick={() => toggleCountry(tag)}
+                        >
+                          {COUNTRY_FLAGS[tag] ?? tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </section>
             ) : null}
-          </section>
-        ) : null}
 
-        {/* イベントリスト */}
-        {groupedByDate.length === 0 ? (
-          <article style={styles.emptyCard}>
-            <div style={styles.emptyTitle}>
-              {weekly
-                ? "条件に合うイベントはありません"
-                : "データを取得できませんでした"}
-            </div>
-            <div style={styles.emptyNote}>
-              {weekly
-                ? "フィルターを変えてみてください"
-                : "MARKET_INFO_API_BASE_URL が設定されると経済指標データが表示されます"}
-            </div>
-          </article>
-        ) : (
-          groupedByDate.map(([date, dayEvents]) => {
-            const isToday = date === today;
-            return (
-              <section key={date} style={styles.daySection}>
-                <div
+            {/* イベントリスト */}
+            {groupedByDate.length === 0 ? (
+              <article style={styles.emptyCard}>
+                <div style={styles.emptyTitle}>
+                  {currentWeekly
+                    ? "条件に合うイベントはありません"
+                    : "データを取得できませんでした"}
+                </div>
+                <div style={styles.emptyNote}>
+                  {currentWeekly
+                    ? "フィルターを変えてみてください"
+                    : "MARKET_INFO_API_BASE_URL が設定されると経済指標データが表示されます"}
+                </div>
+              </article>
+            ) : (
+              groupedByDate.map(([date, dayEvents]) => {
+                const isToday = date === today;
+                return (
+                  <section key={date} style={styles.daySection}>
+                    <div
+                      style={{
+                        ...styles.dayHeader,
+                        ...(isToday ? styles.dayHeaderToday : {}),
+                      }}
+                    >
+                      <span>{formatDateLabel(date)}</span>
+                      {isToday ? (
+                        <span style={styles.todayBadge}>今日</span>
+                      ) : null}
+                    </div>
+
+                    <div style={styles.eventList}>
+                      {dayEvents.map((event, idx) => {
+                        const hasResult = !!event.result;
+                        const flag = COUNTRY_FLAGS[event.country_tag] ?? "";
+                        const { main: prevMain, revised: prevRevised } = parsePrevious(event.previous);
+
+                        return (
+                          <article
+                            key={`${date}-${event.time}-${event.indicator}-${idx}`}
+                            style={{
+                              ...styles.eventCard,
+                              ...(hasResult ? styles.eventCardDone : {}),
+                            }}
+                          >
+                            <div style={styles.eventMeta}>
+                              <span style={styles.eventTime}>{event.time || "—"}</span>
+                              <span style={styles.eventFlag} title={event.country ?? ""}>
+                                {flag || event.country_tag}
+                              </span>
+                              <ImpactDots impact={event.impact} />
+                            </div>
+
+                            <div style={styles.eventBody}>
+                              <div style={styles.eventIndicator}>{event.indicator}</div>
+                              <div style={styles.valueRow}>
+                                <div style={styles.valueCell}>
+                                  <span style={styles.valueLabel}>前回</span>
+                                  <span style={styles.valueNumber}>{prevMain}</span>
+                                  {prevRevised ? (
+                                    <span style={styles.valuePrevSub}>({prevRevised})</span>
+                                  ) : null}
+                                </div>
+                                <div style={styles.valueCell}>
+                                  <span style={styles.valueLabel}>予想</span>
+                                  <span style={styles.valueNumber}>{event.forecast ?? "—"}</span>
+                                </div>
+                                <div style={styles.valueCell}>
+                                  <span style={styles.valueLabel}>結果</span>
+                                  <span style={{
+                                    ...styles.valueNumber,
+                                    ...(hasResult ? styles.resultNumber : styles.resultPending),
+                                  }}>
+                                    {hasResult ? event.result : "—"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })
+            )}
+          </>
+        )}
+
+        {/* ======= 月表示 ======= */}
+        {viewMode === "month" && (
+          <>
+            {/* 月セレクター */}
+            <div style={styles.monthNav}>
+              {availableMonths.map((m) => (
+                <button
+                  key={m}
+                  type="button"
                   style={{
-                    ...styles.dayHeader,
-                    ...(isToday ? styles.dayHeaderToday : {}),
+                    ...styles.monthTab,
+                    ...(selectedMonth === m ? styles.monthTabActive : {}),
                   }}
+                  onClick={() => handleMonthChange(m)}
                 >
-                  <span>{formatDateLabel(date)}</span>
-                  {isToday ? (
-                    <span style={styles.todayBadge}>今日</span>
-                  ) : null}
+                  {m.slice(0, 4)}年{String(Number(m.slice(5, 7)))}月
+                </button>
+              ))}
+            </div>
+
+            {monthLoading ? (
+              <div style={styles.loadingText}>読み込み中…</div>
+            ) : monthGroupedByDate.length === 0 ? (
+              <article style={styles.emptyCard}>
+                <div style={styles.emptyTitle}>データがありません</div>
+                <div style={styles.emptyNote}>
+                  {manifest ? "この月のデータはまだ発行されていません" : "APIが設定されていません"}
+                </div>
+              </article>
+            ) : (
+              <div style={styles.monthTable}>
+                {/* ヘッダー */}
+                <div style={styles.monthTableHeader}>
+                  <div style={{ ...styles.monthCol, ...styles.monthColDate }}>日付</div>
+                  <div style={{ ...styles.monthCol, ...styles.monthColTime }}>時刻</div>
+                  <div style={{ ...styles.monthCol, ...styles.monthColFlag }}>国</div>
+                  <div style={{ ...styles.monthCol, ...styles.monthColImp }}>重要</div>
+                  <div style={{ ...styles.monthCol, flex: "1 1 0", minWidth: 0 }}>指標</div>
+                  <div style={{ ...styles.monthCol, ...styles.monthColVal }}>前回</div>
+                  <div style={{ ...styles.monthCol, ...styles.monthColVal }}>予想</div>
+                  <div style={{ ...styles.monthCol, ...styles.monthColVal }}>結果</div>
                 </div>
 
-                <div style={styles.eventList}>
-                  {dayEvents.map((event, idx) => {
+                {monthGroupedByDate.map(([date, dayEvents]) => {
+                  const isToday = date === today;
+                  return dayEvents.map((event, idx) => {
                     const hasResult = !!event.result;
                     const flag = COUNTRY_FLAGS[event.country_tag] ?? "";
-                    const { main: prevMain, revised: prevRevised } = parsePrevious(event.previous);
-
+                    const { main: prevMain } = parsePrevious(event.previous);
                     return (
-                      <article
+                      <div
                         key={`${date}-${event.time}-${event.indicator}-${idx}`}
                         style={{
-                          ...styles.eventCard,
-                          ...(hasResult ? styles.eventCardDone : {}),
+                          ...styles.monthTableRow,
+                          ...(isToday ? styles.monthTableRowToday : {}),
+                          ...(hasResult ? styles.monthTableRowDone : {}),
                         }}
                       >
-                        {/* 上段: 時刻・国・重要度 */}
-                        <div style={styles.eventMeta}>
-                          <span style={styles.eventTime}>
-                            {event.time || "—"}
-                          </span>
-                          <span style={styles.eventFlag} title={event.country ?? ""}>
-                            {flag || event.country_tag}
-                          </span>
+                        <div style={{ ...styles.monthCol, ...styles.monthColDate }}>
+                          {idx === 0 ? (
+                            <span style={isToday ? styles.monthDateToday : styles.monthDate}>
+                              {formatDateLabel(date)}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div style={{ ...styles.monthCol, ...styles.monthColTime }}>
+                          {event.time || "—"}
+                        </div>
+                        <div style={{ ...styles.monthCol, ...styles.monthColFlag }}>
+                          {flag || event.country_tag}
+                        </div>
+                        <div style={{ ...styles.monthCol, ...styles.monthColImp }}>
                           <ImpactDots impact={event.impact} />
                         </div>
-
-                        {/* 下段: 指標名（左・縦中央）＋ 前回・予想・結果（右・固定幅） */}
-                        <div style={styles.eventBody}>
-                          <div style={styles.eventIndicator}>
-                            {event.indicator}
-                          </div>
-                          <div style={styles.valueRow}>
-                            <div style={styles.valueCell}>
-                              <span style={styles.valueLabel}>前回</span>
-                              <span style={styles.valueNumber}>{prevMain}</span>
-                              {prevRevised ? (
-                                <span style={styles.valuePrevSub}>({prevRevised})</span>
-                              ) : null}
-                            </div>
-                            <div style={styles.valueCell}>
-                              <span style={styles.valueLabel}>予想</span>
-                              <span style={styles.valueNumber}>{event.forecast ?? "—"}</span>
-                            </div>
-                            <div style={styles.valueCell}>
-                              <span style={styles.valueLabel}>結果</span>
-                              <span style={{
-                                ...styles.valueNumber,
-                                ...(hasResult ? styles.resultNumber : styles.resultPending),
-                              }}>
-                                {hasResult ? event.result : "—"}
-                              </span>
-                            </div>
-                          </div>
+                        <div style={{ ...styles.monthCol, flex: "1 1 0", minWidth: 0, fontSize: 12, fontWeight: 600, color: "#1f2937" }}>
+                          {event.indicator}
                         </div>
-                      </article>
+                        <div style={{ ...styles.monthCol, ...styles.monthColVal }}>{prevMain}</div>
+                        <div style={{ ...styles.monthCol, ...styles.monthColVal }}>{event.forecast ?? "—"}</div>
+                        <div style={{
+                          ...styles.monthCol,
+                          ...styles.monthColVal,
+                          ...(hasResult ? styles.resultNumber : styles.resultPending),
+                        }}>
+                          {hasResult ? event.result : "—"}
+                        </div>
+                      </div>
                     );
-                  })}
-                </div>
-              </section>
-            );
-          })
+                  });
+                })}
+              </div>
+            )}
+          </>
         )}
 
         <div style={styles.footerNote}>
@@ -399,7 +643,7 @@ const styles: Record<string, CSSProperties> = {
   },
   shell: {
     width: "100%",
-    maxWidth: 580,
+    maxWidth: 680,
     margin: "0 auto",
   },
   heroBlock: {
@@ -424,10 +668,62 @@ const styles: Record<string, CSSProperties> = {
     letterSpacing: -0.4,
     color: "#1f2937",
   },
-  weekLabel: {
-    fontSize: 13,
+  viewTabs: {
+    display: "flex",
+    gap: 4,
+    marginBottom: 16,
+    borderBottom: "2px solid rgba(15,23,42,0.07)",
+    paddingBottom: 0,
+  },
+  viewTab: {
+    padding: "8px 18px",
+    borderRadius: "8px 8px 0 0",
+    border: "none",
+    background: "transparent",
     color: "#6b7280",
-    fontWeight: 600,
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: "pointer",
+    borderBottom: "2px solid transparent",
+    marginBottom: -2,
+  },
+  viewTabActive: {
+    color: "#2554ff",
+    borderBottomColor: "#2554ff",
+    background: "rgba(37,84,255,0.04)",
+  },
+  weekNav: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 12,
+    padding: "10px 14px",
+    background: "#fff",
+    borderRadius: 12,
+    boxShadow: "0 1px 4px rgba(15,23,42,0.07)",
+  },
+  weekNavBtn: {
+    padding: "5px 12px",
+    borderRadius: 8,
+    border: "1px solid rgba(15,23,42,0.1)",
+    background: "#fff",
+    color: "#374151",
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  weekNavBtnDisabled: {
+    color: "#d1d5db",
+    cursor: "default",
+    borderColor: "rgba(15,23,42,0.04)",
+  },
+  weekNavLabel: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#374151",
+    textAlign: "center" as const,
+    flex: 1,
   },
   metaBar: {
     display: "flex",
@@ -455,11 +751,10 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: 16,
     padding: "12px 16px",
     marginBottom: 16,
-    borderLeft: "4px solid #2554ff",
-    boxShadow: "0 2px 8px rgba(37, 84, 255, 0.08)",
     border: "1px solid rgba(37, 84, 255, 0.15)",
     borderLeftWidth: 4,
     borderLeftColor: "#2554ff",
+    boxShadow: "0 2px 8px rgba(37, 84, 255, 0.08)",
   },
   upcomingLabel: {
     fontSize: 10,
@@ -653,7 +948,6 @@ const styles: Record<string, CSSProperties> = {
     color: "#9ca3af",
     fontVariantNumeric: "tabular-nums",
   },
-
   resultNumber: {
     fontWeight: 800,
     color: "#1f2937",
@@ -684,5 +978,103 @@ const styles: Record<string, CSSProperties> = {
     textAlign: "center",
     fontSize: 11,
     color: "#9ca3af",
+  },
+
+  // 月表示
+  monthNav: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: 16,
+  },
+  monthTab: {
+    padding: "5px 12px",
+    borderRadius: 999,
+    border: "1px solid rgba(15,23,42,0.1)",
+    background: "#fff",
+    color: "#374151",
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  monthTabActive: {
+    background: "#eef2ff",
+    border: "1px solid rgba(37,84,255,0.22)",
+    color: "#2554ff",
+  },
+  loadingText: {
+    textAlign: "center",
+    padding: "40px 0",
+    fontSize: 13,
+    color: "#9ca3af",
+  },
+  monthTable: {
+    background: "#fff",
+    borderRadius: 16,
+    overflow: "hidden",
+    boxShadow: "0 2px 8px rgba(15,23,42,0.05)",
+    border: "1px solid rgba(15,23,42,0.06)",
+  },
+  monthTableHeader: {
+    display: "flex",
+    alignItems: "center",
+    padding: "8px 12px",
+    background: "#f8fafc",
+    borderBottom: "1px solid rgba(15,23,42,0.08)",
+    gap: 8,
+    fontSize: 10,
+    fontWeight: 800,
+    color: "#9ca3af",
+    letterSpacing: 0.3,
+    textTransform: "uppercase" as const,
+  },
+  monthTableRow: {
+    display: "flex",
+    alignItems: "center",
+    padding: "7px 12px",
+    gap: 8,
+    borderBottom: "1px solid rgba(15,23,42,0.04)",
+    fontSize: 12,
+    color: "#374151",
+  },
+  monthTableRowToday: {
+    background: "rgba(37,84,255,0.03)",
+  },
+  monthTableRowDone: {
+    opacity: 0.7,
+  },
+  monthCol: {
+    flexShrink: 0,
+    fontVariantNumeric: "tabular-nums",
+  },
+  monthColDate: {
+    width: 110,
+  },
+  monthColTime: {
+    width: 52,
+    fontWeight: 700,
+  },
+  monthColFlag: {
+    width: 26,
+    textAlign: "center" as const,
+  },
+  monthColImp: {
+    width: 52,
+  },
+  monthColVal: {
+    width: 52,
+    textAlign: "right" as const,
+    fontWeight: 600,
+    color: "#374151",
+  },
+  monthDate: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#6b7280",
+  },
+  monthDateToday: {
+    fontSize: 11,
+    fontWeight: 800,
+    color: "#2554ff",
   },
 };
