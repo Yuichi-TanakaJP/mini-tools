@@ -1,3 +1,7 @@
+export type EdinetManifest = {
+  dates: string[];
+};
+
 export type EdinetDocItem = {
   doc_id: string;
   submit_datetime: string;

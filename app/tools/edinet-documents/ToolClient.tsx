@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { EdinetDocumentListResponse, EdinetDocItem } from "./types";
+import { useRouter } from "next/navigation";
+import type { EdinetDocumentListResponse, EdinetDocItem, EdinetManifest } from "./types";
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   "020": "有価証券届出書",
@@ -53,6 +54,12 @@ function formatDate(dateStr: string): string {
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+function formatAsOfDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const DOW = ["日", "月", "火", "水", "木", "金", "土"];
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}（${DOW[d.getDay()]}）`;
+}
 
 function DocRow({ item, muted }: { item: EdinetDocItem; muted: boolean }) {
   const edinetUrl = `https://disclosure2.edinet-fsa.go.jp/WZEK0040.aspx?${item.doc_id},,`;
@@ -168,18 +175,37 @@ function DocRow({ item, muted }: { item: EdinetDocItem; muted: boolean }) {
   );
 }
 
-export default function ToolClient({ data }: { data: EdinetDocumentListResponse }) {
+export default function ToolClient({
+  data,
+  manifest,
+  currentDate,
+}: {
+  data: EdinetDocumentListResponse | null;
+  manifest: EdinetManifest | null;
+  currentDate?: string;
+}) {
+  const router = useRouter();
   const [secCodeOnly, setSecCodeOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [docTypeFilter, setDocTypeFilter] = useState("all");
 
+  const dates = manifest?.dates ?? [];
+  const displayDate = data?.as_of_date ?? currentDate ?? "";
+  const currentIdx = dates.indexOf(displayDate);
+  const prevDate = currentIdx > 0 ? dates[currentIdx - 1] : null;
+  const nextDate = currentIdx < dates.length - 1 ? dates[currentIdx + 1] : null;
+
+  const navigate = (date: string) => {
+    router.push(`/tools/edinet-documents?date=${date}`);
+  };
+
   const docTypeCounts = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const item of data.items) {
+    for (const item of data?.items ?? []) {
       counts.set(item.doc_type_code, (counts.get(item.doc_type_code) ?? 0) + 1);
     }
     return counts;
-  }, [data.items]);
+  }, [data?.items]);
 
   const topDocTypes = useMemo(() => {
     return [...docTypeCounts.entries()]
@@ -189,7 +215,7 @@ export default function ToolClient({ data }: { data: EdinetDocumentListResponse 
   }, [docTypeCounts]);
 
   const filteredItems = useMemo(() => {
-    return data.items.filter((item) => {
+    return (data?.items ?? []).filter((item) => {
       if (secCodeOnly && !item.sec_code) return false;
       if (docTypeFilter !== "all" && item.doc_type_code !== docTypeFilter) return false;
       if (searchQuery) {
@@ -204,12 +230,24 @@ export default function ToolClient({ data }: { data: EdinetDocumentListResponse 
       }
       return true;
     });
-  }, [data.items, secCodeOnly, docTypeFilter, searchQuery]);
+  }, [data?.items, secCodeOnly, docTypeFilter, searchQuery]);
 
   const displayItems = useMemo(
     () => filteredItems.map((item) => ({ item, muted: !secCodeOnly && !item.sec_code })),
     [filteredItems, secCodeOnly],
   );
+
+  const navButtonStyle = (disabled: boolean) => ({
+    padding: "4px 10px",
+    borderRadius: 6,
+    border: "1.5px solid var(--color-border)",
+    background: "transparent",
+    color: disabled ? "var(--color-text-muted)" : "var(--color-text)",
+    fontSize: 16,
+    cursor: disabled ? "default" : "pointer",
+    opacity: disabled ? 0.35 : 1,
+    lineHeight: 1,
+  });
 
   return (
     <main style={{ maxWidth: 960, margin: "0 auto", padding: "0 16px 64px" }}>
@@ -236,23 +274,44 @@ export default function ToolClient({ data }: { data: EdinetDocumentListResponse 
           marginBottom: 14,
           display: "flex",
           alignItems: "center",
-          gap: 16,
+          gap: 12,
           flexWrap: "wrap",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 600 }}>対象日</span>
-          <span style={{ fontSize: 14, fontWeight: 800, color: "var(--color-text)" }}>
-            {data.as_of_date}
+        {/* 日付ナビゲーション */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button
+            type="button"
+            onClick={() => prevDate && navigate(prevDate)}
+            disabled={!prevDate}
+            style={navButtonStyle(!prevDate)}
+            aria-label="前の日"
+          >
+            ←
+          </button>
+          <span style={{ fontSize: 14, fontWeight: 800, color: "var(--color-text)", minWidth: 160, textAlign: "center" }}>
+            {displayDate ? formatAsOfDate(displayDate) : "—"}
           </span>
+          <button
+            type="button"
+            onClick={() => nextDate && navigate(nextDate)}
+            disabled={!nextDate}
+            style={navButtonStyle(!nextDate)}
+            aria-label="次の日"
+          >
+            →
+          </button>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 600 }}>総件数</span>
-          <span style={{ fontSize: 14, fontWeight: 800, color: "var(--color-text)" }}>
-            {data.total_count.toLocaleString()}件
-          </span>
-        </div>
-        {filteredItems.length !== data.total_count && (
+
+        {data && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 600 }}>総件数</span>
+            <span style={{ fontSize: 14, fontWeight: 800, color: "var(--color-text)" }}>
+              {data.total_count.toLocaleString()}件
+            </span>
+          </div>
+        )}
+        {data && filteredItems.length !== data.total_count && (
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 600 }}>表示中</span>
             <span
@@ -269,7 +328,7 @@ export default function ToolClient({ data }: { data: EdinetDocumentListResponse 
       </section>
 
       {/* フィルターバー */}
-      <section
+      {data && <section
         style={{
           background: "var(--color-bg-card)",
           borderRadius: 12,
@@ -371,7 +430,7 @@ export default function ToolClient({ data }: { data: EdinetDocumentListResponse 
             上場企業のみ表示（証券コードあり）
           </span>
         </label>
-      </section>
+      </section>}
 
       {/* テーブル */}
       <section
@@ -382,7 +441,18 @@ export default function ToolClient({ data }: { data: EdinetDocumentListResponse 
           overflow: "hidden",
         }}
       >
-        {filteredItems.length === 0 ? (
+        {!data ? (
+          <div
+            style={{
+              padding: "32px 20px",
+              textAlign: "center",
+              color: "var(--color-text-muted)",
+              fontSize: 14,
+            }}
+          >
+            この日付のデータはありません。
+          </div>
+        ) : filteredItems.length === 0 ? (
           <div
             style={{
               padding: "32px 20px",
@@ -431,8 +501,8 @@ export default function ToolClient({ data }: { data: EdinetDocumentListResponse 
                 </tr>
               </thead>
               <tbody>
-                {displayItems.map(({ item, muted }) => (
-                  <DocRow key={item.doc_id} item={item} muted={muted} />
+                {displayItems.map(({ item, muted }, idx) => (
+                  <DocRow key={`${item.doc_id}-${idx}`} item={item} muted={muted} />
                 ))}
               </tbody>
             </table>
