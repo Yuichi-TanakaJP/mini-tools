@@ -485,8 +485,8 @@ export default function ToolClient({
                 </tr>
               </thead>
               <tbody>
-                {displayItems.map(({ item, muted }) => (
-                  <DocRow key={item.doc_id} item={item} muted={muted} />
+                {displayItems.map(({ item, muted }, idx) => (
+                  <DocRow key={`${item.doc_id}-${idx}`} item={item} muted={muted} />
                 ))}
               </tbody>
             </table>
