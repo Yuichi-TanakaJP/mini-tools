@@ -178,9 +178,11 @@ function DocRow({ item, muted }: { item: EdinetDocItem; muted: boolean }) {
 export default function ToolClient({
   data,
   manifest,
+  currentDate,
 }: {
-  data: EdinetDocumentListResponse;
+  data: EdinetDocumentListResponse | null;
   manifest: EdinetManifest | null;
+  currentDate?: string;
 }) {
   const router = useRouter();
   const [secCodeOnly, setSecCodeOnly] = useState(false);
@@ -188,7 +190,8 @@ export default function ToolClient({
   const [docTypeFilter, setDocTypeFilter] = useState("all");
 
   const dates = manifest?.dates ?? [];
-  const currentIdx = dates.indexOf(data.as_of_date);
+  const displayDate = data?.as_of_date ?? currentDate ?? "";
+  const currentIdx = dates.indexOf(displayDate);
   const prevDate = currentIdx > 0 ? dates[currentIdx - 1] : null;
   const nextDate = currentIdx < dates.length - 1 ? dates[currentIdx + 1] : null;
 
@@ -198,11 +201,11 @@ export default function ToolClient({
 
   const docTypeCounts = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const item of data.items) {
+    for (const item of data?.items ?? []) {
       counts.set(item.doc_type_code, (counts.get(item.doc_type_code) ?? 0) + 1);
     }
     return counts;
-  }, [data.items]);
+  }, [data?.items]);
 
   const topDocTypes = useMemo(() => {
     return [...docTypeCounts.entries()]
@@ -212,7 +215,7 @@ export default function ToolClient({
   }, [docTypeCounts]);
 
   const filteredItems = useMemo(() => {
-    return data.items.filter((item) => {
+    return (data?.items ?? []).filter((item) => {
       if (secCodeOnly && !item.sec_code) return false;
       if (docTypeFilter !== "all" && item.doc_type_code !== docTypeFilter) return false;
       if (searchQuery) {
@@ -227,7 +230,7 @@ export default function ToolClient({
       }
       return true;
     });
-  }, [data.items, secCodeOnly, docTypeFilter, searchQuery]);
+  }, [data?.items, secCodeOnly, docTypeFilter, searchQuery]);
 
   const displayItems = useMemo(
     () => filteredItems.map((item) => ({ item, muted: !secCodeOnly && !item.sec_code })),
@@ -287,7 +290,7 @@ export default function ToolClient({
             ←
           </button>
           <span style={{ fontSize: 14, fontWeight: 800, color: "var(--color-text)", minWidth: 160, textAlign: "center" }}>
-            {formatAsOfDate(data.as_of_date)}
+            {displayDate ? formatAsOfDate(displayDate) : "—"}
           </span>
           <button
             type="button"
@@ -300,13 +303,15 @@ export default function ToolClient({
           </button>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 600 }}>総件数</span>
-          <span style={{ fontSize: 14, fontWeight: 800, color: "var(--color-text)" }}>
-            {data.total_count.toLocaleString()}件
-          </span>
-        </div>
-        {filteredItems.length !== data.total_count && (
+        {data && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 600 }}>総件数</span>
+            <span style={{ fontSize: 14, fontWeight: 800, color: "var(--color-text)" }}>
+              {data.total_count.toLocaleString()}件
+            </span>
+          </div>
+        )}
+        {data && filteredItems.length !== data.total_count && (
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 600 }}>表示中</span>
             <span
@@ -323,7 +328,7 @@ export default function ToolClient({
       </section>
 
       {/* フィルターバー */}
-      <section
+      {data && <section
         style={{
           background: "var(--color-bg-card)",
           borderRadius: 12,
@@ -425,7 +430,7 @@ export default function ToolClient({
             上場企業のみ表示（証券コードあり）
           </span>
         </label>
-      </section>
+      </section>}
 
       {/* テーブル */}
       <section
@@ -436,7 +441,18 @@ export default function ToolClient({
           overflow: "hidden",
         }}
       >
-        {filteredItems.length === 0 ? (
+        {!data ? (
+          <div
+            style={{
+              padding: "32px 20px",
+              textAlign: "center",
+              color: "var(--color-text-muted)",
+              fontSize: 14,
+            }}
+          >
+            この日付のデータはありません。
+          </div>
+        ) : filteredItems.length === 0 ? (
           <div
             style={{
               padding: "32px 20px",
