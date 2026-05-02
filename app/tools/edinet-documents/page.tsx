@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import ToolClient from "./ToolClient";
-import { loadEdinetDocumentList } from "./data-loader";
+import { loadEdinetDocumentList, loadEdinetManifest } from "./data-loader";
 
 export const metadata: Metadata = {
   title: "EDINET書類一覧 | mini-tools",
@@ -11,8 +11,17 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function Page() {
-  const data = await loadEdinetDocumentList();
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>;
+}) {
+  const { date } = await searchParams;
+
+  const [manifest, data] = await Promise.all([
+    loadEdinetManifest(),
+    loadEdinetDocumentList(date),
+  ]);
 
   if (!data) {
     return (
@@ -39,5 +48,5 @@ export default async function Page() {
     );
   }
 
-  return <ToolClient data={data} />;
+  return <ToolClient data={data} manifest={manifest} />;
 }
