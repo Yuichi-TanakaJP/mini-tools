@@ -612,7 +612,7 @@ export default function ToolClient({ data }: { data: EarningsCalendarPageData })
                     onClick={() => jumpToDate(marketKey, date)}
                     role="button"
                     tabIndex={0}
-                    onKeyDown={(e) => e.key === "Enter" && jumpToDate(marketKey, date)}
+                    onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && jumpToDate(marketKey, date)}
                   >
                     <div style={styles.itemMain}>
                       <div style={styles.itemName}>{item.name || item.code}</div>
