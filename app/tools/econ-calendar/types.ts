@@ -44,7 +44,8 @@ export type EconCalendarMeta = {
 };
 
 export type EconCalendarManifest = {
-  updated_at: string;
+  generated_at: string;
+  latest: string;
   weeks: string[]; // "YYYY-MM-DD" (week_start) 降順
 };
 
