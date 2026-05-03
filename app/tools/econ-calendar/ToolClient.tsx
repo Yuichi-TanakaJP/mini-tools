@@ -131,15 +131,22 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
   // 月表示: 選択月 "YYYY-MM" と月内の全イベント（複数週をマージ）
   const availableMonths = useMemo(() => {
     if (!manifest) return [];
-    const months = Array.from(new Set(manifest.weeks.map((w) => w.slice(0, 7)))).sort().reverse();
-    return months;
+    const monthSet = new Set<string>();
+    for (const w of manifest.weeks) {
+      monthSet.add(w.slice(0, 7));
+      // 週末（+6日）が別月に跨る場合も含める
+      const end = new Date(w);
+      end.setUTCDate(end.getUTCDate() + 6);
+      monthSet.add(end.toISOString().slice(0, 7));
+    }
+    return Array.from(monthSet).sort().reverse();
   }, [manifest]);
 
-  const currentMonthDefault = useMemo(() => {
-    return availableMonths[0] ?? new Date().toISOString().slice(0, 7);
-  }, [availableMonths]);
-
-  const [selectedMonth, setSelectedMonth] = useState<string>(() => currentMonthDefault);
+  const [selectedMonthRaw, setSelectedMonth] = useState<string | null>(null);
+  // manifest が SSR で null だった場合も含め、常に有効な月を参照する
+  const selectedMonth = selectedMonthRaw && availableMonths.includes(selectedMonthRaw)
+    ? selectedMonthRaw
+    : (availableMonths[0] ?? new Date().toISOString().slice(0, 7));
   const [monthData, setMonthData] = useState<Map<string, EconCalendarWeeklyResponse>>(new Map());
   const [monthLoading, setMonthLoading] = useState(false);
 
@@ -175,7 +182,16 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
   const loadMonth = useCallback(async (month: string) => {
     if (!manifest) return;
     setMonthLoading(true);
-    const weeksInMonth = manifest.weeks.filter((w) => w.startsWith(month));
+    // 週が選択月と重なるか（week_start〜week_start+6 が month の範囲と交差）
+    const [y, m] = month.split("-").map(Number);
+    const monthStart = new Date(Date.UTC(y, m - 1, 1));
+    const monthEnd = new Date(Date.UTC(y, m, 0)); // 月末
+    const weeksInMonth = manifest.weeks.filter((w) => {
+      const ws = new Date(w);
+      const we = new Date(w);
+      we.setUTCDate(we.getUTCDate() + 6);
+      return ws <= monthEnd && we >= monthStart;
+    });
     const toFetch = weeksInMonth.filter((w) => !monthData.has(w));
     if (toFetch.length > 0) {
       const results = await Promise.all(toFetch.map(fetchWeek));
