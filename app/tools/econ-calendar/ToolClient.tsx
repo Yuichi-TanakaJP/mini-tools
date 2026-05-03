@@ -491,7 +491,7 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
 
                     <div style={styles.eventList}>
                       {dayEvents.map((event, idx) => {
-                        const hasResult = !!event.result;
+                        const hasResult = !!event.result && event.result !== "--" && event.result !== "—";
                         const flag = COUNTRY_FLAGS[event.country_tag] ?? "";
                         const { main: prevMain, revised: prevRevised } = parsePrevious(event.previous);
 
@@ -593,7 +593,7 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
                 {monthGroupedByDate.map(([date, dayEvents]) => {
                   const isToday = date === today;
                   return dayEvents.map((event, idx) => {
-                    const hasResult = !!event.result;
+                    const hasResult = !!event.result && event.result !== "--" && event.result !== "—";
                     const flag = COUNTRY_FLAGS[event.country_tag] ?? "";
                     const { main: prevMain } = parsePrevious(event.previous);
                     return (
