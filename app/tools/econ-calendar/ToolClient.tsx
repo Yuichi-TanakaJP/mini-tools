@@ -678,18 +678,20 @@ const styles: Record<string, CSSProperties> = {
   viewTab: {
     padding: "8px 18px",
     borderRadius: "8px 8px 0 0",
-    border: "none",
+    borderTop: "none",
+    borderLeft: "none",
+    borderRight: "none",
+    borderBottom: "2px solid transparent",
     background: "transparent",
     color: "#6b7280",
     fontSize: 13,
     fontWeight: 700,
     cursor: "pointer",
-    borderBottom: "2px solid transparent",
     marginBottom: -2,
   },
   viewTabActive: {
     color: "#2554ff",
-    borderBottomColor: "#2554ff",
+    borderBottom: "2px solid #2554ff",
     background: "rgba(37,84,255,0.04)",
   },
   weekNav: {
