@@ -43,7 +43,14 @@ export type EconCalendarMeta = {
   } | null;
 };
 
+export type EconCalendarManifest = {
+  generated_at: string;
+  latest: string;
+  weeks: string[]; // "YYYY-MM-DD" (week_start) 降順
+};
+
 export type EconCalendarPageData = {
   weekly: EconCalendarWeeklyResponse | null;
   meta: EconCalendarMeta | null;
+  manifest: EconCalendarManifest | null;
 };
