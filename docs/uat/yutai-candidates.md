@@ -59,3 +59,7 @@
 - `is_short=true` の銘柄のみ「SBI売可」バッジを表示
 - `position_status`（在庫状態）は表示条件に使わない
 - 詳細は [yutai-candidates の SBI 短期対象表示ルール](../decision-log/2026-04-05-yutai-candidates-sbi-short-handling.md) を参照
+
+## 優待メモ連携の補足
+
+- 優待カレンダーから優待メモへ追加する際のフィールド、重複判定、将来のマージ方針は [yutai-memo と優待カレンダー連携フィールド整理](../decision-log/2026-05-04-yutai-memo-calendar-import-field-policy.md) を参照

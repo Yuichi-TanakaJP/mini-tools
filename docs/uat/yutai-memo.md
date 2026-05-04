@@ -64,4 +64,5 @@
 
 - [yutai-memo タグ対応と hydration 問題](../decision-log/2026-01-17-yutai-memo-user-tags-and-hydration.md)
 - [yutai-memo 取得リスト年月アコーディオン設計](../decision-log/2026-03-13-yutai-memo-acquired-list-accordion-design.md)
+- [yutai-memo と優待カレンダー連携フィールド整理](../decision-log/2026-05-04-yutai-memo-calendar-import-field-policy.md)
 - [SSR / Hydration / localStorage 運用ガイド](../decision-log/2026-03-12-ssr-localstorage-hydration-guidelines.md)
