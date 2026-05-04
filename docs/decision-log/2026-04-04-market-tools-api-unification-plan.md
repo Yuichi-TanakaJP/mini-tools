@@ -169,6 +169,6 @@ feat(api): unify market tools endpoints for mini-tools
 
 ## 関連
 
-- [Market Tools データ取得経路一覧](../market-tools-data-fetch-paths.md)
-- [mini-tools システム構成概要](../system-architecture-overview.md)
+- [Market Tools データ取得経路一覧](../specs/cross-cutting/market-tools-data-fetch-paths.md)
+- [mini-tools システム構成概要](../specs/cross-cutting/system-architecture-overview.md)
 - [2026-03-26 株価ランキングのデータ連携手順メモ](./2026-03-26-stock-ranking-data-update-ops.md)

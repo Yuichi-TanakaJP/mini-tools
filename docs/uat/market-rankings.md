@@ -51,4 +51,4 @@
 ## 関連 docs
 
 - [2026-04-11 市場ランキング月次ツールの追加方針](../decision-log/2026-04-11-market-rankings-monthly-tool.md)
-- [React Server / Client 設計分担](../react-server-client-design.md)
+- [React Server / Client 責任境界](../specs/cross-cutting/react-server-client-boundaries.md)

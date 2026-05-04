@@ -9,7 +9,7 @@ Last-Updated: 2026-03-26 JST
 
 ## 対象フェーズ
 
-- [`株価ランキング 外部データ公開 移行計画`](./stock-ranking-external-data-plan.md)
+- [株価ランキング外部データ移行計画](../../plans/stock-ranking-external-data-migration-plan.md)
 - Phase 1: `market_info` で UI用JSONを安定生成する
 
 ## 想定する入出力
@@ -84,7 +84,7 @@ Last-Updated: 2026-03-26 JST
 
 参照:
 
-- [`app/tools/stock-ranking/types.ts`](../app/tools/stock-ranking/types.ts)
+- [app/tools/stock-ranking/types.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-ranking/types.ts)
 
 ## 想定 CLI 仕様
 

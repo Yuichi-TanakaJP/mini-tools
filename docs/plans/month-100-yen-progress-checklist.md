@@ -39,7 +39,8 @@ mini-tools/
 ├─ lib/
 │  └─ analytics.ts
 ├─ docs/
-│  └─ Project_100YEN_FULL_PLAN.md
+│  └─ plans/
+│     └─ month-100-yen-monetization-plan.md
 ├─ package.json
 ├─ tsconfig.json
 ```

@@ -11,6 +11,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 
 設計・方針・トレードオフの判断理由を記録します。
 
+- [2026-05-05 docs 直下ファイルの分類方針](./decision-log/2026-05-05-docs-root-classification.md)
 - [2026-05-04 mini-tools 仕様書構成の初期方針](./decision-log/2026-05-04-mini-tools-spec-docs-structure.md)
 - [2026-05-04 yutai-memo と優待カレンダー連携フィールド整理](./decision-log/2026-05-04-yutai-memo-calendar-import-field-policy.md)
 - [2026-05-02 決算カレンダーへの銘柄検索機能追加](./decision-log/2026-05-02-earnings-calendar-search.md)
@@ -70,13 +71,30 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
   - [TOPIX33業種 仕様](./specs/tools/topix33.md)
   - [優待銘柄メモ帳 仕様](./specs/tools/yutai-memo.md)
   - [決算カレンダー 仕様](./specs/tools/earnings-calendar.md)
-- [Docs Writing Workflow](./docs-writing-workflow.md)
-- [mini-tools システム構成概要](./system-architecture-overview.md)
-- [React Server / Client 設計分担](./react-server-client-design.md)
-- [Market Tools データ取得経路一覧](./market-tools-data-fetch-paths.md)
-- [QR共有URL仕様](./share-url-spec.md)
-- [株価ランキング 外部データ公開 移行計画](./stock-ranking-external-data-plan.md)
-- [株価ランキング Phase 1 CLI 仕様メモ](./stock-ranking-phase1-cli-spec.md)
+- [横断仕様インデックス](./specs/cross-cutting/index.md)
+  - [mini-tools システム構成概要](./specs/cross-cutting/system-architecture-overview.md)
+  - [React Server / Client 責任境界](./specs/cross-cutting/react-server-client-boundaries.md)
+  - [Market Tools データ取得経路一覧](./specs/cross-cutting/market-tools-data-fetch-paths.md)
+  - [QR 共有 URL 仕様](./specs/cross-cutting/share-url-spec.md)
+  - [UI カラーパレット仕様](./specs/cross-cutting/ui-color-palette.md)
+  - [株価ランキング UI JSON CLI 仕様](./specs/cross-cutting/stock-ranking-ui-json-cli-spec.md)
+
+---
+
+## 🗺️ Plans（計画・移行）
+
+- [Plans インデックス](./plans/index.md)
+  - [月100円マネタイズ計画](./plans/month-100-yen-monetization-plan.md)
+  - [月100円プロジェクト進捗チェックリスト](./plans/month-100-yen-progress-checklist.md)
+  - [プロジェクト継続・撤退判断基準](./plans/project-continuation-criteria.md)
+  - [株価ランキング外部データ移行計画](./plans/stock-ranking-external-data-migration-plan.md)
+
+---
+
+## 🧾 Backlog（未着手候補）
+
+- [Backlog インデックス](./backlog/index.md)
+  - [yutai-expiry UI / data model backlog](./backlog/yutai-expiry-ui-data-model.md)
 
 ---
 

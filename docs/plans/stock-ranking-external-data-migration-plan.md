@@ -4,7 +4,7 @@ Last-Updated: 2026-03-26 JST
 
 > Note
 > このメモは 2026-03-26 時点の外部公開 JSON 前提の移行計画です。
-> 現行方針は [2026-04-04 market tools の API 統一方針](./decision-log/2026-04-04-market-tools-api-unification-plan.md) を優先し、
+> 現行方針は [2026-04-04 market tools の API 統一方針](../decision-log/2026-04-04-market-tools-api-unification-plan.md) を優先し、
 > `stock-ranking` の標準取得入口は `MARKET_INFO_API_BASE_URL/ranking/*` を使います。
 
 ## 目的
@@ -16,8 +16,8 @@ Last-Updated: 2026-03-26 JST
 
 現状の `mini-tools` は以下の前提で動いている。
 
-- [`app/tools/stock-ranking/data/manifest.json`](../app/tools/stock-ranking/data/manifest.json) を読む
-- [`app/tools/stock-ranking/data/YYYYMMDD.json`](../app/tools/stock-ranking/data/20260325.json) を読む
+- [app/tools/stock-ranking/data/manifest.json](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-ranking/data/manifest.json) を読む
+- [app/tools/stock-ranking/data/YYYYMMDD.json](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-ranking/data/20260325.json) を読む
 - repo 内の静的ファイルをそのまま画面表示する
 
 この方式は実装が単純な一方で、日次更新を続けると `mini-tools` の履歴がデータ更新コミット中心になりやすい。
@@ -100,7 +100,7 @@ mini-tools
   - `volume`
   - `value`
 
-`mini-tools` 側の現行 shape は [`app/tools/stock-ranking/types.ts`](../app/tools/stock-ranking/types.ts) を正とする。
+`mini-tools` 側の現行 shape は [app/tools/stock-ranking/types.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-ranking/types.ts) を正とする。
 
 ## 段階移行プラン
 
@@ -155,7 +155,7 @@ mini-tools
 
 `mini-tools` 側でやること:
 
-- [`app/tools/stock-ranking/data-loader.ts`](../app/tools/stock-ranking/data-loader.ts) をローカルファイル読み込みから外部JSON取得へ切り替える
+- [app/tools/stock-ranking/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-ranking/data-loader.ts) をローカルファイル読み込みから外部JSON取得へ切り替える
 - `STOCK_RANKING_DATA_BASE_URL` には公開 base URL を設定する
 - loader は `https://<public-base-url>` と `.../stock-ranking` の両方を受けられるようにする
 - 可能なら `fetch` をサーバー側で行う
