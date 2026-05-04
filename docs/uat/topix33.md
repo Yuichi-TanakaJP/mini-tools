@@ -12,7 +12,7 @@
 
 | データ | 取得元 | API 障害時の挙動 |
 |---|---|---|
-| TOPIX33データ (manifest + 日別 JSON) | repo 同梱 JSON | 影響なし（API 不要） |
+| TOPIX33データ (manifest + 日別 JSON) | `MARKET_INFO_API_BASE_URL/topix33/*` → 失敗時は同梱 JSON にフォールバック | フォールバックで動作継続 |
 | JPX 休場日 | `MARKET_INFO_API_BASE_URL/market-calendar/jpx-closed` → 失敗時は同梱 JSON にフォールバック | フォールバックで動作継続 |
 
 - 週末・JPX 休場日は日付リストから除外される
@@ -40,7 +40,7 @@
 
 | 環境 | 注意点 |
 |---|---|
-| 本番 | JPX 休場日は API から取得。TOPIX33データは手動更新が必要 |
+| 本番 | TOPIX33データと JPX 休場日は API 優先。API 障害時は同梱 JSON にフォールバック |
 | Preview | 本番と同等 |
 | ローカル | JPX 休場日のフォールバックがあるため機能差なし |
 
@@ -49,3 +49,4 @@
 - [TOPIX33業種データ追加と market tools 導線の方針](../decision-log/2026-03-31-topix33-market-tool-plan.md)
 - [TOPIX33 premium 可視化の見せ方方針](../decision-log/2026-04-04-topix33-premium-visualization-plan.md)
 - [premium ログイン導線の暫定実装方針](../decision-log/2026-04-04-premium-login-placeholder-flow.md)
+- [TOPIX33業種 仕様](../specs/tools/topix33.md)
