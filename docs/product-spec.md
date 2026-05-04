@@ -51,7 +51,7 @@
 - 市場データ系は、ツールごとの `data-loader.ts` を中心にデータ取得をまとめる
 - API の base URL は `MARKET_INFO_API_BASE_URL` を使う
 - API 障害時の fallback 有無はツールごとに仕様へ明記する
-- 詳細は [Market Tools データ取得経路一覧](./market-tools-data-fetch-paths.md) を参照する
+- 詳細は [Market Tools データ取得経路一覧](./specs/cross-cutting/market-tools-data-fetch-paths.md) を参照する
 
 ### 保存
 
@@ -76,7 +76,7 @@
 - 「現在どう動くべきか」は [ツール別仕様](./specs/index.md) を見る
 - 「リリース前に何を確認するか」は [UAT チェックリスト](./uat/index.md) を見る
 - 「なぜその仕様にしたか」は [Decision Log](./decision-log/) を見る
-- 「実装構成を俯瞰したいとき」は [mini-tools システム構成概要](./system-architecture-overview.md) を見る
+- 「実装構成を俯瞰したいとき」は [mini-tools システム構成概要](./specs/cross-cutting/system-architecture-overview.md) を見る
 
 ## 更新ルール
 

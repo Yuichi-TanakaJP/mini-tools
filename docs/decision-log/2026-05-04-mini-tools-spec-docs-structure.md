@@ -15,7 +15,7 @@ UAT は既存どおり `docs/uat/` に置き、仕様書とは役割を分ける
 `mini-tools` はアジャイル的に機能追加されており、仕様がコード、UAT、decision-log に分散している。
 一方で、既存 docs にはすでに次の資産がある。
 
-- `docs/system-architecture-overview.md`: 全体構成
+- `docs/specs/cross-cutting/system-architecture-overview.md`: 全体構成
 - `docs/uat/`: ツール別の確認観点
 - `docs/decision-log/`: 仕様判断の履歴
 - `docs/docs-writing-workflow.md`: docs 更新の運用ルール

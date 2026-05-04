@@ -76,8 +76,8 @@
   - なし
 - 参照 docs:
   - `docs/docs-writing-workflow.md`
-  - `docs/system-architecture-overview.md`
-  - `docs/market-tools-data-fetch-paths.md`
+  - `docs/specs/cross-cutting/system-architecture-overview.md`
+  - `docs/specs/cross-cutting/market-tools-data-fetch-paths.md`
   - `docs/decision-log/2026-03-12-ssr-localstorage-hydration-guidelines.md`
   - `docs/decision-log/2026-04-07-loading-ui-and-parallel-fetch.md`
   - `docs/decision-log/2026-04-11-loading-spinner-pattern.md`

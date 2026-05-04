@@ -40,10 +40,10 @@
 
 - `lib/jpx-market-closed.ts`
 - `README.md`
-- `docs/market-tools-data-fetch-paths.md`
-- `docs/system-architecture-overview.md`
+- `docs/specs/cross-cutting/market-tools-data-fetch-paths.md`
+- `docs/specs/cross-cutting/system-architecture-overview.md`
 
 ## 関連
 
 - [2026-04-04 market tools の API 統一方針](./2026-04-04-market-tools-api-unification-plan.md)
-- [Market Tools データ取得経路一覧](../market-tools-data-fetch-paths.md)
+- [Market Tools データ取得経路一覧](../specs/cross-cutting/market-tools-data-fetch-paths.md)

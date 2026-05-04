@@ -91,8 +91,8 @@ live API 確認の結果、海外 `monthly/{YYYY-MM}` の `items[]` は国内版
 
 - `app/tools/earnings-calendar`
 - `README.md`
-- `docs/system-architecture-overview.md`
-- `docs/market-tools-data-fetch-paths.md`
+- `docs/specs/cross-cutting/system-architecture-overview.md`
+- `docs/specs/cross-cutting/market-tools-data-fetch-paths.md`
 
 ## 補足
 

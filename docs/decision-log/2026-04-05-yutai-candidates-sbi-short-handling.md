@@ -33,4 +33,4 @@
 - Issue:
 - PR:
 - 参照 docs:
-  - [Market Tools データ取得経路一覧](/c:/Users/yutaz/dev/mini-tools/docs/market-tools-data-fetch-paths.md)
+  - [Market Tools データ取得経路一覧](/c:/Users/yutaz/dev/mini-tools/docs/specs/cross-cutting/market-tools-data-fetch-paths.md)

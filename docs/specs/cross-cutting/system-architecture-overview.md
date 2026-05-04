@@ -214,6 +214,6 @@ premium は現時点では「仮ログイン + preview 画面」です。
 ## 関連 docs
 
 - [Market Tools データ取得経路一覧](./market-tools-data-fetch-paths.md)
-- [2026-04-04 premium ログイン導線の暫定実装方針](./decision-log/2026-04-04-premium-login-placeholder-flow.md)
-- [2026-04-04 TOPIX33 premium 可視化の見せ方方針](./decision-log/2026-04-04-topix33-premium-visualization-plan.md)
-- [2026-03-12 SSR / Hydration / localStorage 運用ガイド](./decision-log/2026-03-12-ssr-localstorage-hydration-guidelines.md)
+- [2026-04-04 premium ログイン導線の暫定実装方針](../../decision-log/2026-04-04-premium-login-placeholder-flow.md)
+- [2026-04-04 TOPIX33 premium 可視化の見せ方方針](../../decision-log/2026-04-04-topix33-premium-visualization-plan.md)
+- [2026-03-12 SSR / Hydration / localStorage 運用ガイド](../../decision-log/2026-03-12-ssr-localstorage-hydration-guidelines.md)

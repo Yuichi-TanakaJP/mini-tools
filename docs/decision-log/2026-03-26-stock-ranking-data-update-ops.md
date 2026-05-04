@@ -8,7 +8,7 @@
 
 ## 背景
 
-`stock-ranking` は、`mini-tools` 側で [`app/tools/stock-ranking/data/manifest.json`](../../../app/tools/stock-ranking/data/manifest.json) を起点に利用可能日を判断し、各日付の JSON を読み込んで表示している。  
+`stock-ranking` は、`mini-tools` 側で [app/tools/stock-ranking/data/manifest.json](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-ranking/data/manifest.json) を起点に利用可能日を判断し、各日付の JSON を読み込んで表示している。  
 一方で、日次ランキングの元データ取得や整形は `market_info` 側で行う方が責務分離として自然。
 
 このため、ランキングも `yutai-memo` や `earnings-calendar` と同様に、
@@ -33,13 +33,13 @@
 
 参照:
 
-- [`app/tools/stock-ranking/data-loader.ts`](../../../app/tools/stock-ranking/data-loader.ts)
-- [`app/tools/stock-ranking/types.ts`](../../../app/tools/stock-ranking/types.ts)
-- [`app/tools/stock-ranking/ToolClient.tsx`](../../../app/tools/stock-ranking/ToolClient.tsx)
+- [app/tools/stock-ranking/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-ranking/data-loader.ts)
+- [app/tools/stock-ranking/types.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-ranking/types.ts)
+- [app/tools/stock-ranking/ToolClient.tsx](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-ranking/ToolClient.tsx)
 
 ### いまの変換フロー
 
-現状は `mini-tools` 側に [`scripts/convert-ranking-csv.mjs`](../../../scripts/convert-ranking-csv.mjs) があり、内藤形式 CSV を日次 JSON と `manifest.json` に変換している。
+現状は `mini-tools` 側に [scripts/convert-ranking-csv.mjs](/c:/Users/yutaz/dev/mini-tools/scripts/convert-ranking-csv.mjs) があり、内藤形式 CSV を日次 JSON と `manifest.json` に変換している。
 
 つまり、**必要な成果物フォーマットはすでに決まっている**。  
 `market_info` から渡すべきものも、このフォーマットに合わせればよい。
@@ -62,7 +62,7 @@
 - `STOCK_RANKING_DATA_BASE_URL` で公開 base URL を指定する
 - 必要なら `.../stock-ranking` のような JSON 配信ディレクトリ URL を直接指定してもよい
 - loader が外部の `stock-ranking/manifest.json` と `stock-ranking/YYYYMMDD.json` を読む
-- 取得失敗時だけ [`app/tools/stock-ranking/data/`](../../../app/tools/stock-ranking/data/) を fallback として使う
+- 取得失敗時だけ [app/tools/stock-ranking/data/](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-ranking/data/) を fallback として使う
 - `stock-ranking` UI が崩れないことを確認する
 
 ### 3. 責務を混ぜない

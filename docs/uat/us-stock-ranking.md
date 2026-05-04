@@ -49,4 +49,4 @@
 ## 関連 docs
 
 - [2026-04-12 米国株ランキングツール phase 1 のデータ contract と実装方針](../decision-log/2026-04-12-us-stock-ranking-phase1.md)
-- [React Server / Client 設計分担](../react-server-client-design.md)
+- [React Server / Client 責任境界](../specs/cross-cutting/react-server-client-boundaries.md)

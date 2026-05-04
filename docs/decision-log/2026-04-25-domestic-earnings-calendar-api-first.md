@@ -31,7 +31,7 @@
 - `app/tools/earnings-calendar/data-loader.ts` — `loadDomesticData()` を API-first に変更
 - `app/tools/earnings-calendar/__tests__/data-loader.test.ts` — テストケースを更新
 - `app/tools/earnings-calendar/ToolClient.tsx` — 空状態テキストを修正
-- `docs/market-tools-data-fetch-paths.md` — earnings-calendar 行を更新
+- `docs/specs/cross-cutting/market-tools-data-fetch-paths.md` — earnings-calendar 行を更新
 
 ## 結果
 
