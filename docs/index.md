@@ -1,7 +1,9 @@
 # Docs Index
 
-このディレクトリは、開発における **意思決定の記録** と **作業ログ** を残すためのものです。  
-「なぜそうしたか」「どう進めたか」を後から追えることを目的としています。
+このディレクトリは、`mini-tools` の **現在仕様**、**確認手順**、**意思決定の記録**、**作業ログ** を辿るための入口です。  
+「今どう動くべきか」「どう確認するか」「なぜそうしたか」「どう進めたか」を後から追えることを目的としています。
+
+docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./docs-writing-workflow.md) を参照します。
 
 ---
 
@@ -9,6 +11,7 @@
 
 設計・方針・トレードオフの判断理由を記録します。
 
+- [2026-05-04 mini-tools 仕様書構成の初期方針](./decision-log/2026-05-04-mini-tools-spec-docs-structure.md)
 - [2026-05-04 yutai-memo と優待カレンダー連携フィールド整理](./decision-log/2026-05-04-yutai-memo-calendar-import-field-policy.md)
 - [2026-05-02 決算カレンダーへの銘柄検索機能追加](./decision-log/2026-05-02-earnings-calendar-search.md)
 - [2026-04-25 premium 保有銘柄ダッシュボードの初期方針](./decision-log/2026-04-25-premium-portfolio-dashboard.md)
@@ -60,23 +63,17 @@
 
 ## 📎 Specs（仕様メモ）
 
+- [mini-tools プロダクト仕様](./product-spec.md)
+- [ツール別仕様インデックス](./specs/index.md)
+  - [株価ランキング 仕様](./specs/tools/stock-ranking.md)
+  - [日経225寄与度 仕様](./specs/tools/nikkei-contribution.md)
+  - [TOPIX33業種 仕様](./specs/tools/topix33.md)
+  - [優待銘柄メモ帳 仕様](./specs/tools/yutai-memo.md)
+  - [決算カレンダー 仕様](./specs/tools/earnings-calendar.md)
 - [Docs Writing Workflow](./docs-writing-workflow.md)
 - [mini-tools システム構成概要](./system-architecture-overview.md)
 - [React Server / Client 設計分担](./react-server-client-design.md)
 - [Market Tools データ取得経路一覧](./market-tools-data-fetch-paths.md)
-- Market Tools 関連:
-- [2026-04-07 loading.tsx 追加と並列 fetch 化](./decision-log/2026-04-07-loading-ui-and-parallel-fetch.md)
-- [2026-04-05 yutai-candidates の SBI 短期対象表示ルール](./decision-log/2026-04-05-yutai-candidates-sbi-short-handling.md)
-- [2026-04-05 海外決算カレンダー統合方針](./decision-log/2026-04-05-overseas-earnings-calendar-integration.md)
-- [2026-04-04 market tools の API 統一方針](./decision-log/2026-04-04-market-tools-api-unification-plan.md)
-- [2026-04-05 jpx-closed endpoint の確定事項](./decision-log/2026-04-05-jpx-closed-endpoint-finalization.md)
-- [2026-04-04 TOPIX33 premium 可視化の見せ方方針](./decision-log/2026-04-04-topix33-premium-visualization-plan.md)
-- [2026-04-04 premium ログイン導線の暫定実装方針](./decision-log/2026-04-04-premium-login-placeholder-flow.md)
-- [2026-03-31 TOPIX33業種データ追加と market tools 導線の方針](./decision-log/2026-03-31-topix33-market-tool-plan.md)
-- [2026-03-29 market tools の日付 UI と休場日扱いの整理](./decision-log/2026-03-29-market-tools-date-ui-and-holiday-handling.md)
-- [2026-03-28 日経225寄与度ツールのデータ連携と UI 判断](./decision-log/2026-03-28-nikkei-contribution-data-and-ui.md)
-- [2026-03-22 決算カレンダーのデータ contract と運用メモ](./decision-log/2026-03-22-earnings-calendar-data-contract.md)
-- [2026-03-26 株価ランキングのデータ連携手順メモ](./decision-log/2026-03-26-stock-ranking-data-update-ops.md)
 - [QR共有URL仕様](./share-url-spec.md)
 - [株価ランキング 外部データ公開 移行計画](./stock-ranking-external-data-plan.md)
 - [株価ランキング Phase 1 CLI 仕様メモ](./stock-ranking-phase1-cli-spec.md)

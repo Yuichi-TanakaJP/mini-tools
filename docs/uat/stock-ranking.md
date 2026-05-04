@@ -12,7 +12,7 @@
 
 | データ | 取得元 | API 障害時の挙動 |
 |---|---|---|
-| ランキングデータ (manifest + 日別 JSON) | repo 同梱 JSON | 影響なし（API 不要） |
+| ランキングデータ (manifest + 日別 JSON) | `MARKET_INFO_API_BASE_URL/ranking/*` → 失敗時は同梱 JSON にフォールバック | フォールバックで動作継続 |
 | JPX 休場日 | `MARKET_INFO_API_BASE_URL/market-calendar/jpx-closed` → 失敗時は同梱 JSON にフォールバック | フォールバックで動作継続 |
 
 - 週末（土・日）と JPX 休場日は日付リストから除外される（初期表示対象にならない）
@@ -39,11 +39,12 @@
 
 | 環境 | 注意点 |
 |---|---|
-| 本番 | JPX 休場日は API から取得（最新祝日に自動対応）。ランキングデータは手動更新が必要 |
-| Preview | 本番と同等（環境変数は引き継がれる）。ランキングデータはブランチ時点の同梱 JSON |
+| 本番 | ランキングデータと JPX 休場日は API 優先。API 障害時は同梱 JSON にフォールバック |
+| Preview | 本番と同等（環境変数は引き継がれる）。同梱 JSON はブランチ時点の内容 |
 | ローカル | `.env` の設定有無で JPX 休場日取得先が変わるが、フォールバックがあるため機能差なし |
 
 ## 関連 docs
 
 - [株価ランキングのデータ連携手順メモ](../decision-log/2026-03-26-stock-ranking-data-update-ops.md)
 - [market tools の API 統一方針](../decision-log/2026-04-04-market-tools-api-unification-plan.md)
+- [株価ランキング 仕様](../specs/tools/stock-ranking.md)

@@ -12,7 +12,7 @@
 
 | データ | 取得元 | API 障害時の挙動 |
 |---|---|---|
-| 寄与度データ (manifest + 日別 JSON) | repo 同梱 JSON | 影響なし（API 不要） |
+| 寄与度データ (manifest + 日別 JSON) | `MARKET_INFO_API_BASE_URL/nikkei/*` → 失敗時は同梱 JSON にフォールバック | フォールバックで動作継続 |
 | JPX 休場日 | `MARKET_INFO_API_BASE_URL/market-calendar/jpx-closed` → 失敗時は同梱 JSON にフォールバック | フォールバックで動作継続 |
 
 - 週末・JPX 休場日は日付リストから除外される
@@ -40,7 +40,7 @@
 
 | 環境 | 注意点 |
 |---|---|
-| 本番 | JPX 休場日は API から取得。寄与度データは手動更新が必要 |
+| 本番 | 寄与度データと JPX 休場日は API 優先。API 障害時は同梱 JSON にフォールバック |
 | Preview | 本番と同等 |
 | ローカル | JPX 休場日のフォールバックがあるため機能差なし |
 
@@ -48,3 +48,4 @@
 
 - [日経225寄与度ツールのデータ連携と UI 判断](../decision-log/2026-03-28-nikkei-contribution-data-and-ui.md)
 - [market tools の日付 UI と休場日扱いの整理](../decision-log/2026-03-29-market-tools-date-ui-and-holiday-handling.md)
+- [日経225寄与度 仕様](../specs/tools/nikkei-contribution.md)
