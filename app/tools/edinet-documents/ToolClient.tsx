@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { EdinetDocumentListResponse, EdinetDocItem, EdinetManifest } from "./types";
 
@@ -189,15 +189,30 @@ export default function ToolClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [docTypeFilter, setDocTypeFilter] = useState("all");
 
-  const dates = manifest?.dates ?? [];
-  const displayDate = data?.as_of_date ?? currentDate ?? "";
-  const currentIdx = dates.indexOf(displayDate);
+  const dates = useMemo(() => manifest?.dates ?? [], [manifest?.dates]);
+  const rawDisplayDate = data?.as_of_date ?? currentDate ?? "";
+  const normalizedDisplayDate = useMemo(() => {
+    if (!rawDisplayDate || dates.length === 0) return rawDisplayDate;
+    if (dates.includes(rawDisplayDate)) return rawDisplayDate;
+
+    const nearestPastDate = dates.find((d) => d <= rawDisplayDate);
+    return nearestPastDate ?? dates[0];
+  }, [rawDisplayDate, dates]);
+  const isDateNormalized = Boolean(
+    rawDisplayDate && normalizedDisplayDate && rawDisplayDate !== normalizedDisplayDate,
+  );
+  const currentIdx = dates.indexOf(normalizedDisplayDate);
   const prevDate = currentIdx > 0 ? dates[currentIdx - 1] : null;
   const nextDate = currentIdx < dates.length - 1 ? dates[currentIdx + 1] : null;
 
   const navigate = (date: string) => {
     router.push(`/tools/edinet-documents?date=${date}`);
   };
+
+  useEffect(() => {
+    if (!isDateNormalized || !normalizedDisplayDate) return;
+    router.replace(`/tools/edinet-documents?date=${normalizedDisplayDate}`);
+  }, [isDateNormalized, normalizedDisplayDate, router]);
 
   const docTypeCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -290,7 +305,7 @@ export default function ToolClient({
             ←
           </button>
           <span style={{ fontSize: 14, fontWeight: 800, color: "var(--color-text)", minWidth: 160, textAlign: "center" }}>
-            {displayDate ? formatAsOfDate(displayDate) : "—"}
+            {normalizedDisplayDate ? formatAsOfDate(normalizedDisplayDate) : "—"}
           </span>
           <button
             type="button"
@@ -302,6 +317,17 @@ export default function ToolClient({
             →
           </button>
         </div>
+        {isDateNormalized && (
+          <div
+            style={{
+              fontSize: 12,
+              color: "var(--color-text-muted)",
+              fontWeight: 600,
+            }}
+          >
+            指定日のデータがないため、直近の開示日（{formatAsOfDate(normalizedDisplayDate)}）を表示しています。
+          </div>
+        )}
 
         {data && (
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
