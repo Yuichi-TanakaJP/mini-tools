@@ -5,9 +5,9 @@ import type { CSSProperties } from "react";
 
 const WIDTH = 720;
 const HEIGHT = 880;
-const PLAYER_SIZE = 44;
-const BULLET_WIDTH = 6;
-const BULLET_HEIGHT = 18;
+const PLAYER_SIZE = 54;
+const BULLET_WIDTH = 8;
+const BULLET_HEIGHT = 16;
 const ENEMY_WIDTH = 42;
 const ENEMY_HEIGHT = 38;
 const STAR_COUNT = 40;
@@ -87,7 +87,7 @@ function createEnemy(id: number, level = 1, immediate = false): Enemy {
   };
 }
 
-function Penguin({ x, y, invincible }: { x: number; y: number; invincible: boolean }) {
+function PenguinShip({ x, y, invincible }: { x: number; y: number; invincible: boolean }) {
   return (
     <div
       style={{
@@ -97,20 +97,69 @@ function Penguin({ x, y, invincible }: { x: number; y: number; invincible: boole
         top: y,
         width: PLAYER_SIZE,
         height: PLAYER_SIZE,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
+        display: "grid",
+        placeItems: "center",
         userSelect: "none",
-        fontSize: 40,
-        lineHeight: 1,
         opacity: invincible ? 0.7 : 1,
         transform: invincible ? "scale(1.08)" : "scale(1)",
         transition: "transform 0.15s ease, opacity 0.15s ease",
         filter:
-          "drop-shadow(0 10px 14px rgba(15, 23, 42, 0.55)) drop-shadow(0 0 14px rgba(255,255,255,0.2))",
+          "drop-shadow(0 10px 14px rgba(15, 23, 42, 0.55)) drop-shadow(0 0 14px rgba(125, 211, 252, 0.35))",
       }}
+      aria-label="宇宙船に乗ったペンギン"
     >
-      <span style={{ transform: "translateY(-1px)" }}>🐧</span>
+      <div
+        style={{
+          position: "absolute",
+          left: 11,
+          top: 9,
+          width: 32,
+          height: 30,
+          borderRadius: "50% 50% 44% 44%",
+          background:
+            "linear-gradient(180deg, rgba(224, 242, 254, 0.96), rgba(56, 189, 248, 0.72))",
+          border: "2px solid rgba(186, 230, 253, 0.9)",
+          boxShadow: "inset 0 3px 8px rgba(255,255,255,0.7)",
+        }}
+      />
+      <span
+        style={{
+          position: "absolute",
+          left: 13,
+          top: 5,
+          zIndex: 2,
+          fontSize: 27,
+          lineHeight: 1,
+        }}
+      >
+        🐧
+      </span>
+      <div
+        style={{
+          position: "absolute",
+          left: 3,
+          top: 30,
+          width: 48,
+          height: 19,
+          borderRadius: "60% 60% 48% 48%",
+          background: "linear-gradient(180deg, #f8fafc, #94a3b8 62%, #475569)",
+          border: "1px solid rgba(226, 232, 240, 0.8)",
+          boxShadow:
+            "inset 0 2px 5px rgba(255,255,255,0.75), 0 0 12px rgba(103,232,249,0.35)",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          left: 22,
+          top: 44,
+          width: 10,
+          height: 9,
+          borderRadius: "0 0 999px 999px",
+          background: "linear-gradient(180deg, #f97316, #fde047)",
+          boxShadow: "0 0 14px rgba(251, 191, 36, 0.85)",
+        }}
+      />
     </div>
   );
 }
@@ -145,9 +194,9 @@ function BulletView({ bullet }: { bullet: Bullet }) {
         top: bullet.y,
         width: BULLET_WIDTH,
         height: BULLET_HEIGHT,
-        borderRadius: 999,
-        background: "#67e8f9",
-        boxShadow: "0 0 14px rgba(103, 232, 249, 0.85)",
+        borderRadius: "999px 999px 4px 4px",
+        background: "linear-gradient(180deg, #fef08a, #38bdf8)",
+        boxShadow: "0 0 12px rgba(250, 204, 21, 0.72), 0 0 16px rgba(56, 189, 248, 0.55)",
       }}
     />
   );
@@ -186,7 +235,7 @@ export default function ToolClient() {
   const [level, setLevel] = useState(1);
   const [bestScore, setBestScore] = useState(0);
   const [stars, setStars] = useState<Star[]>(createStars);
-  const [message, setMessage] = useState("ペンギン出撃準備OK");
+  const [message, setMessage] = useState("ペンギン宇宙船、発進準備OK");
   const [isInvincible, setIsInvincible] = useState(false);
   const [boardScale, setBoardScale] = useState(1);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
@@ -245,7 +294,7 @@ export default function ToolClient() {
       {
         id: Date.now() + Math.random(),
         x: currentPlayer.x + PLAYER_SIZE / 2 - BULLET_WIDTH / 2,
-        y: currentPlayer.y - 8,
+        y: currentPlayer.y + 18,
         speed: 10,
       },
     ]);
@@ -286,7 +335,7 @@ export default function ToolClient() {
     setLevel(1);
     setStars(createStars());
     setIsInvincible(false);
-    setMessage("発進！うさぎ軍団をかわそう");
+    setMessage("発進！宇宙うさぎ軍団をかわそう");
     setGameState("playing");
   }, [resetControls]);
 
@@ -497,7 +546,7 @@ export default function ToolClient() {
         scoreRef.current += scoreGain;
         setScore(scoreRef.current);
         setBestScore((current) => Math.max(current, scoreRef.current));
-        setMessage("うさぎをやっつけた！");
+        setMessage("船首ショット命中！");
       }
 
       if (playerHit) {
@@ -506,11 +555,11 @@ export default function ToolClient() {
         setLives(nextLives);
         if (nextLives <= 0) {
           setGameState("gameover");
-          setMessage("ゲームオーバー… うさぎに囲まれた！");
+          setMessage("ゲームオーバー… 宇宙うさぎに囲まれた！");
         } else {
           invincibleRef.current = true;
           setIsInvincible(true);
-          setMessage("ヒット！少し無敵時間");
+          setMessage("被弾！シールド再展開中");
           if (invincibleTimeoutRef.current !== null) {
             window.clearTimeout(invincibleTimeoutRef.current);
           }
@@ -525,7 +574,7 @@ export default function ToolClient() {
       if (frameRef.current % 240 === 0) {
         levelRef.current += 1;
         setLevel(levelRef.current);
-        setMessage("うさぎの波が強くなった！");
+        setMessage("宇宙うさぎの波が強くなった！");
       }
     };
 
@@ -615,7 +664,7 @@ export default function ToolClient() {
               ...(isCompact ? styles.noteCompact : {}),
             }}
           >
-            矢印キーでペンギンを動かし、Space でショット。絵文字だけで遊べる最短版のミニゲームです。
+            矢印キーでペンギン宇宙船を操縦し、Space で船首ショット。絵文字とCSSで遊べるミニゲームです。
           </p>
         </section>
 
@@ -634,7 +683,7 @@ export default function ToolClient() {
             <article style={styles.card}>
               <div style={styles.cardTitle}>あそび方</div>
               <p style={styles.cardText}>
-                自機はペンギン🐧、敵はうさぎ🐰です。矢印キーで移動、Spaceキーでショット。
+                自機は宇宙船に乗ったペンギン、敵は宇宙うさぎ🐰です。矢印キーで移動、Spaceキーで船首ショット。
               </p>
               <div style={styles.badgeRow}>
                 <span style={{ ...styles.badge, ...styles.badgeMove }}>←↑↓→ 移動</span>
@@ -751,18 +800,18 @@ export default function ToolClient() {
                     <ExplosionView key={explosion.id} x={explosion.x} y={explosion.y} />
                   ))}
 
-                  <Penguin x={player.x} y={player.y} invincible={isInvincible} />
+                  <PenguinShip x={player.x} y={player.y} invincible={isInvincible} />
 
                   {gameState !== "playing" ? (
                     <div style={styles.overlay}>
                       <div style={styles.overlayCard}>
-                        <div style={styles.overlayIcon}>🐧</div>
+                        <div style={styles.overlayIcon}>🐧🚀</div>
                         <h2 style={styles.overlayTitle}>
-                          {gameState === "gameover" ? "もう一回！" : "シューティングゲーム"}
+                          {gameState === "gameover" ? "もう一回！" : "宇宙船シューティング"}
                         </h2>
                         <p style={styles.overlayText}>
                           {gameState === "gameover"
-                            ? "うさぎの猛攻をしのいで、記録更新を目指そう。"
+                            ? "宇宙うさぎの猛攻をしのいで、記録更新を目指そう。"
                             : "スタートを押すか、Spaceキーで出撃。"}
                         </p>
                         <button type="button" onClick={startGame} style={styles.primaryButton}>

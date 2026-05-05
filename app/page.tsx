@@ -117,7 +117,7 @@ const TOOLS: ToolItem[] = [
   {
     title: "ペンギン・バニーシューター",
     short: "絵文字で遊ぶミニゲーム",
-    detail: "ペンギンを動かして、うさぎをショット。絵文字ベースで気軽に遊べるおまけゲーム。",
+    detail: "宇宙船に乗ったペンギンを操縦して、うさぎをショット。絵文字ベースで気軽に遊べるおまけゲーム。",
     href: "/tools/penguin-rabbit-shooter",
     icon: "🐧",
   },
