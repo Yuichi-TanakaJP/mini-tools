@@ -6,6 +6,7 @@ const staleBaselineWarning =
   /^\[baseline-browser-mapping\] The data in this module is over two months old\./;
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const nextBin = path.join(repoRoot, "node_modules", "next", "dist", "bin", "next");
+const forwardedArgs = process.argv.slice(2);
 
 function writeFiltered(stream, output) {
   if (!output) {
@@ -27,7 +28,7 @@ function writeFiltered(stream, output) {
   }
 }
 
-const result = spawnSync(process.execPath, [nextBin, "build", "--webpack"], {
+const result = spawnSync(process.execPath, [nextBin, "build", "--webpack", ...forwardedArgs], {
   encoding: "utf8",
   env: {
     ...process.env,
