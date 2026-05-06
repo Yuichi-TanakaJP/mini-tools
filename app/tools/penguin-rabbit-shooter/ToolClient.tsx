@@ -200,9 +200,10 @@ function PenguinShip({
   );
 }
 
-function Bunny({ enemy }: { enemy: Enemy }) {
+function Alien({ enemy }: { enemy: Enemy }) {
   return (
     <div
+      aria-label="宇宙エイリアン"
       style={{
         position: "absolute",
         zIndex: 10,
@@ -212,10 +213,11 @@ function Bunny({ enemy }: { enemy: Enemy }) {
         height: enemy.height,
         userSelect: "none",
         fontSize: 34,
-        filter: "drop-shadow(0 6px 8px rgba(236, 72, 153, 0.35))",
+        filter:
+          "drop-shadow(0 6px 8px rgba(34, 197, 94, 0.45)) drop-shadow(0 0 10px rgba(163, 230, 53, 0.35))",
       }}
     >
-      🐰
+      👾
     </div>
   );
 }
@@ -319,6 +321,7 @@ export default function ToolClient() {
   const comboRef = useRef(0);
   const comboTimeoutRef = useRef<number | null>(null);
   const levelNoticeTimeoutRef = useRef<number | null>(null);
+  const effectTimeoutRefs = useRef<number[]>([]);
   const scoreRef = useRef(0);
   const livesRef = useRef(3);
   const invincibleRef = useRef(false);
@@ -339,6 +342,26 @@ export default function ToolClient() {
   const resetControls = useCallback(() => {
     keysRef.current = {};
   }, []);
+
+  const clearEffectTimeouts = useCallback(() => {
+    effectTimeoutRefs.current.forEach((timeoutId) => {
+      window.clearTimeout(timeoutId);
+    });
+    effectTimeoutRefs.current = [];
+  }, []);
+
+  const registerEffectTimeout = useCallback(
+    (callback: () => void, delay: number) => {
+      const timeoutId = window.setTimeout(() => {
+        callback();
+        effectTimeoutRefs.current = effectTimeoutRefs.current.filter(
+          (currentTimeoutId) => currentTimeoutId !== timeoutId,
+        );
+      }, delay);
+      effectTimeoutRefs.current.push(timeoutId);
+    },
+    [],
+  );
 
   const resetCombo = useCallback(() => {
     comboRef.current = 0;
@@ -416,6 +439,7 @@ export default function ToolClient() {
     livesRef.current = 3;
     invincibleRef.current = false;
     resetControls();
+    clearEffectTimeouts();
     if (invincibleTimeoutRef.current !== null) {
       window.clearTimeout(invincibleTimeoutRef.current);
       invincibleTimeoutRef.current = null;
@@ -451,9 +475,9 @@ export default function ToolClient() {
     setCombo(0);
     setStars(createStars());
     setIsInvincible(false);
-    setMessage("発進！宇宙うさぎ軍団をかわそう");
+    setMessage("発進！宇宙エイリアン軍団をかわそう");
     setGameState("playing");
-  }, [resetControls]);
+  }, [clearEffectTimeouts, resetControls]);
 
   useEffect(() => {
     const clearControls = () => {
@@ -666,7 +690,7 @@ export default function ToolClient() {
 
       if (nextExplosions.length > 0) {
         setExplosions((current) => [...current, ...nextExplosions]);
-        window.setTimeout(() => {
+        registerEffectTimeout(() => {
           setExplosions((current) =>
             current.filter(
               (explosion) =>
@@ -680,7 +704,7 @@ export default function ToolClient() {
 
       if (nextScorePopups.length > 0) {
         setScorePopups((current) => [...current, ...nextScorePopups]);
-        window.setTimeout(() => {
+        registerEffectTimeout(() => {
           setScorePopups((current) =>
             current.filter(
               (popup) =>
@@ -710,7 +734,7 @@ export default function ToolClient() {
         setLives(nextLives);
         if (nextLives <= 0) {
           setGameState("gameover");
-          setMessage("ゲームオーバー… 宇宙うさぎに囲まれた！");
+          setMessage("ゲームオーバー… 宇宙エイリアンに囲まれた！");
         } else {
           invincibleRef.current = true;
           setIsInvincible(true);
@@ -731,14 +755,21 @@ export default function ToolClient() {
         setLevel(levelRef.current);
         showLevelNotice(levelRef.current);
         setMessage(
-          `LEVEL UP! Lv${levelRef.current} 宇宙うさぎの波が強くなった！`,
+          `LEVEL UP! Lv${levelRef.current} 宇宙エイリアンの波が強くなった！`,
         );
       }
     };
 
     const interval = window.setInterval(loop, 16);
     return () => window.clearInterval(interval);
-  }, [fireBullet, gameState, resetCombo, scheduleComboReset, showLevelNotice]);
+  }, [
+    fireBullet,
+    gameState,
+    registerEffectTimeout,
+    resetCombo,
+    scheduleComboReset,
+    showLevelNotice,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -751,8 +782,9 @@ export default function ToolClient() {
       if (levelNoticeTimeoutRef.current !== null) {
         window.clearTimeout(levelNoticeTimeoutRef.current);
       }
+      clearEffectTimeouts();
     };
-  }, []);
+  }, [clearEffectTimeouts]);
 
   useEffect(() => {
     const element = gameViewportRef.current;
@@ -822,7 +854,7 @@ export default function ToolClient() {
               ...(isCompact ? styles.titleCompact : {}),
             }}
           >
-            ペンギン・バニーシューター
+            ペンギン・エイリアンシューター
           </h1>
           <p
             style={{
@@ -850,7 +882,7 @@ export default function ToolClient() {
             <article style={styles.card}>
               <div style={styles.cardTitle}>あそび方</div>
               <p style={styles.cardText}>
-                自機は宇宙船に乗ったペンギン、敵は宇宙うさぎ🐰です。矢印キーで移動、Spaceキーで船首ショット。連続撃破でコンボが伸び、獲得スコアもアップします。
+                自機は宇宙船に乗ったペンギン、敵は宇宙エイリアン👾です。矢印キーで移動、Spaceキーで船首ショット。連続撃破でコンボが伸び、獲得スコアもアップします。
               </p>
               <div style={styles.badgeRow}>
                 <span style={{ ...styles.badge, ...styles.badgeMove }}>
@@ -964,7 +996,7 @@ export default function ToolClient() {
 
                   <div style={styles.hud}>
                     Score {score} / Life {lives} / Lv {level} / Combo {combo} /
-                    Enemies {enemies.length}
+                    Aliens {enemies.length}
                   </div>
 
                   {bullets.map((bullet) => (
@@ -972,7 +1004,7 @@ export default function ToolClient() {
                   ))}
 
                   {enemies.map((enemy) => (
-                    <Bunny key={enemy.id} enemy={enemy} />
+                    <Alien key={enemy.id} enemy={enemy} />
                   ))}
 
                   {explosions.map((explosion) => (
@@ -1013,7 +1045,7 @@ export default function ToolClient() {
                         </h2>
                         <p style={styles.overlayText}>
                           {gameState === "gameover"
-                            ? "宇宙うさぎの猛攻をしのいで、記録更新を目指そう。"
+                            ? "宇宙エイリアンの猛攻をしのいで、記録更新を目指そう。"
                             : "スタートを押すか、Spaceキーで出撃。"}
                         </p>
                         <button
