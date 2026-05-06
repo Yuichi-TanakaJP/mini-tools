@@ -46,6 +46,19 @@ type Explosion = {
   y: number;
 };
 
+type ScorePopup = {
+  id: number;
+  x: number;
+  y: number;
+  value: number;
+  combo: number;
+};
+
+type LevelNotice = {
+  id: number;
+  level: number;
+};
+
 type Star = {
   id: number;
   x: number;
@@ -54,7 +67,12 @@ type Star = {
   speed: number;
 };
 
-type ControlKey = "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown" | "Space";
+type ControlKey =
+  | "ArrowLeft"
+  | "ArrowRight"
+  | "ArrowUp"
+  | "ArrowDown"
+  | "Space";
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
@@ -74,11 +92,21 @@ function createStars(): Star[] {
   }));
 }
 
+function getScoreByCombo(combo: number) {
+  if (combo >= 30) return 250;
+  if (combo >= 20) return 200;
+  if (combo >= 10) return 150;
+  if (combo >= 5) return 120;
+  return 100;
+}
+
 function createEnemy(id: number, level = 1, immediate = false): Enemy {
   return {
     id,
     x: Math.random() * (WIDTH - ENEMY_WIDTH - 40) + 20,
-    y: immediate ? Math.random() * 180 + 20 : -Math.random() * 220 - ENEMY_HEIGHT,
+    y: immediate
+      ? Math.random() * 180 + 20
+      : -Math.random() * 220 - ENEMY_HEIGHT,
     width: ENEMY_WIDTH,
     height: ENEMY_HEIGHT,
     speed: 2 + Math.random() * 1.8 + level * 0.18,
@@ -87,7 +115,15 @@ function createEnemy(id: number, level = 1, immediate = false): Enemy {
   };
 }
 
-function PenguinShip({ x, y, invincible }: { x: number; y: number; invincible: boolean }) {
+function PenguinShip({
+  x,
+  y,
+  invincible,
+}: {
+  x: number;
+  y: number;
+  invincible: boolean;
+}) {
   return (
     <div
       style={{
@@ -164,7 +200,7 @@ function PenguinShip({ x, y, invincible }: { x: number; y: number; invincible: b
   );
 }
 
-function Bunny({ enemy }: { enemy: Enemy }) {
+function Alien({ enemy }: { enemy: Enemy }) {
   return (
     <div
       style={{
@@ -176,10 +212,11 @@ function Bunny({ enemy }: { enemy: Enemy }) {
         height: enemy.height,
         userSelect: "none",
         fontSize: 34,
-        filter: "drop-shadow(0 6px 8px rgba(236, 72, 153, 0.35))",
+        filter:
+          "drop-shadow(0 6px 8px rgba(34, 197, 94, 0.45)) drop-shadow(0 0 10px rgba(163, 230, 53, 0.35))",
       }}
     >
-      🐰
+      👾
     </div>
   );
 }
@@ -196,7 +233,8 @@ function BulletView({ bullet }: { bullet: Bullet }) {
         height: BULLET_HEIGHT,
         borderRadius: "999px 999px 4px 4px",
         background: "linear-gradient(180deg, #fef08a, #38bdf8)",
-        boxShadow: "0 0 12px rgba(250, 204, 21, 0.72), 0 0 16px rgba(56, 189, 248, 0.55)",
+        boxShadow:
+          "0 0 12px rgba(250, 204, 21, 0.72), 0 0 16px rgba(56, 189, 248, 0.55)",
       }}
     />
   );
@@ -220,6 +258,29 @@ function ExplosionView({ x, y }: { x: number; y: number }) {
   );
 }
 
+function ScorePopupView({ popup }: { popup: ScorePopup }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: popup.x,
+        top: popup.y,
+        zIndex: 35,
+        pointerEvents: "none",
+        color: popup.combo >= 10 ? "#fde047" : "#a7f3d0",
+        fontSize: popup.combo >= 10 ? 22 : 18,
+        fontWeight: 900,
+        textShadow:
+          "0 2px 8px rgba(15, 23, 42, 0.85), 0 0 12px rgba(34, 211, 238, 0.75)",
+        animation: "penguinShooterScoreFloat 0.7s ease-out forwards",
+      }}
+      aria-label={`${popup.value}点獲得`}
+    >
+      +{popup.value}
+    </div>
+  );
+}
+
 export default function ToolClient() {
   const [gameState, setGameState] = useState<GameState>("idle");
   const [player, setPlayer] = useState<Player>({
@@ -230,9 +291,12 @@ export default function ToolClient() {
   const [bullets, setBullets] = useState<Bullet[]>([]);
   const [enemies, setEnemies] = useState<Enemy[]>([]);
   const [explosions, setExplosions] = useState<Explosion[]>([]);
+  const [scorePopups, setScorePopups] = useState<ScorePopup[]>([]);
+  const [levelNotice, setLevelNotice] = useState<LevelNotice | null>(null);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [level, setLevel] = useState(1);
+  const [combo, setCombo] = useState(0);
   const [bestScore, setBestScore] = useState(0);
   const [stars, setStars] = useState<Star[]>(createStars);
   const [message, setMessage] = useState("ペンギン宇宙船、発進準備OK");
@@ -253,12 +317,18 @@ export default function ToolClient() {
   const bulletsRef = useRef<Bullet[]>([]);
   const enemiesRef = useRef<Enemy[]>([]);
   const levelRef = useRef(1);
+  const comboRef = useRef(0);
+  const comboTimeoutRef = useRef<number | null>(null);
+  const levelNoticeTimeoutRef = useRef<number | null>(null);
+  const effectTimeoutRefs = useRef<number[]>([]);
   const scoreRef = useRef(0);
   const livesRef = useRef(3);
   const invincibleRef = useRef(false);
   const invincibleTimeoutRef = useRef<number | null>(null);
   const enemyIdRef = useRef(1);
   const explosionIdRef = useRef(1);
+  const scorePopupIdRef = useRef(1);
+  const levelNoticeIdRef = useRef(1);
 
   const setControlPressed = useCallback((key: ControlKey, pressed: boolean) => {
     keysRef.current[key] = pressed;
@@ -270,6 +340,60 @@ export default function ToolClient() {
 
   const resetControls = useCallback(() => {
     keysRef.current = {};
+  }, []);
+
+  const clearEffectTimeouts = useCallback(() => {
+    effectTimeoutRefs.current.forEach((timeoutId) => {
+      window.clearTimeout(timeoutId);
+    });
+    effectTimeoutRefs.current = [];
+  }, []);
+
+  const registerEffectTimeout = useCallback(
+    (callback: () => void, delay: number) => {
+      const timeoutId = window.setTimeout(() => {
+        callback();
+        effectTimeoutRefs.current = effectTimeoutRefs.current.filter(
+          (currentTimeoutId) => currentTimeoutId !== timeoutId,
+        );
+      }, delay);
+      effectTimeoutRefs.current.push(timeoutId);
+    },
+    [],
+  );
+
+  const resetCombo = useCallback(() => {
+    comboRef.current = 0;
+    setCombo(0);
+    if (comboTimeoutRef.current !== null) {
+      window.clearTimeout(comboTimeoutRef.current);
+      comboTimeoutRef.current = null;
+    }
+  }, []);
+
+  const scheduleComboReset = useCallback(() => {
+    if (comboTimeoutRef.current !== null) {
+      window.clearTimeout(comboTimeoutRef.current);
+    }
+    comboTimeoutRef.current = window.setTimeout(() => {
+      comboRef.current = 0;
+      setCombo(0);
+      comboTimeoutRef.current = null;
+    }, 2200);
+  }, []);
+
+  const showLevelNotice = useCallback((nextLevel: number) => {
+    const nextNotice = { id: levelNoticeIdRef.current++, level: nextLevel };
+    setLevelNotice(nextNotice);
+    if (levelNoticeTimeoutRef.current !== null) {
+      window.clearTimeout(levelNoticeTimeoutRef.current);
+    }
+    levelNoticeTimeoutRef.current = window.setTimeout(() => {
+      setLevelNotice((current) =>
+        current?.id === nextNotice.id ? null : current,
+      );
+      levelNoticeTimeoutRef.current = null;
+    }, 1200);
   }, []);
 
   function syncPlayer(next: Player) {
@@ -306,14 +430,26 @@ export default function ToolClient() {
     bulletTickRef.current = 0;
     enemyIdRef.current = 1;
     explosionIdRef.current = 1;
+    scorePopupIdRef.current = 1;
+    levelNoticeIdRef.current = 1;
     levelRef.current = 1;
+    comboRef.current = 0;
     scoreRef.current = 0;
     livesRef.current = 3;
     invincibleRef.current = false;
     resetControls();
+    clearEffectTimeouts();
     if (invincibleTimeoutRef.current !== null) {
       window.clearTimeout(invincibleTimeoutRef.current);
       invincibleTimeoutRef.current = null;
+    }
+    if (comboTimeoutRef.current !== null) {
+      window.clearTimeout(comboTimeoutRef.current);
+      comboTimeoutRef.current = null;
+    }
+    if (levelNoticeTimeoutRef.current !== null) {
+      window.clearTimeout(levelNoticeTimeoutRef.current);
+      levelNoticeTimeoutRef.current = null;
     }
 
     const initialPlayer = {
@@ -330,14 +466,17 @@ export default function ToolClient() {
       createEnemy(enemyIdRef.current++, 1, true),
     ]);
     setExplosions([]);
+    setScorePopups([]);
+    setLevelNotice(null);
     setScore(0);
     setLives(3);
     setLevel(1);
+    setCombo(0);
     setStars(createStars());
     setIsInvincible(false);
-    setMessage("発進！宇宙うさぎ軍団をかわそう");
+    setMessage("発進！宇宙エイリアン軍団をかわそう");
     setGameState("playing");
-  }, [resetControls]);
+  }, [clearEffectTimeouts, resetControls]);
 
   useEffect(() => {
     const clearControls = () => {
@@ -349,7 +488,9 @@ export default function ToolClient() {
         event.key === " " || event.key === "Spacebar" || event.code === "Space";
 
       if (
-        ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key) ||
+        ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(
+          event.key,
+        ) ||
         isSpace
       ) {
         event.preventDefault();
@@ -424,7 +565,10 @@ export default function ToolClient() {
       };
       syncPlayer(nextPlayer);
 
-      if ((keys[" "] || keys.Spacebar || keys.Space) && bulletTickRef.current >= 10) {
+      if (
+        (keys[" "] || keys.Spacebar || keys.Space) &&
+        bulletTickRef.current >= 10
+      ) {
         bulletTickRef.current = 0;
         fireBullet();
       }
@@ -460,6 +604,7 @@ export default function ToolClient() {
       const bulletUsage = new Set<number>();
       const nextEnemies: Enemy[] = [];
       const nextExplosions: Explosion[] = [];
+      const nextScorePopups: ScorePopup[] = [];
       let scoreGain = 0;
       let playerHit = false;
       const invincible = invincibleRef.current;
@@ -491,11 +636,21 @@ export default function ToolClient() {
           updatedEnemy = { ...updatedEnemy, hp: updatedEnemy.hp - 1 };
           if (updatedEnemy.hp <= 0) {
             destroyed = true;
-            scoreGain += 100;
+            const nextCombo = comboRef.current + 1;
+            const gained = getScoreByCombo(nextCombo);
+            comboRef.current = nextCombo;
+            scoreGain += gained;
             nextExplosions.push({
               id: explosionIdRef.current++,
               x: updatedEnemy.x + 10,
               y: updatedEnemy.y,
+            });
+            nextScorePopups.push({
+              id: scorePopupIdRef.current++,
+              x: updatedEnemy.x + 4,
+              y: updatedEnemy.y - 8,
+              value: gained,
+              combo: nextCombo,
             });
           }
           break;
@@ -526,36 +681,59 @@ export default function ToolClient() {
         }
       }
 
-      const nextBullets = movedBullets.filter((bullet) => !bulletUsage.has(bullet.id));
+      const nextBullets = movedBullets.filter(
+        (bullet) => !bulletUsage.has(bullet.id),
+      );
       syncBullets(nextBullets);
       syncEnemies(nextEnemies);
 
       if (nextExplosions.length > 0) {
         setExplosions((current) => [...current, ...nextExplosions]);
-        window.setTimeout(() => {
+        registerEffectTimeout(() => {
           setExplosions((current) =>
             current.filter(
               (explosion) =>
-                !nextExplosions.some((nextExplosion) => nextExplosion.id === explosion.id),
+                !nextExplosions.some(
+                  (nextExplosion) => nextExplosion.id === explosion.id,
+                ),
             ),
           );
         }, 250);
       }
 
+      if (nextScorePopups.length > 0) {
+        setScorePopups((current) => [...current, ...nextScorePopups]);
+        registerEffectTimeout(() => {
+          setScorePopups((current) =>
+            current.filter(
+              (popup) =>
+                !nextScorePopups.some((nextPopup) => nextPopup.id === popup.id),
+            ),
+          );
+        }, 700);
+      }
+
       if (scoreGain > 0) {
         scoreRef.current += scoreGain;
         setScore(scoreRef.current);
+        setCombo(comboRef.current);
+        scheduleComboReset();
         setBestScore((current) => Math.max(current, scoreRef.current));
-        setMessage("船首ショット命中！");
+        setMessage(
+          comboRef.current >= 5
+            ? `コンボ ${comboRef.current}！`
+            : "船首ショット命中！",
+        );
       }
 
       if (playerHit) {
+        resetCombo();
         const nextLives = livesRef.current - 1;
         livesRef.current = nextLives;
         setLives(nextLives);
         if (nextLives <= 0) {
           setGameState("gameover");
-          setMessage("ゲームオーバー… 宇宙うさぎに囲まれた！");
+          setMessage("ゲームオーバー… 宇宙エイリアンに囲まれた！");
         } else {
           invincibleRef.current = true;
           setIsInvincible(true);
@@ -574,21 +752,38 @@ export default function ToolClient() {
       if (frameRef.current % 240 === 0) {
         levelRef.current += 1;
         setLevel(levelRef.current);
-        setMessage("宇宙うさぎの波が強くなった！");
+        showLevelNotice(levelRef.current);
+        setMessage(
+          `LEVEL UP! Lv${levelRef.current} 宇宙エイリアンの波が強くなった！`,
+        );
       }
     };
 
     const interval = window.setInterval(loop, 16);
     return () => window.clearInterval(interval);
-  }, [fireBullet, gameState]);
+  }, [
+    fireBullet,
+    gameState,
+    registerEffectTimeout,
+    resetCombo,
+    scheduleComboReset,
+    showLevelNotice,
+  ]);
 
   useEffect(() => {
     return () => {
       if (invincibleTimeoutRef.current !== null) {
         window.clearTimeout(invincibleTimeoutRef.current);
       }
+      if (comboTimeoutRef.current !== null) {
+        window.clearTimeout(comboTimeoutRef.current);
+      }
+      if (levelNoticeTimeoutRef.current !== null) {
+        window.clearTimeout(levelNoticeTimeoutRef.current);
+      }
+      clearEffectTimeouts();
     };
-  }, []);
+  }, [clearEffectTimeouts]);
 
   useEffect(() => {
     const element = gameViewportRef.current;
@@ -638,7 +833,9 @@ export default function ToolClient() {
   const isCompact =
     viewportSize.width > 0 && viewportSize.width <= COMPACT_MAX_WIDTH;
   const showTouchPanel =
-    isCompact || viewportSize.width === 0 || viewportSize.width >= TOUCH_PANEL_MIN_VIEWPORT;
+    isCompact ||
+    viewportSize.width === 0 ||
+    viewportSize.width >= TOUCH_PANEL_MIN_VIEWPORT;
 
   return (
     <main style={styles.page}>
@@ -656,7 +853,7 @@ export default function ToolClient() {
               ...(isCompact ? styles.titleCompact : {}),
             }}
           >
-            ペンギン・バニーシューター
+            ペンギン・エイリアンシューター
           </h1>
           <p
             style={{
@@ -664,7 +861,8 @@ export default function ToolClient() {
               ...(isCompact ? styles.noteCompact : {}),
             }}
           >
-            矢印キーでペンギン宇宙船を操縦し、Space で船首ショット。絵文字とCSSで遊べるミニゲームです。
+            矢印キーでペンギン宇宙船を操縦し、Space
+            で船首ショット。絵文字とCSSで遊べるミニゲームです。
           </p>
         </section>
 
@@ -683,11 +881,15 @@ export default function ToolClient() {
             <article style={styles.card}>
               <div style={styles.cardTitle}>あそび方</div>
               <p style={styles.cardText}>
-                自機は宇宙船に乗ったペンギン、敵は宇宙うさぎ🐰です。矢印キーで移動、Spaceキーで船首ショット。
+                自機は宇宙船に乗ったペンギン、敵は宇宙エイリアン👾です。矢印キーで移動、Spaceキーで船首ショット。連続撃破でコンボが伸び、獲得スコアもアップします。
               </p>
               <div style={styles.badgeRow}>
-                <span style={{ ...styles.badge, ...styles.badgeMove }}>←↑↓→ 移動</span>
-                <span style={{ ...styles.badge, ...styles.badgeShot }}>Space 発射</span>
+                <span style={{ ...styles.badge, ...styles.badgeMove }}>
+                  ←↑↓→ 移動
+                </span>
+                <span style={{ ...styles.badge, ...styles.badgeShot }}>
+                  Space 発射
+                </span>
               </div>
 
               <div style={styles.statusBox}>
@@ -744,6 +946,13 @@ export default function ToolClient() {
                 </div>
                 <span style={styles.statIcon}>🚀</span>
               </article>
+              <article style={{ ...styles.statCard, ...styles.comboStatCard }}>
+                <div>
+                  <div style={styles.statLabel}>コンボ</div>
+                  <div style={styles.statValue}>{combo}</div>
+                </div>
+                <span style={styles.statIcon}>🔥</span>
+              </article>
             </div>
           </section>
 
@@ -785,7 +994,8 @@ export default function ToolClient() {
                   ))}
 
                   <div style={styles.hud}>
-                    Score {score} / Life {lives} / Lv {level} / Enemies {enemies.length}
+                    Score {score} / Life {lives} / Lv {level} / Combo {combo} /
+                    Enemies {enemies.length}
                   </div>
 
                   {bullets.map((bullet) => (
@@ -793,28 +1003,55 @@ export default function ToolClient() {
                   ))}
 
                   {enemies.map((enemy) => (
-                    <Bunny key={enemy.id} enemy={enemy} />
+                    <Alien key={enemy.id} enemy={enemy} />
                   ))}
 
                   {explosions.map((explosion) => (
-                    <ExplosionView key={explosion.id} x={explosion.x} y={explosion.y} />
+                    <ExplosionView
+                      key={explosion.id}
+                      x={explosion.x}
+                      y={explosion.y}
+                    />
                   ))}
 
-                  <PenguinShip x={player.x} y={player.y} invincible={isInvincible} />
+                  {scorePopups.map((popup) => (
+                    <ScorePopupView key={popup.id} popup={popup} />
+                  ))}
+
+                  {levelNotice ? (
+                    <div key={levelNotice.id} style={styles.levelNotice}>
+                      <div style={styles.levelNoticeTitle}>LEVEL UP!</div>
+                      <div style={styles.levelNoticeText}>
+                        Lv{levelNotice.level}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <PenguinShip
+                    x={player.x}
+                    y={player.y}
+                    invincible={isInvincible}
+                  />
 
                   {gameState !== "playing" ? (
                     <div style={styles.overlay}>
                       <div style={styles.overlayCard}>
                         <div style={styles.overlayIcon}>🐧🚀</div>
                         <h2 style={styles.overlayTitle}>
-                          {gameState === "gameover" ? "もう一回！" : "宇宙船シューティング"}
+                          {gameState === "gameover"
+                            ? "もう一回！"
+                            : "宇宙船シューティング"}
                         </h2>
                         <p style={styles.overlayText}>
                           {gameState === "gameover"
-                            ? "宇宙うさぎの猛攻をしのいで、記録更新を目指そう。"
+                            ? "宇宙エイリアンの猛攻をしのいで、記録更新を目指そう。"
                             : "スタートを押すか、Spaceキーで出撃。"}
                         </p>
-                        <button type="button" onClick={startGame} style={styles.primaryButton}>
+                        <button
+                          type="button"
+                          onClick={startGame}
+                          style={styles.primaryButton}
+                        >
                           {gameState === "gameover" ? "リトライ" : "スタート"}
                         </button>
                       </div>
@@ -825,45 +1062,45 @@ export default function ToolClient() {
             </div>
 
             {showTouchPanel && (
-            <div
-              style={{
-                ...styles.touchPanel,
-                ...(isCompact ? styles.touchPanelCompact : {}),
-              }}
-            >
-              <div style={styles.touchPanelTitle}>スマホ操作</div>
               <div
                 style={{
-                  ...styles.touchGrid,
-                  ...(isCompact ? styles.touchGridCompact : {}),
+                  ...styles.touchPanel,
+                  ...(isCompact ? styles.touchPanelCompact : {}),
                 }}
               >
-                <DPad
-                  compact={isCompact}
-                  onDirectionChange={(dirs) => {
-                    setControlPressed("ArrowUp", dirs.up);
-                    setControlPressed("ArrowDown", dirs.down);
-                    setControlPressed("ArrowLeft", dirs.left);
-                    setControlPressed("ArrowRight", dirs.right);
+                <div style={styles.touchPanelTitle}>スマホ操作</div>
+                <div
+                  style={{
+                    ...styles.touchGrid,
+                    ...(isCompact ? styles.touchGridCompact : {}),
                   }}
-                />
-
-                <div style={styles.touchActionCol}>
-                  <TouchButton
-                    label="発射"
-                    wide
-                    accent
+                >
+                  <DPad
                     compact={isCompact}
-                    onPressChange={(pressed) => {
-                      if (pressed && gameState === "idle") {
-                        startGame();
-                      }
-                      setControlPressed("Space", pressed);
+                    onDirectionChange={(dirs) => {
+                      setControlPressed("ArrowUp", dirs.up);
+                      setControlPressed("ArrowDown", dirs.down);
+                      setControlPressed("ArrowLeft", dirs.left);
+                      setControlPressed("ArrowRight", dirs.right);
                     }}
                   />
+
+                  <div style={styles.touchActionCol}>
+                    <TouchButton
+                      label="発射"
+                      wide
+                      accent
+                      compact={isCompact}
+                      onPressChange={(pressed) => {
+                        if (pressed && gameState === "idle") {
+                          startGame();
+                        }
+                        setControlPressed("Space", pressed);
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
             )}
           </section>
         </div>
@@ -878,6 +1115,36 @@ export default function ToolClient() {
           to {
             opacity: 0;
             transform: scale(1.35);
+          }
+        }
+
+        @keyframes penguinShooterScoreFloat {
+          from {
+            opacity: 1;
+            transform: translateY(0) scale(0.92);
+          }
+          to {
+            opacity: 0;
+            transform: translateY(-34px) scale(1.18);
+          }
+        }
+
+        @keyframes penguinShooterLevelPop {
+          0% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.7);
+          }
+          18% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.08);
+          }
+          72% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+          }
+          100% {
+            opacity: 0;
+            transform: translate(-50%, -60%) scale(0.95);
           }
         }
       `}</style>
@@ -931,7 +1198,12 @@ function DPad({
   onDirectionChange,
 }: {
   compact: boolean;
-  onDirectionChange: (dirs: { up: boolean; down: boolean; left: boolean; right: boolean }) => void;
+  onDirectionChange: (dirs: {
+    up: boolean;
+    down: boolean;
+    left: boolean;
+    right: boolean;
+  }) => void;
 }) {
   const padRef = useRef<HTMLDivElement>(null);
   const originRef = useRef<{ x: number; y: number } | null>(null);
@@ -1133,7 +1405,7 @@ const styles: Record<string, CSSProperties> = {
   statGrid: {
     display: "grid",
     gap: 12,
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   },
   statGridCompact: {
     gap: 8,
@@ -1162,6 +1434,10 @@ const styles: Record<string, CSSProperties> = {
   },
   statIcon: {
     fontSize: 24,
+  },
+  comboStatCard: {
+    background:
+      "linear-gradient(135deg, rgba(124, 58, 237, 0.94), rgba(219, 39, 119, 0.92))",
   },
   gameCard: {
     borderRadius: 32,
@@ -1201,6 +1477,36 @@ const styles: Record<string, CSSProperties> = {
     inset: 0,
     background:
       "radial-gradient(circle at top, rgba(56,189,248,0.18), transparent 35%), radial-gradient(circle at bottom, rgba(236,72,153,0.14), transparent 28%)",
+  },
+  levelNotice: {
+    position: "absolute",
+    left: "50%",
+    top: "42%",
+    zIndex: 38,
+    transform: "translate(-50%, -50%)",
+    padding: "18px 28px",
+    borderRadius: 28,
+    border: "1px solid rgba(254, 240, 138, 0.72)",
+    background:
+      "linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(8, 47, 73, 0.86))",
+    color: "#fef3c7",
+    textAlign: "center",
+    boxShadow:
+      "0 0 28px rgba(250, 204, 21, 0.35), 0 18px 40px rgba(15, 23, 42, 0.35)",
+    pointerEvents: "none",
+    animation: "penguinShooterLevelPop 1.2s ease-out forwards",
+  },
+  levelNoticeTitle: {
+    fontSize: 34,
+    fontWeight: 1000,
+    letterSpacing: 1.4,
+    lineHeight: 1,
+  },
+  levelNoticeText: {
+    marginTop: 8,
+    fontSize: 18,
+    fontWeight: 900,
+    color: "#67e8f9",
   },
   hud: {
     position: "absolute",
