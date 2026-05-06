@@ -189,7 +189,10 @@ export default function ToolClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [docTypeFilter, setDocTypeFilter] = useState("all");
 
-  const dates = useMemo(() => manifest?.dates ?? [], [manifest?.dates]);
+  const dates = useMemo(() => {
+    const manifestDates = manifest?.dates ?? [];
+    return [...manifestDates].sort((a, b) => b.localeCompare(a));
+  }, [manifest?.dates]);
   const rawDisplayDate = data?.as_of_date ?? currentDate ?? "";
   const normalizedDisplayDate = useMemo(() => {
     if (!rawDisplayDate || dates.length === 0) return rawDisplayDate;
@@ -202,8 +205,8 @@ export default function ToolClient({
     rawDisplayDate && normalizedDisplayDate && rawDisplayDate !== normalizedDisplayDate,
   );
   const currentIdx = dates.indexOf(normalizedDisplayDate);
-  const prevDate = currentIdx > 0 ? dates[currentIdx - 1] : null;
-  const nextDate = currentIdx < dates.length - 1 ? dates[currentIdx + 1] : null;
+  const prevDate = currentIdx < dates.length - 1 ? dates[currentIdx + 1] : null;
+  const nextDate = currentIdx > 0 ? dates[currentIdx - 1] : null;
 
   const navigate = (date: string) => {
     router.push(`/tools/edinet-documents?date=${date}`);
