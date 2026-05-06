@@ -205,8 +205,8 @@ export default function ToolClient({
     rawDisplayDate && normalizedDisplayDate && rawDisplayDate !== normalizedDisplayDate,
   );
   const currentIdx = dates.indexOf(normalizedDisplayDate);
-  const prevDate = currentIdx > 0 ? dates[currentIdx - 1] : null;
-  const nextDate = currentIdx < dates.length - 1 ? dates[currentIdx + 1] : null;
+  const prevDate = currentIdx < dates.length - 1 ? dates[currentIdx + 1] : null;
+  const nextDate = currentIdx > 0 ? dates[currentIdx - 1] : null;
 
   const navigate = (date: string) => {
     router.push(`/tools/edinet-documents?date=${date}`);
