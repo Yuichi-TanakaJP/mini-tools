@@ -203,6 +203,7 @@ function PenguinShip({
 function Alien({ enemy }: { enemy: Enemy }) {
   return (
     <div
+      aria-label="宇宙エイリアン"
       style={{
         position: "absolute",
         zIndex: 10,
@@ -995,7 +996,7 @@ export default function ToolClient() {
 
                   <div style={styles.hud}>
                     Score {score} / Life {lives} / Lv {level} / Combo {combo} /
-                    Enemies {enemies.length}
+                    Aliens {enemies.length}
                   </div>
 
                   {bullets.map((bullet) => (
