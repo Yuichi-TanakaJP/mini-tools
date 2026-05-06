@@ -11,6 +11,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 
 設計・方針・トレードオフの判断理由を記録します。
 
+- [2026-05-06 ペンギン・バニーシューター コンボとスコア演出](./decision-log/2026-05-06-penguin-combo-score-feedback.md)
 - [2026-05-05 docs 直下ファイルの分類方針](./decision-log/2026-05-05-docs-root-classification.md)
 - [2026-05-05 baseline-browser-mapping warning 対応](./decision-log/2026-05-05-baseline-browser-mapping-warning.md)
 - [2026-05-05 ペンギン自機の宇宙船化](./decision-log/2026-05-05-penguin-ship-player-visual.md)
