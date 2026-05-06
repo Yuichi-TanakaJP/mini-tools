@@ -11,7 +11,11 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 
 設計・方針・トレードオフの判断理由を記録します。
 
+- [2026-05-06 ペンギン・エイリアンシューター 敵キャラクター変更](./decision-log/2026-05-06-penguin-alien-enemy-visual.md)
+- [2026-05-06 ペンギン・エイリアンシューター コンボとスコア演出](./decision-log/2026-05-06-penguin-combo-score-feedback.md)
 - [2026-05-05 docs 直下ファイルの分類方針](./decision-log/2026-05-05-docs-root-classification.md)
+- [2026-05-05 baseline-browser-mapping warning 対応](./decision-log/2026-05-05-baseline-browser-mapping-warning.md)
+- [2026-05-05 ペンギン自機の宇宙船化](./decision-log/2026-05-05-penguin-ship-player-visual.md)
 - [2026-05-04 mini-tools 仕様書構成の初期方針](./decision-log/2026-05-04-mini-tools-spec-docs-structure.md)
 - [2026-05-04 yutai-memo と優待カレンダー連携フィールド整理](./decision-log/2026-05-04-yutai-memo-calendar-import-field-policy.md)
 - [2026-05-02 決算カレンダーへの銘柄検索機能追加](./decision-log/2026-05-02-earnings-calendar-search.md)

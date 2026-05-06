@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import ToolClient from "./ToolClient";
 
 export const metadata: Metadata = {
-  title: "ペンギン・バニーシューター | mini-tools",
+  title: "ペンギン・エイリアンシューター | mini-tools",
   description:
-    "ペンギンを動かしてうさぎを撃つ、絵文字ベースのミニシューティングゲーム。",
+    "宇宙船に乗ったペンギンを操縦してエイリアンを撃つ、絵文字ベースのミニシューティングゲーム。",
   alternates: {
     canonical: "/tools/penguin-rabbit-shooter",
   },
