@@ -7,6 +7,7 @@
 |---|---|
 | [月100円マネタイズ計画](./month-100-yen-monetization-plan.md) | 月100円収益化検証の全体計画 |
 | [月100円プロジェクト進捗チェックリスト](./month-100-yen-progress-checklist.md) | 月100円検証の進捗確認リスト |
+| [ペンギンシューター新ゲーム作成計画](./penguin-shooter-new-game-plan.md) | PDF企画書をベースにした新規ゲーム tool の段階実装計画 |
 | [プロジェクト継続・撤退判断基準](./project-continuation-criteria.md) | 継続、撤退、凍結の判断基準 |
 | [株価ランキング外部データ移行計画](./stock-ranking-external-data-migration-plan.md) | stock-ranking の外部データ公開移行計画 |
 

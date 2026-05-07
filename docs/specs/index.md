@@ -21,6 +21,7 @@
 | TOPIX33業種 | `/tools/topix33` | [topix33.md](./tools/topix33.md) |
 | 優待銘柄メモ帳 | `/tools/yutai-memo` | [yutai-memo.md](./tools/yutai-memo.md) |
 | 決算カレンダー | `/tools/earnings-calendar` | [earnings-calendar.md](./tools/earnings-calendar.md) |
+| ペンギンシューター | `/tools/penguin-shooter` | [penguin-shooter.md](./tools/penguin-shooter.md) |
 
 ## テンプレート
 
