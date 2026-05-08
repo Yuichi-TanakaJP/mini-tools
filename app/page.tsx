@@ -121,6 +121,13 @@ const TOOLS: ToolItem[] = [
     href: "/tools/penguin-rabbit-shooter",
     icon: "🐧",
   },
+  {
+    title: "ペンギンシューター",
+    short: "Shoot救出ミッション",
+    detail: "宇宙船Shutyに乗ったPenを操作して、捕まったShootを助ける新作ミニシューティング。",
+    href: "/tools/penguin-shooter",
+    icon: "🚀",
+  },
 ];
 
 export default function HomePage() {

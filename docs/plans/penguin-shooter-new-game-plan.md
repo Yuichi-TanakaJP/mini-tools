@@ -1,0 +1,175 @@
+# ペンギンシューター新ゲーム作成計画
+
+## 結論
+
+`penguin_bunny_shooter_project_plan_7pages_with_approval.pdf` をベース資料として、既存の `penguin-rabbit-shooter` を直接大型化するのではなく、まずは同じ repo 内の新規 tool として「ペンギンシューター」ゲームを段階追加する。
+
+初期版は、10秒オープニング、宇宙船 Shuty、主人公 Pen、捕まった Shoot、サポート役 Maro-kun、標準ショット、コイン強化、救出ミッションの最小ループまでを実装対象にする。画像アセットとステージ数は実装時の完成度を優先して判断し、音声・隠し武器・詳細な強化ショップは初期版のあとに分けて追加する。
+
+## ベース資料から読み取った企画要素
+
+- 10秒オープニング
+  - 0-2秒: 宇宙船 Shuty 登場
+  - 2-4秒: Pen 登場、5つのステージを進むことを示す
+  - 4-6秒: Shoot が敵ボスに捕まる
+  - 6-8秒: コインで強化
+  - 8-10秒: Shuty が出発し、ゲーム開始
+- プレイヤー
+  - Pen が宇宙船 Shuty に乗って戦う
+  - Shuty は丸い救助宇宙船で、開いたコックピット、サイドフィン、小型スラスターが特徴
+- 目的
+  - 5つのステージを進み、捕まった Shoot を助ける
+  - 明るくかわいい SF 世界観を優先する
+- 武器
+  - 初期武器: Standard Shooter
+  - 最終/強化武器: 3-Way Spread Shot
+  - 特殊武器: 全画面クリア系の「もう、どうにでもなれボム」
+  - 隠し武器候補: Rainbow Laser、Lucky Coin Cannon、Snack Missile、Penguin Parade、Fridge Beam
+- 成長要素
+  - コインで武器、ライフ、防御などを強化する
+  - 5ステージ構成を想定する
+- 承認前提
+  - PDF 7ページ目に原案、ゲームクリエーター、デザイン、実装、確認・承認の署名欄がある
+  - 実装開始前に、ゲーム名、URL、既存ゲームを残す方針は確認済み
+
+## 実装方針
+
+### 新規 tool として作る
+
+候補 URL は `/tools/penguin-shooter` とする。
+
+既存の `/tools/penguin-rabbit-shooter` は、すでに「ペンギン・エイリアンシューター」として公開導線や URL 互換性の判断が残っている。今回の企画は、10秒オープニング、キャラ設定、強化、ステージ進行、救出目的まで含むため、既存 tool の単純改修ではなく新規 tool として切り出す方が安全。
+
+### 技術方針
+
+- Next.js App Router の既存 tool 追加パターンに合わせる
+- 初期実装は `app/tools/penguin-shooter/` に閉じる
+- まずは canvas ではなく、既存シューターと同じ DOM/CSS ベースで実装する
+- 外部ゲームエンジンは入れず、当面は React state と `requestAnimationFrame` で十分な範囲に収める
+- 初期描画で hydration mismatch を起こさないよう、初期配置の乱数は決定的生成にする
+- スマホ操作はキーボード前提にせず、既存シューターで固めたタッチパネル設計を継承する
+- 画像アセットは実装時に判断する。初期版の完成度が上がるなら最小限の生成画像を使い、短期公開を優先するなら CSS と絵文字/テキスト表現で成立させる
+
+## 初期版スコープ
+
+### 入れる
+
+- タイトル: 「ペンギンシューター」
+- 10秒オープニングのスキップ可能な簡易演出
+- Shuty に乗った Pen のプレイヤー表示
+- 敵の出現、弾、衝突、スコア、ライフ
+- コイン獲得
+- コインによる一時的な強化表現
+- Standard Shooter
+- 3-Way Spread Shot の段階解放
+- 1回だけ使える全画面ボム
+- 5ステージ簡易進行
+- 最終ステージ到達時の Shoot 救出演出
+- PC キーボード操作とスマホタッチ操作
+
+### 後回しにする
+
+- 専用画像アセット
+- BGM / 効果音
+- ガチャ演出
+- ステージごとの背景アセット大量追加
+- 隠し武器5種
+- 永続セーブ
+- ランキング
+- 詳細なアップグレードショップ
+- 複数キャラのアニメーション差分
+
+## PR 分割案
+
+### PR 1: 仕様・導線の土台
+
+- `docs/specs/tools/penguin-shooter.md` を追加
+- `docs/uat/penguin-shooter.md` を追加
+- `docs/plans/index.md` と specs/uat index を更新
+- 新規 tool の URL、ゲーム名、初期スコープを明文化
+
+完了条件:
+
+- 仕様、UAT、計画が相互リンクされている
+- 既存 `penguin-rabbit-shooter` との差分が説明されている
+
+### PR 2: プレイ可能な最小ゲーム
+
+- `app/tools/penguin-shooter/page.tsx`
+- `app/tools/penguin-shooter/ToolClient.tsx`
+- トップページの tool 一覧へ追加
+- idle / opening / playing / cleared / gameover の状態遷移
+- プレイヤー、敵、弾、当たり判定、スコア、ライフ
+
+完了条件:
+
+- PC とスマホで開始、移動、発射、ゲームオーバーまで操作できる
+- `npm run lint` が通る
+- 主要 viewport で表示崩れがない
+
+### PR 3: 企画要素のゲーム化
+
+- 10秒オープニングを 5カット構成にする
+- コイン獲得と強化 HUD を追加
+- 3-Way Spread Shot を追加
+- 全画面ボムを追加
+- 5ステージ進行と Shoot 救出クリアを追加
+
+完了条件:
+
+- PDF の主要要素が画面上の体験として確認できる
+- ステージ進行とクリア条件が UAT で確認できる
+
+### PR 4: 表現改善
+
+- Shuty、Pen、Shoot、Maro-kun の CSS 表現を整理
+- 敵ボス/捕獲演出を追加
+- スコア、コンボ、コイン、強化のフィードバックを改善
+- モバイル操作パネルの余白、サイズ、誤タップ耐性を調整
+
+完了条件:
+
+- ベース資料の「明るくかわいい SF」トーンに寄っている
+- 小画面でもボタンや HUD が重ならない
+
+### PR 5: アセット拡張判断
+
+- 専用画像、BGM、効果音を入れるか判断する
+- 入れる場合は `public/` 配下の管理方針、ファイルサイズ、ライセンス、生成元を docs に残す
+- 既に初期版で最小画像を入れている場合は、追加アセットの増やし方を判断する
+- 入れない場合は CSS/絵文字路線を継続する判断を decision-log に残す
+
+完了条件:
+
+- アセット方針が曖昧なまま実装へ進まない
+
+## 確認観点
+
+- 10秒オープニングはスキップできる
+- 初回表示で hydration mismatch が出ない
+- PC で矢印キー移動と Space 発射ができる
+- スマホで移動と発射ができる
+- タッチパネルが小画面で重ならない
+- コイン獲得、武器強化、ボム、ステージ進行が視覚的に分かる
+- Shoot 救出で明確なクリア状態になる
+- 既存 `/tools/penguin-rabbit-shooter` の導線や表示を壊さない
+
+## 確認済み事項
+
+2026-05-07 時点で確認済みの方針:
+
+1. 新ゲーム名は「ペンギンシューター」にする
+2. URL は名称に合わせて `/tools/penguin-shooter` にする
+3. 初期版の画像アセット有無は実装側で判断する
+4. 既存の「ペンギン・エイリアンシューター」は残す
+5. 初期版のステージ数は実装側で判断する。PR 3 相当の実装で5ステージ簡易進行まで追加済み
+
+## 関連
+
+- ベース資料: `docs/plans/penguin_bunny_shooter_project_plan_7pages_with_approval.pdf`
+- 既存実装: `app/tools/penguin-rabbit-shooter/`
+- 関連 decision-log:
+  - `docs/decision-log/2026-04-17-penguin-rabbit-shooter-minimal-intro.md`
+  - `docs/decision-log/2026-04-20-penguin-touch-panel-layout.md`
+  - `docs/decision-log/2026-05-05-penguin-ship-player-visual.md`
+  - `docs/decision-log/2026-05-06-penguin-alien-enemy-visual.md`
