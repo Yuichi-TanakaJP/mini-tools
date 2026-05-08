@@ -12,6 +12,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 設計・方針・トレードオフの判断理由を記録します。
 
 - [2026-05-06 ペンギン・エイリアンシューター 敵キャラクター変更](./decision-log/2026-05-06-penguin-alien-enemy-visual.md)
+- [2026-05-09 ペンギンシューター豪華版・新技術トライアル方針](./decision-log/2026-05-09-penguin-shooter-rich-game-trial.md)
 - [2026-05-06 ペンギン・エイリアンシューター コンボとスコア演出](./decision-log/2026-05-06-penguin-combo-score-feedback.md)
 - [2026-05-05 docs 直下ファイルの分類方針](./decision-log/2026-05-05-docs-root-classification.md)
 - [2026-05-05 baseline-browser-mapping warning 対応](./decision-log/2026-05-05-baseline-browser-mapping-warning.md)
