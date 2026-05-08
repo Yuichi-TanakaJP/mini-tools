@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 820" role="img" aria-label="dimension stage background">
+  <defs>
+    <radialGradient id="portal" cx="50%" cy="44%" r="48%">
+      <stop offset="0" stop-color="#f0abfc"/>
+      <stop offset="0.35" stop-color="#7c3aed"/>
+      <stop offset="0.68" stop-color="#312e81"/>
+      <stop offset="1" stop-color="#020617"/>
+    </radialGradient>
+    <linearGradient id="rift" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="0.5" stop-color="#f472b6"/>
+      <stop offset="1" stop-color="#facc15"/>
+    </linearGradient>
+  </defs>
+  <rect width="720" height="820" fill="#020617"/>
+  <circle cx="360" cy="340" r="270" fill="url(#portal)" opacity="0.92"/>
+  <circle cx="360" cy="340" r="184" fill="none" stroke="#22d3ee" stroke-width="12" opacity="0.42"/>
+  <circle cx="360" cy="340" r="112" fill="none" stroke="#facc15" stroke-width="8" opacity="0.5"/>
+  <g opacity="0.82">
+    <path d="M58 120 L220 282 L104 300 Z" fill="url(#rift)" opacity="0.54"/>
+    <path d="M626 116 L520 318 L682 290 Z" fill="url(#rift)" opacity="0.48"/>
+    <path d="M112 672 L298 522 L306 740 Z" fill="url(#rift)" opacity="0.5"/>
+    <path d="M606 710 L462 522 L690 526 Z" fill="url(#rift)" opacity="0.5"/>
+  </g>
+  <g fill="#f8fafc">
+    <circle cx="110" cy="96" r="2"/>
+    <circle cx="190" cy="184" r="3"/>
+    <circle cx="612" cy="88" r="2"/>
+    <circle cx="642" cy="446" r="3"/>
+    <circle cx="82" cy="486" r="2"/>
+    <circle cx="358" cy="86" r="3"/>
+  </g>
+  <path d="M0 820 C132 706 242 760 360 668 C484 572 594 650 720 540 V820 Z" fill="#111827" opacity="0.7"/>
+</svg>

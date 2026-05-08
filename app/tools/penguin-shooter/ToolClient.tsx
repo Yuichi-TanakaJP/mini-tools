@@ -11,10 +11,59 @@ const BULLET_WIDTH = 8;
 const BULLET_HEIGHT = 18;
 const COIN_SIZE = 24;
 const OPENING_MS = 10_000;
-const STAGE_GOALS = [4, 5, 6, 7, 1];
+const STAGE_GOALS = [20, 20, 20, 20, 20];
 const FINAL_STAGE = STAGE_GOALS.length;
 const CLEAR_TARGET = STAGE_GOALS.reduce((sum, goal) => sum + goal, 0);
 const STAR_COUNT = 56;
+const MAX_LIVES = 10;
+const ASSET_BASE = "/games/penguin-shooter";
+const MUTE_STORAGE_KEY = "penguin-shooter-muted";
+
+type StageTheme = {
+  id: string;
+  label: string;
+  background: string;
+  accent: string;
+  musicBase: number;
+};
+
+const STAGE_THEMES: StageTheme[] = [
+  {
+    id: "town",
+    label: "町",
+    background: `${ASSET_BASE}/backgrounds/town.svg`,
+    accent: "#38bdf8",
+    musicBase: 196,
+  },
+  {
+    id: "country",
+    label: "国",
+    background: `${ASSET_BASE}/backgrounds/country.svg`,
+    accent: "#22c55e",
+    musicBase: 220,
+  },
+  {
+    id: "moon",
+    label: "月",
+    background: `${ASSET_BASE}/backgrounds/moon.svg`,
+    accent: "#cbd5e1",
+    musicBase: 247,
+  },
+  {
+    id: "mars",
+    label: "火星",
+    background: `${ASSET_BASE}/backgrounds/mars.svg`,
+    accent: "#fb923c",
+    musicBase: 165,
+  },
+  {
+    id: "dimension",
+    label: "異次元",
+    background: `${ASSET_BASE}/backgrounds/dimension.svg`,
+    accent: "#d946ef",
+    musicBase: 277,
+  },
+];
 
 type GameState = "idle" | "opening" | "playing" | "cleared" | "gameover";
 
@@ -40,6 +89,7 @@ type Enemy = {
   drift: number;
   hp: number;
   kind: "scout" | "boss";
+  checkpoint?: "mid" | "stage";
 };
 
 type Coin = {
@@ -71,6 +121,9 @@ type ControlKey =
   | "ArrowDown"
   | "Space"
   | "Bomb";
+
+type SoundEffect = "shoot" | "hit" | "coin" | "bomb" | "clear" | "stage";
+type BossMarkers = Record<number, { mid: boolean; stage: boolean }>;
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
@@ -306,7 +359,7 @@ export default function ToolClient() {
   const [bursts, setBursts] = useState<Burst[]>([]);
   const [stars, setStars] = useState<Star[]>(createStars);
   const [score, setScore] = useState(0);
-  const [lives, setLives] = useState(3);
+  const [lives, setLives] = useState(MAX_LIVES);
   const [coins, setCoins] = useState(0);
   const [rescued, setRescued] = useState(0);
   const [stage, setStage] = useState(1);
@@ -316,6 +369,8 @@ export default function ToolClient() {
   const [message, setMessage] = useState("Shuty、発進準備OK");
   const [boardScale, setBoardScale] = useState(1);
   const [viewportWidth, setViewportWidth] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const [audioReady, setAudioReady] = useState(false);
 
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const keysRef = useRef<Record<string, boolean>>({});
@@ -328,12 +383,19 @@ export default function ToolClient() {
   const burstIdRef = useRef(1);
   const seedRef = useRef(20260507);
   const openingStartedAtRef = useRef(0);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const masterGainRef = useRef<GainNode | null>(null);
+  const bgmRef = useRef<{ oscillators: OscillatorNode[]; gain: GainNode } | null>(
+    null,
+  );
+  const mutedRef = useRef(false);
+  const bossMarkersRef = useRef<BossMarkers>({});
 
   const playerRef = useRef(player);
   const bulletsRef = useRef<Bullet[]>([]);
   const enemiesRef = useRef<Enemy[]>([]);
   const coinsOnBoardRef = useRef<Coin[]>([]);
-  const livesRef = useRef(3);
+  const livesRef = useRef(MAX_LIVES);
   const scoreRef = useRef(0);
   const coinsRef = useRef(0);
   const rescuedRef = useRef(0);
@@ -347,6 +409,8 @@ export default function ToolClient() {
   const isMobileLayout = viewportWidth > 0 && viewportWidth < 768;
   const rescueProgress = Math.min(100, Math.round((rescued / CLEAR_TARGET) * 100));
   const currentStageGoal = STAGE_GOALS[stage - 1] ?? STAGE_GOALS[0];
+  const stageTheme = STAGE_THEMES[stage - 1] ?? STAGE_THEMES[0];
+  const boardBackground = `linear-gradient(180deg, rgba(15, 23, 42, 0.22), rgba(15, 23, 42, 0.1)), url("${stageTheme.background}")`;
   const stageProgressPercent = Math.min(
     100,
     Math.round((stageProgress / currentStageGoal) * 100),
@@ -392,6 +456,172 @@ export default function ToolClient() {
     }
   }, []);
 
+  const getBossMarkers = useCallback((stageNumber: number) => {
+    return bossMarkersRef.current[stageNumber] ?? { mid: false, stage: false };
+  }, []);
+
+  const getPendingCheckpoint = useCallback(
+    (stageNumber: number, progress: number) => {
+      const markers = getBossMarkers(stageNumber);
+      if (progress >= 19 && !markers.stage) return "stage" as const;
+      if (progress >= 9 && !markers.mid) return "mid" as const;
+      return undefined;
+    },
+    [getBossMarkers],
+  );
+
+  const markBossCleared = useCallback((enemy: Enemy) => {
+    if (enemy.kind !== "boss" || !enemy.checkpoint) return;
+    const current = bossMarkersRef.current[stageRef.current] ?? {
+      mid: false,
+      stage: false,
+    };
+    bossMarkersRef.current[stageRef.current] = {
+      ...current,
+      [enemy.checkpoint]: true,
+    };
+  }, []);
+
+  const getRescueGain = useCallback(
+    (enemy: Enemy, progress: number) => {
+      const stageGoal = STAGE_GOALS[stageRef.current - 1] ?? STAGE_GOALS[0];
+      if (progress >= stageGoal) return 0;
+      if (enemy.kind === "boss") return 1;
+      return getPendingCheckpoint(stageRef.current, progress) ? 0 : 1;
+    },
+    [getPendingCheckpoint],
+  );
+
+  const ensureAudio = useCallback(() => {
+    if (typeof window === "undefined") return null;
+    if (!audioContextRef.current) {
+      const AudioContextCtor =
+        window.AudioContext ||
+        (window as Window & { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
+      if (!AudioContextCtor) return null;
+      const context = new AudioContextCtor();
+      const masterGain = context.createGain();
+      masterGain.gain.value = mutedRef.current ? 0 : 0.78;
+      masterGain.connect(context.destination);
+      audioContextRef.current = context;
+      masterGainRef.current = masterGain;
+      setAudioReady(true);
+    }
+    if (audioContextRef.current.state === "suspended") {
+      void audioContextRef.current.resume();
+    }
+    return audioContextRef.current;
+  }, []);
+
+  const stopBgm = useCallback(() => {
+    const current = bgmRef.current;
+    if (!current) return;
+    const context = audioContextRef.current;
+    if (context) {
+      current.gain.gain.cancelScheduledValues(context.currentTime);
+      current.gain.gain.setTargetAtTime(0.0001, context.currentTime, 0.08);
+      current.oscillators.forEach((oscillator) => {
+        oscillator.stop(context.currentTime + 0.16);
+      });
+    } else {
+      current.oscillators.forEach((oscillator) => oscillator.stop());
+    }
+    bgmRef.current = null;
+  }, []);
+
+  const startBgm = useCallback(
+    (theme: StageTheme) => {
+      if (mutedRef.current) return;
+      const context = ensureAudio();
+      const masterGain = masterGainRef.current;
+      if (!context || !masterGain) return;
+      stopBgm();
+
+      const gain = context.createGain();
+      gain.gain.setValueAtTime(0.0001, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.035, context.currentTime + 0.7);
+      gain.connect(masterGain);
+
+      const low = context.createOscillator();
+      low.type = "sine";
+      low.frequency.value = theme.musicBase;
+      const high = context.createOscillator();
+      high.type = "triangle";
+      high.frequency.value = theme.musicBase * 1.5;
+
+      low.connect(gain);
+      high.connect(gain);
+      low.start();
+      high.start();
+      bgmRef.current = { oscillators: [low, high], gain };
+    },
+    [ensureAudio, stopBgm],
+  );
+
+  const playTone = useCallback(
+    (
+      frequency: number,
+      duration: number,
+      type: OscillatorType = "sine",
+      volume = 0.075,
+    ) => {
+      if (mutedRef.current) return;
+      const context = ensureAudio();
+      const masterGain = masterGainRef.current;
+      if (!context || !masterGain) return;
+
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = type;
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(volume, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + duration);
+      oscillator.connect(gain);
+      gain.connect(masterGain);
+      oscillator.start();
+      oscillator.stop(context.currentTime + duration);
+    },
+    [ensureAudio],
+  );
+
+  const playSfx = useCallback(
+    (effect: SoundEffect) => {
+      if (effect === "shoot") playTone(740, 0.06, "square", 0.035);
+      if (effect === "hit") playTone(130, 0.16, "sawtooth", 0.08);
+      if (effect === "coin") playTone(1046, 0.1, "triangle", 0.065);
+      if (effect === "bomb") playTone(82, 0.38, "sawtooth", 0.12);
+      if (effect === "clear") {
+        playTone(523, 0.18, "triangle", 0.08);
+        window.setTimeout(() => playTone(784, 0.2, "triangle", 0.08), 110);
+      }
+      if (effect === "stage") {
+        playTone(392, 0.12, "sine", 0.07);
+        window.setTimeout(() => playTone(587, 0.14, "sine", 0.07), 90);
+      }
+    },
+    [playTone],
+  );
+
+  const setMutedPreference = useCallback(
+    (nextMuted: boolean) => {
+      mutedRef.current = nextMuted;
+      setIsMuted(nextMuted);
+      window.localStorage.setItem(MUTE_STORAGE_KEY, nextMuted ? "1" : "0");
+      if (masterGainRef.current) {
+        masterGainRef.current.gain.value = nextMuted ? 0 : 0.78;
+      }
+      if (nextMuted) {
+        stopBgm();
+        return;
+      }
+      if (gameState === "opening" || gameState === "playing") {
+        startBgm(STAGE_THEMES[stageRef.current - 1] ?? STAGE_THEMES[0]);
+      }
+    },
+    [gameState, startBgm, stopBgm],
+  );
+
   const fire = useCallback(() => {
     const current = playerRef.current;
     const base = {
@@ -407,16 +637,20 @@ export default function ToolClient() {
           ]
         : [{ id: bulletIdRef.current++, ...base, vx: 0, vy: -11 }];
     syncBullets([...bulletsRef.current, ...nextBullets]);
-  }, [syncBullets]);
+    playSfx("shoot");
+  }, [playSfx, syncBullets]);
 
   const triggerBomb = useCallback(() => {
     if (bombsRef.current <= 0 || enemiesRef.current.length === 0) return;
+    playSfx("bomb");
     bombsRef.current -= 1;
     setBombs(bombsRef.current);
     const destroyed = enemiesRef.current.length;
-    const bossDestroyed = enemiesRef.current.some((enemy) => enemy.kind === "boss");
-    const progressGain =
-      stageRef.current === FINAL_STAGE ? (bossDestroyed ? 1 : 0) : destroyed;
+    const progressGain = enemiesRef.current.reduce(
+      (sum, enemy) =>
+        sum + getRescueGain(enemy, stageProgressRef.current + sum),
+      0,
+    );
     const nextScore = scoreRef.current + destroyed * 140;
     const nextRescued = Math.min(CLEAR_TARGET, rescuedRef.current + progressGain);
     const nextStageProgress = Math.min(
@@ -430,9 +664,14 @@ export default function ToolClient() {
     setRescued(nextRescued);
     setStageProgress(nextStageProgress);
     setMessage("もう、どうにでもなれボム！");
-    enemiesRef.current.forEach((enemy) => addBurst(enemy.x, enemy.y, "BOOM"));
+    enemiesRef.current.forEach((enemy) => {
+      markBossCleared(enemy);
+      addBurst(enemy.x, enemy.y, "BOOM");
+    });
     syncEnemies([]);
     if (stageRef.current === FINAL_STAGE && nextStageProgress >= STAGE_GOALS[FINAL_STAGE - 1]) {
+      playSfx("clear");
+      stopBgm();
       setGameState("cleared");
       resetControls();
     } else if (nextStageProgress >= STAGE_GOALS[stageRef.current - 1]) {
@@ -440,9 +679,20 @@ export default function ToolClient() {
       stageProgressRef.current = 0;
       setStage(stageRef.current);
       setStageProgress(0);
+      playSfx("stage");
+      startBgm(STAGE_THEMES[stageRef.current - 1] ?? STAGE_THEMES[0]);
       setMessage(`Stage ${stageRef.current} へワープ！`);
     }
-  }, [addBurst, resetControls, syncEnemies]);
+  }, [
+    addBurst,
+    getRescueGain,
+    markBossCleared,
+    playSfx,
+    resetControls,
+    startBgm,
+    stopBgm,
+    syncEnemies,
+  ]);
 
   const resetRun = useCallback(() => {
     frameRef.current = 0;
@@ -453,6 +703,7 @@ export default function ToolClient() {
     coinIdRef.current = 1;
     burstIdRef.current = 1;
     seedRef.current = 20260507;
+    bossMarkersRef.current = {};
     resetControls();
 
     const initialPlayer = {
@@ -465,7 +716,7 @@ export default function ToolClient() {
     bulletsRef.current = [];
     enemiesRef.current = [];
     coinsOnBoardRef.current = [];
-    livesRef.current = 3;
+    livesRef.current = MAX_LIVES;
     scoreRef.current = 0;
     coinsRef.current = 0;
     rescuedRef.current = 0;
@@ -481,7 +732,7 @@ export default function ToolClient() {
     setBursts([]);
     setStars(createStars());
     setScore(0);
-    setLives(3);
+    setLives(MAX_LIVES);
     setCoins(0);
     setRescued(0);
     setStage(1);
@@ -493,15 +744,19 @@ export default function ToolClient() {
 
   const startPlaying = useCallback(() => {
     resetRun();
+    startBgm(STAGE_THEMES[0]);
     setGameState("playing");
-  }, [resetRun]);
+  }, [resetRun, startBgm]);
 
   const startOpening = useCallback(() => {
     resetRun();
+    ensureAudio();
+    startBgm(STAGE_THEMES[0]);
+    playSfx("stage");
     openingStartedAtRef.current = performance.now();
     setOpeningProgress(0);
     setGameState("opening");
-  }, [resetRun]);
+  }, [ensureAudio, playSfx, resetRun, startBgm]);
 
   useEffect(() => {
     if (gameState !== "opening") return;
@@ -537,6 +792,16 @@ export default function ToolClient() {
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
   }, []);
+
+  useEffect(() => {
+    const storedMuted = window.localStorage.getItem(MUTE_STORAGE_KEY) === "1";
+    mutedRef.current = storedMuted;
+    const timeoutId = window.setTimeout(() => setIsMuted(storedMuted), 0);
+    return () => {
+      window.clearTimeout(timeoutId);
+      stopBgm();
+    };
+  }, [stopBgm]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -633,18 +898,14 @@ export default function ToolClient() {
       const spawnInterval = stageRef.current >= 4 ? 32 : 42;
       if (spawnTickRef.current >= spawnInterval) {
         spawnTickRef.current = 0;
-        const rand = createRandom(seedRef);
         const bossAlreadyVisible = enemiesRef.current.some(
           (enemy) => enemy.kind === "boss",
         );
-        const kind =
-          stageRef.current === FINAL_STAGE
-            ? bossAlreadyVisible
-              ? "scout"
-              : "boss"
-            : rand > 0.92 && stageRef.current >= 3
-              ? "boss"
-              : "scout";
+        const checkpoint = getPendingCheckpoint(
+          stageRef.current,
+          stageProgressRef.current,
+        );
+        const kind = checkpoint && !bossAlreadyVisible ? "boss" : "scout";
         const width = kind === "boss" ? 66 : ENEMY_SIZE;
         syncEnemies([
           ...enemiesRef.current,
@@ -659,6 +920,7 @@ export default function ToolClient() {
             drift: (createRandom(seedRef) - 0.5) * 1.5,
             hp: kind === "boss" ? 3 + stageRef.current : 1,
             kind,
+            checkpoint: kind === "boss" ? checkpoint : undefined,
           },
         ]);
       }
@@ -706,14 +968,11 @@ export default function ToolClient() {
           if (updatedEnemy.hp <= 0) {
             destroyed = true;
             scoreGain += updatedEnemy.kind === "boss" ? 500 : 120;
-            rescuedGain +=
-              stageRef.current === FINAL_STAGE
-                ? updatedEnemy.kind === "boss"
-                  ? 1
-                  : 0
-                : updatedEnemy.kind === "boss"
-                  ? 2
-                  : 1;
+            rescuedGain += getRescueGain(
+              updatedEnemy,
+              stageProgressRef.current + rescuedGain,
+            );
+            markBossCleared(updatedEnemy);
             addBurst(updatedEnemy.x, updatedEnemy.y, updatedEnemy.kind === "boss" ? "RESCUE" : "+120");
             if (createRandom(seedRef) > 0.42) {
               droppedCoins.push({
@@ -768,6 +1027,7 @@ export default function ToolClient() {
       syncCoinsOnBoard(nextCoinsOnBoard);
 
       if (scoreGain > 0) {
+        playSfx("hit");
         scoreRef.current += scoreGain;
         rescuedRef.current = Math.min(CLEAR_TARGET, rescuedRef.current + rescuedGain);
         const currentGoal = STAGE_GOALS[stageRef.current - 1];
@@ -781,6 +1041,7 @@ export default function ToolClient() {
       }
 
       if (coinGain > 0) {
+        playSfx("coin");
         coinsRef.current += coinGain;
         setCoins(coinsRef.current);
         if (coinsRef.current >= 6 && weaponLevelRef.current === 1) {
@@ -791,10 +1052,12 @@ export default function ToolClient() {
       }
 
       if (playerHit) {
+        playSfx("hit");
         livesRef.current -= 1;
         setLives(livesRef.current);
         setMessage(livesRef.current > 0 ? "Shutyにダメージ！" : "Shoot救出ならず...");
         if (livesRef.current <= 0) {
+          stopBgm();
           setGameState("gameover");
           resetControls();
           return;
@@ -804,6 +1067,8 @@ export default function ToolClient() {
       if (stageProgressRef.current >= STAGE_GOALS[stageRef.current - 1]) {
         if (stageRef.current >= FINAL_STAGE) {
           setMessage("Shoot救出成功！");
+          playSfx("clear");
+          stopBgm();
           setGameState("cleared");
           resetControls();
           return;
@@ -813,6 +1078,8 @@ export default function ToolClient() {
         stageProgressRef.current = 0;
         setStage(stageRef.current);
         setStageProgress(0);
+        playSfx("stage");
+        startBgm(STAGE_THEMES[stageRef.current - 1] ?? STAGE_THEMES[0]);
         setMessage(
           stageRef.current === FINAL_STAGE
             ? "最終ステージ！捕獲UFOを追い詰めよう"
@@ -834,8 +1101,14 @@ export default function ToolClient() {
   }, [
     addBurst,
     fire,
+    getPendingCheckpoint,
+    getRescueGain,
     isPlaying,
+    markBossCleared,
+    playSfx,
     resetControls,
+    startBgm,
+    stopBgm,
     syncBullets,
     syncCoinsOnBoard,
     syncEnemies,
@@ -902,7 +1175,7 @@ export default function ToolClient() {
             <section style={styles.card}>
               <div style={styles.cardTitle}>Mission</div>
               <p style={styles.cardText}>
-                5つのステージを進み、最後の捕獲UFOを倒すとShoot救出。
+                5つの大ステージ、全100小ステージを進み、最後の捕獲UFOを倒すとShoot救出。
                 Bキーまたはボムボタンで1回だけ全画面ボムを使えます。
               </p>
               <div style={styles.statusList}>
@@ -932,6 +1205,10 @@ export default function ToolClient() {
                   <span>Bomb</span>
                   <strong>{bombs}</strong>
                 </div>
+                <div style={styles.statusRow}>
+                  <span>Audio</span>
+                  <strong>{isMuted ? "Muted" : audioReady ? "On" : "Ready"}</strong>
+                </div>
               </div>
               <button
                 type="button"
@@ -943,6 +1220,13 @@ export default function ToolClient() {
                 disabled={gameState === "playing" && bombs <= 0}
               >
                 {gameState === "playing" ? "ボム" : "開始"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMutedPreference(!isMuted)}
+                style={styles.secondaryButton}
+              >
+                {isMuted ? "音を出す" : "ミュート"}
               </button>
             </section>
 
@@ -987,12 +1271,13 @@ export default function ToolClient() {
                 <div
                   style={{
                     ...styles.board,
+                    background: boardBackground,
                     transform: `scale(${boardScale})`,
                   }}
                 >
                   <div style={styles.skyGlow} />
                   <div style={styles.stagePlanet}>
-                    <span style={styles.stagePlanetLabel}>Stage {stage}</span>
+                    <span style={styles.stagePlanetLabel}>{stageTheme.label}</span>
                   </div>
                   {stars.map((star) => (
                     <div
@@ -1011,12 +1296,17 @@ export default function ToolClient() {
                     Stage {stage}/{FINAL_STAGE} / Score {score} / Life {lives} /
                     Coin {coins}
                   </div>
-                  <div style={styles.stageBanner}>
+                  <div
+                    style={{
+                      ...styles.stageBanner,
+                      boxShadow: `0 0 22px ${stageTheme.accent}66`,
+                    }}
+                  >
                     <span>STAGE {stage}</span>
                     <strong>
                       {stage === FINAL_STAGE
-                        ? "Capture UFO"
-                        : `Wave ${stageProgress}/${currentStageGoal}`}
+                        ? `${stageTheme.label} / Capture UFO`
+                        : `${stageTheme.label} ${stageProgress}/${currentStageGoal}`}
                     </strong>
                   </div>
 
@@ -1243,6 +1533,19 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: 8,
     background: "#facc15",
     color: "#422006",
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+  secondaryButton: {
+    width: "100%",
+    minHeight: 38,
+    marginTop: 8,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: "rgba(226, 232, 240, 0.34)",
+    borderRadius: 8,
+    background: "rgba(15, 23, 42, 0.25)",
+    color: "#e0f2fe",
     fontWeight: 900,
     cursor: "pointer",
   },
