@@ -158,6 +158,14 @@ function rectsHit(
   );
 }
 
+function getRescueGain(stage: number, progress: number, enemyKind: Enemy["kind"]) {
+  const stageGoal = STAGE_GOALS[stage - 1] ?? STAGE_GOALS[0];
+  if (stage === FINAL_STAGE && progress >= stageGoal - 1) {
+    return enemyKind === "boss" ? 1 : 0;
+  }
+  return enemyKind === "boss" ? 2 : 1;
+}
+
 function OpeningScene({
   progress,
   onSkip,
@@ -607,9 +615,16 @@ export default function ToolClient() {
     bombsRef.current -= 1;
     setBombs(bombsRef.current);
     const destroyed = enemiesRef.current.length;
-    const bossDestroyed = enemiesRef.current.some((enemy) => enemy.kind === "boss");
-    const progressGain =
-      stageRef.current === FINAL_STAGE ? (bossDestroyed ? 1 : 0) : destroyed;
+    const progressGain = enemiesRef.current.reduce(
+      (sum, enemy) =>
+        sum +
+        getRescueGain(
+          stageRef.current,
+          stageProgressRef.current + sum,
+          enemy.kind,
+        ),
+      0,
+    );
     const nextScore = scoreRef.current + destroyed * 140;
     const nextRescued = Math.min(CLEAR_TARGET, rescuedRef.current + progressGain);
     const nextStageProgress = Math.min(
@@ -849,14 +864,7 @@ export default function ToolClient() {
         );
         const bossCheckpoint =
           stageProgressRef.current === 9 || stageProgressRef.current === 19;
-        const kind =
-          stageRef.current === FINAL_STAGE
-            ? bossAlreadyVisible
-              ? "scout"
-              : "boss"
-            : bossCheckpoint && !bossAlreadyVisible
-              ? "boss"
-              : "scout";
+        const kind = bossCheckpoint && !bossAlreadyVisible ? "boss" : "scout";
         const width = kind === "boss" ? 66 : ENEMY_SIZE;
         syncEnemies([
           ...enemiesRef.current,
@@ -918,14 +926,11 @@ export default function ToolClient() {
           if (updatedEnemy.hp <= 0) {
             destroyed = true;
             scoreGain += updatedEnemy.kind === "boss" ? 500 : 120;
-            rescuedGain +=
-              stageRef.current === FINAL_STAGE
-                ? updatedEnemy.kind === "boss"
-                  ? 1
-                  : 0
-                : updatedEnemy.kind === "boss"
-                  ? 2
-                  : 1;
+            rescuedGain += getRescueGain(
+              stageRef.current,
+              stageProgressRef.current + rescuedGain,
+              updatedEnemy.kind,
+            );
             addBurst(updatedEnemy.x, updatedEnemy.y, updatedEnemy.kind === "boss" ? "RESCUE" : "+120");
             if (createRandom(seedRef) > 0.42) {
               droppedCoins.push({
