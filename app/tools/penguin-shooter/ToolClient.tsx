@@ -89,6 +89,7 @@ type Enemy = {
   drift: number;
   hp: number;
   kind: "scout" | "boss";
+  checkpoint?: "mid" | "stage";
 };
 
 type Coin = {
@@ -122,6 +123,7 @@ type ControlKey =
   | "Bomb";
 
 type SoundEffect = "shoot" | "hit" | "coin" | "bomb" | "clear" | "stage";
+type BossMarkers = Record<number, { mid: boolean; stage: boolean }>;
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
@@ -156,14 +158,6 @@ function rectsHit(
     a.y < b.y + b.height &&
     a.y + a.height > b.y
   );
-}
-
-function getRescueGain(stage: number, progress: number, enemyKind: Enemy["kind"]) {
-  const stageGoal = STAGE_GOALS[stage - 1] ?? STAGE_GOALS[0];
-  if (stage === FINAL_STAGE && progress >= stageGoal - 1) {
-    return enemyKind === "boss" ? 1 : 0;
-  }
-  return enemyKind === "boss" ? 2 : 1;
 }
 
 function OpeningScene({
@@ -395,6 +389,7 @@ export default function ToolClient() {
     null,
   );
   const mutedRef = useRef(false);
+  const bossMarkersRef = useRef<BossMarkers>({});
 
   const playerRef = useRef(player);
   const bulletsRef = useRef<Bullet[]>([]);
@@ -460,6 +455,42 @@ export default function ToolClient() {
       keysRef.current.Spacebar = pressed;
     }
   }, []);
+
+  const getBossMarkers = useCallback((stageNumber: number) => {
+    return bossMarkersRef.current[stageNumber] ?? { mid: false, stage: false };
+  }, []);
+
+  const getPendingCheckpoint = useCallback(
+    (stageNumber: number, progress: number) => {
+      const markers = getBossMarkers(stageNumber);
+      if (progress >= 19 && !markers.stage) return "stage" as const;
+      if (progress >= 9 && !markers.mid) return "mid" as const;
+      return undefined;
+    },
+    [getBossMarkers],
+  );
+
+  const markBossCleared = useCallback((enemy: Enemy) => {
+    if (enemy.kind !== "boss" || !enemy.checkpoint) return;
+    const current = bossMarkersRef.current[stageRef.current] ?? {
+      mid: false,
+      stage: false,
+    };
+    bossMarkersRef.current[stageRef.current] = {
+      ...current,
+      [enemy.checkpoint]: true,
+    };
+  }, []);
+
+  const getRescueGain = useCallback(
+    (enemy: Enemy, progress: number) => {
+      const stageGoal = STAGE_GOALS[stageRef.current - 1] ?? STAGE_GOALS[0];
+      if (progress >= stageGoal) return 0;
+      if (enemy.kind === "boss") return 1;
+      return getPendingCheckpoint(stageRef.current, progress) ? 0 : 1;
+    },
+    [getPendingCheckpoint],
+  );
 
   const ensureAudio = useCallback(() => {
     if (typeof window === "undefined") return null;
@@ -617,12 +648,7 @@ export default function ToolClient() {
     const destroyed = enemiesRef.current.length;
     const progressGain = enemiesRef.current.reduce(
       (sum, enemy) =>
-        sum +
-        getRescueGain(
-          stageRef.current,
-          stageProgressRef.current + sum,
-          enemy.kind,
-        ),
+        sum + getRescueGain(enemy, stageProgressRef.current + sum),
       0,
     );
     const nextScore = scoreRef.current + destroyed * 140;
@@ -638,7 +664,10 @@ export default function ToolClient() {
     setRescued(nextRescued);
     setStageProgress(nextStageProgress);
     setMessage("もう、どうにでもなれボム！");
-    enemiesRef.current.forEach((enemy) => addBurst(enemy.x, enemy.y, "BOOM"));
+    enemiesRef.current.forEach((enemy) => {
+      markBossCleared(enemy);
+      addBurst(enemy.x, enemy.y, "BOOM");
+    });
     syncEnemies([]);
     if (stageRef.current === FINAL_STAGE && nextStageProgress >= STAGE_GOALS[FINAL_STAGE - 1]) {
       playSfx("clear");
@@ -654,7 +683,16 @@ export default function ToolClient() {
       startBgm(STAGE_THEMES[stageRef.current - 1] ?? STAGE_THEMES[0]);
       setMessage(`Stage ${stageRef.current} へワープ！`);
     }
-  }, [addBurst, playSfx, resetControls, startBgm, stopBgm, syncEnemies]);
+  }, [
+    addBurst,
+    getRescueGain,
+    markBossCleared,
+    playSfx,
+    resetControls,
+    startBgm,
+    stopBgm,
+    syncEnemies,
+  ]);
 
   const resetRun = useCallback(() => {
     frameRef.current = 0;
@@ -665,6 +703,7 @@ export default function ToolClient() {
     coinIdRef.current = 1;
     burstIdRef.current = 1;
     seedRef.current = 20260507;
+    bossMarkersRef.current = {};
     resetControls();
 
     const initialPlayer = {
@@ -862,9 +901,11 @@ export default function ToolClient() {
         const bossAlreadyVisible = enemiesRef.current.some(
           (enemy) => enemy.kind === "boss",
         );
-        const bossCheckpoint =
-          stageProgressRef.current === 9 || stageProgressRef.current === 19;
-        const kind = bossCheckpoint && !bossAlreadyVisible ? "boss" : "scout";
+        const checkpoint = getPendingCheckpoint(
+          stageRef.current,
+          stageProgressRef.current,
+        );
+        const kind = checkpoint && !bossAlreadyVisible ? "boss" : "scout";
         const width = kind === "boss" ? 66 : ENEMY_SIZE;
         syncEnemies([
           ...enemiesRef.current,
@@ -879,6 +920,7 @@ export default function ToolClient() {
             drift: (createRandom(seedRef) - 0.5) * 1.5,
             hp: kind === "boss" ? 3 + stageRef.current : 1,
             kind,
+            checkpoint: kind === "boss" ? checkpoint : undefined,
           },
         ]);
       }
@@ -927,10 +969,10 @@ export default function ToolClient() {
             destroyed = true;
             scoreGain += updatedEnemy.kind === "boss" ? 500 : 120;
             rescuedGain += getRescueGain(
-              stageRef.current,
+              updatedEnemy,
               stageProgressRef.current + rescuedGain,
-              updatedEnemy.kind,
             );
+            markBossCleared(updatedEnemy);
             addBurst(updatedEnemy.x, updatedEnemy.y, updatedEnemy.kind === "boss" ? "RESCUE" : "+120");
             if (createRandom(seedRef) > 0.42) {
               droppedCoins.push({
@@ -1059,7 +1101,10 @@ export default function ToolClient() {
   }, [
     addBurst,
     fire,
+    getPendingCheckpoint,
+    getRescueGain,
     isPlaying,
+    markBossCleared,
     playSfx,
     resetControls,
     startBgm,
