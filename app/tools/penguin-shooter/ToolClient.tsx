@@ -2,6 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import {
+  CLEAR_TARGET,
+  FINAL_STAGE,
+  MAX_LIVES,
+  STAGE_DEFINITIONS,
+  TWO_PLAYER_UNLOCK_STAGE,
+  getStageDefinition,
+  getStageGoal,
+  getSubStage,
+} from "./stageData";
+import type { BossCheckpoint, StageDefinition } from "./stageData";
 
 const WIDTH = 720;
 const HEIGHT = 820;
@@ -11,59 +22,8 @@ const BULLET_WIDTH = 8;
 const BULLET_HEIGHT = 18;
 const COIN_SIZE = 24;
 const OPENING_MS = 10_000;
-const STAGE_GOALS = [20, 20, 20, 20, 20];
-const FINAL_STAGE = STAGE_GOALS.length;
-const CLEAR_TARGET = STAGE_GOALS.reduce((sum, goal) => sum + goal, 0);
 const STAR_COUNT = 56;
-const MAX_LIVES = 10;
-const ASSET_BASE = "/games/penguin-shooter";
 const MUTE_STORAGE_KEY = "penguin-shooter-muted";
-
-type StageTheme = {
-  id: string;
-  label: string;
-  background: string;
-  accent: string;
-  musicBase: number;
-};
-
-const STAGE_THEMES: StageTheme[] = [
-  {
-    id: "town",
-    label: "町",
-    background: `${ASSET_BASE}/backgrounds/town.svg`,
-    accent: "#38bdf8",
-    musicBase: 196,
-  },
-  {
-    id: "country",
-    label: "国",
-    background: `${ASSET_BASE}/backgrounds/country.svg`,
-    accent: "#22c55e",
-    musicBase: 220,
-  },
-  {
-    id: "moon",
-    label: "月",
-    background: `${ASSET_BASE}/backgrounds/moon.svg`,
-    accent: "#cbd5e1",
-    musicBase: 247,
-  },
-  {
-    id: "mars",
-    label: "火星",
-    background: `${ASSET_BASE}/backgrounds/mars.svg`,
-    accent: "#fb923c",
-    musicBase: 165,
-  },
-  {
-    id: "dimension",
-    label: "異次元",
-    background: `${ASSET_BASE}/backgrounds/dimension.svg`,
-    accent: "#d946ef",
-    musicBase: 277,
-  },
-];
 
 type GameState = "idle" | "opening" | "playing" | "cleared" | "gameover";
 
@@ -123,7 +83,7 @@ type ControlKey =
   | "Bomb";
 
 type SoundEffect = "shoot" | "hit" | "coin" | "bomb" | "clear" | "stage";
-type BossMarkers = Record<number, { mid: boolean; stage: boolean }>;
+type BossMarkers = Record<number, Record<BossCheckpoint, boolean>>;
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
@@ -408,8 +368,11 @@ export default function ToolClient() {
   const powered = weaponLevel >= 2;
   const isMobileLayout = viewportWidth > 0 && viewportWidth < 768;
   const rescueProgress = Math.min(100, Math.round((rescued / CLEAR_TARGET) * 100));
-  const currentStageGoal = STAGE_GOALS[stage - 1] ?? STAGE_GOALS[0];
-  const stageTheme = STAGE_THEMES[stage - 1] ?? STAGE_THEMES[0];
+  const currentStage = getStageDefinition(stage);
+  const currentSubStage = getSubStage(stage, stageProgress);
+  const currentStageGoal = currentStage.smallStages.length;
+  const twoPlayerUnlocked = rescued >= TWO_PLAYER_UNLOCK_STAGE;
+  const stageTheme = currentStage;
   const boardBackground = `linear-gradient(180deg, rgba(15, 23, 42, 0.22), rgba(15, 23, 42, 0.1)), url("${stageTheme.background}")`;
   const stageProgressPercent = Math.min(
     100,
@@ -463,9 +426,8 @@ export default function ToolClient() {
   const getPendingCheckpoint = useCallback(
     (stageNumber: number, progress: number) => {
       const markers = getBossMarkers(stageNumber);
-      if (progress >= 19 && !markers.stage) return "stage" as const;
-      if (progress >= 9 && !markers.mid) return "mid" as const;
-      return undefined;
+      const checkpoint = getSubStage(stageNumber, progress).bossCheckpoint;
+      return checkpoint && !markers[checkpoint] ? checkpoint : undefined;
     },
     [getBossMarkers],
   );
@@ -484,7 +446,7 @@ export default function ToolClient() {
 
   const getRescueGain = useCallback(
     (enemy: Enemy, progress: number) => {
-      const stageGoal = STAGE_GOALS[stageRef.current - 1] ?? STAGE_GOALS[0];
+      const stageGoal = getStageGoal(stageRef.current);
       if (progress >= stageGoal) return 0;
       if (enemy.kind === "boss") return 1;
       return getPendingCheckpoint(stageRef.current, progress) ? 0 : 1;
@@ -531,7 +493,7 @@ export default function ToolClient() {
   }, []);
 
   const startBgm = useCallback(
-    (theme: StageTheme) => {
+    (theme: StageDefinition) => {
       if (mutedRef.current) return;
       const context = ensureAudio();
       const masterGain = masterGainRef.current;
@@ -616,7 +578,7 @@ export default function ToolClient() {
         return;
       }
       if (gameState === "opening" || gameState === "playing") {
-        startBgm(STAGE_THEMES[stageRef.current - 1] ?? STAGE_THEMES[0]);
+        startBgm(getStageDefinition(stageRef.current));
       }
     },
     [gameState, startBgm, stopBgm],
@@ -654,7 +616,7 @@ export default function ToolClient() {
     const nextScore = scoreRef.current + destroyed * 140;
     const nextRescued = Math.min(CLEAR_TARGET, rescuedRef.current + progressGain);
     const nextStageProgress = Math.min(
-      STAGE_GOALS[stageRef.current - 1],
+      getStageGoal(stageRef.current),
       stageProgressRef.current + progressGain,
     );
     scoreRef.current = nextScore;
@@ -669,18 +631,18 @@ export default function ToolClient() {
       addBurst(enemy.x, enemy.y, "BOOM");
     });
     syncEnemies([]);
-    if (stageRef.current === FINAL_STAGE && nextStageProgress >= STAGE_GOALS[FINAL_STAGE - 1]) {
+    if (stageRef.current === FINAL_STAGE && nextStageProgress >= getStageGoal(FINAL_STAGE)) {
       playSfx("clear");
       stopBgm();
       setGameState("cleared");
       resetControls();
-    } else if (nextStageProgress >= STAGE_GOALS[stageRef.current - 1]) {
+    } else if (nextStageProgress >= getStageGoal(stageRef.current)) {
       stageRef.current += 1;
       stageProgressRef.current = 0;
       setStage(stageRef.current);
       setStageProgress(0);
       playSfx("stage");
-      startBgm(STAGE_THEMES[stageRef.current - 1] ?? STAGE_THEMES[0]);
+      startBgm(getStageDefinition(stageRef.current));
       setMessage(`Stage ${stageRef.current} へワープ！`);
     }
   }, [
@@ -744,14 +706,14 @@ export default function ToolClient() {
 
   const startPlaying = useCallback(() => {
     resetRun();
-    startBgm(STAGE_THEMES[0]);
+    startBgm(STAGE_DEFINITIONS[0]);
     setGameState("playing");
   }, [resetRun, startBgm]);
 
   const startOpening = useCallback(() => {
     resetRun();
     ensureAudio();
-    startBgm(STAGE_THEMES[0]);
+    startBgm(STAGE_DEFINITIONS[0]);
     playSfx("stage");
     openingStartedAtRef.current = performance.now();
     setOpeningProgress(0);
@@ -895,7 +857,11 @@ export default function ToolClient() {
         triggerBomb();
       }
 
-      const spawnInterval = stageRef.current >= 4 ? 32 : 42;
+      const activeSubStage = getSubStage(
+        stageRef.current,
+        stageProgressRef.current,
+      );
+      const spawnInterval = activeSubStage.spawnInterval;
       if (spawnTickRef.current >= spawnInterval) {
         spawnTickRef.current = 0;
         const bossAlreadyVisible = enemiesRef.current.some(
@@ -915,8 +881,10 @@ export default function ToolClient() {
             y: -70,
             speed:
               kind === "boss"
-                ? 2.1 + stageRef.current * 0.08
-                : 2.5 + stageRef.current * 0.18 + createRandom(seedRef) * 1.5,
+                ? 2.1 + stageRef.current * 0.08 + activeSubStage.enemySpeedBonus
+                : 2.5 +
+                  activeSubStage.enemySpeedBonus +
+                  createRandom(seedRef) * 1.5,
             drift: (createRandom(seedRef) - 0.5) * 1.5,
             hp: kind === "boss" ? 3 + stageRef.current : 1,
             kind,
@@ -975,12 +943,22 @@ export default function ToolClient() {
             markBossCleared(updatedEnemy);
             addBurst(updatedEnemy.x, updatedEnemy.y, updatedEnemy.kind === "boss" ? "RESCUE" : "+120");
             if (createRandom(seedRef) > 0.42) {
-              droppedCoins.push({
-                id: coinIdRef.current++,
-                x: updatedEnemy.x + enemyWidth / 2 - COIN_SIZE / 2,
-                y: updatedEnemy.y + 12,
-                speed: 3.2,
-              });
+              const rewardCoins = getSubStage(
+                stageRef.current,
+                stageProgressRef.current + rescuedGain,
+              ).rewardCoins;
+              for (let index = 0; index < rewardCoins; index += 1) {
+                droppedCoins.push({
+                  id: coinIdRef.current++,
+                  x:
+                    updatedEnemy.x +
+                    enemyWidth / 2 -
+                    COIN_SIZE / 2 +
+                    (index - (rewardCoins - 1) / 2) * 18,
+                  y: updatedEnemy.y + 12,
+                  speed: 3.2,
+                });
+              }
             }
           }
           break;
@@ -1030,7 +1008,7 @@ export default function ToolClient() {
         playSfx("hit");
         scoreRef.current += scoreGain;
         rescuedRef.current = Math.min(CLEAR_TARGET, rescuedRef.current + rescuedGain);
-        const currentGoal = STAGE_GOALS[stageRef.current - 1];
+        const currentGoal = getStageGoal(stageRef.current);
         stageProgressRef.current = Math.min(
           currentGoal,
           stageProgressRef.current + rescuedGain,
@@ -1064,7 +1042,7 @@ export default function ToolClient() {
         }
       }
 
-      if (stageProgressRef.current >= STAGE_GOALS[stageRef.current - 1]) {
+      if (stageProgressRef.current >= getStageGoal(stageRef.current)) {
         if (stageRef.current >= FINAL_STAGE) {
           setMessage("Shoot救出成功！");
           playSfx("clear");
@@ -1079,7 +1057,7 @@ export default function ToolClient() {
         setStage(stageRef.current);
         setStageProgress(0);
         playSfx("stage");
-        startBgm(STAGE_THEMES[stageRef.current - 1] ?? STAGE_THEMES[0]);
+        startBgm(getStageDefinition(stageRef.current));
         setMessage(
           stageRef.current === FINAL_STAGE
             ? "最終ステージ！捕獲UFOを追い詰めよう"
@@ -1182,7 +1160,13 @@ export default function ToolClient() {
                 <div style={styles.statusRow}>
                   <span>Stage</span>
                   <strong>
-                    {stage}/{FINAL_STAGE}
+                    {stage}/{FINAL_STAGE} {currentStage.label}
+                  </strong>
+                </div>
+                <div style={styles.statusRow}>
+                  <span>Small</span>
+                  <strong>
+                    {currentSubStage.globalNumber}/{CLEAR_TARGET}
                   </strong>
                 </div>
                 <div style={styles.statusRow}>
@@ -1209,6 +1193,10 @@ export default function ToolClient() {
                   <span>Audio</span>
                   <strong>{isMuted ? "Muted" : audioReady ? "On" : "Ready"}</strong>
                 </div>
+                <div style={styles.statusRow}>
+                  <span>2P</span>
+                  <strong>{twoPlayerUnlocked ? "Unlocked" : `${rescued}/${TWO_PLAYER_UNLOCK_STAGE}`}</strong>
+                </div>
               </div>
               <button
                 type="button"
@@ -1232,7 +1220,9 @@ export default function ToolClient() {
 
             <section style={styles.progressCard}>
               <div style={styles.progressHeader}>
-                <span>Stage {stage} clear</span>
+                <span>
+                  {currentStage.storyLabel} / {currentSubStage.label}
+                </span>
                 <strong>
                   {stageProgress}/{currentStageGoal}
                 </strong>
@@ -1248,6 +1238,9 @@ export default function ToolClient() {
                 <div style={{ ...styles.totalRescueFill, width: `${rescueProgress}%` }} />
               </div>
               <div style={styles.message}>{message}</div>
+              {twoPlayerUnlocked ? (
+                <div style={styles.unlockNotice}>2人プレイ解放済み</div>
+              ) : null}
               <div style={styles.maroLine}>
                 <span style={styles.maroIcon}>🧋</span>
                 <span>
@@ -1293,8 +1286,9 @@ export default function ToolClient() {
                   ))}
 
                   <div style={styles.hud}>
-                    Stage {stage}/{FINAL_STAGE} / Score {score} / Life {lives} /
-                    Coin {coins}
+                    Stage {stage}/{FINAL_STAGE} {currentStage.label} / Small{" "}
+                    {currentSubStage.globalNumber}/{CLEAR_TARGET} / Score {score} /
+                    Life {lives} / Coin {coins}
                   </div>
                   <div
                     style={{
@@ -1306,7 +1300,7 @@ export default function ToolClient() {
                     <strong>
                       {stage === FINAL_STAGE
                         ? `${stageTheme.label} / Capture UFO`
-                        : `${stageTheme.label} ${stageProgress}/${currentStageGoal}`}
+                        : `${currentSubStage.label} ${stageProgress}/${currentStageGoal}`}
                     </strong>
                   </div>
 
@@ -1591,6 +1585,15 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 13,
     fontWeight: 800,
     lineHeight: 1.45,
+  },
+  unlockNotice: {
+    marginTop: 10,
+    padding: "8px 10px",
+    borderRadius: 8,
+    background: "rgba(250, 204, 21, 0.18)",
+    color: "#854d0e",
+    fontSize: 12,
+    fontWeight: 900,
   },
   maroLine: {
     display: "flex",
