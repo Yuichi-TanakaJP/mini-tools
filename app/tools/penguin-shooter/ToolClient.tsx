@@ -613,13 +613,19 @@ export default function ToolClient() {
     playSfx("bomb");
     bombsRef.current -= 1;
     setBombs(bombsRef.current);
-    const destroyed = enemiesRef.current.length;
+    const destroyedEnemies = enemiesRef.current;
+    const destroyed = destroyedEnemies.length;
     const progressGain = enemiesRef.current.reduce(
       (sum, enemy) =>
         sum + getRescueGain(enemy, stageProgressRef.current + sum),
       0,
     );
-    const nextScore = scoreRef.current + destroyed * 140;
+    const nextScore =
+      scoreRef.current +
+      destroyedEnemies.reduce(
+        (sum, enemy) => sum + (enemy.boss?.score ?? 140),
+        0,
+      );
     const nextRescued = Math.min(CLEAR_TARGET, rescuedRef.current + progressGain);
     const nextStageProgress = Math.min(
       getStageGoal(stageRef.current),
@@ -632,7 +638,7 @@ export default function ToolClient() {
     setRescued(nextRescued);
     setStageProgress(nextStageProgress);
     setMessage("もう、どうにでもなれボム！");
-    enemiesRef.current.forEach((enemy) => {
+    destroyedEnemies.forEach((enemy) => {
       markBossCleared(enemy);
       addBurst(enemy.x, enemy.y, "BOOM");
     });
