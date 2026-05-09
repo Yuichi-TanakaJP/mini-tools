@@ -87,6 +87,9 @@
 - [ ] 合計100小ステージの進捗が確認できる
 - [ ] 各大ステージに中間ボスとステージボスが出る
 - [ ] ボスのオーラ、危険リング、HPバー、攻撃ラベルが確認できる
+- [ ] 中間ボスは移動する大型敵として表示される
+- [ ] ステージボスは画面上部に巨大な専用デザインで表示される
+- [ ] ステージボスに左右武器、中央コア、主砲が表示される
 - [ ] ボスにショットを当てるとHPバーが短くなる
 - [ ] 10小ステージクリアで2人プレイが解放される
 - [ ] 2人プレイ解放前は進捗、解放後は解放済み表示が確認できる
@@ -136,3 +139,4 @@
 - Tool Spec: [ペンギンシューター 仕様](../specs/tools/penguin-shooter.md)
 - Plan: [ペンギンシューター新ゲーム作成計画](../plans/penguin-shooter-new-game-plan.md)
 - Decision Log: [ペンギンシューター 背景・ボス演出強化](../decision-log/2026-05-09-penguin-shooter-visual-boss-polish.md)
+- Decision Log: [ペンギンシューター ステージボス専用デザイン](../decision-log/2026-05-10-penguin-shooter-dedicated-stage-bosses.md)

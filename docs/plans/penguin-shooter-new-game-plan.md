@@ -210,11 +210,14 @@
 - 町、国、月、火星、異次元ごとに遠景、中景、手前レイヤーの見え方を変える
 - ボス表示にオーラ、危険リング、HPバーを追加する
 - ボスの残りHPがプレイ中に分かるようにする
+- ステージボスは画面上部に固定気味で出現する巨大ボスにする
+- ステージボスは左右武器、中央コア、主砲を持つ専用デザインにする
 
 完了条件:
 
 - 各大ステージの風景差分がゲーム画面内で確認できる
 - ボス出現時に通常敵より明確に目立つ
+- 中間ボスとステージボスの見た目と挙動が明確に違う
 - ボスHPの減少が視覚的に確認できる
 - 2人プレイと進捗保存には触れず、PR8凍結状態を維持する
 
@@ -264,3 +267,4 @@
   - `docs/decision-log/2026-05-09-penguin-shooter-stage-data-structure.md`
   - `docs/decision-log/2026-05-09-penguin-shooter-boss-design-and-pr8-freeze.md`
   - `docs/decision-log/2026-05-09-penguin-shooter-visual-boss-polish.md`
+  - `docs/decision-log/2026-05-10-penguin-shooter-dedicated-stage-bosses.md`

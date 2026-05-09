@@ -51,6 +51,8 @@ type Enemy = {
   id: number;
   x: number;
   y: number;
+  anchorX?: number;
+  phase?: number;
   speed: number;
   drift: number;
   hp: number;
@@ -155,6 +157,17 @@ const STAGE_VISUALS: Record<StageId, StageVisualTheme> = {
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
+
+const getBossSize = (checkpoint?: BossCheckpoint) =>
+  checkpoint === "stage"
+    ? { width: 176, height: 132 }
+    : { width: 84, height: 96 };
+
+const getEnemySize = (enemy: Pick<Enemy, "kind" | "checkpoint">) =>
+  enemy.kind === "boss" ? getBossSize(enemy.checkpoint) : {
+    width: ENEMY_SIZE,
+    height: ENEMY_SIZE,
+  };
 
 function pseudoRandom(seed: number) {
   const value = Math.sin(seed * 12.9898) * 43758.5453;
@@ -307,27 +320,76 @@ function EnemyView({ enemy }: { enemy: Enemy }) {
   if (enemy.kind === "boss") {
     const bossName = enemy.boss?.name ?? "捕獲UFO";
     const attackLabel = enemy.boss?.attackLabel ?? "特殊攻撃";
+    const weaponLabel = enemy.boss?.weaponLabel ?? "特殊兵装";
+    const isStageBoss = enemy.checkpoint === "stage";
     const hpPercent = Math.max(
       0,
       Math.round((enemy.hp / Math.max(1, enemy.maxHp)) * 100),
     );
+    const bossSize = getBossSize(enemy.checkpoint);
     return (
       <div
         aria-label={bossName}
         style={{
           ...styles.enemy,
           ...styles.bossEnemy,
+          ...(isStageBoss ? styles.stageBossEnemy : styles.midBossEnemy),
+          width: bossSize.width,
+          height: bossSize.height,
           left: enemy.x,
           top: enemy.y,
         }}
       >
-        <span style={styles.bossAura} />
-        <span style={styles.bossRing} />
-        <span style={styles.bossBeam} />
-        <span style={styles.bossBody}>🛸</span>
-        <span style={styles.bossName}>{bossName}</span>
-        <span style={styles.bossAttack}>{attackLabel}</span>
-        <span style={styles.bossHp}>
+        <span
+          style={{
+            ...styles.bossAura,
+            ...(isStageBoss ? styles.stageBossAura : {}),
+          }}
+        />
+        <span
+          style={{
+            ...styles.bossRing,
+            ...(isStageBoss ? styles.stageBossRing : {}),
+          }}
+        />
+        {isStageBoss ? (
+          <>
+            <span style={styles.stageBossWeaponLeft} />
+            <span style={styles.stageBossWeaponRight} />
+            <span style={styles.stageBossCannon} />
+            <span style={styles.stageBossCore} />
+            <span style={styles.stageBossDeck} />
+          </>
+        ) : (
+          <>
+            <span style={styles.midBossWingLeft} />
+            <span style={styles.midBossWingRight} />
+            <span style={styles.midBossCore} />
+          </>
+        )}
+        <span style={isStageBoss ? styles.stageBossBeam : styles.bossBeam} />
+        <span
+          style={{
+            ...styles.bossName,
+            ...(isStageBoss ? styles.stageBossName : {}),
+          }}
+        >
+          {bossName}
+        </span>
+        <span
+          style={{
+            ...styles.bossAttack,
+            ...(isStageBoss ? styles.stageBossAttack : {}),
+          }}
+        >
+          {attackLabel} / {weaponLabel}
+        </span>
+        <span
+          style={{
+            ...styles.bossHp,
+            ...(isStageBoss ? styles.stageBossHp : {}),
+          }}
+        >
           <span style={{ ...styles.bossHpFill, width: `${hpPercent}%` }} />
         </span>
       </div>
@@ -977,27 +1039,45 @@ export default function ToolClient() {
           ? getBossDefinition(stageRef.current, checkpoint)
           : undefined;
         const kind = checkpoint && !bossAlreadyVisible ? "boss" : "scout";
-        const width = kind === "boss" ? 66 : ENEMY_SIZE;
+        const isStageBoss = kind === "boss" && checkpoint === "stage";
+        const enemySize =
+          kind === "boss" ? getBossSize(checkpoint) : {
+            width: ENEMY_SIZE,
+            height: ENEMY_SIZE,
+          };
+        const startX = isStageBoss
+          ? Math.round((WIDTH - enemySize.width) / 2)
+          : Math.round(
+              createRandom(seedRef) * (WIDTH - enemySize.width - 36) + 18,
+            );
         if (kind === "boss" && boss) {
-          setMessage(`${boss.name} 出現！ ${boss.attackLabel}`);
+          setMessage(`${boss.name} 出現！ ${boss.attackLabel} / ${boss.weaponLabel}`);
           playSfx("stage");
         }
         syncEnemies([
           ...enemiesRef.current,
           {
             id: enemyIdRef.current++,
-            x: Math.round(createRandom(seedRef) * (WIDTH - width - 36) + 18),
-            y: -70,
+            x: startX,
+            y: isStageBoss ? 36 : -76,
+            anchorX: isStageBoss ? startX : undefined,
+            phase: isStageBoss ? createRandom(seedRef) * Math.PI * 2 : undefined,
             speed:
               kind === "boss" && boss
-                ? 2.1 + stageRef.current * 0.08 + activeSubStage.enemySpeedBonus
-                  + boss.speedBonus
+                ? isStageBoss
+                  ? 0
+                  : 2.1 +
+                    stageRef.current * 0.08 +
+                    activeSubStage.enemySpeedBonus +
+                    boss.speedBonus
                 : 2.5 +
                   activeSubStage.enemySpeedBonus +
                   createRandom(seedRef) * 1.5,
             drift:
-              (createRandom(seedRef) - 0.5) *
-              (kind === "boss" && boss ? boss.driftScale : 1.5),
+              isStageBoss
+                ? 18 + stageRef.current * 2
+                : (createRandom(seedRef) - 0.5) *
+                  (kind === "boss" && boss ? boss.driftScale : 1.5),
             hp: kind === "boss" && boss ? boss.hp : 1,
             maxHp: kind === "boss" && boss ? boss.hp : 1,
             kind,
@@ -1029,13 +1109,20 @@ export default function ToolClient() {
       let playerHit = false;
 
       for (const enemy of enemiesRef.current) {
+        const size = getEnemySize(enemy);
+        const isStageBoss = enemy.kind === "boss" && enemy.checkpoint === "stage";
+        const stageBossX =
+          (enemy.anchorX ?? enemy.x) +
+          Math.sin(performance.now() / 720 + (enemy.phase ?? 0)) * enemy.drift;
         let updatedEnemy = {
           ...enemy,
-          x: clamp(enemy.x + enemy.drift, 6, WIDTH - (enemy.kind === "boss" ? 66 : ENEMY_SIZE) - 6),
-          y: enemy.y + enemy.speed,
+          x: isStageBoss
+            ? clamp(stageBossX, 16, WIDTH - size.width - 16)
+            : clamp(enemy.x + enemy.drift, 6, WIDTH - size.width - 6),
+          y: isStageBoss ? enemy.y : enemy.y + enemy.speed,
         };
-        const enemyWidth = updatedEnemy.kind === "boss" ? 66 : ENEMY_SIZE;
-        const enemyHeight = updatedEnemy.kind === "boss" ? 54 : ENEMY_SIZE;
+        const enemyWidth = size.width;
+        const enemyHeight = size.height;
         let destroyed = false;
 
         for (const bullet of movedBullets) {
@@ -1581,6 +1668,11 @@ export default function ToolClient() {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-5px); }
         }
+
+        @keyframes penguinShooterStageBossHover {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-3px) scale(1.015); }
+        }
       `}</style>
     </main>
   );
@@ -1931,14 +2023,23 @@ const styles: Record<string, CSSProperties> = {
     userSelect: "none",
   },
   bossEnemy: {
-    width: 72,
-    height: 94,
     fontSize: 43,
     animation: "penguinShooterBob 1.6s ease-in-out infinite",
   },
+  midBossEnemy: {
+    width: 84,
+    height: 96,
+  },
+  stageBossEnemy: {
+    width: 176,
+    height: 132,
+    animation: "penguinShooterStageBossHover 2.2s ease-in-out infinite",
+    filter:
+      "drop-shadow(0 16px 18px rgba(2, 6, 23, 0.5)) drop-shadow(0 0 22px rgba(250, 204, 21, 0.22))",
+  },
   bossAura: {
     position: "absolute",
-    left: 2,
+    left: 8,
     top: 0,
     zIndex: 0,
     width: 68,
@@ -1948,9 +2049,17 @@ const styles: Record<string, CSSProperties> = {
       "radial-gradient(circle, rgba(250, 204, 21, 0.36), rgba(217, 70, 239, 0.2) 46%, transparent 72%)",
     animation: "penguinShooterPulse 1.2s ease-in-out infinite",
   },
+  stageBossAura: {
+    left: 4,
+    top: -2,
+    width: 168,
+    height: 112,
+    background:
+      "radial-gradient(ellipse, rgba(250, 204, 21, 0.34), rgba(217, 70, 239, 0.22) 48%, transparent 74%)",
+  },
   bossRing: {
     position: "absolute",
-    left: 8,
+    left: 14,
     top: 8,
     zIndex: 1,
     width: 56,
@@ -1962,10 +2071,113 @@ const styles: Record<string, CSSProperties> = {
     boxShadow: "0 0 18px rgba(250, 204, 21, 0.4)",
     transform: "rotate(-8deg)",
   },
-  bossBody: {
-    position: "relative",
+  stageBossRing: {
+    left: 32,
+    top: 18,
+    width: 112,
+    height: 58,
+    borderColor: "rgba(125, 211, 252, 0.76)",
+    boxShadow: "0 0 24px rgba(125, 211, 252, 0.42)",
+  },
+  midBossWingLeft: {
+    position: "absolute",
+    left: 8,
+    top: 34,
+    zIndex: 2,
+    width: 24,
+    height: 20,
+    borderRadius: "16px 4px 14px 14px",
+    background: "linear-gradient(180deg, #facc15, #fb7185)",
+    transform: "rotate(14deg)",
+  },
+  midBossWingRight: {
+    position: "absolute",
+    right: 8,
+    top: 34,
+    zIndex: 2,
+    width: 24,
+    height: 20,
+    borderRadius: "4px 16px 14px 14px",
+    background: "linear-gradient(180deg, #22d3ee, #a78bfa)",
+    transform: "rotate(-14deg)",
+  },
+  midBossCore: {
+    position: "absolute",
+    left: 22,
+    top: 18,
     zIndex: 3,
-    lineHeight: 1,
+    width: 40,
+    height: 36,
+    borderRadius: "50% 50% 42% 42%",
+    borderWidth: 2,
+    borderStyle: "solid",
+    borderColor: "rgba(254, 243, 199, 0.82)",
+    background:
+      "radial-gradient(circle at 50% 36%, #fef08a 0 6px, transparent 7px), linear-gradient(180deg, #64748b, #1e293b)",
+    boxShadow: "inset 0 8px 12px rgba(255, 255, 255, 0.18)",
+  },
+  stageBossDeck: {
+    position: "absolute",
+    left: 26,
+    top: 34,
+    zIndex: 3,
+    width: 124,
+    height: 50,
+    borderRadius: "46px 46px 28px 28px",
+    borderWidth: 2,
+    borderStyle: "solid",
+    borderColor: "rgba(226, 232, 240, 0.76)",
+    background:
+      "linear-gradient(180deg, rgba(226, 232, 240, 0.96), rgba(71, 85, 105, 0.96) 58%, rgba(15, 23, 42, 0.98))",
+    boxShadow: "inset 0 11px 14px rgba(255, 255, 255, 0.24)",
+  },
+  stageBossCore: {
+    position: "absolute",
+    left: 66,
+    top: 16,
+    zIndex: 4,
+    width: 44,
+    height: 44,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderStyle: "solid",
+    borderColor: "rgba(254, 243, 199, 0.88)",
+    background:
+      "radial-gradient(circle at 50% 48%, #fef08a 0 9px, #22d3ee 10px 15px, #1e293b 16px)",
+    boxShadow: "0 0 18px rgba(250, 204, 21, 0.44)",
+  },
+  stageBossWeaponLeft: {
+    position: "absolute",
+    left: 2,
+    top: 50,
+    zIndex: 2,
+    width: 54,
+    height: 24,
+    borderRadius: "18px 6px 12px 18px",
+    background: "linear-gradient(180deg, #facc15, #b45309)",
+    transform: "rotate(8deg)",
+  },
+  stageBossWeaponRight: {
+    position: "absolute",
+    right: 2,
+    top: 50,
+    zIndex: 2,
+    width: 54,
+    height: 24,
+    borderRadius: "6px 18px 18px 12px",
+    background: "linear-gradient(180deg, #22d3ee, #2563eb)",
+    transform: "rotate(-8deg)",
+  },
+  stageBossCannon: {
+    position: "absolute",
+    left: 77,
+    top: 72,
+    zIndex: 5,
+    width: 22,
+    height: 40,
+    borderRadius: "8px 8px 16px 16px",
+    background: "linear-gradient(180deg, #f8fafc, #475569)",
+    boxShadow: "0 0 16px rgba(248, 250, 252, 0.34)",
   },
   bossName: {
     position: "absolute",
@@ -1983,6 +2195,12 @@ const styles: Record<string, CSSProperties> = {
     textAlign: "center",
     whiteSpace: "nowrap",
   },
+  stageBossName: {
+    top: -20,
+    minWidth: 156,
+    fontSize: 11,
+    background: "rgba(15, 23, 42, 0.82)",
+  },
   bossAttack: {
     position: "absolute",
     left: "50%",
@@ -1999,6 +2217,11 @@ const styles: Record<string, CSSProperties> = {
     textAlign: "center",
     whiteSpace: "nowrap",
   },
+  stageBossAttack: {
+    top: 112,
+    minWidth: 166,
+    background: "rgba(190, 24, 93, 0.78)",
+  },
   bossHp: {
     position: "absolute",
     left: "50%",
@@ -2014,6 +2237,11 @@ const styles: Record<string, CSSProperties> = {
     borderColor: "rgba(254, 243, 199, 0.78)",
     background: "rgba(15, 23, 42, 0.68)",
   },
+  stageBossHp: {
+    top: 96,
+    width: 132,
+    height: 9,
+  },
   bossHpFill: {
     display: "block",
     height: "100%",
@@ -2023,7 +2251,7 @@ const styles: Record<string, CSSProperties> = {
   },
   bossBeam: {
     position: "absolute",
-    left: 26,
+    left: 31,
     top: 36,
     zIndex: 1,
     width: 22,
@@ -2033,6 +2261,19 @@ const styles: Record<string, CSSProperties> = {
       "linear-gradient(180deg, rgba(250, 204, 21, 0.55), rgba(250, 204, 21, 0))",
     transformOrigin: "top center",
     animation: "penguinShooterPulse 1.1s ease-in-out infinite",
+  },
+  stageBossBeam: {
+    position: "absolute",
+    left: 78,
+    top: 104,
+    zIndex: 1,
+    width: 20,
+    height: 76,
+    borderRadius: "0 0 999px 999px",
+    background:
+      "linear-gradient(180deg, rgba(248, 250, 252, 0.7), rgba(34, 211, 238, 0.46), rgba(34, 211, 238, 0))",
+    transformOrigin: "top center",
+    animation: "penguinShooterPulse 0.9s ease-in-out infinite",
   },
   coin: {
     position: "absolute",

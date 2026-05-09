@@ -20,6 +20,8 @@ export type BossDefinition = {
   score: number;
   rewardCoins: number;
   attackLabel: string;
+  weaponLabel: string;
+  visual: "scrap" | "fortress" | "crater" | "core" | "storm" | "olympus" | "mirror" | "worldLock";
   speedBonus: number;
   driftScale: number;
 };
@@ -72,6 +74,8 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
         score: 600,
         rewardCoins: 3,
         attackLabel: "ジグザグ突進",
+        weaponLabel: "スクラップクロー",
+        visual: "scrap",
         speedBonus: 0,
         driftScale: 1.1,
       },
@@ -82,6 +86,8 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
         score: 900,
         rewardCoins: 5,
         attackLabel: "ゲートビーム",
+        weaponLabel: "ツインゲート砲",
+        visual: "fortress",
         speedBonus: 0.1,
         driftScale: 1.25,
       },
@@ -104,6 +110,8 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
         score: 760,
         rewardCoins: 4,
         attackLabel: "横流れ隊列",
+        weaponLabel: "キャラバンランス",
+        visual: "scrap",
         speedBonus: 0.12,
         driftScale: 1.35,
       },
@@ -114,6 +122,8 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
         score: 1100,
         rewardCoins: 6,
         attackLabel: "城壁バリア",
+        weaponLabel: "バリア城壁砲",
+        visual: "fortress",
         speedBonus: 0.18,
         driftScale: 1.15,
       },
@@ -136,6 +146,8 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
         score: 920,
         rewardCoins: 5,
         attackLabel: "低重力ホバー",
+        weaponLabel: "クレーターリング",
+        visual: "crater",
         speedBonus: 0.1,
         driftScale: 1.55,
       },
@@ -146,6 +158,8 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
         score: 1320,
         rewardCoins: 7,
         attackLabel: "月光リング",
+        weaponLabel: "ムーンコア砲",
+        visual: "core",
         speedBonus: 0.22,
         driftScale: 1.4,
       },
@@ -168,6 +182,8 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
         score: 1100,
         rewardCoins: 6,
         attackLabel: "砂嵐加速",
+        weaponLabel: "ダストカッター",
+        visual: "storm",
         speedBonus: 0.24,
         driftScale: 1.65,
       },
@@ -178,6 +194,8 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
         score: 1600,
         rewardCoins: 8,
         attackLabel: "火星噴流",
+        weaponLabel: "オリンポス火山砲",
+        visual: "olympus",
         speedBonus: 0.34,
         driftScale: 1.5,
       },
@@ -200,6 +218,8 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
         score: 1400,
         rewardCoins: 8,
         attackLabel: "反転ワープ",
+        weaponLabel: "ミラーシフト",
+        visual: "mirror",
         speedBonus: 0.3,
         driftScale: 1.9,
       },
@@ -210,6 +230,8 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
         score: 2200,
         rewardCoins: 10,
         attackLabel: "次元封印",
+        weaponLabel: "ワールドロック砲",
+        visual: "worldLock",
         speedBonus: 0.42,
         driftScale: 1.7,
       },
