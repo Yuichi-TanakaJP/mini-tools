@@ -13,6 +13,17 @@ export type SubStageConfig = {
   bossCheckpoint?: BossCheckpoint;
 };
 
+export type BossDefinition = {
+  checkpoint: BossCheckpoint;
+  name: string;
+  hp: number;
+  score: number;
+  rewardCoins: number;
+  attackLabel: string;
+  speedBonus: number;
+  driftScale: number;
+};
+
 export type StageDefinition = {
   number: number;
   id: StageId;
@@ -21,8 +32,7 @@ export type StageDefinition = {
   background: string;
   accent: string;
   musicBase: number;
-  midBoss: string;
-  stageBoss: string;
+  bosses: Record<BossCheckpoint, BossDefinition>;
   smallStages: SubStageConfig[];
 };
 
@@ -54,8 +64,28 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
     background: `${ASSET_BASE}/backgrounds/town.svg`,
     accent: "#38bdf8",
     musicBase: 196,
-    midBoss: "スクラップUFO",
-    stageBoss: "タワーゲートUFO",
+    bosses: {
+      mid: {
+        checkpoint: "mid",
+        name: "スクラップUFO",
+        hp: 5,
+        score: 600,
+        rewardCoins: 3,
+        attackLabel: "ジグザグ突進",
+        speedBonus: 0,
+        driftScale: 1.1,
+      },
+      stage: {
+        checkpoint: "stage",
+        name: "タワーゲートUFO",
+        hp: 8,
+        score: 900,
+        rewardCoins: 5,
+        attackLabel: "ゲートビーム",
+        speedBonus: 0.1,
+        driftScale: 1.25,
+      },
+    },
     smallStages: createSmallStages(1, "Town", 42),
   },
   {
@@ -66,8 +96,28 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
     background: `${ASSET_BASE}/backgrounds/country.svg`,
     accent: "#22c55e",
     musicBase: 220,
-    midBoss: "キャラバンUFO",
-    stageBoss: "キャッスルUFO",
+    bosses: {
+      mid: {
+        checkpoint: "mid",
+        name: "キャラバンUFO",
+        hp: 7,
+        score: 760,
+        rewardCoins: 4,
+        attackLabel: "横流れ隊列",
+        speedBonus: 0.12,
+        driftScale: 1.35,
+      },
+      stage: {
+        checkpoint: "stage",
+        name: "キャッスルUFO",
+        hp: 10,
+        score: 1100,
+        rewardCoins: 6,
+        attackLabel: "城壁バリア",
+        speedBonus: 0.18,
+        driftScale: 1.15,
+      },
+    },
     smallStages: createSmallStages(2, "Country", 39),
   },
   {
@@ -78,8 +128,28 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
     background: `${ASSET_BASE}/backgrounds/moon.svg`,
     accent: "#cbd5e1",
     musicBase: 247,
-    midBoss: "クレーターUFO",
-    stageBoss: "ムーンコアUFO",
+    bosses: {
+      mid: {
+        checkpoint: "mid",
+        name: "クレーターUFO",
+        hp: 9,
+        score: 920,
+        rewardCoins: 5,
+        attackLabel: "低重力ホバー",
+        speedBonus: 0.1,
+        driftScale: 1.55,
+      },
+      stage: {
+        checkpoint: "stage",
+        name: "ムーンコアUFO",
+        hp: 12,
+        score: 1320,
+        rewardCoins: 7,
+        attackLabel: "月光リング",
+        speedBonus: 0.22,
+        driftScale: 1.4,
+      },
+    },
     smallStages: createSmallStages(3, "Moon", 36),
   },
   {
@@ -90,8 +160,28 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
     background: `${ASSET_BASE}/backgrounds/mars.svg`,
     accent: "#fb923c",
     musicBase: 165,
-    midBoss: "ダストUFO",
-    stageBoss: "オリンポスUFO",
+    bosses: {
+      mid: {
+        checkpoint: "mid",
+        name: "ダストUFO",
+        hp: 11,
+        score: 1100,
+        rewardCoins: 6,
+        attackLabel: "砂嵐加速",
+        speedBonus: 0.24,
+        driftScale: 1.65,
+      },
+      stage: {
+        checkpoint: "stage",
+        name: "オリンポスUFO",
+        hp: 15,
+        score: 1600,
+        rewardCoins: 8,
+        attackLabel: "火星噴流",
+        speedBonus: 0.34,
+        driftScale: 1.5,
+      },
+    },
     smallStages: createSmallStages(4, "Mars", 33),
   },
   {
@@ -102,8 +192,28 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
     background: `${ASSET_BASE}/backgrounds/dimension.svg`,
     accent: "#d946ef",
     musicBase: 277,
-    midBoss: "ミラーUFO",
-    stageBoss: "ワールドロックUFO",
+    bosses: {
+      mid: {
+        checkpoint: "mid",
+        name: "ミラーUFO",
+        hp: 13,
+        score: 1400,
+        rewardCoins: 8,
+        attackLabel: "反転ワープ",
+        speedBonus: 0.3,
+        driftScale: 1.9,
+      },
+      stage: {
+        checkpoint: "stage",
+        name: "ワールドロックUFO",
+        hp: 18,
+        score: 2200,
+        rewardCoins: 10,
+        attackLabel: "次元封印",
+        speedBonus: 0.42,
+        driftScale: 1.7,
+      },
+    },
     smallStages: createSmallStages(5, "Dimension", 30),
   },
 ];
@@ -127,3 +237,8 @@ export const getSubStage = (stageNumber: number, completedCount: number) => {
   const index = Math.min(completedCount, stage.smallStages.length - 1);
   return stage.smallStages[index] ?? stage.smallStages[0];
 };
+
+export const getBossDefinition = (
+  stageNumber: number,
+  checkpoint: BossCheckpoint,
+) => getStageDefinition(stageNumber).bosses[checkpoint];
