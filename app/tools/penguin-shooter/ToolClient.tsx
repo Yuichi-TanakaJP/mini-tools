@@ -831,16 +831,30 @@ export default function ToolClient() {
   }, [gameState, startPlaying]);
 
   useEffect(() => {
+    let rafId = 0;
     const resize = () => {
+      window.cancelAnimationFrame(rafId);
       setViewportWidth(window.innerWidth);
-      const rect = viewportRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const heightLimit = Math.max(360, window.innerHeight * 0.64);
-      setBoardScale(Math.min(1, rect.width / WIDTH, heightLimit / HEIGHT));
+      rafId = window.requestAnimationFrame(() => {
+        const rect = viewportRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const heightLimit = Math.max(360, window.innerHeight * 0.64);
+        setBoardScale(Math.min(1, rect.width / WIDTH, heightLimit / HEIGHT));
+      });
     };
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? undefined
+        : new ResizeObserver(resize);
+
     resize();
+    if (viewportRef.current) observer?.observe(viewportRef.current);
     window.addEventListener("resize", resize);
-    return () => window.removeEventListener("resize", resize);
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      observer?.disconnect();
+      window.removeEventListener("resize", resize);
+    };
   }, []);
 
   useEffect(() => {
