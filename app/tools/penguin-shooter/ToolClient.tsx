@@ -8,11 +8,12 @@ import {
   MAX_LIVES,
   STAGE_DEFINITIONS,
   TWO_PLAYER_UNLOCK_STAGE,
+  getBossDefinition,
   getStageDefinition,
   getStageGoal,
   getSubStage,
 } from "./stageData";
-import type { BossCheckpoint, StageDefinition } from "./stageData";
+import type { BossCheckpoint, BossDefinition, StageDefinition } from "./stageData";
 
 const WIDTH = 720;
 const HEIGHT = 820;
@@ -50,6 +51,7 @@ type Enemy = {
   hp: number;
   kind: "scout" | "boss";
   checkpoint?: "mid" | "stage";
+  boss?: BossDefinition;
 };
 
 type Coin = {
@@ -237,9 +239,11 @@ function Shuty({ player, powered }: { player: Player; powered: boolean }) {
 
 function EnemyView({ enemy }: { enemy: Enemy }) {
   if (enemy.kind === "boss") {
+    const bossName = enemy.boss?.name ?? "捕獲UFO";
+    const attackLabel = enemy.boss?.attackLabel ?? "特殊攻撃";
     return (
       <div
-        aria-label="捕獲UFO"
+        aria-label={bossName}
         style={{
           ...styles.enemy,
           ...styles.bossEnemy,
@@ -249,6 +253,8 @@ function EnemyView({ enemy }: { enemy: Enemy }) {
       >
         <span style={styles.bossBeam} />
         <span style={styles.bossBody}>🛸</span>
+        <span style={styles.bossName}>{bossName}</span>
+        <span style={styles.bossAttack}>{attackLabel}</span>
       </div>
     );
   }
@@ -871,8 +877,15 @@ export default function ToolClient() {
           stageRef.current,
           stageProgressRef.current,
         );
+        const boss = checkpoint
+          ? getBossDefinition(stageRef.current, checkpoint)
+          : undefined;
         const kind = checkpoint && !bossAlreadyVisible ? "boss" : "scout";
         const width = kind === "boss" ? 66 : ENEMY_SIZE;
+        if (kind === "boss" && boss) {
+          setMessage(`${boss.name} 出現！ ${boss.attackLabel}`);
+          playSfx("stage");
+        }
         syncEnemies([
           ...enemiesRef.current,
           {
@@ -880,15 +893,19 @@ export default function ToolClient() {
             x: Math.round(createRandom(seedRef) * (WIDTH - width - 36) + 18),
             y: -70,
             speed:
-              kind === "boss"
+              kind === "boss" && boss
                 ? 2.1 + stageRef.current * 0.08 + activeSubStage.enemySpeedBonus
+                  + boss.speedBonus
                 : 2.5 +
                   activeSubStage.enemySpeedBonus +
                   createRandom(seedRef) * 1.5,
-            drift: (createRandom(seedRef) - 0.5) * 1.5,
-            hp: kind === "boss" ? 3 + stageRef.current : 1,
+            drift:
+              (createRandom(seedRef) - 0.5) *
+              (kind === "boss" && boss ? boss.driftScale : 1.5),
+            hp: kind === "boss" && boss ? boss.hp : 1,
             kind,
             checkpoint: kind === "boss" ? checkpoint : undefined,
+            boss: kind === "boss" ? boss : undefined,
           },
         ]);
       }
@@ -935,18 +952,28 @@ export default function ToolClient() {
           updatedEnemy = { ...updatedEnemy, hp: updatedEnemy.hp - 1 };
           if (updatedEnemy.hp <= 0) {
             destroyed = true;
-            scoreGain += updatedEnemy.kind === "boss" ? 500 : 120;
+            scoreGain += updatedEnemy.boss?.score ?? 120;
             rescuedGain += getRescueGain(
               updatedEnemy,
               stageProgressRef.current + rescuedGain,
             );
             markBossCleared(updatedEnemy);
-            addBurst(updatedEnemy.x, updatedEnemy.y, updatedEnemy.kind === "boss" ? "RESCUE" : "+120");
+            addBurst(
+              updatedEnemy.x,
+              updatedEnemy.y,
+              updatedEnemy.kind === "boss"
+                ? updatedEnemy.checkpoint === "stage"
+                  ? "CLEAR"
+                  : "BOSS"
+                : "+120",
+            );
             if (createRandom(seedRef) > 0.42) {
-              const rewardCoins = getSubStage(
-                stageRef.current,
-                stageProgressRef.current + rescuedGain,
-              ).rewardCoins;
+              const rewardCoins =
+                updatedEnemy.boss?.rewardCoins ??
+                getSubStage(
+                  stageRef.current,
+                  stageProgressRef.current + rescuedGain,
+                ).rewardCoins;
               for (let index = 0; index < rewardCoins; index += 1) {
                 droppedCoins.push({
                   id: coinIdRef.current++,
@@ -1219,6 +1246,12 @@ export default function ToolClient() {
             </section>
 
             <section style={styles.progressCard}>
+              <div style={styles.bossPanel}>
+                <span>Mid Boss: {currentStage.bosses.mid.name}</span>
+                <strong>{currentStage.bosses.mid.attackLabel}</strong>
+                <span>Stage Boss: {currentStage.bosses.stage.name}</span>
+                <strong>{currentStage.bosses.stage.attackLabel}</strong>
+              </div>
               <div style={styles.progressHeader}>
                 <span>
                   {currentStage.storyLabel} / {currentSubStage.label}
@@ -1586,6 +1619,18 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 800,
     lineHeight: 1.45,
   },
+  bossPanel: {
+    display: "grid",
+    gridTemplateColumns: "1fr",
+    gap: 4,
+    marginBottom: 12,
+    padding: "9px 10px",
+    borderRadius: 8,
+    background: "rgba(15, 23, 42, 0.06)",
+    color: "#334155",
+    fontSize: 12,
+    fontWeight: 800,
+  },
   unlockNotice: {
     marginTop: 10,
     padding: "8px 10px",
@@ -1734,6 +1779,38 @@ const styles: Record<string, CSSProperties> = {
     position: "relative",
     zIndex: 2,
     lineHeight: 1,
+  },
+  bossName: {
+    position: "absolute",
+    left: "50%",
+    top: -18,
+    zIndex: 3,
+    minWidth: 110,
+    transform: "translateX(-50%)",
+    padding: "3px 6px",
+    borderRadius: 8,
+    background: "rgba(15, 23, 42, 0.72)",
+    color: "#fef08a",
+    fontSize: 10,
+    fontWeight: 900,
+    textAlign: "center",
+    whiteSpace: "nowrap",
+  },
+  bossAttack: {
+    position: "absolute",
+    left: "50%",
+    top: 70,
+    zIndex: 3,
+    minWidth: 92,
+    transform: "translateX(-50%)",
+    padding: "3px 6px",
+    borderRadius: 8,
+    background: "rgba(217, 70, 239, 0.72)",
+    color: "#fdf4ff",
+    fontSize: 10,
+    fontWeight: 900,
+    textAlign: "center",
+    whiteSpace: "nowrap",
   },
   bossBeam: {
     position: "absolute",
