@@ -166,13 +166,16 @@
   - 月
   - 火星
   - 異次元
-- 小ステージ番号、背景、敵構成、報酬、解放条件を定義する
-- 10小ステージクリアで2人プレイ解放の状態を持つ
+- 小ステージ番号、背景、敵出現間隔、速度補正、報酬、ボス地点を定義する
+- 10小ステージクリアで2人プレイ解放の状態をUI表示する
+- BGM/効果音は現時点では音声ファイルを置かず、Web Audio API の生成音として扱う
+- 将来ファイル音源を使う場合は `public/games/penguin-shooter/audio/` 配下を候補にする
 
 完了条件:
 
 - 100小ステージの進行状態を UI に表示できる
 - 既存の5ステージ簡易進行から移行できる
+- ステージ進行データが `app/tools/penguin-shooter/stageData.ts` に集約されている
 
 ### PR 7: ボス設計
 
@@ -238,3 +241,4 @@
   - `docs/decision-log/2026-05-05-penguin-ship-player-visual.md`
   - `docs/decision-log/2026-05-06-penguin-alien-enemy-visual.md`
   - `docs/decision-log/2026-05-09-penguin-shooter-rich-game-trial.md`
+  - `docs/decision-log/2026-05-09-penguin-shooter-stage-data-structure.md`

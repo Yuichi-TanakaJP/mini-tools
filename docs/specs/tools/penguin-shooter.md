@@ -77,6 +77,9 @@
 - 背景は `public/games/penguin-shooter/backgrounds/` のSVGアセットを使う
 - BGM / 効果音は Web Audio API の生成音で導入し、今後ファイル音源へ差し替えられる構成にする
 - ミュート状態は LocalStorage に保存する
+- 100小ステージの構造は `app/tools/penguin-shooter/stageData.ts` に持つ
+- 10小ステージ目を中間ボス、20小ステージ目をステージボスとして扱う
+- 10小ステージクリア後は2人プレイ解放状態をUIに表示する
 
 ### 豪華版の目標仕様
 
@@ -147,6 +150,32 @@
   - `public/games/penguin-shooter/backgrounds/mars.svg`
   - `public/games/penguin-shooter/backgrounds/dimension.svg`
 - 現在のBGM / 効果音は外部音声ファイルを持たず、ユーザー操作後に Web Audio API で生成する
+- 将来ファイル音源に置き換える場合は `public/games/penguin-shooter/audio/` 配下を候補にする
+- ステージ進行データは `app/tools/penguin-shooter/stageData.ts` に集約する
+
+### ステージデータ
+
+現在版のステージデータは以下を持つ。
+
+- 大ステージ:
+  - ステージ番号
+  - ID
+  - 表示名
+  - ストーリー表示名
+  - 背景
+  - アクセント色
+  - BGM生成音の基準周波数
+  - 中間ボス名
+  - ステージボス名
+  - 20小ステージ設定
+- 小ステージ:
+  - 大ステージ内番号
+  - 全体通し番号
+  - 表示ラベル
+  - 敵出現間隔
+  - 敵速度補正
+  - 報酬コイン数
+  - ボス地点
 
 ### 保存先
 
@@ -194,3 +223,4 @@
   - [ペンギン自機の宇宙船化](../../decision-log/2026-05-05-penguin-ship-player-visual.md)
   - [ペンギン・エイリアンシューター 敵キャラクター変更](../../decision-log/2026-05-06-penguin-alien-enemy-visual.md)
   - [ペンギンシューター豪華版・新技術トライアル方針](../../decision-log/2026-05-09-penguin-shooter-rich-game-trial.md)
+  - [ペンギンシューター 100小ステージデータ構造](../../decision-log/2026-05-09-penguin-shooter-stage-data-structure.md)
