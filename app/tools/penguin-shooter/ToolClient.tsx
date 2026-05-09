@@ -13,7 +13,12 @@ import {
   getStageGoal,
   getSubStage,
 } from "./stageData";
-import type { BossCheckpoint, BossDefinition, StageDefinition } from "./stageData";
+import type {
+  BossCheckpoint,
+  BossDefinition,
+  StageDefinition,
+  StageId,
+} from "./stageData";
 
 const WIDTH = 720;
 const HEIGHT = 820;
@@ -49,6 +54,7 @@ type Enemy = {
   speed: number;
   drift: number;
   hp: number;
+  maxHp: number;
   kind: "scout" | "boss";
   checkpoint?: "mid" | "stage";
   boss?: BossDefinition;
@@ -86,6 +92,66 @@ type ControlKey =
 
 type SoundEffect = "shoot" | "hit" | "coin" | "bomb" | "clear" | "stage";
 type BossMarkers = Record<number, Record<BossCheckpoint, boolean>>;
+
+type StageVisualTheme = {
+  atmosphere: string;
+  distant: string;
+  midground: string;
+  foreground: string;
+};
+
+const STAGE_VISUALS: Record<StageId, StageVisualTheme> = {
+  town: {
+    atmosphere:
+      "linear-gradient(180deg, rgba(14, 165, 233, 0.18), rgba(15, 23, 42, 0)), radial-gradient(circle at 18% 18%, rgba(250, 204, 21, 0.3), transparent 18%)",
+    distant:
+      "linear-gradient(180deg, rgba(59, 130, 246, 0), rgba(30, 41, 59, 0.46)), repeating-linear-gradient(90deg, transparent 0 48px, rgba(226, 232, 240, 0.22) 49px 52px)",
+    midground:
+      "linear-gradient(90deg, rgba(15, 23, 42, 0.78) 0 9%, transparent 9% 15%, rgba(30, 41, 59, 0.82) 15% 29%, transparent 29% 38%, rgba(51, 65, 85, 0.82) 38% 52%, transparent 52% 62%, rgba(15, 23, 42, 0.82) 62% 78%, transparent 78% 100%)",
+    foreground:
+      "linear-gradient(105deg, transparent 0 42%, rgba(248, 250, 252, 0.62) 43% 44%, transparent 45% 100%), linear-gradient(180deg, rgba(15, 23, 42, 0), rgba(15, 23, 42, 0.74))",
+  },
+  country: {
+    atmosphere:
+      "linear-gradient(180deg, rgba(34, 197, 94, 0.18), rgba(15, 23, 42, 0)), radial-gradient(circle at 72% 16%, rgba(187, 247, 208, 0.28), transparent 20%)",
+    distant:
+      "radial-gradient(ellipse at 16% 100%, rgba(22, 101, 52, 0.76) 0 18%, transparent 19%), radial-gradient(ellipse at 48% 100%, rgba(21, 128, 61, 0.72) 0 24%, transparent 25%), radial-gradient(ellipse at 82% 100%, rgba(20, 83, 45, 0.78) 0 21%, transparent 22%)",
+    midground:
+      "linear-gradient(90deg, rgba(22, 101, 52, 0.76) 0 22%, transparent 22% 30%, rgba(132, 204, 22, 0.48) 30% 46%, transparent 46% 58%, rgba(21, 128, 61, 0.7) 58% 88%, transparent 88% 100%)",
+    foreground:
+      "repeating-linear-gradient(95deg, rgba(187, 247, 208, 0.34) 0 2px, transparent 3px 34px), linear-gradient(180deg, rgba(15, 23, 42, 0), rgba(20, 83, 45, 0.72))",
+  },
+  moon: {
+    atmosphere:
+      "linear-gradient(180deg, rgba(203, 213, 225, 0.14), rgba(15, 23, 42, 0)), radial-gradient(circle at 26% 20%, rgba(226, 232, 240, 0.28), transparent 16%)",
+    distant:
+      "radial-gradient(ellipse at 18% 100%, rgba(100, 116, 139, 0.7) 0 18%, transparent 19%), radial-gradient(ellipse at 62% 100%, rgba(71, 85, 105, 0.78) 0 26%, transparent 27%), radial-gradient(ellipse at 92% 100%, rgba(148, 163, 184, 0.56) 0 18%, transparent 19%)",
+    midground:
+      "radial-gradient(circle at 18% 64%, rgba(226, 232, 240, 0.16) 0 5%, transparent 6%), radial-gradient(circle at 70% 70%, rgba(226, 232, 240, 0.14) 0 7%, transparent 8%)",
+    foreground:
+      "repeating-linear-gradient(100deg, rgba(226, 232, 240, 0.18) 0 1px, transparent 2px 42px), linear-gradient(180deg, rgba(15, 23, 42, 0), rgba(30, 41, 59, 0.8))",
+  },
+  mars: {
+    atmosphere:
+      "linear-gradient(180deg, rgba(249, 115, 22, 0.2), rgba(15, 23, 42, 0)), radial-gradient(circle at 72% 18%, rgba(253, 186, 116, 0.26), transparent 19%)",
+    distant:
+      "radial-gradient(ellipse at 24% 100%, rgba(124, 45, 18, 0.78) 0 18%, transparent 19%), radial-gradient(ellipse at 58% 100%, rgba(154, 52, 18, 0.72) 0 26%, transparent 27%), radial-gradient(ellipse at 88% 100%, rgba(67, 20, 7, 0.72) 0 20%, transparent 21%)",
+    midground:
+      "repeating-linear-gradient(8deg, rgba(251, 146, 60, 0.18) 0 3px, transparent 4px 34px), linear-gradient(90deg, rgba(154, 52, 18, 0.7) 0 28%, transparent 28% 44%, rgba(124, 45, 18, 0.72) 44% 75%, transparent 75% 100%)",
+    foreground:
+      "repeating-linear-gradient(100deg, rgba(253, 186, 116, 0.24) 0 2px, transparent 3px 26px), linear-gradient(180deg, rgba(15, 23, 42, 0), rgba(67, 20, 7, 0.76))",
+  },
+  dimension: {
+    atmosphere:
+      "linear-gradient(180deg, rgba(217, 70, 239, 0.22), rgba(15, 23, 42, 0)), radial-gradient(circle at 24% 22%, rgba(34, 211, 238, 0.26), transparent 18%), radial-gradient(circle at 82% 28%, rgba(250, 204, 21, 0.2), transparent 16%)",
+    distant:
+      "conic-gradient(from 30deg at 50% 100%, rgba(34, 211, 238, 0.22), transparent 16%, rgba(217, 70, 239, 0.22) 28%, transparent 44%, rgba(250, 204, 21, 0.16) 58%, transparent 74%, rgba(34, 211, 238, 0.22))",
+    midground:
+      "repeating-linear-gradient(120deg, rgba(216, 180, 254, 0.22) 0 3px, transparent 4px 28px), repeating-linear-gradient(54deg, rgba(34, 211, 238, 0.16) 0 2px, transparent 3px 36px)",
+    foreground:
+      "radial-gradient(ellipse at 50% 100%, rgba(217, 70, 239, 0.44), transparent 56%), linear-gradient(180deg, rgba(15, 23, 42, 0), rgba(49, 46, 129, 0.8))",
+  },
+};
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
@@ -241,6 +307,10 @@ function EnemyView({ enemy }: { enemy: Enemy }) {
   if (enemy.kind === "boss") {
     const bossName = enemy.boss?.name ?? "捕獲UFO";
     const attackLabel = enemy.boss?.attackLabel ?? "特殊攻撃";
+    const hpPercent = Math.max(
+      0,
+      Math.round((enemy.hp / Math.max(1, enemy.maxHp)) * 100),
+    );
     return (
       <div
         aria-label={bossName}
@@ -251,10 +321,15 @@ function EnemyView({ enemy }: { enemy: Enemy }) {
           top: enemy.y,
         }}
       >
+        <span style={styles.bossAura} />
+        <span style={styles.bossRing} />
         <span style={styles.bossBeam} />
         <span style={styles.bossBody}>🛸</span>
         <span style={styles.bossName}>{bossName}</span>
         <span style={styles.bossAttack}>{attackLabel}</span>
+        <span style={styles.bossHp}>
+          <span style={{ ...styles.bossHpFill, width: `${hpPercent}%` }} />
+        </span>
       </div>
     );
   }
@@ -379,6 +454,7 @@ export default function ToolClient() {
   const currentStageGoal = currentStage.smallStages.length;
   const twoPlayerUnlocked = rescued >= TWO_PLAYER_UNLOCK_STAGE;
   const stageTheme = currentStage;
+  const visualTheme = STAGE_VISUALS[stageTheme.id];
   const boardBackground = `linear-gradient(180deg, rgba(15, 23, 42, 0.22), rgba(15, 23, 42, 0.1)), url("${stageTheme.background}")`;
   const stageProgressPercent = Math.min(
     100,
@@ -909,6 +985,7 @@ export default function ToolClient() {
               (createRandom(seedRef) - 0.5) *
               (kind === "boss" && boss ? boss.driftScale : 1.5),
             hp: kind === "boss" && boss ? boss.hp : 1,
+            maxHp: kind === "boss" && boss ? boss.hp : 1,
             kind,
             checkpoint: kind === "boss" ? checkpoint : undefined,
             boss: kind === "boss" ? boss : undefined,
@@ -1308,6 +1385,30 @@ export default function ToolClient() {
                   }}
                 >
                   <div style={styles.skyGlow} />
+                  <div
+                    style={{
+                      ...styles.stageAtmosphere,
+                      background: visualTheme.atmosphere,
+                    }}
+                  />
+                  <div
+                    style={{
+                      ...styles.stageDistantLayer,
+                      background: visualTheme.distant,
+                    }}
+                  />
+                  <div
+                    style={{
+                      ...styles.stageMidgroundLayer,
+                      background: visualTheme.midground,
+                    }}
+                  />
+                  <div
+                    style={{
+                      ...styles.stageForegroundLayer,
+                      background: visualTheme.foreground,
+                    }}
+                  />
                   <div style={styles.stagePlanet}>
                     <span style={styles.stagePlanetLabel}>{stageTheme.label}</span>
                   </div>
@@ -1700,7 +1801,7 @@ const styles: Record<string, CSSProperties> = {
     position: "absolute",
     left: 26,
     bottom: 24,
-    zIndex: 4,
+    zIndex: 6,
     width: 154,
     height: 46,
     borderRadius: "50%",
@@ -1724,8 +1825,48 @@ const styles: Record<string, CSSProperties> = {
     background:
       "radial-gradient(circle at 20% 8%, rgba(250, 204, 21, 0.22), transparent 24%), radial-gradient(circle at 80% 18%, rgba(236, 72, 153, 0.16), transparent 20%), radial-gradient(circle at 50% 82%, rgba(34, 197, 94, 0.12), transparent 26%)",
   },
+  stageAtmosphere: {
+    position: "absolute",
+    inset: 0,
+    zIndex: 1,
+    opacity: 0.95,
+    pointerEvents: "none",
+  },
+  stageDistantLayer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 236,
+    zIndex: 2,
+    height: 172,
+    opacity: 0.9,
+    pointerEvents: "none",
+    transform: "skewY(-1deg)",
+  },
+  stageMidgroundLayer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 118,
+    zIndex: 3,
+    height: 170,
+    opacity: 0.86,
+    pointerEvents: "none",
+    clipPath: "polygon(0 30%, 100% 6%, 100% 100%, 0 100%)",
+  },
+  stageForegroundLayer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 5,
+    height: 174,
+    opacity: 0.88,
+    pointerEvents: "none",
+  },
   star: {
     position: "absolute",
+    zIndex: 6,
     borderRadius: 999,
     background: "rgba(255, 255, 255, 0.84)",
   },
@@ -1777,13 +1918,39 @@ const styles: Record<string, CSSProperties> = {
   },
   bossEnemy: {
     width: 72,
-    height: 82,
+    height: 94,
     fontSize: 43,
     animation: "penguinShooterBob 1.6s ease-in-out infinite",
   },
+  bossAura: {
+    position: "absolute",
+    left: 2,
+    top: 0,
+    zIndex: 0,
+    width: 68,
+    height: 68,
+    borderRadius: 999,
+    background:
+      "radial-gradient(circle, rgba(250, 204, 21, 0.36), rgba(217, 70, 239, 0.2) 46%, transparent 72%)",
+    animation: "penguinShooterPulse 1.2s ease-in-out infinite",
+  },
+  bossRing: {
+    position: "absolute",
+    left: 8,
+    top: 8,
+    zIndex: 1,
+    width: 56,
+    height: 34,
+    borderRadius: "50%",
+    borderWidth: 2,
+    borderStyle: "solid",
+    borderColor: "rgba(250, 204, 21, 0.72)",
+    boxShadow: "0 0 18px rgba(250, 204, 21, 0.4)",
+    transform: "rotate(-8deg)",
+  },
   bossBody: {
     position: "relative",
-    zIndex: 2,
+    zIndex: 3,
     lineHeight: 1,
   },
   bossName: {
@@ -1805,7 +1972,7 @@ const styles: Record<string, CSSProperties> = {
   bossAttack: {
     position: "absolute",
     left: "50%",
-    top: 70,
+    top: 76,
     zIndex: 3,
     minWidth: 92,
     transform: "translateX(-50%)",
@@ -1817,6 +1984,28 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 900,
     textAlign: "center",
     whiteSpace: "nowrap",
+  },
+  bossHp: {
+    position: "absolute",
+    left: "50%",
+    top: 62,
+    zIndex: 4,
+    width: 70,
+    height: 7,
+    transform: "translateX(-50%)",
+    overflow: "hidden",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: "rgba(254, 243, 199, 0.78)",
+    background: "rgba(15, 23, 42, 0.68)",
+  },
+  bossHpFill: {
+    display: "block",
+    height: "100%",
+    borderRadius: 999,
+    background: "linear-gradient(90deg, #22c55e, #facc15, #fb7185)",
+    transition: "width 0.12s ease",
   },
   bossBeam: {
     position: "absolute",
