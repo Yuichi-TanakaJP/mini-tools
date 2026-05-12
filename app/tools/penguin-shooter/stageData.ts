@@ -13,6 +13,26 @@ export type SubStageConfig = {
   bossCheckpoint?: BossCheckpoint;
 };
 
+export type BossAttackPattern =
+  | "aimed-1"
+  | "aimed-2"
+  | "aimed-3"
+  | "spread-2"
+  | "ring-4"
+  | "aimed-ring-6"
+  | "cannon-burst-5"
+  | "aimed-laser"
+  | "laser-sweep"
+  | "homing-missile";
+
+export type BossAttack = {
+  pattern: BossAttackPattern;
+  fireInterval: number;
+  bulletSpeed: number;
+  burstSize?: number;
+  burstInterval?: number;
+};
+
 export type BossDefinition = {
   checkpoint: BossCheckpoint;
   name: string;
@@ -24,6 +44,7 @@ export type BossDefinition = {
   visual: "scrap" | "fortress" | "crater" | "core" | "storm" | "olympus" | "mirror" | "worldLock";
   speedBonus: number;
   driftScale: number;
+  attack: BossAttack;
 };
 
 export type StageDefinition = {
@@ -70,7 +91,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       mid: {
         checkpoint: "mid",
         name: "スクラップUFO",
-        hp: 5,
+        hp: 8,
         score: 600,
         rewardCoins: 3,
         attackLabel: "ジグザグ突進",
@@ -78,11 +99,12 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
         visual: "scrap",
         speedBonus: 0,
         driftScale: 1.1,
+        attack: { pattern: "aimed-1", fireInterval: 130, bulletSpeed: 4.4 },
       },
       stage: {
         checkpoint: "stage",
         name: "タワーゲートUFO",
-        hp: 8,
+        hp: 14,
         score: 900,
         rewardCoins: 5,
         attackLabel: "ゲートビーム",
@@ -90,6 +112,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
         visual: "fortress",
         speedBonus: 0.1,
         driftScale: 1.25,
+        attack: { pattern: "aimed-2", fireInterval: 110, bulletSpeed: 5.0 },
       },
     },
     smallStages: createSmallStages(1, "Town", 42),
@@ -106,7 +129,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       mid: {
         checkpoint: "mid",
         name: "キャラバンUFO",
-        hp: 7,
+        hp: 12,
         score: 760,
         rewardCoins: 4,
         attackLabel: "横流れ隊列",
@@ -114,11 +137,12 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
         visual: "scrap",
         speedBonus: 0.12,
         driftScale: 1.35,
+        attack: { pattern: "spread-2", fireInterval: 105, bulletSpeed: 5.0 },
       },
       stage: {
         checkpoint: "stage",
         name: "キャッスルUFO",
-        hp: 10,
+        hp: 18,
         score: 1100,
         rewardCoins: 6,
         attackLabel: "城壁バリア",
@@ -126,6 +150,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
         visual: "fortress",
         speedBonus: 0.18,
         driftScale: 1.15,
+        attack: { pattern: "aimed-3", fireInterval: 95, bulletSpeed: 5.4 },
       },
     },
     smallStages: createSmallStages(2, "Country", 39),
@@ -142,7 +167,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       mid: {
         checkpoint: "mid",
         name: "クレーターUFO",
-        hp: 9,
+        hp: 15,
         score: 920,
         rewardCoins: 5,
         attackLabel: "低重力ホバー",
@@ -150,11 +175,12 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
         visual: "crater",
         speedBonus: 0.1,
         driftScale: 1.55,
+        attack: { pattern: "ring-4", fireInterval: 120, bulletSpeed: 4.6 },
       },
       stage: {
         checkpoint: "stage",
         name: "ムーンコアUFO",
-        hp: 12,
+        hp: 22,
         score: 1320,
         rewardCoins: 7,
         attackLabel: "月光リング",
@@ -162,6 +188,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
         visual: "core",
         speedBonus: 0.22,
         driftScale: 1.4,
+        attack: { pattern: "aimed-ring-6", fireInterval: 85, bulletSpeed: 5.6 },
       },
     },
     smallStages: createSmallStages(3, "Moon", 36),
@@ -178,19 +205,20 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       mid: {
         checkpoint: "mid",
         name: "ダストUFO",
-        hp: 11,
+        hp: 18,
         score: 1100,
         rewardCoins: 6,
-        attackLabel: "砂嵐加速",
-        weaponLabel: "ダストカッター",
+        attackLabel: "ツインレーザー",
+        weaponLabel: "ダストレーザー",
         visual: "storm",
         speedBonus: 0.24,
         driftScale: 1.65,
+        attack: { pattern: "aimed-laser", fireInterval: 150, bulletSpeed: 0 },
       },
       stage: {
         checkpoint: "stage",
         name: "オリンポスUFO",
-        hp: 15,
+        hp: 28,
         score: 1600,
         rewardCoins: 8,
         attackLabel: "火星噴流",
@@ -198,6 +226,13 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
         visual: "olympus",
         speedBonus: 0.34,
         driftScale: 1.5,
+        attack: {
+          pattern: "cannon-burst-5",
+          fireInterval: 80,
+          bulletSpeed: 6.2,
+          burstSize: 5,
+          burstInterval: 10,
+        },
       },
     },
     smallStages: createSmallStages(4, "Mars", 33),
@@ -214,26 +249,28 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       mid: {
         checkpoint: "mid",
         name: "ミラーUFO",
-        hp: 13,
+        hp: 22,
         score: 1400,
         rewardCoins: 8,
-        attackLabel: "反転ワープ",
-        weaponLabel: "ミラーシフト",
+        attackLabel: "反転誘導弾",
+        weaponLabel: "ミラーミサイル",
         visual: "mirror",
         speedBonus: 0.3,
         driftScale: 1.9,
+        attack: { pattern: "homing-missile", fireInterval: 110, bulletSpeed: 3.4 },
       },
       stage: {
         checkpoint: "stage",
         name: "ワールドロックUFO",
-        hp: 18,
+        hp: 38,
         score: 2200,
         rewardCoins: 10,
-        attackLabel: "次元封印",
-        weaponLabel: "ワールドロック砲",
+        attackLabel: "次元封印レーザー",
+        weaponLabel: "ワールドロックビーム",
         visual: "worldLock",
         speedBonus: 0.42,
         driftScale: 1.7,
+        attack: { pattern: "laser-sweep", fireInterval: 180, bulletSpeed: 0 },
       },
     },
     smallStages: createSmallStages(5, "Dimension", 30),
