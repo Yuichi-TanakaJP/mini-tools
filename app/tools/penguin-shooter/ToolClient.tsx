@@ -756,6 +756,15 @@ export default function ToolClient() {
     setBarrierItems(next);
   }, []);
 
+  const resetBarrierState = useCallback(() => {
+    barrierItemsRef.current = [];
+    barrierActiveRef.current = 0;
+    barrierCooldownRef.current = 0;
+    setBarrierItems([]);
+    setBarrierActiveFrames(0);
+    setBarrierCooldownFrames(0);
+  }, []);
+
   const syncObstacles = useCallback((next: Obstacle[]) => {
     obstaclesRef.current = next;
     setObstacles(next);
@@ -1042,7 +1051,7 @@ export default function ToolClient() {
     syncEnemyBullets([]);
     syncEnemyLasers([]);
     syncEnemyMissiles([]);
-    syncBarrierItems([]);
+    resetBarrierState();
     if (stageRef.current === FINAL_STAGE && nextStageProgress >= getStageGoal(FINAL_STAGE)) {
       playSfx("clear");
       stopBgm();
@@ -1075,13 +1084,13 @@ export default function ToolClient() {
     markBossCleared,
     playSfx,
     resetControls,
+    resetBarrierState,
     startBgm,
     stopBgm,
     syncEnemies,
     syncEnemyBullets,
     syncEnemyLasers,
     syncEnemyMissiles,
-    syncBarrierItems,
     syncObstacles,
     triggerStageTransition,
   ]);
@@ -2150,7 +2159,7 @@ export default function ToolClient() {
         syncEnemyBullets([]);
         syncEnemyLasers([]);
         syncEnemyMissiles([]);
-        syncBarrierItems([]);
+        resetBarrierState();
       }
 
       rafId = window.requestAnimationFrame(loop);
@@ -2166,6 +2175,7 @@ export default function ToolClient() {
     isPlaying,
     markBossCleared,
     playSfx,
+    resetBarrierState,
     resetControls,
     startBgm,
     stopBgm,
