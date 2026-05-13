@@ -27,6 +27,7 @@ const ENEMY_SIZE = 46;
 const BULLET_WIDTH = 8;
 const BULLET_HEIGHT = 18;
 const COIN_SIZE = 24;
+const OBSTACLE_SIZE = 52;
 const OPENING_MS = 10_000;
 const STAR_COUNT = 56;
 const MUTE_STORAGE_KEY = "penguin-shooter-muted";
@@ -47,6 +48,46 @@ type Bullet = {
   vy: number;
 };
 
+type EnemyBullet = {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  hue: "warm" | "cool" | "white";
+};
+
+type EnemyLaser = {
+  id: number;
+  x: number;
+  y: number;
+  angle: number;
+  angleStart: number;
+  angleEnd: number;
+  warningRemaining: number;
+  activeRemaining: number;
+  totalActiveDuration: number;
+  width: number;
+  hue: "warm" | "cool" | "white";
+  hasHitPlayer: boolean;
+};
+
+type EnemyMissile = {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  speed: number;
+  turnRate: number;
+  hue: "warm" | "cool";
+  lifetime: number;
+};
+
+const ENEMY_BULLET_SIZE = 12;
+const MISSILE_SIZE = 18;
+const LASER_BEAM_LENGTH = 1100;
+
 type Enemy = {
   id: number;
   x: number;
@@ -60,6 +101,9 @@ type Enemy = {
   kind: "scout" | "boss";
   checkpoint?: "mid" | "stage";
   boss?: BossDefinition;
+  fireCooldown?: number;
+  burstRemaining?: number;
+  freezeRemaining?: number;
 };
 
 type Coin = {
@@ -68,6 +112,28 @@ type Coin = {
   y: number;
   speed: number;
 };
+
+type Obstacle = {
+  id: number;
+  x: number;
+  y: number;
+  speed: number;
+  hp: number;
+  destructible: boolean;
+  stageId: StageId;
+  kind: "normal" | "ruins";
+};
+
+type BarrierItem = {
+  id: number;
+  x: number;
+  y: number;
+  speed: number;
+};
+
+const BARRIER_ITEM_SIZE = 30;
+const BARRIER_ACTIVE_FRAMES = 180;
+const BARRIER_COOLDOWN_FRAMES = 300;
 
 type Burst = {
   id: number;
@@ -187,6 +253,59 @@ function createStars(): Star[] {
 function createRandom(seedRef: { current: number }) {
   seedRef.current = (seedRef.current * 1664525 + 1013904223) % 4294967296;
   return seedRef.current / 4294967296;
+}
+
+function getObstacleLabel(stageId: StageId, destructible: boolean) {
+  const labels: Record<StageId, { destructible: string; solid: string }> = {
+    town: { destructible: "🚧", solid: "🏢" },
+    country: { destructible: "🪵", solid: "🪨" },
+    moon: { destructible: "🪐", solid: "🌑" },
+    mars: { destructible: "🌋", solid: "🪨" },
+    dimension: { destructible: "🔮", solid: "⬛" },
+  };
+  return destructible ? labels[stageId].destructible : labels[stageId].solid;
+}
+
+type BossMuzzle = {
+  x: number;
+  y: number;
+  hue: EnemyBullet["hue"];
+};
+
+function getBossMuzzles(
+  enemy: Pick<Enemy, "x" | "y">,
+  enemyWidth: number,
+  isStageBoss: boolean,
+): { left: BossMuzzle; right: BossMuzzle; center: BossMuzzle } {
+  if (isStageBoss) {
+    return {
+      left: { x: enemy.x + 29, y: enemy.y + 74, hue: "warm" },
+      right: { x: enemy.x + enemyWidth - 29, y: enemy.y + 74, hue: "cool" },
+      center: { x: enemy.x + 88, y: enemy.y + 112, hue: "white" },
+    };
+  }
+  return {
+    left: { x: enemy.x + 20, y: enemy.y + 54, hue: "warm" },
+    right: { x: enemy.x + enemyWidth - 20, y: enemy.y + 54, hue: "cool" },
+    center: { x: enemy.x + enemyWidth / 2, y: enemy.y + 60, hue: "white" },
+  };
+}
+
+type Shot = { from: BossMuzzle; vx: number; vy: number };
+
+function aimedShot(from: BossMuzzle, targetX: number, targetY: number, speed: number): Shot {
+  const dx = targetX - from.x;
+  const dy = Math.max(40, targetY - from.y);
+  const length = Math.hypot(dx, dy) || 1;
+  return { from, vx: (dx / length) * speed, vy: (dy / length) * speed };
+}
+
+function angledShot(from: BossMuzzle, angleFromDown: number, speed: number): Shot {
+  return {
+    from,
+    vx: Math.sin(angleFromDown) * speed,
+    vy: Math.cos(angleFromDown) * speed,
+  };
 }
 
 function rectsHit(
@@ -413,6 +532,47 @@ function EnemyView({ enemy }: { enemy: Enemy }) {
   );
 }
 
+function ObstacleView({ obstacle }: { obstacle: Obstacle }) {
+  const isRuins = obstacle.kind === "ruins";
+  const hpMax = isRuins ? 3 : 2;
+  return (
+    <div
+      aria-label={
+        isRuins
+          ? "古代遺跡"
+          : obstacle.destructible
+            ? "破壊可能な障害物"
+            : "破壊不可能な障害物"
+      }
+      style={{
+        ...styles.obstacle,
+        ...(isRuins
+          ? styles.obstacleRuins
+          : obstacle.destructible
+            ? styles.obstacleBreakable
+            : styles.obstacleSolid),
+        left: obstacle.x,
+        top: obstacle.y,
+      }}
+    >
+      <span style={styles.obstacleIcon}>
+        {isRuins ? "🏛️" : getObstacleLabel(obstacle.stageId, obstacle.destructible)}
+      </span>
+      {obstacle.destructible ? (
+        <span style={styles.obstacleHp}>
+          <span
+            style={{
+              ...styles.obstacleHpFill,
+              ...(isRuins ? styles.obstacleHpFillRuins : {}),
+              width: `${Math.max(0, obstacle.hp / hpMax) * 100}%`,
+            }}
+          />
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function TouchButton({
   label,
   onPressChange,
@@ -457,8 +617,15 @@ export default function ToolClient() {
     speed: 6,
   });
   const [bullets, setBullets] = useState<Bullet[]>([]);
+  const [enemyBullets, setEnemyBullets] = useState<EnemyBullet[]>([]);
+  const [enemyLasers, setEnemyLasers] = useState<EnemyLaser[]>([]);
+  const [enemyMissiles, setEnemyMissiles] = useState<EnemyMissile[]>([]);
   const [enemies, setEnemies] = useState<Enemy[]>([]);
   const [coinsOnBoard, setCoinsOnBoard] = useState<Coin[]>([]);
+  const [barrierItems, setBarrierItems] = useState<BarrierItem[]>([]);
+  const [barrierActiveFrames, setBarrierActiveFrames] = useState(0);
+  const [barrierCooldownFrames, setBarrierCooldownFrames] = useState(0);
+  const [obstacles, setObstacles] = useState<Obstacle[]>([]);
   const [bursts, setBursts] = useState<Burst[]>([]);
   const [stars, setStars] = useState<Star[]>(createStars);
   const [score, setScore] = useState(0);
@@ -474,15 +641,32 @@ export default function ToolClient() {
   const [viewportWidth, setViewportWidth] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [audioReady, setAudioReady] = useState(false);
+  const [subStageFlash, setSubStageFlash] = useState<{
+    key: number;
+    label: string;
+    number: number;
+  } | null>(null);
+  const [stageTransition, setStageTransition] = useState<{
+    key: number;
+    stage: number;
+    label: string;
+    storyLabel: string;
+  } | null>(null);
 
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const keysRef = useRef<Record<string, boolean>>({});
   const frameRef = useRef(0);
   const spawnTickRef = useRef(0);
+  const obstacleTickRef = useRef(0);
   const fireTickRef = useRef(0);
   const enemyIdRef = useRef(1);
+  const obstacleIdRef = useRef(1);
   const bulletIdRef = useRef(1);
+  const enemyBulletIdRef = useRef(1);
+  const enemyLaserIdRef = useRef(1);
+  const enemyMissileIdRef = useRef(1);
   const coinIdRef = useRef(1);
+  const barrierItemIdRef = useRef(1);
   const burstIdRef = useRef(1);
   const seedRef = useRef(20260507);
   const openingStartedAtRef = useRef(0);
@@ -493,11 +677,20 @@ export default function ToolClient() {
   );
   const mutedRef = useRef(false);
   const bossMarkersRef = useRef<BossMarkers>({});
+  const previousSubStageRef = useRef<number | null>(null);
+  const previousStageRef = useRef<number | null>(null);
 
   const playerRef = useRef(player);
   const bulletsRef = useRef<Bullet[]>([]);
+  const enemyBulletsRef = useRef<EnemyBullet[]>([]);
+  const enemyLasersRef = useRef<EnemyLaser[]>([]);
+  const enemyMissilesRef = useRef<EnemyMissile[]>([]);
   const enemiesRef = useRef<Enemy[]>([]);
   const coinsOnBoardRef = useRef<Coin[]>([]);
+  const barrierItemsRef = useRef<BarrierItem[]>([]);
+  const barrierActiveRef = useRef(0);
+  const barrierCooldownRef = useRef(0);
+  const obstaclesRef = useRef<Obstacle[]>([]);
   const livesRef = useRef(MAX_LIVES);
   const scoreRef = useRef(0);
   const coinsRef = useRef(0);
@@ -533,6 +726,21 @@ export default function ToolClient() {
     setBullets(next);
   }, []);
 
+  const syncEnemyBullets = useCallback((next: EnemyBullet[]) => {
+    enemyBulletsRef.current = next;
+    setEnemyBullets(next);
+  }, []);
+
+  const syncEnemyLasers = useCallback((next: EnemyLaser[]) => {
+    enemyLasersRef.current = next;
+    setEnemyLasers(next);
+  }, []);
+
+  const syncEnemyMissiles = useCallback((next: EnemyMissile[]) => {
+    enemyMissilesRef.current = next;
+    setEnemyMissiles(next);
+  }, []);
+
   const syncEnemies = useCallback((next: Enemy[]) => {
     enemiesRef.current = next;
     setEnemies(next);
@@ -541,6 +749,25 @@ export default function ToolClient() {
   const syncCoinsOnBoard = useCallback((next: Coin[]) => {
     coinsOnBoardRef.current = next;
     setCoinsOnBoard(next);
+  }, []);
+
+  const syncBarrierItems = useCallback((next: BarrierItem[]) => {
+    barrierItemsRef.current = next;
+    setBarrierItems(next);
+  }, []);
+
+  const resetBarrierState = useCallback(() => {
+    barrierItemsRef.current = [];
+    barrierActiveRef.current = 0;
+    barrierCooldownRef.current = 0;
+    setBarrierItems([]);
+    setBarrierActiveFrames(0);
+    setBarrierCooldownFrames(0);
+  }, []);
+
+  const syncObstacles = useCallback((next: Obstacle[]) => {
+    obstaclesRef.current = next;
+    setObstacles(next);
   }, []);
 
   const addBurst = useCallback((x: number, y: number, label: string) => {
@@ -746,8 +973,42 @@ export default function ToolClient() {
     playSfx("shoot");
   }, [playSfx, syncBullets]);
 
+  const triggerSubStageFlash = useCallback(
+    (label: string, number: number) => {
+      const key = Date.now();
+      setSubStageFlash({ key, label, number });
+      window.setTimeout(() => {
+        setSubStageFlash((current) =>
+          current && current.key === key ? null : current,
+        );
+      }, 900);
+    },
+    [],
+  );
+
+  const triggerStageTransition = useCallback(
+    (stageNumber: number, label: string, storyLabel: string) => {
+      const key = Date.now();
+      setStageTransition({ key, stage: stageNumber, label, storyLabel });
+      window.setTimeout(() => {
+        setStageTransition((current) =>
+          current && current.key === key ? null : current,
+        );
+      }, 1900);
+    },
+    [],
+  );
+
   const triggerBomb = useCallback(() => {
-    if (bombsRef.current <= 0 || enemiesRef.current.length === 0) return;
+    const breakableObstacles = obstaclesRef.current.filter(
+      (obstacle) => obstacle.destructible,
+    );
+    if (
+      bombsRef.current <= 0 ||
+      (enemiesRef.current.length === 0 && breakableObstacles.length === 0)
+    ) {
+      return;
+    }
     playSfx("bomb");
     bombsRef.current -= 1;
     setBombs(bombsRef.current);
@@ -780,19 +1041,41 @@ export default function ToolClient() {
       markBossCleared(enemy);
       addBurst(enemy.x, enemy.y, "BOOM");
     });
+    breakableObstacles.forEach((obstacle) => {
+      addBurst(obstacle.x, obstacle.y, "BREAK");
+    });
+    syncObstacles(
+      obstaclesRef.current.filter((obstacle) => !obstacle.destructible),
+    );
     syncEnemies([]);
+    syncEnemyBullets([]);
+    syncEnemyLasers([]);
+    syncEnemyMissiles([]);
+    resetBarrierState();
     if (stageRef.current === FINAL_STAGE && nextStageProgress >= getStageGoal(FINAL_STAGE)) {
       playSfx("clear");
       stopBgm();
+      syncObstacles([]);
       setGameState("cleared");
       resetControls();
     } else if (nextStageProgress >= getStageGoal(stageRef.current)) {
       stageRef.current += 1;
       stageProgressRef.current = 0;
+      obstacleTickRef.current = 0;
       setStage(stageRef.current);
       setStageProgress(0);
       playSfx("stage");
       startBgm(getStageDefinition(stageRef.current));
+      syncObstacles([]);
+      const advancedStageDef = getStageDefinition(stageRef.current);
+      previousStageRef.current = stageRef.current;
+      triggerStageTransition(
+        stageRef.current,
+        advancedStageDef.label,
+        advancedStageDef.storyLabel,
+      );
+      const advancedSubStage = getSubStage(stageRef.current, 0);
+      previousSubStageRef.current = advancedSubStage.globalNumber;
       setMessage(`Stage ${stageRef.current} へワープ！`);
     }
   }, [
@@ -801,21 +1084,37 @@ export default function ToolClient() {
     markBossCleared,
     playSfx,
     resetControls,
+    resetBarrierState,
     startBgm,
     stopBgm,
     syncEnemies,
+    syncEnemyBullets,
+    syncEnemyLasers,
+    syncEnemyMissiles,
+    syncObstacles,
+    triggerStageTransition,
   ]);
 
   const resetRun = useCallback(() => {
     frameRef.current = 0;
     spawnTickRef.current = 0;
+    obstacleTickRef.current = 0;
     fireTickRef.current = 0;
     enemyIdRef.current = 1;
+    obstacleIdRef.current = 1;
     bulletIdRef.current = 1;
+    enemyBulletIdRef.current = 1;
+    enemyLaserIdRef.current = 1;
+    enemyMissileIdRef.current = 1;
     coinIdRef.current = 1;
+    barrierItemIdRef.current = 1;
     burstIdRef.current = 1;
     seedRef.current = 20260507;
     bossMarkersRef.current = {};
+    previousSubStageRef.current = getSubStage(1, 0).globalNumber;
+    previousStageRef.current = 1;
+    setSubStageFlash(null);
+    setStageTransition(null);
     resetControls();
 
     const initialPlayer = {
@@ -826,8 +1125,15 @@ export default function ToolClient() {
 
     playerRef.current = initialPlayer;
     bulletsRef.current = [];
+    enemyBulletsRef.current = [];
+    enemyLasersRef.current = [];
+    enemyMissilesRef.current = [];
     enemiesRef.current = [];
     coinsOnBoardRef.current = [];
+    barrierItemsRef.current = [];
+    barrierActiveRef.current = 0;
+    barrierCooldownRef.current = 0;
+    obstaclesRef.current = [];
     livesRef.current = MAX_LIVES;
     scoreRef.current = 0;
     coinsRef.current = 0;
@@ -839,8 +1145,15 @@ export default function ToolClient() {
 
     setPlayer(initialPlayer);
     setBullets([]);
+    setEnemyBullets([]);
+    setEnemyLasers([]);
+    setEnemyMissiles([]);
     setEnemies([]);
     setCoinsOnBoard([]);
+    setBarrierItems([]);
+    setBarrierActiveFrames(0);
+    setBarrierCooldownFrames(0);
+    setObstacles([]);
     setBursts([]);
     setStars(createStars());
     setScore(0);
@@ -1026,6 +1339,7 @@ export default function ToolClient() {
         stageProgressRef.current,
       );
       const spawnInterval = activeSubStage.spawnInterval;
+      obstacleTickRef.current += 1;
       if (spawnTickRef.current >= spawnInterval) {
         spawnTickRef.current = 0;
         const bossAlreadyVisible = enemiesRef.current.some(
@@ -1083,6 +1397,42 @@ export default function ToolClient() {
             kind,
             checkpoint: kind === "boss" ? checkpoint : undefined,
             boss: kind === "boss" ? boss : undefined,
+            fireCooldown:
+              kind === "boss" && boss
+                ? Math.round(boss.attack.fireInterval * 0.6)
+                : undefined,
+            burstRemaining: 0,
+          },
+        ]);
+      }
+      if (
+        obstacleTickRef.current >= Math.max(52, spawnInterval + 18) &&
+        obstaclesRef.current.length < 4
+      ) {
+        obstacleTickRef.current = 0;
+        const obstacleId = obstacleIdRef.current++;
+        const roll = createRandom(seedRef);
+        const hasRuinsOnBoard = obstaclesRef.current.some(
+          (obstacle) => obstacle.kind === "ruins",
+        );
+        const isRuins = !hasRuinsOnBoard && roll < 0.07;
+        const destructible =
+          isRuins || obstacleId % 4 !== 0 ? true : roll > 0.38;
+        const laneWidth = WIDTH - OBSTACLE_SIZE - 48;
+        const x = Math.round(createRandom(seedRef) * laneWidth + 24);
+        syncObstacles([
+          ...obstaclesRef.current,
+          {
+            id: obstacleId,
+            x,
+            y: -OBSTACLE_SIZE,
+            speed: isRuins
+              ? 1.4 + stageRef.current * 0.08
+              : 1.8 + stageRef.current * 0.12 + createRandom(seedRef) * 0.8,
+            hp: isRuins ? 3 : destructible ? 2 : 999,
+            destructible,
+            stageId: getStageDefinition(stageRef.current).id,
+            kind: isRuins ? "ruins" : "normal",
           },
         ]);
       }
@@ -1102,8 +1452,13 @@ export default function ToolClient() {
         }))
         .filter((bullet) => bullet.y > -30 && bullet.x > -30 && bullet.x < WIDTH + 30);
       const usedBullets = new Set<number>();
+      const spawnedEnemyBullets: EnemyBullet[] = [];
+      const spawnedEnemyLasers: EnemyLaser[] = [];
+      const spawnedEnemyMissiles: EnemyMissile[] = [];
       const nextEnemies: Enemy[] = [];
+      const nextObstacles: Obstacle[] = [];
       const droppedCoins: Coin[] = [];
+      const droppedBarrierItems: BarrierItem[] = [];
       let scoreGain = 0;
       let rescuedGain = 0;
       let playerHit = false;
@@ -1111,19 +1466,211 @@ export default function ToolClient() {
       for (const enemy of enemiesRef.current) {
         const size = getEnemySize(enemy);
         const isStageBoss = enemy.kind === "boss" && enemy.checkpoint === "stage";
+        const isFrozen = (enemy.freezeRemaining ?? 0) > 0;
+        const remainingFreeze = Math.max(0, (enemy.freezeRemaining ?? 0) - 1);
         const stageBossX =
           (enemy.anchorX ?? enemy.x) +
           Math.sin(performance.now() / 720 + (enemy.phase ?? 0)) * enemy.drift;
         let updatedEnemy = {
           ...enemy,
-          x: isStageBoss
-            ? clamp(stageBossX, 16, WIDTH - size.width - 16)
-            : clamp(enemy.x + enemy.drift, 6, WIDTH - size.width - 6),
-          y: isStageBoss ? enemy.y : enemy.y + enemy.speed,
+          x: isFrozen
+            ? enemy.x
+            : isStageBoss
+              ? clamp(stageBossX, 16, WIDTH - size.width - 16)
+              : clamp(enemy.x + enemy.drift, 6, WIDTH - size.width - 6),
+          y: isFrozen
+            ? enemy.y
+            : isStageBoss
+              ? enemy.y
+              : enemy.y + enemy.speed,
+          freezeRemaining: remainingFreeze,
         };
         const enemyWidth = size.width;
         const enemyHeight = size.height;
         let destroyed = false;
+
+        if (
+          enemy.kind === "boss" &&
+          enemy.boss &&
+          updatedEnemy.y + enemyHeight > 0 &&
+          updatedEnemy.y < HEIGHT - 80
+        ) {
+          const attack = enemy.boss.attack;
+          const cooldown = (updatedEnemy.fireCooldown ?? 0) - 1;
+          if (cooldown > 0) {
+            updatedEnemy = { ...updatedEnemy, fireCooldown: cooldown };
+          } else {
+            const targetX = nextPlayer.x + PLAYER_SIZE / 2;
+            const targetY = nextPlayer.y + PLAYER_SIZE / 2;
+            const muzzles = getBossMuzzles(updatedEnemy, enemyWidth, isStageBoss);
+            const burstRemaining = updatedEnemy.burstRemaining ?? 0;
+            const baseSpeed = attack.bulletSpeed;
+
+            const shots: Shot[] = [];
+            let nextBurstRemaining = 0;
+            let nextCooldown = attack.fireInterval;
+            let nextFreezeRemaining = remainingFreeze;
+
+            switch (attack.pattern) {
+              case "aimed-1": {
+                shots.push(aimedShot(muzzles.center, targetX, targetY, baseSpeed));
+                break;
+              }
+              case "aimed-2": {
+                shots.push(
+                  aimedShot(muzzles.left, targetX, targetY, baseSpeed),
+                  aimedShot(muzzles.right, targetX, targetY, baseSpeed),
+                );
+                break;
+              }
+              case "aimed-3": {
+                shots.push(
+                  aimedShot(muzzles.left, targetX, targetY, baseSpeed),
+                  aimedShot(muzzles.center, targetX, targetY, baseSpeed),
+                  aimedShot(muzzles.right, targetX, targetY, baseSpeed),
+                );
+                break;
+              }
+              case "spread-2": {
+                shots.push(
+                  angledShot(muzzles.left, -Math.PI / 6, baseSpeed),
+                  angledShot(muzzles.right, Math.PI / 6, baseSpeed),
+                );
+                break;
+              }
+              case "ring-4": {
+                const angles = [-Math.PI / 3, -Math.PI / 9, Math.PI / 9, Math.PI / 3];
+                for (const angle of angles) {
+                  shots.push(angledShot(muzzles.center, angle, baseSpeed));
+                }
+                break;
+              }
+              case "aimed-ring-6": {
+                shots.push(aimedShot(muzzles.center, targetX, targetY, baseSpeed));
+                const angles = [
+                  -Math.PI / 2.4,
+                  -Math.PI / 5,
+                  -Math.PI / 12,
+                  Math.PI / 12,
+                  Math.PI / 5,
+                ];
+                for (const angle of angles) {
+                  shots.push(angledShot(muzzles.center, angle, baseSpeed));
+                }
+                break;
+              }
+              case "cannon-burst-5": {
+                shots.push(aimedShot(muzzles.center, targetX, targetY, baseSpeed));
+                if (burstRemaining > 0) {
+                  nextBurstRemaining = burstRemaining - 1;
+                  nextCooldown = attack.burstInterval ?? 10;
+                } else {
+                  shots.push(
+                    aimedShot(muzzles.left, targetX, targetY, baseSpeed),
+                    aimedShot(muzzles.right, targetX, targetY, baseSpeed),
+                  );
+                  nextBurstRemaining = (attack.burstSize ?? 5) - 1;
+                  nextCooldown = attack.burstInterval ?? 10;
+                }
+                if (nextBurstRemaining <= 0) {
+                  nextCooldown = attack.fireInterval;
+                }
+                break;
+              }
+              case "aimed-laser": {
+                const warning = 28;
+                const active = 60;
+                for (const muzzle of [muzzles.left, muzzles.right]) {
+                  const dx = targetX - muzzle.x;
+                  const dy = Math.max(40, targetY - muzzle.y);
+                  const angle = Math.atan2(dx, dy);
+                  spawnedEnemyLasers.push({
+                    id: enemyLaserIdRef.current++,
+                    x: muzzle.x,
+                    y: muzzle.y,
+                    angle,
+                    angleStart: angle,
+                    angleEnd: angle,
+                    warningRemaining: warning,
+                    activeRemaining: active,
+                    totalActiveDuration: active,
+                    width: 14,
+                    hue: muzzle.hue,
+                    hasHitPlayer: false,
+                  });
+                }
+                nextFreezeRemaining = warning + active;
+                break;
+              }
+              case "laser-sweep": {
+                const warning = 32;
+                const active = 96;
+                const muzzle = muzzles.center;
+                const dx = targetX - muzzle.x;
+                const dy = Math.max(40, targetY - muzzle.y);
+                const aimAngle = Math.atan2(dx, dy);
+                const sweepHalf = Math.PI / 4;
+                const start = aimAngle - sweepHalf;
+                const end = aimAngle + sweepHalf;
+                spawnedEnemyLasers.push({
+                  id: enemyLaserIdRef.current++,
+                  x: muzzle.x,
+                  y: muzzle.y,
+                  angle: start,
+                  angleStart: start,
+                  angleEnd: end,
+                  warningRemaining: warning,
+                  activeRemaining: active,
+                  totalActiveDuration: active,
+                  width: 18,
+                  hue: muzzle.hue,
+                  hasHitPlayer: false,
+                });
+                nextFreezeRemaining = warning + active;
+                break;
+              }
+              case "homing-missile": {
+                const sources = [muzzles.left, muzzles.right];
+                for (const muzzle of sources) {
+                  const dx = targetX - muzzle.x;
+                  const dy = Math.max(40, targetY - muzzle.y);
+                  const length = Math.hypot(dx, dy) || 1;
+                  const speed = 3.2 + attack.bulletSpeed * 0.05;
+                  spawnedEnemyMissiles.push({
+                    id: enemyMissileIdRef.current++,
+                    x: muzzle.x - MISSILE_SIZE / 2,
+                    y: muzzle.y,
+                    vx: (dx / length) * speed,
+                    vy: (dy / length) * speed,
+                    speed,
+                    turnRate: 0.045,
+                    hue: muzzle.hue === "warm" ? "warm" : "cool",
+                    lifetime: 240,
+                  });
+                }
+                break;
+              }
+            }
+
+            for (const shot of shots) {
+              spawnedEnemyBullets.push({
+                id: enemyBulletIdRef.current++,
+                x: shot.from.x - ENEMY_BULLET_SIZE / 2,
+                y: shot.from.y,
+                vx: shot.vx,
+                vy: shot.vy,
+                hue: shot.from.hue,
+              });
+            }
+
+            updatedEnemy = {
+              ...updatedEnemy,
+              fireCooldown: nextCooldown,
+              burstRemaining: nextBurstRemaining,
+              freezeRemaining: nextFreezeRemaining,
+            };
+          }
+        }
 
         for (const bullet of movedBullets) {
           if (usedBullets.has(bullet.id)) continue;
@@ -1193,6 +1740,250 @@ export default function ToolClient() {
         }
       }
 
+      for (const obstacle of obstaclesRef.current) {
+        let updatedObstacle = {
+          ...obstacle,
+          y: obstacle.y + obstacle.speed,
+        };
+        let destroyed = false;
+
+        for (const bullet of movedBullets) {
+          if (usedBullets.has(bullet.id)) continue;
+          const hit = rectsHit(
+            {
+              x: bullet.x,
+              y: bullet.y,
+              width: BULLET_WIDTH,
+              height: BULLET_HEIGHT,
+            },
+            {
+              x: updatedObstacle.x,
+              y: updatedObstacle.y,
+              width: OBSTACLE_SIZE,
+              height: OBSTACLE_SIZE,
+            },
+          );
+          if (!hit) continue;
+          usedBullets.add(bullet.id);
+          if (updatedObstacle.destructible) {
+            updatedObstacle = {
+              ...updatedObstacle,
+              hp: updatedObstacle.hp - 1,
+            };
+            if (updatedObstacle.hp <= 0) {
+              destroyed = true;
+              scoreGain += updatedObstacle.kind === "ruins" ? 220 : 80;
+              addBurst(
+                updatedObstacle.x,
+                updatedObstacle.y,
+                updatedObstacle.kind === "ruins" ? "RELIC" : "BREAK",
+              );
+              if (updatedObstacle.kind === "ruins") {
+                droppedBarrierItems.push({
+                  id: barrierItemIdRef.current++,
+                  x:
+                    updatedObstacle.x +
+                    OBSTACLE_SIZE / 2 -
+                    BARRIER_ITEM_SIZE / 2,
+                  y: updatedObstacle.y + 6,
+                  speed: 2.6,
+                });
+              }
+            }
+          } else {
+            addBurst(updatedObstacle.x, updatedObstacle.y, "BLOCK");
+          }
+          break;
+        }
+
+        if (destroyed) continue;
+
+        const hitsPlayer = rectsHit(
+          {
+            x: nextPlayer.x + 10,
+            y: nextPlayer.y + 10,
+            width: PLAYER_SIZE - 20,
+            height: PLAYER_SIZE - 20,
+          },
+          {
+            x: updatedObstacle.x + 4,
+            y: updatedObstacle.y + 4,
+            width: OBSTACLE_SIZE - 8,
+            height: OBSTACLE_SIZE - 8,
+          },
+        );
+
+        if (hitsPlayer) {
+          playerHit = true;
+          addBurst(nextPlayer.x + 10, nextPlayer.y, "CRASH");
+          continue;
+        }
+
+        if (updatedObstacle.y < HEIGHT + OBSTACLE_SIZE) {
+          nextObstacles.push(updatedObstacle);
+        }
+      }
+
+      const movedEnemyBullets = [
+        ...enemyBulletsRef.current,
+        ...spawnedEnemyBullets,
+      ]
+        .map((bullet) => ({
+          ...bullet,
+          x: bullet.x + bullet.vx,
+          y: bullet.y + bullet.vy,
+        }))
+        .filter(
+          (bullet) =>
+            bullet.y < HEIGHT + 30 &&
+            bullet.y > -30 &&
+            bullet.x > -30 &&
+            bullet.x < WIDTH + 30,
+        );
+      const nextEnemyBullets: EnemyBullet[] = [];
+      for (const bullet of movedEnemyBullets) {
+        const hitsPlayer = rectsHit(
+          {
+            x: nextPlayer.x + 8,
+            y: nextPlayer.y + 8,
+            width: PLAYER_SIZE - 16,
+            height: PLAYER_SIZE - 16,
+          },
+          {
+            x: bullet.x,
+            y: bullet.y,
+            width: ENEMY_BULLET_SIZE,
+            height: ENEMY_BULLET_SIZE,
+          },
+        );
+        if (hitsPlayer) {
+          playerHit = true;
+          addBurst(nextPlayer.x + 10, nextPlayer.y, "HIT");
+          continue;
+        }
+        nextEnemyBullets.push(bullet);
+      }
+
+      if (spawnedEnemyBullets.length > 0) {
+        playSfx("shoot");
+      }
+
+      const playerHitCircle = {
+        x: nextPlayer.x + PLAYER_SIZE / 2,
+        y: nextPlayer.y + PLAYER_SIZE / 2,
+        r: PLAYER_SIZE / 2 - 10,
+      };
+
+      const nextEnemyLasers: EnemyLaser[] = [];
+      for (const laser of [...enemyLasersRef.current, ...spawnedEnemyLasers]) {
+        let warningRemaining = laser.warningRemaining;
+        let activeRemaining = laser.activeRemaining;
+        let angle = laser.angle;
+        if (warningRemaining > 0) {
+          warningRemaining -= 1;
+        } else if (activeRemaining > 0) {
+          if (laser.angleStart !== laser.angleEnd) {
+            const progress =
+              1 - activeRemaining / Math.max(1, laser.totalActiveDuration);
+            angle =
+              laser.angleStart +
+              (laser.angleEnd - laser.angleStart) * progress;
+          }
+          activeRemaining -= 1;
+        }
+
+        const isActive = warningRemaining <= 0 && activeRemaining > 0;
+        let hasHitPlayer = laser.hasHitPlayer;
+        if (isActive && !hasHitPlayer) {
+          const dirX = Math.sin(angle);
+          const dirY = Math.cos(angle);
+          const tx = playerHitCircle.x - laser.x;
+          const ty = playerHitCircle.y - laser.y;
+          const projection = tx * dirX + ty * dirY;
+          if (projection >= 0 && projection <= LASER_BEAM_LENGTH) {
+            const perpX = tx - projection * dirX;
+            const perpY = ty - projection * dirY;
+            const distSq = perpX * perpX + perpY * perpY;
+            const limit = laser.width + playerHitCircle.r;
+            if (distSq < limit * limit) {
+              playerHit = true;
+              hasHitPlayer = true;
+              addBurst(nextPlayer.x + 10, nextPlayer.y, "BEAM");
+            }
+          }
+        }
+
+        if (warningRemaining > 0 || activeRemaining > 0) {
+          nextEnemyLasers.push({
+            ...laser,
+            angle,
+            warningRemaining,
+            activeRemaining,
+            hasHitPlayer,
+          });
+        }
+      }
+
+      const nextEnemyMissiles: EnemyMissile[] = [];
+      for (const missile of [
+        ...enemyMissilesRef.current,
+        ...spawnedEnemyMissiles,
+      ]) {
+        const targetDx = playerHitCircle.x - (missile.x + MISSILE_SIZE / 2);
+        const targetDy = playerHitCircle.y - (missile.y + MISSILE_SIZE / 2);
+        const targetAngle = Math.atan2(targetDy, targetDx);
+        const currentAngle = Math.atan2(missile.vy, missile.vx);
+        let delta = targetAngle - currentAngle;
+        while (delta > Math.PI) delta -= Math.PI * 2;
+        while (delta < -Math.PI) delta += Math.PI * 2;
+        const turn =
+          Math.max(-missile.turnRate, Math.min(missile.turnRate, delta));
+        const newAngle = currentAngle + turn;
+        const vx = Math.cos(newAngle) * missile.speed;
+        const vy = Math.sin(newAngle) * missile.speed;
+        const x = missile.x + vx;
+        const y = missile.y + vy;
+        const lifetime = missile.lifetime - 1;
+
+        if (
+          lifetime <= 0 ||
+          x < -40 ||
+          x > WIDTH + 40 ||
+          y < -40 ||
+          y > HEIGHT + 40
+        ) {
+          continue;
+        }
+
+        const hits = rectsHit(
+          {
+            x: nextPlayer.x + 8,
+            y: nextPlayer.y + 8,
+            width: PLAYER_SIZE - 16,
+            height: PLAYER_SIZE - 16,
+          },
+          { x, y, width: MISSILE_SIZE, height: MISSILE_SIZE },
+        );
+        if (hits) {
+          playerHit = true;
+          addBurst(nextPlayer.x + 10, nextPlayer.y, "MISSILE");
+          continue;
+        }
+
+        nextEnemyMissiles.push({
+          ...missile,
+          x,
+          y,
+          vx,
+          vy,
+          lifetime,
+        });
+      }
+
+      if (spawnedEnemyLasers.length > 0 || spawnedEnemyMissiles.length > 0) {
+        playSfx("stage");
+      }
+
       const movedCoins = [...coinsOnBoardRef.current, ...droppedCoins]
         .map((coin) => ({ ...coin, y: coin.y + coin.speed }))
         .filter((coin) => coin.y < HEIGHT + 30);
@@ -1211,9 +2002,70 @@ export default function ToolClient() {
         }
       }
 
+      const movedBarrierItems = [
+        ...barrierItemsRef.current,
+        ...droppedBarrierItems,
+      ]
+        .map((item) => ({ ...item, y: item.y + item.speed }))
+        .filter((item) => item.y < HEIGHT + 30);
+      const nextBarrierItems: BarrierItem[] = [];
+      let activatedBarrierThisFrame = false;
+      for (const item of movedBarrierItems) {
+        const collected = rectsHit(
+          {
+            x: nextPlayer.x + 8,
+            y: nextPlayer.y + 8,
+            width: PLAYER_SIZE - 16,
+            height: PLAYER_SIZE - 16,
+          },
+          {
+            x: item.x,
+            y: item.y,
+            width: BARRIER_ITEM_SIZE,
+            height: BARRIER_ITEM_SIZE,
+          },
+        );
+        if (collected) {
+          if (
+            barrierActiveRef.current <= 0 &&
+            barrierCooldownRef.current <= 0
+          ) {
+            activatedBarrierThisFrame = true;
+            addBurst(item.x, item.y, "SHIELD");
+          } else {
+            addBurst(item.x, item.y, "—");
+          }
+        } else {
+          nextBarrierItems.push(item);
+        }
+      }
+
+      if (activatedBarrierThisFrame) {
+        barrierActiveRef.current = BARRIER_ACTIVE_FRAMES;
+        setMessage("バリア発動！3秒間ダメージ無効");
+        playSfx("bomb");
+      }
+
+      if (barrierActiveRef.current > 0) {
+        barrierActiveRef.current -= 1;
+        if (barrierActiveRef.current === 0) {
+          barrierCooldownRef.current = BARRIER_COOLDOWN_FRAMES;
+          setMessage("バリア終了。クールタイム5秒");
+        }
+      } else if (barrierCooldownRef.current > 0) {
+        barrierCooldownRef.current -= 1;
+      }
+      setBarrierActiveFrames(barrierActiveRef.current);
+      setBarrierCooldownFrames(barrierCooldownRef.current);
+
       syncBullets(movedBullets.filter((bullet) => !usedBullets.has(bullet.id)));
+      syncEnemyBullets(nextEnemyBullets);
+      syncEnemyLasers(nextEnemyLasers);
+      syncEnemyMissiles(nextEnemyMissiles);
       syncEnemies(nextEnemies);
+      syncObstacles(nextObstacles);
       syncCoinsOnBoard(nextCoinsOnBoard);
+      syncBarrierItems(nextBarrierItems);
 
       if (scoreGain > 0) {
         playSfx("hit");
@@ -1227,6 +2079,15 @@ export default function ToolClient() {
         setScore(scoreRef.current);
         setRescued(rescuedRef.current);
         setStageProgress(stageProgressRef.current);
+
+        const newSubStage = getSubStage(
+          stageRef.current,
+          stageProgressRef.current,
+        );
+        if (newSubStage.globalNumber !== previousSubStageRef.current) {
+          previousSubStageRef.current = newSubStage.globalNumber;
+          triggerSubStageFlash(newSubStage.label, newSubStage.globalNumber);
+        }
       }
 
       if (coinGain > 0) {
@@ -1241,15 +2102,19 @@ export default function ToolClient() {
       }
 
       if (playerHit) {
-        playSfx("hit");
-        livesRef.current -= 1;
-        setLives(livesRef.current);
-        setMessage(livesRef.current > 0 ? "Shutyにダメージ！" : "Shoot救出ならず...");
-        if (livesRef.current <= 0) {
-          stopBgm();
-          setGameState("gameover");
-          resetControls();
-          return;
+        if (barrierActiveRef.current > 0) {
+          addBurst(nextPlayer.x + 10, nextPlayer.y, "GUARD");
+        } else {
+          playSfx("hit");
+          livesRef.current -= 1;
+          setLives(livesRef.current);
+          setMessage(livesRef.current > 0 ? "Shutyにダメージ！" : "Shoot救出ならず...");
+          if (livesRef.current <= 0) {
+            stopBgm();
+            setGameState("gameover");
+            resetControls();
+            return;
+          }
         }
       }
 
@@ -1265,10 +2130,20 @@ export default function ToolClient() {
 
         stageRef.current += 1;
         stageProgressRef.current = 0;
+        obstacleTickRef.current = 0;
         setStage(stageRef.current);
         setStageProgress(0);
         playSfx("stage");
         startBgm(getStageDefinition(stageRef.current));
+        const advancedStageDef = getStageDefinition(stageRef.current);
+        previousStageRef.current = stageRef.current;
+        triggerStageTransition(
+          stageRef.current,
+          advancedStageDef.label,
+          advancedStageDef.storyLabel,
+        );
+        const advancedSubStage = getSubStage(stageRef.current, 0);
+        previousSubStageRef.current = advancedSubStage.globalNumber;
         setMessage(
           stageRef.current === FINAL_STAGE
             ? "最終ステージ！捕獲UFOを追い詰めよう"
@@ -1279,7 +2154,12 @@ export default function ToolClient() {
           setBombs(1);
         }
         syncEnemies([]);
+        syncObstacles([]);
         syncBullets([]);
+        syncEnemyBullets([]);
+        syncEnemyLasers([]);
+        syncEnemyMissiles([]);
+        resetBarrierState();
       }
 
       rafId = window.requestAnimationFrame(loop);
@@ -1295,14 +2175,22 @@ export default function ToolClient() {
     isPlaying,
     markBossCleared,
     playSfx,
+    resetBarrierState,
     resetControls,
     startBgm,
     stopBgm,
     syncBullets,
     syncCoinsOnBoard,
     syncEnemies,
+    syncEnemyBullets,
+    syncEnemyLasers,
+    syncEnemyMissiles,
+    syncBarrierItems,
+    syncObstacles,
     syncPlayer,
     triggerBomb,
+    triggerStageTransition,
+    triggerSubStageFlash,
   ]);
 
   const overlay = useMemo(() => {
@@ -1530,6 +2418,11 @@ export default function ToolClient() {
                     Stage {stage}/{FINAL_STAGE} {currentStage.label} / Small{" "}
                     {currentSubStage.globalNumber}/{CLEAR_TARGET} / Score {score} /
                     Life {lives} / Coin {coins}
+                    {barrierActiveFrames > 0
+                      ? ` / 🛡️ ${Math.ceil(barrierActiveFrames / 60)}s`
+                      : barrierCooldownFrames > 0
+                        ? ` / 🛡️ CD ${Math.ceil(barrierCooldownFrames / 60)}s`
+                        : ""}
                   </div>
                   <div
                     style={{
@@ -1545,6 +2438,45 @@ export default function ToolClient() {
                     </strong>
                   </div>
 
+                  {subStageFlash ? (
+                    <div
+                      key={subStageFlash.key}
+                      style={{
+                        ...styles.subStageFlash,
+                        borderColor: stageTheme.accent,
+                        color: stageTheme.accent,
+                      }}
+                    >
+                      <span>SMALL {subStageFlash.number}/{CLEAR_TARGET}</span>
+                      <strong>{subStageFlash.label}</strong>
+                    </div>
+                  ) : null}
+
+                  {stageTransition ? (
+                    <div key={stageTransition.key} style={styles.stageWarpOverlay}>
+                      <div
+                        style={{
+                          ...styles.stageWarpWipe,
+                          background: `linear-gradient(90deg, transparent, ${stageTheme.accent}, transparent)`,
+                        }}
+                      />
+                      <div
+                        style={{
+                          ...styles.stageWarpPanel,
+                          borderColor: stageTheme.accent,
+                          boxShadow: `0 0 36px ${stageTheme.accent}88`,
+                        }}
+                      >
+                        <span style={styles.stageWarpEyebrow}>WARP IN</span>
+                        <strong style={{ ...styles.stageWarpStage, color: stageTheme.accent }}>
+                          STAGE {stageTransition.stage}
+                        </strong>
+                        <span style={styles.stageWarpLabel}>{stageTransition.label}</span>
+                        <span style={styles.stageWarpStory}>{stageTransition.storyLabel}</span>
+                      </div>
+                    </div>
+                  ) : null}
+
                   {bullets.map((bullet) => (
                     <div
                       key={bullet.id}
@@ -1552,8 +2484,74 @@ export default function ToolClient() {
                     />
                   ))}
 
+                  {enemyBullets.map((bullet) => (
+                    <div
+                      key={bullet.id}
+                      style={{
+                        ...styles.enemyBullet,
+                        ...(bullet.hue === "warm"
+                          ? styles.enemyBulletWarm
+                          : bullet.hue === "cool"
+                            ? styles.enemyBulletCool
+                            : styles.enemyBulletWhite),
+                        left: bullet.x,
+                        top: bullet.y,
+                      }}
+                    />
+                  ))}
+
+                  {enemyLasers.map((laser) => {
+                    const isActive =
+                      laser.warningRemaining <= 0 && laser.activeRemaining > 0;
+                    const angleDeg = (laser.angle * 180) / Math.PI;
+                    return (
+                      <div
+                        key={laser.id}
+                        style={{
+                          ...styles.enemyLaser,
+                          ...(isActive
+                            ? laser.hue === "warm"
+                              ? styles.enemyLaserWarm
+                              : laser.hue === "cool"
+                                ? styles.enemyLaserCool
+                                : styles.enemyLaserWhite
+                            : styles.enemyLaserWarning),
+                          left: laser.x,
+                          top: laser.y,
+                          width: isActive ? laser.width * 2 : 4,
+                          height: LASER_BEAM_LENGTH,
+                          marginLeft: isActive ? -laser.width : -2,
+                          transform: `rotate(${-angleDeg}deg)`,
+                        }}
+                      />
+                    );
+                  })}
+
+                  {enemyMissiles.map((missile) => {
+                    const angleDeg =
+                      (Math.atan2(missile.vy, missile.vx) * 180) / Math.PI;
+                    return (
+                      <div
+                        key={missile.id}
+                        style={{
+                          ...styles.enemyMissile,
+                          ...(missile.hue === "warm"
+                            ? styles.enemyMissileWarm
+                            : styles.enemyMissileCool),
+                          left: missile.x,
+                          top: missile.y,
+                          transform: `rotate(${angleDeg + 90}deg)`,
+                        }}
+                      />
+                    );
+                  })}
+
                   {enemies.map((enemy) => (
                     <EnemyView key={enemy.id} enemy={enemy} />
+                  ))}
+
+                  {obstacles.map((obstacle) => (
+                    <ObstacleView key={obstacle.id} obstacle={obstacle} />
                   ))}
 
                   {coinsOnBoard.map((coin) => (
@@ -1563,6 +2561,16 @@ export default function ToolClient() {
                       style={{ ...styles.coin, left: coin.x, top: coin.y }}
                     >
                       🪙
+                    </div>
+                  ))}
+
+                  {barrierItems.map((item) => (
+                    <div
+                      key={item.id}
+                      aria-label="バリアアイテム"
+                      style={{ ...styles.barrierItem, left: item.x, top: item.y }}
+                    >
+                      🛡️
                     </div>
                   ))}
 
@@ -1589,6 +2597,16 @@ export default function ToolClient() {
                     <span style={styles.maroBeaconText}>SUPPORT</span>
                   </div>
                   <Shuty player={player} powered={powered} />
+                  {barrierActiveFrames > 0 ? (
+                    <div
+                      aria-hidden
+                      style={{
+                        ...styles.playerBarrier,
+                        left: player.x - 10,
+                        top: player.y - 10,
+                      }}
+                    />
+                  ) : null}
                   {overlay}
                   {gameState === "opening" ? (
                     <OpeningScene
@@ -1672,6 +2690,31 @@ export default function ToolClient() {
         @keyframes penguinShooterStageBossHover {
           0%, 100% { transform: translateY(0) scale(1); }
           50% { transform: translateY(-3px) scale(1.015); }
+        }
+
+        @keyframes penguinShooterLaserBlink {
+          0%, 49% { opacity: 0.55; }
+          50%, 100% { opacity: 1; }
+        }
+
+        @keyframes penguinShooterSubStageFlash {
+          0% { opacity: 0; transform: translate(-50%, -8px); }
+          25% { opacity: 1; transform: translate(-50%, 0); }
+          75% { opacity: 1; transform: translate(-50%, 0); }
+          100% { opacity: 0; transform: translate(-50%, -4px); }
+        }
+
+        @keyframes penguinShooterStageWarp {
+          0% { opacity: 0; transform: scale(0.6); }
+          15% { opacity: 1; transform: scale(1); }
+          70% { opacity: 1; transform: scale(1.04); }
+          100% { opacity: 0; transform: scale(1.18); }
+        }
+
+        @keyframes penguinShooterStageWipe {
+          0% { transform: translateX(-110%); }
+          50% { transform: translateX(0); }
+          100% { transform: translateX(110%); }
         }
       `}</style>
     </main>
@@ -2005,6 +3048,82 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 900,
     boxShadow: "0 8px 18px rgba(15, 23, 42, 0.12)",
   },
+  subStageFlash: {
+    position: "absolute",
+    left: "50%",
+    top: 70,
+    zIndex: 26,
+    transform: "translate(-50%, 0)",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 2,
+    padding: "6px 14px",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderStyle: "solid",
+    background: "rgba(15, 23, 42, 0.72)",
+    fontSize: 11,
+    fontWeight: 900,
+    letterSpacing: 0.6,
+    pointerEvents: "none",
+    animation: "penguinShooterSubStageFlash 0.9s ease-out forwards",
+  },
+  stageWarpOverlay: {
+    position: "absolute",
+    inset: 0,
+    zIndex: 30,
+    display: "grid",
+    placeItems: "center",
+    overflow: "hidden",
+    pointerEvents: "none",
+    background:
+      "radial-gradient(ellipse at 50% 50%, rgba(15, 23, 42, 0.42), rgba(15, 23, 42, 0.78))",
+    animation: "penguinShooterStageWarp 1.9s ease-in-out forwards",
+  },
+  stageWarpWipe: {
+    position: "absolute",
+    inset: 0,
+    pointerEvents: "none",
+    animation: "penguinShooterStageWipe 1.9s ease-in-out forwards",
+  },
+  stageWarpPanel: {
+    position: "relative",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 8,
+    padding: "22px 36px",
+    borderRadius: 18,
+    borderWidth: 2,
+    borderStyle: "solid",
+    background: "rgba(15, 23, 42, 0.84)",
+    color: "#f8fafc",
+  },
+  stageWarpEyebrow: {
+    fontSize: 12,
+    fontWeight: 800,
+    letterSpacing: 4,
+    color: "#e2e8f0",
+  },
+  stageWarpStage: {
+    fontSize: 38,
+    fontWeight: 900,
+    letterSpacing: 2,
+    lineHeight: 1,
+  },
+  stageWarpLabel: {
+    fontSize: 18,
+    fontWeight: 800,
+    color: "#fef08a",
+    letterSpacing: 1,
+  },
+  stageWarpStory: {
+    fontSize: 13,
+    fontWeight: 600,
+    color: "#cbd5e1",
+    letterSpacing: 0.5,
+  },
   bullet: {
     position: "absolute",
     zIndex: 18,
@@ -2013,6 +3132,74 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: "999px 999px 4px 4px",
     background: "linear-gradient(180deg, #fef08a, #22d3ee)",
     boxShadow: "0 0 14px rgba(250, 204, 21, 0.82)",
+  },
+  enemyBullet: {
+    position: "absolute",
+    zIndex: 17,
+    width: ENEMY_BULLET_SIZE,
+    height: ENEMY_BULLET_SIZE,
+    borderRadius: 999,
+  },
+  enemyBulletWarm: {
+    background: "radial-gradient(circle at 35% 35%, #fde68a, #f97316 60%, #7c2d12)",
+    boxShadow: "0 0 12px rgba(249, 115, 22, 0.85)",
+  },
+  enemyBulletCool: {
+    background: "radial-gradient(circle at 35% 35%, #bae6fd, #0ea5e9 60%, #1e3a8a)",
+    boxShadow: "0 0 12px rgba(14, 165, 233, 0.85)",
+  },
+  enemyBulletWhite: {
+    background: "radial-gradient(circle at 35% 35%, #ffffff, #e2e8f0 60%, #475569)",
+    boxShadow: "0 0 14px rgba(248, 250, 252, 0.9)",
+  },
+  enemyLaser: {
+    position: "absolute",
+    zIndex: 17,
+    transformOrigin: "50% 0%",
+    pointerEvents: "none",
+    borderRadius: 999,
+  },
+  enemyLaserWarning: {
+    background:
+      "linear-gradient(180deg, rgba(248, 113, 113, 0.95), rgba(248, 113, 113, 0.05))",
+    boxShadow: "0 0 12px rgba(248, 113, 113, 0.7)",
+    animation: "penguinShooterLaserBlink 0.18s steps(2) infinite",
+  },
+  enemyLaserWarm: {
+    background:
+      "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(249, 115, 22, 0.85) 18%, rgba(180, 83, 9, 0))",
+    boxShadow:
+      "0 0 22px rgba(249, 115, 22, 0.85), 0 0 8px rgba(255, 255, 255, 0.95)",
+  },
+  enemyLaserCool: {
+    background:
+      "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(14, 165, 233, 0.85) 18%, rgba(30, 58, 138, 0))",
+    boxShadow:
+      "0 0 22px rgba(14, 165, 233, 0.85), 0 0 8px rgba(255, 255, 255, 0.95)",
+  },
+  enemyLaserWhite: {
+    background:
+      "linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(217, 70, 239, 0.78) 22%, rgba(76, 29, 149, 0))",
+    boxShadow:
+      "0 0 26px rgba(217, 70, 239, 0.85), 0 0 10px rgba(255, 255, 255, 0.95)",
+  },
+  enemyMissile: {
+    position: "absolute",
+    zIndex: 17,
+    width: MISSILE_SIZE,
+    height: MISSILE_SIZE,
+    borderRadius: "12px 12px 4px 4px",
+    transformOrigin: "50% 50%",
+  },
+  enemyMissileWarm: {
+    background:
+      "linear-gradient(180deg, #fde68a, #f97316 56%, #7c2d12)",
+    boxShadow: "0 0 14px rgba(249, 115, 22, 0.8)",
+  },
+  enemyMissileCool: {
+    background:
+      "linear-gradient(180deg, #bae6fd, #0ea5e9 56%, #1e3a8a)",
+    boxShadow: "0 0 14px rgba(14, 165, 233, 0.8)",
   },
   enemy: {
     position: "absolute",
@@ -2274,6 +3461,88 @@ const styles: Record<string, CSSProperties> = {
       "linear-gradient(180deg, rgba(248, 250, 252, 0.7), rgba(34, 211, 238, 0.46), rgba(34, 211, 238, 0))",
     transformOrigin: "top center",
     animation: "penguinShooterPulse 0.9s ease-in-out infinite",
+  },
+  obstacle: {
+    position: "absolute",
+    zIndex: 17,
+    width: OBSTACLE_SIZE,
+    height: OBSTACLE_SIZE,
+    display: "grid",
+    placeItems: "center",
+    borderRadius: 8,
+    borderWidth: 2,
+    borderStyle: "solid",
+    filter: "drop-shadow(0 10px 12px rgba(2, 6, 23, 0.36))",
+    userSelect: "none",
+  },
+  obstacleBreakable: {
+    borderColor: "rgba(250, 204, 21, 0.74)",
+    background:
+      "linear-gradient(180deg, rgba(254, 243, 199, 0.86), rgba(251, 146, 60, 0.72))",
+  },
+  obstacleSolid: {
+    borderColor: "rgba(203, 213, 225, 0.72)",
+    background:
+      "linear-gradient(180deg, rgba(100, 116, 139, 0.94), rgba(15, 23, 42, 0.9))",
+  },
+  obstacleRuins: {
+    borderColor: "rgba(167, 139, 250, 0.85)",
+    background:
+      "linear-gradient(180deg, rgba(245, 208, 254, 0.88), rgba(124, 58, 237, 0.86))",
+    boxShadow:
+      "0 0 18px rgba(167, 139, 250, 0.55), inset 0 0 12px rgba(255, 255, 255, 0.28)",
+  },
+  obstacleIcon: {
+    fontSize: 28,
+    lineHeight: 1,
+  },
+  obstacleHp: {
+    position: "absolute",
+    left: 7,
+    right: 7,
+    bottom: 5,
+    height: 5,
+    overflow: "hidden",
+    borderRadius: 999,
+    background: "rgba(15, 23, 42, 0.48)",
+  },
+  obstacleHpFill: {
+    display: "block",
+    height: "100%",
+    borderRadius: 999,
+    background: "linear-gradient(90deg, #22c55e, #facc15)",
+    transition: "width 0.12s ease",
+  },
+  obstacleHpFillRuins: {
+    background: "linear-gradient(90deg, #a78bfa, #f0abfc)",
+  },
+  barrierItem: {
+    position: "absolute",
+    zIndex: 16,
+    width: BARRIER_ITEM_SIZE,
+    height: BARRIER_ITEM_SIZE,
+    fontSize: 24,
+    lineHeight: 1,
+    display: "grid",
+    placeItems: "center",
+    filter: "drop-shadow(0 0 10px rgba(96, 165, 250, 0.85))",
+    animation: "penguinShooterPulse 1.2s ease-in-out infinite",
+  },
+  playerBarrier: {
+    position: "absolute",
+    zIndex: 19,
+    width: PLAYER_SIZE + 20,
+    height: PLAYER_SIZE + 20,
+    borderRadius: 999,
+    borderWidth: 3,
+    borderStyle: "solid",
+    borderColor: "rgba(125, 211, 252, 0.85)",
+    background:
+      "radial-gradient(circle at 50% 50%, rgba(125, 211, 252, 0.12), rgba(125, 211, 252, 0.32) 70%, rgba(59, 130, 246, 0.05) 100%)",
+    boxShadow:
+      "0 0 18px rgba(125, 211, 252, 0.7), inset 0 0 18px rgba(186, 230, 253, 0.6)",
+    pointerEvents: "none",
+    animation: "penguinShooterPulse 0.8s ease-in-out infinite",
   },
   coin: {
     position: "absolute",
