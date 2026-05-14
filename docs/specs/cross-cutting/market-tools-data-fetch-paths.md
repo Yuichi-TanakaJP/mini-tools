@@ -89,6 +89,87 @@
 - 特に `stock-ranking` は、repo 同梱 JSON を履歴アーカイブとして増やし続けない
 - `public/data/jpx_listed_companies.json` は現時点では repo 同梱維持でよい
 
+## `GET /nikko/credit` response contract
+
+日興信用情報は `yutai-candidates` の信用バッジ、クロス可否フィルタ、一般売建可能数量ソートで使う。
+規制情報を含める判断理由は [2026-05-14 日興信用 JSON contract](../../decision-log/2026-05-14-nikko-credit-json-contract.md) を参照。
+
+トップレベル:
+
+| field | 型 | 内容 |
+|---|---|---|
+| `date` | string | データ日付。`YYYY-MM-DD` |
+| `generated_at` | string | JSON 生成時刻。ISO 文字列 |
+| `record_count` | number | `by_code` の銘柄数 |
+| `by_code` | object | 銘柄コードを key にした辞書 |
+
+各銘柄レコード:
+
+| field | 型 | 内容 |
+|---|---|---|
+| `institutional_buy` | boolean | 制度信用買い可否 |
+| `institutional_short` | boolean | 制度信用売り可否 |
+| `general_buy` | boolean | 一般信用買い可否 |
+| `general_short` | boolean | 一般信用売り可否 |
+| `available_shares` | number \| null | 一般信用売り可能数量。未取得・空欄は `null` |
+| `has_exchange_regulation` | boolean | 公的規制あり |
+| `has_internal_regulation` | boolean | 社内規制あり |
+| `regulation_sources` | array | 規制ソース配列。値は `exchange` / `internal` |
+| `regulation_details` | string[] | 規制明細配列 |
+
+`regulation_details` は次の文字列形式にする。
+
+```text
+source|market|restriction|effective_date
+```
+
+日興の現行社内規制ページのように市場列がない場合は、`market` を省略して次の形式にする。
+
+```text
+source|restriction|effective_date
+```
+
+例:
+
+```json
+[
+  "exchange|日証金（東証）|新規売建規制 取引停止|2022/07/06",
+  "internal|新規売建規制 取引停止|2011/12/05"
+]
+```
+
+### `yutai-candidates` の日興信用 badge 判定
+
+UI は「今、一般信用売りでクロス可能か」と「監視継続すべきか」を分けて扱う。
+一般信用の表示は `一般売可` / `一般注意` / `一般規制` の 3 種類に限定し、`一般在庫?` は表示しない。
+制度信用は一般クロス可否とは別表示として `制度売可` を出す。
+
+| ケース | Before 表示 | After 表示 | クロス対象 | 監視継続 |
+|---|---|---|---|---|
+| `general_short=true` かつ `available_shares>0` | 一般売可 | 一般売可 | Yes | Yes |
+| 上記 + 貸株注意喚起 | 一般売可 | 一般注意 | Yes | Yes |
+| 新規売建規制 + 取引停止 | 表示なし | 一般規制 | No | Yes |
+| `general_short=false` かつ `available_shares>0`、売建規制なし | 表示なし | 表示なし | No | Yes |
+| `general_short=false` かつ `available_shares=0/null`、売建規制なし | 表示なし | 表示なし | No | 低頻度 |
+| `institutional_short=true` | 制度売可 | 制度売可 | 一般クロス判定には使わない | 任意 |
+| `institutional_short=true` かつ一般は不可 | 制度売可 | 制度売可 のみ | No | 任意 |
+| 一般・制度どちらも不可 | 表示なし | 表示なし | No | 低頻度 |
+
+判定順:
+
+```ts
+if (hasSellStop) show "一般規制";
+else if (canCrossNow && hasLendingCaution) show "一般注意";
+else if (canCrossNow) show "一般売可";
+
+if (institutional_short) show "制度売可";
+```
+
+- `hasSellStop`: `regulation_details` に `新規売建規制` と `取引停止` を含む明細がある
+- `hasLendingCaution`: `regulation_details` に `貸株注意喚起` を含む明細がある
+- `canCrossNow`: `general_short=true` かつ `available_shares>0`
+- `3549` は After 表示で `一般規制` として扱う
+
 ## 関連ファイル
 
 - [app/tools/topix33/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/topix33/data-loader.ts)
@@ -100,5 +181,6 @@
 - [app/tools/us-stock-ranking/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/us-stock-ranking/data-loader.ts)
 - [app/tools/market-rankings/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/market-rankings/data-loader.ts)
 - [app/tools/yutai-candidates/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/yutai-candidates/data-loader.ts)
+- [app/tools/yutai-candidates/types.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/yutai-candidates/types.ts)
 - [app/tools/earnings-calendar/page.tsx](/c:/Users/yutaz/dev/mini-tools/app/tools/earnings-calendar/page.tsx)
 - [.env.local.example](/c:/Users/yutaz/dev/mini-tools/.env.local.example)

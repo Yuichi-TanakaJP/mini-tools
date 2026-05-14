@@ -1,49 +1,105 @@
 {
   "date": "2026-04-04",
   "generated_at": "2026-04-04T12:00:00+09:00",
-  "record_count": 6,
+  "record_count": 8,
   "by_code": {
     "2702": {
       "institutional_buy": true,
       "institutional_short": true,
       "general_buy": true,
       "general_short": true,
-      "available_shares": 900
+      "available_shares": 900,
+      "has_exchange_regulation": false,
+      "has_internal_regulation": false,
+      "regulation_sources": [],
+      "regulation_details": []
     },
     "1305": {
       "institutional_buy": true,
       "institutional_short": true,
       "general_buy": true,
       "general_short": false,
-      "available_shares": null
+      "available_shares": null,
+      "has_exchange_regulation": false,
+      "has_internal_regulation": true,
+      "regulation_sources": ["internal"],
+      "regulation_details": [
+        "internal|新規売建規制 取引停止|2026/04/04"
+      ]
     },
     "9831": {
       "institutional_buy": true,
       "institutional_short": false,
       "general_buy": true,
       "general_short": true,
-      "available_shares": 300
+      "available_shares": 300,
+      "has_exchange_regulation": true,
+      "has_internal_regulation": false,
+      "regulation_sources": ["exchange"],
+      "regulation_details": [
+        "exchange|日証金（東証）|新規売建規制 取引停止|2026/04/04"
+      ]
     },
     "3088": {
       "institutional_buy": true,
       "institutional_short": false,
       "general_buy": false,
       "general_short": false,
-      "available_shares": null
+      "available_shares": null,
+      "has_exchange_regulation": false,
+      "has_internal_regulation": false,
+      "regulation_sources": [],
+      "regulation_details": []
     },
     "7816": {
       "institutional_buy": true,
       "institutional_short": true,
       "general_buy": true,
       "general_short": true,
-      "available_shares": 0
+      "available_shares": 0,
+      "has_exchange_regulation": false,
+      "has_internal_regulation": false,
+      "regulation_sources": [],
+      "regulation_details": []
     },
     "2413": {
       "institutional_buy": false,
       "institutional_short": false,
       "general_buy": false,
       "general_short": false,
-      "available_shares": null
+      "available_shares": null,
+      "has_exchange_regulation": false,
+      "has_internal_regulation": true,
+      "regulation_sources": ["internal"],
+      "regulation_details": [
+        "internal|新規買建停止|2026/04/04"
+      ]
+    },
+    "3549": {
+      "institutional_buy": true,
+      "institutional_short": false,
+      "general_buy": true,
+      "general_short": false,
+      "available_shares": 1200,
+      "has_exchange_regulation": false,
+      "has_internal_regulation": true,
+      "regulation_sources": ["internal"],
+      "regulation_details": [
+        "internal|新規売建規制 取引停止|2026/04/04"
+      ]
+    },
+    "9999": {
+      "institutional_buy": true,
+      "institutional_short": true,
+      "general_buy": true,
+      "general_short": true,
+      "available_shares": 100,
+      "has_exchange_regulation": true,
+      "has_internal_regulation": false,
+      "regulation_sources": ["exchange"],
+      "regulation_details": [
+        "exchange|日証金（東証）|貸株注意喚起|2026/04/04"
+      ]
     }
   }
 }

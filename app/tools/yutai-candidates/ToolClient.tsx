@@ -10,7 +10,7 @@ const PICKED_KEY = "monthly_yutai_picks_v1";
 
 type StatusFilter = "all" | "picked" | "added" | "unselected";
 type LinkFilter = "all" | "with" | "without";
-type CrossFilter = "all" | "general" | "institutional" | "any";
+type CrossFilter = "all" | "general" | "general_watch" | "institutional" | "any";
 type SbiFilter = "all" | "sbi_any";
 type SortKey = "company" | "code" | "investment" | "available_shares";
 
@@ -60,6 +60,30 @@ function savePickedCodes(codes: Set<string>) {
   window.localStorage.setItem(PICKED_KEY, JSON.stringify([...codes]));
 }
 
+type NikkoCreditRecord = NonNullable<MonthlyYutaiPageData["nikkoCredit"]>["by_code"][string];
+
+function hasNikkoSellStop(credit: NikkoCreditRecord | undefined) {
+  return Boolean(credit?.regulation_details?.some((detail) => (
+    detail.includes("新規売建規制") && detail.includes("取引停止")
+  )));
+}
+
+function hasNikkoLendingCaution(credit: NikkoCreditRecord | undefined) {
+  return Boolean(credit?.regulation_details?.some((detail) => detail.includes("貸株注意喚起")));
+}
+
+function canNikkoGeneralCrossNow(credit: NikkoCreditRecord | undefined) {
+  return Boolean(credit?.general_short && (credit.available_shares ?? 0) > 0);
+}
+
+function shouldWatchNikkoGeneral(credit: NikkoCreditRecord | undefined) {
+  if (!credit) return false;
+  return hasNikkoSellStop(credit) || canNikkoGeneralCrossNow(credit) || (
+    !credit.general_short &&
+    (credit.available_shares ?? 0) > 0 &&
+    !hasNikkoSellStop(credit)
+  );
+}
 
 function renderCreditBadges(
   nikkoCredit: import("./types").NikkoCreditData | null,
@@ -68,16 +92,17 @@ function renderCreditBadges(
 ): React.ReactNode {
   if (!nikkoCredit) return null;
   const credit = nikkoCredit.by_code[code];
-  if (!credit) return <span style={styles.creditChipNone}>日興対象外</span>;
+  if (!credit) return null;
   const badges: React.ReactNode[] = [];
-  if (credit.general_short) {
+  if (hasNikkoSellStop(credit)) {
+    badges.push(<span key="gen-regulated" style={styles.creditChipGeneralRegulation}>一般規制</span>);
+  } else if (canNikkoGeneralCrossNow(credit) && hasNikkoLendingCaution(credit)) {
+    badges.push(<span key="gen-caution" style={styles.creditChipGeneralCaution}>一般注意</span>);
+  } else if (canNikkoGeneralCrossNow(credit)) {
     badges.push(<span key="gen" style={styles.creditChipGeneral}>一般売可</span>);
   }
   if (credit.institutional_short) {
     badges.push(<span key="inst" style={styles.creditChipInstitutional}>制度売可</span>);
-  }
-  if (badges.length === 0) {
-    badges.push(<span key="none" style={styles.creditChipNoCross}>クロス不可</span>);
   }
   return badges;
 }
@@ -179,9 +204,10 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
 
         if (crossFilter !== "all" && byCode) {
           const credit = byCode[item.code];
-          if (crossFilter === "general" && !credit?.general_short) return false;
+          if (crossFilter === "general" && !canNikkoGeneralCrossNow(credit)) return false;
+          if (crossFilter === "general_watch" && !shouldWatchNikkoGeneral(credit)) return false;
           if (crossFilter === "institutional" && !credit?.institutional_short) return false;
-          if (crossFilter === "any" && !credit?.general_short && !credit?.institutional_short) return false;
+          if (crossFilter === "any" && !canNikkoGeneralCrossNow(credit) && !credit?.institutional_short) return false;
         }
 
         if (sbiFilter === "sbi_any" && data.sbiCredit) {
@@ -361,10 +387,11 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
               </select>
               {data.nikkoCredit && (
                 <select value={crossFilter} onChange={(e) => setCrossFilter(e.target.value as CrossFilter)} style={styles.select}>
-                  <option value="all">クロス: すべて</option>
-                  <option value="any">クロス: 一般または制度</option>
-                  <option value="general">クロス: 一般信用のみ</option>
-                  <option value="institutional">クロス: 制度信用のみ</option>
+                  <option value="all">日興: すべて</option>
+                  <option value="general">日興: 一般売可</option>
+                  <option value="general_watch">日興: 一般監視</option>
+                  <option value="institutional">日興: 制度売可</option>
+                  <option value="any">日興: 売可あり</option>
                 </select>
               )}
               {data.sbiCredit && (
@@ -908,6 +935,20 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#15803d",
     fontWeight: 800,
     border: "1px solid rgba(34,197,94,0.25)",
+  },
+  creditChipGeneralCaution: {
+    ...baseCreditChip,
+    background: "#fef3c7",
+    color: "#92400e",
+    fontWeight: 800,
+    border: "1px solid rgba(245,158,11,0.25)",
+  },
+  creditChipGeneralRegulation: {
+    ...baseCreditChip,
+    background: "#fee2e2",
+    color: "#b91c1c",
+    fontWeight: 800,
+    border: "1px solid rgba(239,68,68,0.25)",
   },
   creditChipInstitutional: {
     ...baseCreditChip,
