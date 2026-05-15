@@ -44,6 +44,10 @@ export type NikkoCreditRecord = {
   general_buy: boolean;
   general_short: boolean;
   available_shares: number | null;
+  has_exchange_regulation: boolean;
+  has_internal_regulation: boolean;
+  regulation_sources: Array<"exchange" | "internal">;
+  regulation_details: string[];
 };
 
 export type NikkoCreditData = {
