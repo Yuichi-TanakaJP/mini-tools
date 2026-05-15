@@ -167,7 +167,7 @@ if (institutional_short) show "制度売可";
 
 - `hasSellStop`: `regulation_details` に `新規売建規制` と `取引停止` を含む明細がある
 - `hasLendingCaution`: `regulation_details` に `貸株注意喚起` を含む明細がある
-- `canCrossNow`: `general_short=true` かつ `available_shares>0`
+- `canCrossNow`: `general_short=true` かつ `available_shares>0` かつ売建停止なし
 - `3549` は After 表示で `一般規制` として扱う
 
 ## 関連ファイル

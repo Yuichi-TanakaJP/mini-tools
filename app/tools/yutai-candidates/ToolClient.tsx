@@ -73,7 +73,7 @@ function hasNikkoLendingCaution(credit: NikkoCreditRecord | undefined) {
 }
 
 function canNikkoGeneralCrossNow(credit: NikkoCreditRecord | undefined) {
-  return Boolean(credit?.general_short && (credit.available_shares ?? 0) > 0);
+  return Boolean(credit?.general_short && (credit.available_shares ?? 0) > 0 && !hasNikkoSellStop(credit));
 }
 
 function shouldWatchNikkoGeneral(credit: NikkoCreditRecord | undefined) {
