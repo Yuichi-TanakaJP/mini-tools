@@ -20,12 +20,13 @@ import {
   BenefitItemV2,
   normalizeLegacyToV2,
   safeUUID,
+  coerceNumber,
 } from "./benefits/store";
 
 import EditBenefitDialog from "./components/EditBenefitDialog";
 import ImportBenefitDialog from "./components/ImportBenefitDialog";
 
-type TabKey = "thisMonth" | "later" | "all";
+type TabKey = "thisMonth" | "later" | "all" | "overdue";
 type ViewMode = "cards" | "table";
 type SortKey = "expiryAsc" | "companyAsc" | "createdDesc";
 
@@ -213,13 +214,6 @@ function useHydrated() {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
-function parseNumberOrNull(v: string): number | null {
-  const t = v.trim();
-  if (!t) return null;
-  const n = Number(t);
-  if (Number.isNaN(n)) return null;
-  return n;
-}
 
 export default function ToolClient() {
   const hydrated = useHydrated();
@@ -246,7 +240,16 @@ export default function ToolClient() {
   const [tab, setTab] = useState<TabKey>("all");
   const isMobile = useMediaQuery("(max-width: 699px)");
 
-  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  // WHY: レンダー中の localStorage 直読みは再レンダー乖離バグの原因になるため、
+  // 遅延初期化で一度だけ読む。readSavedViewMode は SSR で null を返し hydration 安全。
+  const [viewMode, setViewMode] = useState<ViewMode | null>(() =>
+    readSavedViewMode()
+  );
+
+  const selectViewMode = (m: ViewMode) => {
+    setViewMode(m);
+    saveViewMode(m);
+  };
 
   const [showUsed, setShowUsed] = useState(true);
   const [sortKey, setSortKey] = useState<SortKey>("expiryAsc");
@@ -272,6 +275,7 @@ export default function ToolClient() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const today = todayISODate();
 
     const base = items.filter((it) => {
       if (!showUsed && it.isUsed) return false;
@@ -297,6 +301,11 @@ export default function ToolClient() {
         if (!it.expiresOn) return false;
         const d = parseLocalDate(it.expiresOn);
         return d.getTime() >= nextMonthStart.getTime();
+      }
+
+      if (tab === "overdue") {
+        if (!it.expiresOn) return false;
+        return it.expiresOn < today;
       }
 
       // all
@@ -385,8 +394,8 @@ export default function ToolClient() {
       company: draft.company.trim(),
       expiresOn,
       isUsed: draft.isUsed,
-      quantity: parseNumberOrNull(draft.quantity),
-      amountYen: parseNumberOrNull(draft.amountYen),
+      quantity: coerceNumber(draft.quantity),
+      amountYen: coerceNumber(draft.amountYen),
       memo: draft.memo?.trim() ?? "",
       link: draft.link.trim() ? draft.link.trim() : undefined,
       createdAt: nowIso,
@@ -489,14 +498,13 @@ export default function ToolClient() {
   const emptyMessage = useMemo(() => {
     if (tab === "thisMonth") return "今月の期限はありません";
     if (tab === "later") return "今後の期限（来月以降）はありません";
+    if (tab === "overdue") return "期限切れの優待はありません";
     return "まだデータがありません";
   }, [tab]);
 
-  const savedViewMode: ViewMode | null = hydrated ? readSavedViewMode() : null;
-
   const effectiveViewMode: ViewMode = !hydrated
     ? "table"
-    : savedViewMode ?? (isMobile ? "cards" : viewMode);
+    : viewMode ?? (isMobile ? "cards" : "table");
 
   // ===== layout parts =====
   const header = (
@@ -577,6 +585,19 @@ export default function ToolClient() {
               {laterCount}
             </span>
           </button>
+
+          <button
+            className={`${styles.tabBtn} ${
+              tab === "overdue" ? styles.tabActive : ""
+            }`}
+            onClick={() => setTab("overdue")}
+            type="button"
+          >
+            期限切れ
+            <span className={styles.countPill} suppressHydrationWarning>
+              {overdueCount}
+            </span>
+          </button>
         </div>
 
         <div className={styles.actionsRow}>
@@ -588,11 +609,21 @@ export default function ToolClient() {
               placeholder="検索（企業名 / 優待名 / メモ / リンク）"
               aria-label="検索"
             />
+            {query && (
+              <button
+                type="button"
+                className={styles.searchClear}
+                onClick={() => setQuery("")}
+                aria-label="検索をクリア"
+              >
+                ✕
+              </button>
+            )}
           </div>
 
           <div className={styles.compactRow}>
             <label
-              className={`${styles.controlShell} ${styles.toggle} ${styles.desktopOnly}`}
+              className={`${styles.controlShell} ${styles.toggle}`}
             >
               <input
                 type="checkbox"
@@ -610,7 +641,7 @@ export default function ToolClient() {
             </label>
 
             <div
-              className={`${styles.controlShell} ${styles.selectWrap} ${styles.desktopOnly}`}
+              className={`${styles.controlShell} ${styles.selectWrap}`}
             >
               <select
                 className={styles.select}
@@ -625,17 +656,14 @@ export default function ToolClient() {
             </div>
 
             <div
-              className={`${styles.controlShell} ${styles.segment} ${styles.desktopOnly}`}
+              className={`${styles.controlShell} ${styles.segment}`}
             >
               <button
                 type="button"
                 className={`${styles.segBtn} ${
                   effectiveViewMode === "cards" ? styles.segActive : ""
                 }`}
-                onClick={() => {
-                  setViewMode("cards");
-                  saveViewMode("cards");
-                }}
+                onClick={() => selectViewMode("cards")}
                 aria-label="カード表示"
               >
                 カード
@@ -645,10 +673,7 @@ export default function ToolClient() {
                 className={`${styles.segBtn} ${
                   effectiveViewMode === "table" ? styles.segActive : ""
                 }`}
-                onClick={() => {
-                  setViewMode("table");
-                  saveViewMode("table");
-                }}
+                onClick={() => selectViewMode("table")}
                 aria-label="表表示"
               >
                 リスト
@@ -684,10 +709,7 @@ export default function ToolClient() {
                 className={`${styles.segBtn} ${
                   effectiveViewMode === "cards" ? styles.segActive : ""
                 }`}
-                onClick={() => {
-                  setViewMode("cards");
-                  saveViewMode("cards");
-                }}
+                onClick={() => selectViewMode("cards")}
                 aria-label="カード表示"
               >
                 <span className={styles.segIcon} aria-hidden="true">
@@ -700,10 +722,7 @@ export default function ToolClient() {
                 className={`${styles.segBtn} ${
                   effectiveViewMode === "table" ? styles.segActive : ""
                 }`}
-                onClick={() => {
-                  setViewMode("table");
-                  saveViewMode("table");
-                }}
+                onClick={() => selectViewMode("table")}
                 aria-label="表表示"
               >
                 <span className={styles.segIcon} aria-hidden="true">
@@ -869,10 +888,12 @@ export default function ToolClient() {
                 <div className={styles.cardActions}>
                   <button
                     type="button"
-                    className={styles.smallBtn}
+                    className={`${styles.smallBtn} ${
+                      it.isUsed ? styles.smallBtnOn : ""
+                    }`}
                     onClick={() => toggleUsed(it.id)}
                   >
-                    {it.isUsed ? "使用済" : "未使用"}
+                    {it.isUsed ? "使用済み" : "未使用"}
                   </button>
                   <button
                     type="button"
@@ -962,10 +983,12 @@ export default function ToolClient() {
                     <div className={styles.rowBtns}>
                       <button
                         type="button"
-                        className={styles.smallBtn}
+                        className={`${styles.smallBtn} ${
+                          it.isUsed ? styles.smallBtnOn : ""
+                        }`}
                         onClick={() => toggleUsed(it.id)}
                       >
-                        {it.isUsed ? "未使用" : "使用済み"}
+                        {it.isUsed ? "使用済み" : "未使用"}
                       </button>
                       <button
                         type="button"

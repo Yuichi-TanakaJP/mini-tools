@@ -49,6 +49,23 @@ function toNumberOrNull(v: string): number | null {
   return n;
 }
 
+// 数値/文字列(¥1,000 等)/混在を number|null に寄せる
+export function coerceNumber(v: unknown): number | null {
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  if (typeof v === "string") return toNumberOrNull(v.replace(/[^\d.-]/g, ""));
+  return null;
+}
+
+// 期限を YYYY-MM-DD に正規化（2026/01/31・ISO・空 などを吸収）
+function normalizeDate(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const s = v.trim();
+  if (!s) return null;
+  // 区切りを - に寄せて先頭10文字を見る
+  const head = s.replace(/[./]/g, "-").slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(head) ? head : null;
+}
+
 export function normalizeLegacyToV2(raw: unknown): BenefitItemV2[] {
   if (!Array.isArray(raw)) return [];
 
@@ -65,35 +82,24 @@ export function normalizeLegacyToV2(raw: unknown): BenefitItemV2[] {
       const title = typeof obj.title === "string" ? obj.title : "";
       const company = typeof obj.company === "string" ? obj.company : "";
 
-      const expiresAt =
-        typeof obj.expiresAt === "string" ? obj.expiresAt : null;
-      // expiresAt が ISO の日付だったりするケースもあるので YYYY-MM-DD に寄せる
-      const expiresOn = expiresAt ? expiresAt.slice(0, 10) : null;
+      // V2(expiresOn) を優先し、旧 v1(expiresAt) にフォールバック
+      const expiresOn =
+        normalizeDate(obj.expiresOn) ?? normalizeDate(obj.expiresAt);
 
       const isUsed = typeof obj.isUsed === "boolean" ? obj.isUsed : false;
 
-      const quantity = (() => {
-        if (typeof obj.quantity === "number") return obj.quantity;
-        if (typeof obj.quantity === "string")
-          return toNumberOrNull(obj.quantity);
-        return null;
-      })();
+      const quantity = coerceNumber(obj.quantity);
 
-      const amountYen = (() => {
-        if (typeof obj.amount === "number") return obj.amount;
-        // v1で amount が "¥1,000" みたいに入ってる可能性を拾う
-        if (typeof obj.amount === "string") {
-          const cleaned = obj.amount.replace(/[^\d.-]/g, "");
-          return toNumberOrNull(cleaned);
-        }
-        return null;
-      })();
+      // V2(amountYen) を優先し、旧 v1(amount: "¥1,000" 等) にフォールバック
+      const amountYen =
+        coerceNumber(obj.amountYen) ?? coerceNumber(obj.amount);
 
+      // V2(memo) を優先し、旧 v1(note) にフォールバック
       const memo =
-        typeof obj.note === "string"
-          ? obj.note
-          : typeof obj.memo === "string"
+        typeof obj.memo === "string"
           ? obj.memo
+          : typeof obj.note === "string"
+          ? obj.note
           : "";
 
       const createdAt =
