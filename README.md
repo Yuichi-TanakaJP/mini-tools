@@ -84,7 +84,9 @@ npm run dev
   - `as_of_date`, `from`, `to`, `days[]`
   - `days[]` は `date`, `market_closed`, `label`
   - `earnings-calendar/overseas` は `manifest + monthly` を主導線として使い、`latest` は補助表示に使う
-  - 未設定時は各 tool の同梱 JSON / sample fallback を使う
+  - production では未設定時や取得失敗時に同梱 JSON / sample fallback を自動表示しない
+  - 非 production では開発確認用に同梱 JSON / sample fallback を使う
+  - production で明示的に fallback を使う場合のみ `MINI_TOOLS_ENABLE_LOCAL_DATA_FALLBACK=1` を設定する
   - 参照:
     - `app/tools/topix33/data-loader.ts`
     - `app/tools/nikkei-contribution/data-loader.ts`

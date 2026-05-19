@@ -125,9 +125,13 @@ UI は主に `app/` と `components/` にあります。
 
 用途:
 
-- fallback
+- 非 production の fallback
 - 開発時のローカル確認
-- 外部 API がなくても最低限動かすための同梱データ
+- 外部 API がなくても開発確認できるようにするための同梱データ
+
+production では、market API 未設定 / fetch 失敗時に repo 同梱 JSON を自動表示しない。  
+古い市場データを現在情報として誤表示しないため、production の標準挙動は API 未接続・取得失敗として扱う。
+明示的な緊急退避として使う場合のみ `MINI_TOOLS_ENABLE_LOCAL_DATA_FALLBACK=1` を設定する。
 
 ### 2. Browser localStorage
 

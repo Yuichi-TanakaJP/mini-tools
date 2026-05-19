@@ -8,6 +8,17 @@ export function getApiBaseUrl(): string {
 }
 
 /**
+ * repo 同梱 JSON fallback は production では自動使用しない。
+ * production で使う場合は、運用者が明示的に env を立てたときだけ許可する。
+ */
+export function canUseLocalMarketDataFallback(): boolean {
+  return (
+    process.env.NODE_ENV !== "production" ||
+    process.env.MINI_TOOLS_ENABLE_LOCAL_DATA_FALLBACK === "1"
+  );
+}
+
+/**
  * JSON を fetch して型付きで返す。5秒タイムアウト付き。
  * revalidate はデータの更新頻度に合わせて呼び出し側で指定する（デフォルト 300 秒）。
  */

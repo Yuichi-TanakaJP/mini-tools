@@ -128,7 +128,9 @@ function makeFetch404(): Response {
 describe("loadEarningsCalendarPageData", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
+    process.env.NODE_ENV = "test";
     delete process.env.MARKET_INFO_API_BASE_URL;
+    delete process.env.MINI_TOOLS_ENABLE_LOCAL_DATA_FALLBACK;
   });
 
   afterEach(() => {
@@ -183,6 +185,24 @@ describe("loadEarningsCalendarPageData", () => {
     expect(result.domestic.monthData["2025-04"]).toEqual(SAMPLE_DOMESTIC_MONTH_DATA);
   });
 
+  it("production で domestic API 失敗時はローカル JSON にフォールバックしない", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
+    makeLocalFiles();
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes("/earnings-calendar/domestic/")) return makeFetch404();
+      if (u.includes("/earnings-calendar/overseas/")) return makeFetch404();
+      return makeFetch404();
+    });
+
+    const result = await loadEarningsCalendarPageData();
+
+    expect(result.domestic.manifest).toBeNull();
+    expect(result.domestic.monthData).toEqual({});
+    expect(result.domestic.latest).toBeNull();
+  });
+
   it("domestic manifest 成功・monthly 失敗のとき同梱 JSON の同一月で補完する", async () => {
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
     makeLocalFiles();
@@ -199,6 +219,26 @@ describe("loadEarningsCalendarPageData", () => {
 
     expect(result.domestic.manifest).toEqual(SAMPLE_DOMESTIC_MANIFEST);
     expect(result.domestic.monthData["2025-04"]).toEqual(SAMPLE_DOMESTIC_MONTH_DATA);
+  });
+
+  it("production で domestic monthly 失敗時は同梱 JSON で補完しない", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
+    makeLocalFiles();
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes("/earnings-calendar/domestic/manifest")) return makeFetchOk(SAMPLE_DOMESTIC_MANIFEST);
+      if (u.includes("/earnings-calendar/domestic/latest")) return makeFetchOk(SAMPLE_DOMESTIC_LATEST);
+      if (u.includes("/earnings-calendar/domestic/monthly/")) return makeFetch404();
+      if (u.includes("/earnings-calendar/overseas/")) return makeFetch404();
+      return makeFetch404();
+    });
+
+    const result = await loadEarningsCalendarPageData();
+
+    expect(result.domestic.manifest).toEqual(SAMPLE_DOMESTIC_MANIFEST);
+    expect(result.domestic.monthData).toEqual({});
+    expect(result.domestic.latest).toEqual(SAMPLE_DOMESTIC_LATEST);
   });
 
   it("API 未設定のとき overseas は空構造を返す（fetch しない）", async () => {

@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { getApiBaseUrl, fetchJson } from "@/lib/market-api";
+import { canUseLocalMarketDataFallback, getApiBaseUrl, fetchJson } from "@/lib/market-api";
 import type {
   MonthlyYutaiManifest,
   MonthlyYutaiMonthData,
@@ -134,29 +134,31 @@ async function loadLocalMonthData(yearMonth: string): Promise<MonthlyYutaiMonthD
 
 export async function loadMonthlyYutaiManifest(): Promise<MonthlyYutaiManifest | null> {
   const apiBase = getApiBaseUrl();
+  const canUseLocalFallback = canUseLocalMarketDataFallback();
 
   if (!apiBase) {
-    return loadLocalManifest();
+    return canUseLocalFallback ? loadLocalManifest() : null;
   }
 
   try {
     return await fetchJson<MonthlyYutaiManifest>(`${apiBase}/yutai/manifest`);
   } catch {
-    return loadLocalManifest();
+    return canUseLocalFallback ? loadLocalManifest() : null;
   }
 }
 
 export async function loadMonthlyYutaiMonthData(yearMonth: string): Promise<MonthlyYutaiMonthData | null> {
   const apiBase = getApiBaseUrl();
+  const canUseLocalFallback = canUseLocalMarketDataFallback();
 
   if (!apiBase) {
-    return loadLocalMonthData(yearMonth);
+    return canUseLocalFallback ? loadLocalMonthData(yearMonth) : null;
   }
 
   try {
     return await fetchJson<MonthlyYutaiMonthData>(`${apiBase}/yutai/monthly/${yearMonth}`);
   } catch {
-    return loadLocalMonthData(yearMonth);
+    return canUseLocalFallback ? loadLocalMonthData(yearMonth) : null;
   }
 }
 
@@ -172,7 +174,9 @@ async function loadLocalNikkoCreditSample(): Promise<NikkoCreditData | null> {
 async function loadNikkoCreditData(): Promise<NikkoCreditData | null> {
   const apiBase = getApiBaseUrl();
   // API未設定時のみサンプルにフォールバック（開発用）
-  if (!apiBase) return loadLocalNikkoCreditSample();
+  if (!apiBase) {
+    return canUseLocalMarketDataFallback() ? loadLocalNikkoCreditSample() : null;
+  }
 
   try {
     return await fetchJson<NikkoCreditData>(`${apiBase}/nikko/credit`);
@@ -201,7 +205,9 @@ async function loadLocalSbiCreditSample(): Promise<SbiCreditData | null> {
  */
 async function loadSbiCreditData(selectedMonthId: string): Promise<SbiCreditData | null> {
   const apiBase = getApiBaseUrl();
-  if (!apiBase) return loadLocalSbiCreditSample();
+  if (!apiBase) {
+    return canUseLocalMarketDataFallback() ? loadLocalSbiCreditSample() : null;
+  }
 
   const { year, month } = getJstToday();
   const currentMonthId = `${year}-${String(month).padStart(2, "0")}`;

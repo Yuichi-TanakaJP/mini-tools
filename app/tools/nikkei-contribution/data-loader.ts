@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { getApiBaseUrl, fetchJson } from "@/lib/market-api";
+import { canUseLocalMarketDataFallback, getApiBaseUrl, fetchJson } from "@/lib/market-api";
 import type { NikkeiContributionDayData, NikkeiContributionManifest } from "./types";
 
 const EMPTY_MANIFEST: NikkeiContributionManifest = {
@@ -32,15 +32,16 @@ async function loadLocalDayData(dateStr: string): Promise<NikkeiContributionDayD
 
 export async function loadContributionManifest(): Promise<NikkeiContributionManifest> {
   const apiBase = getApiBaseUrl();
+  const canUseLocalFallback = canUseLocalMarketDataFallback();
 
   if (!apiBase) {
-    return loadLocalManifest();
+    return canUseLocalFallback ? loadLocalManifest() : EMPTY_MANIFEST;
   }
 
   try {
     return await fetchJson<NikkeiContributionManifest>(`${apiBase}/nikkei/manifest`);
   } catch {
-    return loadLocalManifest();
+    return canUseLocalFallback ? loadLocalManifest() : EMPTY_MANIFEST;
   }
 }
 
@@ -50,14 +51,15 @@ export async function loadContributionDayData(dateStr: string): Promise<NikkeiCo
   }
 
   const apiBase = getApiBaseUrl();
+  const canUseLocalFallback = canUseLocalMarketDataFallback();
 
   if (!apiBase) {
-    return loadLocalDayData(dateStr);
+    return canUseLocalFallback ? loadLocalDayData(dateStr) : null;
   }
 
   try {
     return await fetchJson<NikkeiContributionDayData>(`${apiBase}/nikkei/${dateStr}`);
   } catch {
-    return loadLocalDayData(dateStr);
+    return canUseLocalFallback ? loadLocalDayData(dateStr) : null;
   }
 }

@@ -39,7 +39,9 @@ function makeFetch404(): Response {
 describe("loadTopix33Manifest", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
+    process.env.NODE_ENV = "test";
     delete process.env.MARKET_INFO_API_BASE_URL;
+    delete process.env.MINI_TOOLS_ENABLE_LOCAL_DATA_FALLBACK;
   });
 
   afterEach(() => {
@@ -89,6 +91,19 @@ describe("loadTopix33Manifest", () => {
     expect(result).toEqual(SAMPLE_MANIFEST);
   });
 
+  it("production で API 失敗時はローカル fallback せず EMPTY_MANIFEST を返す", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
+    vi.mocked(fetch).mockRejectedValue(new Error("network error"));
+    mockReadFile.mockClear();
+    mockReadFile.mockResolvedValue(JSON.stringify(SAMPLE_MANIFEST));
+
+    const result = await loadTopix33Manifest();
+
+    expect(result).toEqual({ dates: [], latest_date: null });
+    expect(mockReadFile).not.toHaveBeenCalled();
+  });
+
   it("ローカルファイルも存在しないとき EMPTY_MANIFEST を返す", async () => {
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
     vi.mocked(fetch).mockRejectedValue(new Error("network error"));
@@ -103,7 +118,9 @@ describe("loadTopix33Manifest", () => {
 describe("loadTopix33DayData", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
+    process.env.NODE_ENV = "test";
     delete process.env.MARKET_INFO_API_BASE_URL;
+    delete process.env.MINI_TOOLS_ENABLE_LOCAL_DATA_FALLBACK;
   });
 
   afterEach(() => {
@@ -158,6 +175,19 @@ describe("loadTopix33DayData", () => {
     const result = await loadTopix33DayData("2025-04-02");
 
     expect(result).toEqual(SAMPLE_DAY_DATA);
+  });
+
+  it("production で API 失敗時はローカル fallback せず null を返す", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
+    vi.mocked(fetch).mockRejectedValue(new Error("network error"));
+    mockReadFile.mockClear();
+    mockReadFile.mockResolvedValue(JSON.stringify(SAMPLE_DAY_DATA));
+
+    const result = await loadTopix33DayData("2025-04-02");
+
+    expect(result).toBeNull();
+    expect(mockReadFile).not.toHaveBeenCalled();
   });
 
   it("ローカルファイルも存在しないとき null を返す", async () => {
