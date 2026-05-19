@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { loadUsMarketClosedData } from "@/lib/us-market-closed";
-import { getApiBaseUrl, fetchJson } from "@/lib/market-api";
+import { canUseLocalMarketDataFallback, getApiBaseUrl, fetchJson } from "@/lib/market-api";
 import type { JpxMarketClosedResponse } from "@/app/tools/_shared/market-calendar-types";
 import type {
   EarningsCalendarManifest,
@@ -86,15 +86,18 @@ async function loadApiDomesticLatest(): Promise<EarningsCalendarResponse | null>
 }
 
 async function loadDomesticData(): Promise<EarningsCalendarMarketData> {
+  const canUseLocalFallback = canUseLocalMarketDataFallback();
   const apiManifest = await loadApiDomesticManifest();
 
   if (apiManifest) {
-    // 月別データが API から取れない場合は同梱 JSON で補完するため、先にローカル manifest を読む
+    // 非 production では月別データが API から取れない場合に同梱 JSON で補完する
     let localManifest: EarningsCalendarManifest | null = null;
-    try {
-      localManifest = await loadLocalDomesticManifest();
-    } catch {
-      // 同梱 JSON がなくても続行
+    if (canUseLocalFallback) {
+      try {
+        localManifest = await loadLocalDomesticManifest();
+      } catch {
+        // 同梱 JSON がなくても続行
+      }
     }
 
     const [monthEntries, latest, holidays] = await Promise.all([
@@ -118,7 +121,7 @@ async function loadDomesticData(): Promise<EarningsCalendarMarketData> {
         }),
       ),
       loadApiDomesticLatest(),
-      loadLocalDomesticHolidays(),
+      canUseLocalFallback ? loadLocalDomesticHolidays() : Promise.resolve(null),
     ]);
 
     return {
@@ -129,7 +132,16 @@ async function loadDomesticData(): Promise<EarningsCalendarMarketData> {
     };
   }
 
-  // API 未設定 or 失敗時は同梱 JSON にフォールバック
+  if (!canUseLocalFallback) {
+    return {
+      manifest: null,
+      monthData: {},
+      latest: null,
+      holidays: null,
+    };
+  }
+
+  // 非 production では API 未設定 or 失敗時に同梱 JSON にフォールバック
   const manifest = await loadLocalDomesticManifest();
   const monthEntries = await Promise.all(
     manifest.months.map(async (entry) => {

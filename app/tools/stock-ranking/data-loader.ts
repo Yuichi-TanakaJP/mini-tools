@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { getApiBaseUrl, fetchJson } from "@/lib/market-api";
+import { canUseLocalMarketDataFallback, getApiBaseUrl, fetchJson } from "@/lib/market-api";
 import type { RankingDayData, RankingManifest } from "./types";
 
 type NodeErrorLike = Error & { code?: string };
@@ -34,28 +34,30 @@ async function loadLocalRankingDayData(dateStr: string): Promise<RankingDayData 
 
 export async function loadRankingManifest(): Promise<RankingManifest | null> {
   const apiBase = getApiBaseUrl();
+  const canUseLocalFallback = canUseLocalMarketDataFallback();
 
   if (!apiBase) {
-    return loadLocalRankingManifest();
+    return canUseLocalFallback ? loadLocalRankingManifest() : null;
   }
 
   try {
     return await fetchJson<RankingManifest>(`${apiBase}/ranking/manifest`);
   } catch {
-    return loadLocalRankingManifest();
+    return canUseLocalFallback ? loadLocalRankingManifest() : null;
   }
 }
 
 export async function loadRankingDayData(dateStr: string): Promise<RankingDayData | null> {
   const apiBase = getApiBaseUrl();
+  const canUseLocalFallback = canUseLocalMarketDataFallback();
 
   if (!apiBase) {
-    return loadLocalRankingDayData(dateStr);
+    return canUseLocalFallback ? loadLocalRankingDayData(dateStr) : null;
   }
 
   try {
     return await fetchJson<RankingDayData>(`${apiBase}/ranking/${dateStr}`);
   } catch {
-    return loadLocalRankingDayData(dateStr);
+    return canUseLocalFallback ? loadLocalRankingDayData(dateStr) : null;
   }
 }

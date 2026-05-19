@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { getApiBaseUrl, fetchJson } from "@/lib/market-api";
+import { canUseLocalMarketDataFallback, getApiBaseUrl, fetchJson } from "@/lib/market-api";
 import type { JpxMarketClosedResponse } from "@/lib/market-calendar-types";
 
 const LOCAL_HOLIDAY_DATA_PATH =
@@ -17,14 +17,15 @@ async function loadLocalJpxMarketClosedData(): Promise<JpxMarketClosedResponse |
 
 export async function loadJpxMarketClosedData(): Promise<JpxMarketClosedResponse | null> {
   const apiBase = getApiBaseUrl();
+  const canUseLocalFallback = canUseLocalMarketDataFallback();
 
   if (!apiBase) {
-    return loadLocalJpxMarketClosedData();
+    return canUseLocalFallback ? loadLocalJpxMarketClosedData() : null;
   }
 
   try {
     return await fetchJson<JpxMarketClosedResponse>(`${apiBase}/market-calendar/jpx-closed`);
   } catch {
-    return loadLocalJpxMarketClosedData();
+    return canUseLocalFallback ? loadLocalJpxMarketClosedData() : null;
   }
 }

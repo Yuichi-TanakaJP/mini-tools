@@ -64,7 +64,9 @@ function makeFetch404(): Response {
 describe("loadMonthlyYutaiManifest", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
+    process.env.NODE_ENV = "test";
     delete process.env.MARKET_INFO_API_BASE_URL;
+    delete process.env.MINI_TOOLS_ENABLE_LOCAL_DATA_FALLBACK;
   });
 
   afterEach(() => {
@@ -114,6 +116,19 @@ describe("loadMonthlyYutaiManifest", () => {
     expect(result).toEqual(SAMPLE_MANIFEST);
   });
 
+  it("production で API 失敗時はローカル fallback せず null を返す", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
+    vi.mocked(fetch).mockRejectedValue(new Error("network error"));
+    mockReadFile.mockClear();
+    mockReadFile.mockResolvedValue(JSON.stringify(SAMPLE_MANIFEST));
+
+    const result = await loadMonthlyYutaiManifest();
+
+    expect(result).toBeNull();
+    expect(mockReadFile).not.toHaveBeenCalled();
+  });
+
   it("ローカルファイルも存在しないとき null を返す（例外を throw しない）", async () => {
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
     vi.mocked(fetch).mockRejectedValue(new Error("network error"));
@@ -128,7 +143,9 @@ describe("loadMonthlyYutaiManifest", () => {
 describe("loadMonthlyYutaiMonthData", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
+    process.env.NODE_ENV = "test";
     delete process.env.MARKET_INFO_API_BASE_URL;
+    delete process.env.MINI_TOOLS_ENABLE_LOCAL_DATA_FALLBACK;
   });
 
   afterEach(() => {
@@ -168,6 +185,19 @@ describe("loadMonthlyYutaiMonthData", () => {
     expect(result).toEqual(SAMPLE_MONTH_DATA);
   });
 
+  it("production で API 失敗時はローカル fallback せず null を返す", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
+    vi.mocked(fetch).mockRejectedValue(new Error("network error"));
+    mockReadFile.mockClear();
+    mockReadFile.mockResolvedValue(JSON.stringify(SAMPLE_MONTH_DATA));
+
+    const result = await loadMonthlyYutaiMonthData("2025-04");
+
+    expect(result).toBeNull();
+    expect(mockReadFile).not.toHaveBeenCalled();
+  });
+
   it("ローカルファイルも存在しないとき null を返す", async () => {
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
     vi.mocked(fetch).mockRejectedValue(new Error("network error"));
@@ -182,12 +212,14 @@ describe("loadMonthlyYutaiMonthData", () => {
 describe("nikko/SBI credit: API あり・fetch 失敗時はサンプルを返さない", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
+    process.env.NODE_ENV = "test";
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     delete process.env.MARKET_INFO_API_BASE_URL;
+    delete process.env.MINI_TOOLS_ENABLE_LOCAL_DATA_FALLBACK;
   });
 
   it("API 未設定のとき nikkoCredit にサンプルデータが入る", async () => {
@@ -243,7 +275,9 @@ describe("nikko/SBI credit: API あり・fetch 失敗時はサンプルを返さ
 describe("loadMonthlyYutaiPageData", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
+    process.env.NODE_ENV = "test";
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
+    delete process.env.MINI_TOOLS_ENABLE_LOCAL_DATA_FALLBACK;
   });
 
   afterEach(() => {
