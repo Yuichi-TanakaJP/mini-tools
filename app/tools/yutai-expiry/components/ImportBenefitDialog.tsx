@@ -20,6 +20,14 @@ export default function ImportBenefitDialog({
   onImportReplace,
   onImportMerge,
 }: Props) {
+  // 全データ破棄は不可逆なので置き換え時のみ確認を挟む
+  const handleReplace = () => {
+    const ok = window.confirm(
+      "現在のデータをすべて破棄して置き換えます。よろしいですか？（元に戻せません）"
+    );
+    if (ok) onImportReplace();
+  };
+
   return (
     <dialog ref={dialogRef} className={styles.dialog}>
       <form method="dialog" className={styles.dialogInner}>
@@ -61,18 +69,19 @@ export default function ImportBenefitDialog({
           </button>
           <button
             type="button"
-            className={styles.ghostBtn}
-            onClick={onImportMerge}
-            title="既存とマージ（同じidは上書き）"
+            className={`${styles.ghostBtn} ${styles.dangerBtn}`}
+            onClick={handleReplace}
+            title="現在のデータを全消去して置き換える"
           >
-            マージ
+            すべて置き換え
           </button>
           <button
             type="button"
             className={styles.primaryBtn}
-            onClick={onImportReplace}
+            onClick={onImportMerge}
+            title="既存に追加マージ（同じidは上書き、それ以外は保持）"
           >
-            置き換え
+            マージして取り込み
           </button>
         </div>
       </form>

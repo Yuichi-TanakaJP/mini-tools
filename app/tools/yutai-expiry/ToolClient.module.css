@@ -119,6 +119,7 @@
 }
 
 .topBar {
+  --ctl-h: 44px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -182,7 +183,7 @@
 }
 
 .controlShell {
-  height: var(--ctl-h);
+  height: var(--ctl-h, 44px);
   box-sizing: border-box;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 999px;
@@ -221,6 +222,27 @@
   border-color: rgba(37, 84, 255, 0.28);
 }
 
+.searchClear {
+  flex: 0 0 auto;
+  margin-right: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 0;
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--color-text-sub);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.searchClear:hover {
+  background: rgba(15, 23, 42, 0.12);
+}
+
 .compactRow {
   display: flex;
   flex-wrap: wrap;
@@ -245,15 +267,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 0 16px;
+  gap: 12px;
+  padding: 0 18px;
   color: var(--color-text-sub);
   font-size: 14px;
   font-weight: 700;
   line-height: 1.2;
   user-select: none;
   white-space: nowrap;
-  overflow: hidden;
   width: 100%;
 }
 
@@ -269,6 +290,7 @@
   display: inline-flex;
   align-items: center;
   height: 100%;
+  flex: 0 0 auto;
 }
 
 .toggleInput {
@@ -281,6 +303,7 @@
 
 .toggleCheck {
   position: relative;
+  display: inline-block;
   width: 19px;
   height: 19px;
   border-radius: 999px;
@@ -352,7 +375,7 @@
   border-radius: 0;
   padding: 0 38px 0 16px;
   font-size: 14px;
-  line-height: calc(var(--ctl-h) - 2px);
+  line-height: calc(var(--ctl-h, 44px) - 2px);
   background: transparent;
   color: var(--color-text);
   appearance: none;
@@ -365,16 +388,19 @@
   display: inline-flex;
   align-items: stretch;
   overflow: hidden;
-  padding: 3px;
-  background: rgba(244, 247, 253, 0.95);
+  padding: 4px;
   gap: 0;
+  /* controlShell の白背景を打ち消し、凹んだ単一トラックにする（iOS 風） */
+  background: #dfe4ef;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.09);
 }
 
 .segBtn {
-  border: 0;
+  border: 1px solid transparent;
   background: transparent;
-  padding: 0 18px;
-  height: calc(var(--ctl-h) - 8px);
+  padding: 0 16px;
+  height: 100%;
+  min-width: 72px;
   min-height: 0;
   font-size: 13px;
   line-height: 1.2;
@@ -384,8 +410,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  gap: 6px;
+  border-radius: 999px;
   flex: 1 1 0;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .segIcon {
@@ -395,7 +426,10 @@
 .segActive {
   background: #ffffff;
   color: var(--color-accent);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  border-color: var(--color-border);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 2px 6px rgba(15, 23, 42, 0.1);
 }
 
 .addBtnDesktop,
@@ -415,7 +449,7 @@
 }
 
 .addBtnDesktop {
-  padding-top: 1px;
+  white-space: nowrap;
 }
 
 .ghostBtn,
@@ -444,6 +478,12 @@
 .dangerBtn {
   border-color: rgba(220, 38, 38, 0.16);
   color: var(--color-error);
+}
+
+.smallBtnOn {
+  border-color: color-mix(in srgb, var(--color-success) 28%, transparent);
+  background: color-mix(in srgb, var(--color-success) 12%, #fff);
+  color: var(--color-success);
 }
 
 .empty {
@@ -481,7 +521,7 @@
 }
 
 .card {
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--color-border);
   border-radius: 24px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 255, 0.94));
@@ -516,7 +556,7 @@
   font-size: 11px;
   padding: 5px 9px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--color-border);
   white-space: nowrap;
   font-weight: 800;
 }
@@ -527,13 +567,13 @@
 }
 
 .badgeWarn {
-  background: rgba(245, 158, 11, 0.16);
-  color: #b45309;
+  background: color-mix(in srgb, var(--color-warning) 16%, transparent);
+  color: var(--color-warning);
 }
 
 .badgeDanger {
-  background: rgba(239, 68, 68, 0.14);
-  color: #b91c1c;
+  background: color-mix(in srgb, var(--color-error) 14%, transparent);
+  color: var(--color-error);
 }
 
 .cardMeta {
@@ -620,7 +660,7 @@
 }
 
 .rowUsed {
-  opacity: 0.62;
+  opacity: 0.58;
 }
 
 .mono {
@@ -648,7 +688,7 @@
 
 .rowBtns {
   display: grid;
-  grid-template-columns: 88px 56px 56px;
+  grid-template-columns: minmax(76px, 1.3fr) minmax(56px, 1fr) minmax(56px, 1fr);
   gap: 8px;
   align-items: center;
 }
@@ -656,6 +696,9 @@
 .rowBtns > button {
   width: 100%;
   justify-content: center;
+  white-space: nowrap;
+  padding-left: 8px;
+  padding-right: 8px;
 }
 
 .bottomBar {
@@ -697,11 +740,27 @@
 }
 
 .dialogInner {
+  display: flex;
+  flex-direction: column;
+  max-height: min(90vh, 720px);
   background: rgba(255, 255, 255, 0.98);
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--color-border);
   border-radius: 24px;
   overflow: hidden;
   box-shadow: 0 28px 60px rgba(15, 23, 42, 0.18);
+}
+
+/* ヘッダ/フッタは固定、本文だけスクロール */
+.formGrid {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.dialogHeader,
+.dialogBtns,
+.dialogFooter,
+.errorBox {
+  flex: 0 0 auto;
 }
 
 .dialogHeader {
@@ -868,6 +927,24 @@
   display: none;
 }
 
+@media (min-width: 768px) {
+  .compactRow {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .compactRow .toggle,
+  .compactRow .selectWrap,
+  .compactRow .segment,
+  .compactRow .addBtnDesktop {
+    width: auto;
+  }
+
+  .compactRow .segment {
+    min-width: 168px;
+  }
+}
+
 @media (min-width: 880px) {
   .actionsRow {
     grid-template-columns: minmax(320px, 1fr) auto;
@@ -996,7 +1073,7 @@
   }
 
   .mobileControlRow .segBtn {
-    height: calc(var(--ctl-h) - 6px);
+    height: 100%;
     padding: 0 12px;
     font-size: 13px;
     gap: 6px;

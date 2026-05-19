@@ -45,13 +45,9 @@ export default function EditBenefitDialog({
           </button>
         </div>
 
-        {draftError ? (
-          <div className={styles.errorBox}>{draftError}</div>
-        ) : null}
-
         <div className={styles.formGrid}>
           <label className={styles.field}>
-            <span>タイトル *</span>
+            <span>優待名 *</span>
             <input
               value={draft.title}
               onChange={(e) => setDraft({ ...draft, title: e.target.value })}
@@ -62,7 +58,7 @@ export default function EditBenefitDialog({
 
           <div className={styles.row2}>
             <label className={styles.field}>
-              <span>企業名</span>
+              <span>企業名 *</span>
               <input
                 value={draft.company}
                 onChange={(e) =>
@@ -143,6 +139,12 @@ export default function EditBenefitDialog({
             <span>使用済みにする</span>
           </label>
         </div>
+
+        {draftError ? (
+          <div className={styles.errorBox} role="alert">
+            {draftError}
+          </div>
+        ) : null}
 
         <div className={styles.dialogBtns}>
           <button
