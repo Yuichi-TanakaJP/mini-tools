@@ -246,6 +246,32 @@ export function restock(
   );
 }
 
+// 履歴の1件を削除し、残りの履歴を initial から再生して remaining を再計算する。
+// 削除順に依存しないように差分の単純引き戻しではなく replay 方式を採る（codex review P2）。
+export function removeHistoryEntry(
+  it: BenefitItemV2,
+  index: number
+): BenefitItemV2 {
+  if (index < 0 || index >= it.history.length) return it;
+  const history = it.history
+    .slice(0, index)
+    .concat(it.history.slice(index + 1));
+  const base = it.initial ?? 0;
+  const sumDelta = history.reduce((sum, e) => {
+    const d =
+      it.trackMode === "amount" ? e.deltaYen ?? 0 : e.deltaQty ?? 0;
+    return sum + d;
+  }, 0);
+  const remaining = Math.max(0, base + sumDelta);
+  return {
+    ...it,
+    remaining,
+    isUsed: remaining <= 0,
+    history,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 // 使用済みトグル（全消費 / 復元）
 export function setUsedAll(it: BenefitItemV2, used: boolean): BenefitItemV2 {
   if (used) {
