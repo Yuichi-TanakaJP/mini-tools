@@ -246,21 +246,23 @@ export function restock(
   );
 }
 
-// 履歴の1件を削除し、その操作分の差分を残量から巻き戻す（誤入力の取り消し用）
+// 履歴の1件を削除し、残りの履歴を initial から再生して remaining を再計算する。
+// 削除順に依存しないように差分の単純引き戻しではなく replay 方式を採る（codex review P2）。
 export function removeHistoryEntry(
   it: BenefitItemV2,
   index: number
 ): BenefitItemV2 {
   if (index < 0 || index >= it.history.length) return it;
-  const entry = it.history[index];
-  const delta =
-    it.trackMode === "amount" ? entry.deltaYen ?? 0 : entry.deltaQty ?? 0;
-  const cur = it.remaining ?? 0;
-  // 元の操作が remaining に加えた delta を引き戻す。0 未満には落とさない。
-  const remaining = Math.max(0, cur - delta);
   const history = it.history
     .slice(0, index)
     .concat(it.history.slice(index + 1));
+  const base = it.initial ?? 0;
+  const sumDelta = history.reduce((sum, e) => {
+    const d =
+      it.trackMode === "amount" ? e.deltaYen ?? 0 : e.deltaQty ?? 0;
+    return sum + d;
+  }, 0);
+  const remaining = Math.max(0, base + sumDelta);
   return {
     ...it,
     remaining,
