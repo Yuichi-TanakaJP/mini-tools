@@ -94,31 +94,67 @@ export default function EditBenefitDialog({
             />
           </label>
 
-          <div className={styles.row2}>
-            <label className={styles.field}>
-              <span>数量</span>
-              <input
-                value={draft.quantity}
-                onChange={(e) =>
-                  setDraft({ ...draft, quantity: e.target.value })
-                }
-                placeholder="例：2"
-                inputMode="numeric"
-              />
-            </label>
+          <div className={styles.field}>
+            <span>管理方法</span>
+            <div className={styles.tabs}>
+              <button
+                type="button"
+                className={`${styles.tabBtn} ${
+                  draft.trackMode === "count" ? styles.tabActive : ""
+                }`}
+                onClick={() => setDraft({ ...draft, trackMode: "count" })}
+              >
+                枚数（券・複数枚）
+              </button>
+              <button
+                type="button"
+                className={`${styles.tabBtn} ${
+                  draft.trackMode === "amount" ? styles.tabActive : ""
+                }`}
+                onClick={() => setDraft({ ...draft, trackMode: "amount" })}
+              >
+                金額（残高・ポイント）
+              </button>
+            </div>
+          </div>
 
+          {draft.trackMode === "count" ? (
+            <div className={styles.row2}>
+              <label className={styles.field}>
+                <span>枚数 *</span>
+                <input
+                  value={draft.qty}
+                  onChange={(e) => setDraft({ ...draft, qty: e.target.value })}
+                  placeholder="例：3"
+                  inputMode="numeric"
+                />
+              </label>
+
+              <label className={styles.field}>
+                <span>1枚あたり額面（任意）</span>
+                <input
+                  value={draft.unitYen}
+                  onChange={(e) =>
+                    setDraft({ ...draft, unitYen: e.target.value })
+                  }
+                  placeholder="例：1000"
+                  inputMode="numeric"
+                />
+              </label>
+            </div>
+          ) : (
             <label className={styles.field}>
-              <span>金額</span>
+              <span>残高（円）*</span>
               <input
-                value={draft.amountYen}
+                value={draft.balanceYen}
                 onChange={(e) =>
-                  setDraft({ ...draft, amountYen: e.target.value })
+                  setDraft({ ...draft, balanceYen: e.target.value })
                 }
                 placeholder="例：1000"
                 inputMode="numeric"
               />
             </label>
-          </div>
+          )}
 
           <label className={styles.field}>
             <span>メモ</span>
@@ -128,15 +164,6 @@ export default function EditBenefitDialog({
               placeholder="使える店舗 / 条件 / 期限の補足など"
               rows={3}
             />
-          </label>
-
-          <label className={styles.checkboxRow}>
-            <input
-              type="checkbox"
-              checked={draft.isUsed}
-              onChange={(e) => setDraft({ ...draft, isUsed: e.target.checked })}
-            />
-            <span>使用済みにする</span>
           </label>
         </div>
 
