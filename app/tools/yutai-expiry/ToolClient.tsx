@@ -21,6 +21,13 @@ import {
   normalizeLegacyToV2,
   safeUUID,
   coerceNumber,
+  coerceItem,
+  consume,
+  restock,
+  setUsedAll,
+  itemValueYen,
+  TrackMode,
+  UsageEntry,
 } from "./benefits/store";
 
 import EditBenefitDialog from "./components/EditBenefitDialog";
@@ -99,27 +106,57 @@ function formatMonthLabel(d: Date): string {
   return `${d.getFullYear()}年${d.getMonth() + 1}月`;
 }
 
+function fmtYen(n: number): string {
+  return `¥${Math.round(n).toLocaleString()}`;
+}
+
+function remainingText(it: BenefitItemV2): string {
+  const rem = it.remaining ?? 0;
+  if (it.trackMode === "amount") return `残高 ${fmtYen(rem)}`;
+  const base = `残${rem}枚`;
+  if (it.unitYen != null)
+    return `${base} ×${fmtYen(it.unitYen)}（合計 ${fmtYen(itemValueYen(it))}）`;
+  return base;
+}
+
+function historyText(h: UsageEntry): string {
+  const d = h.at ? h.at.slice(0, 10) : "";
+  if (h.deltaYen != null) {
+    const sign = h.deltaYen < 0 ? "使用" : "追加";
+    return `${d} ${sign} ${fmtYen(Math.abs(h.deltaYen))}${
+      h.note ? `（${h.note}）` : ""
+    }`;
+  }
+  const q = h.deltaQty ?? 0;
+  const sign = q < 0 ? "使用" : "追加";
+  return `${d} ${sign} ${Math.abs(q)}枚${h.note ? `（${h.note}）` : ""}`;
+}
+
 export type Draft = {
   id?: string;
   title: string;
   company: string;
   expiresOn: string; // 入力では空文字もあり得る
-  isUsed: boolean;
-  quantity: string;
-  amountYen: string;
+  trackMode: TrackMode; // 枚数 / 金額
+  qty: string; // count: 残枚数（編集時は現在値）
+  unitYen: string; // count: 1枚あたり額面（任意）
+  balanceYen: string; // amount: 残高(円)
   memo: string;
   link: string; // URL（任意）
 };
 
 function toDraft(x?: BenefitItemV2): Draft {
+  const mode: TrackMode = x?.trackMode ?? "count";
   return {
     id: x?.id,
     title: x?.title ?? "",
     company: x?.company ?? "",
     expiresOn: x?.expiresOn ?? "",
-    isUsed: x?.isUsed ?? false,
-    quantity: x?.quantity != null ? String(x.quantity) : "",
-    amountYen: x?.amountYen != null ? String(x.amountYen) : "",
+    trackMode: mode,
+    qty: mode === "count" && x?.remaining != null ? String(x.remaining) : "",
+    unitYen: x?.unitYen != null ? String(x.unitYen) : "",
+    balanceYen:
+      mode === "amount" && x?.remaining != null ? String(x.remaining) : "",
     memo: x?.memo ?? "",
     link: x?.link ?? "",
   };
@@ -152,6 +189,24 @@ function validateDraft(d: Draft): { ok: boolean; message?: string } {
         message: "期限は YYYY-MM-DD 形式で入力してください（例: 2026-03-31）。",
       };
     }
+  }
+
+  if (d.trackMode === "count") {
+    const q = coerceNumber(d.qty);
+    if (q == null || q < 0)
+      return { ok: false, message: "枚数を0以上の数値で入力してください。" };
+    if (d.unitYen.trim()) {
+      const u = coerceNumber(d.unitYen);
+      if (u == null || u < 0)
+        return {
+          ok: false,
+          message: "1枚あたり額面は0以上の数値で入力してください。",
+        };
+    }
+  } else {
+    const b = coerceNumber(d.balanceYen);
+    if (b == null || b < 0)
+      return { ok: false, message: "残高を0以上の金額で入力してください。" };
   }
 
   const linkErr = validateHttpUrl(d.link);
@@ -363,6 +418,21 @@ export default function ToolClient() {
     return items.filter((it) => !it.isUsed && !it.expiresOn).length;
   }, [items]);
 
+  const unusedTotalYen = useMemo(() => {
+    return items.reduce(
+      (sum, it) => (it.isUsed ? sum : sum + itemValueYen(it)),
+      0
+    );
+  }, [items]);
+
+  const expiringThisMonthYen = useMemo(() => {
+    return items.reduce((sum, it) => {
+      if (it.isUsed || !it.expiresOn) return sum;
+      if (!isSameMonth(parseLocalDate(it.expiresOn), now)) return sum;
+      return sum + itemValueYen(it);
+    }, 0);
+  }, [items, now]);
+
   // --- actions ---
   function openAdd() {
     setEditMode("add");
@@ -387,34 +457,43 @@ export default function ToolClient() {
 
     const nowIso = new Date().toISOString();
     const expiresOn = draft.expiresOn.trim() ? draft.expiresOn.trim() : null;
-
-    const next: BenefitItemV2 = {
-      id: draft.id ?? safeUUID(),
-      title: draft.title.trim(),
-      company: draft.company.trim(),
-      expiresOn,
-      isUsed: draft.isUsed,
-      quantity: coerceNumber(draft.quantity),
-      amountYen: coerceNumber(draft.amountYen),
-      memo: draft.memo?.trim() ?? "",
-      link: draft.link.trim() ? draft.link.trim() : undefined,
-      createdAt: nowIso,
-      updatedAt: nowIso,
-    };
+    const id = draft.id ?? safeUUID();
+    const isAmount = draft.trackMode === "amount";
+    const remainingInput = isAmount
+      ? coerceNumber(draft.balanceYen)
+      : coerceNumber(draft.qty);
+    const unitYen = isAmount
+      ? null
+      : draft.unitYen.trim()
+      ? coerceNumber(draft.unitYen)
+      : null;
 
     setItems((prev) => {
-      const idx = prev.findIndex((p) => p.id === next.id);
-      if (idx === -1) {
-        return [next, ...prev];
-      }
-      const merged: BenefitItemV2 = {
-        ...prev[idx],
-        ...next,
-        createdAt: prev[idx].createdAt,
+      const prevItem = prev.find((p) => p.id === id);
+      // 編集時は initial / history / createdAt を保全（残のみユーザー編集を反映）。
+      // ただしモード(枚数/金額)を変えた場合は単位が変わるので initial を新値で取り直す。
+      const keepInitial =
+        prevItem && prevItem.trackMode === draft.trackMode;
+      const built = coerceItem({
+        id,
+        title: draft.title.trim(),
+        company: draft.company.trim(),
+        expiresOn,
+        trackMode: draft.trackMode,
+        unitYen,
+        initial: keepInitial ? prevItem!.initial : remainingInput,
+        remaining: remainingInput,
+        history: keepInitial ? prevItem!.history : [],
+        memo: draft.memo?.trim() ?? "",
+        link: draft.link.trim() ? draft.link.trim() : undefined,
+        createdAt: prevItem?.createdAt ?? nowIso,
         updatedAt: nowIso,
-      };
+      });
+      if (!built) return prev;
+      const idx = prev.findIndex((p) => p.id === id);
+      if (idx === -1) return [built, ...prev];
       const copy = [...prev];
-      copy[idx] = merged;
+      copy[idx] = built;
       return copy;
     });
 
@@ -424,12 +503,34 @@ export default function ToolClient() {
 
   function toggleUsed(id: string) {
     setItems((prev) =>
-      prev.map((p) =>
-        p.id === id
-          ? { ...p, isUsed: !p.isUsed, updatedAt: new Date().toISOString() }
-          : p
-      )
+      prev.map((p) => (p.id === id ? setUsedAll(p, !p.isUsed) : p))
     );
+  }
+
+  function applyConsume(id: string, amount: number) {
+    setItems((prev) =>
+      prev.map((p) => (p.id === id ? consume(p, amount) : p))
+    );
+  }
+
+  function applyRestock(id: string, amount: number) {
+    setItems((prev) =>
+      prev.map((p) => (p.id === id ? restock(p, amount) : p))
+    );
+  }
+
+  // 「使う…」「＋追加」用の数値入力（割り切り: prompt）
+  function promptAmount(it: BenefitItemV2, kind: "use" | "add"): number | null {
+    const unitLabel = it.trackMode === "amount" ? "金額(円)" : "枚数";
+    const verb = kind === "use" ? "使う" : "追加する";
+    const raw = window.prompt(`${verb}${unitLabel}を入力してください`, "");
+    if (raw == null) return null;
+    const n = coerceNumber(raw);
+    if (n == null || n <= 0) {
+      setToast("数値を入力してください");
+      return null;
+    }
+    return n;
   }
 
   function removeItem(id: string) {
@@ -541,6 +642,20 @@ export default function ToolClient() {
               {noExpiryCount}
             </strong>
             <span className={styles.statHint}>あとで整理したい優待</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statLabel}>未使用合計額</span>
+            <strong className={styles.statValueYen} suppressHydrationWarning>
+              {fmtYen(unusedTotalYen)}
+            </strong>
+            <span className={styles.statHint}>残っている優待の額面合計</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statLabel}>今月失効する金額</span>
+            <strong className={styles.statValueYen} suppressHydrationWarning>
+              {fmtYen(expiringThisMonthYen)}
+            </strong>
+            <span className={styles.statHint}>{formatMonthLabel(now)}に期限切れ</span>
           </div>
         </div>
       </section>
@@ -831,29 +946,26 @@ export default function ToolClient() {
                   </div>
                 </div>
 
-                {(it.quantity != null ||
-                  it.amountYen != null ||
-                  (it.memo && it.memo.trim())) && (
-                  <div className={styles.cardBody}>
-                    {(it.quantity != null || it.amountYen != null) && (
-                      <div className={styles.kvRow}>
-                        {it.quantity != null && (
-                          <span className={styles.kv}>
-                            数量: <b>{it.quantity}</b>
-                          </span>
-                        )}
-                        {it.amountYen != null && (
-                          <span className={styles.kv}>
-                            金額: <b>{it.amountYen.toLocaleString()}円</b>
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    {it.memo && it.memo.trim() && (
-                      <div className={styles.memo}>{it.memo}</div>
-                    )}
+                <div className={styles.cardBody}>
+                  <div className={styles.kvRow}>
+                    <span className={styles.kv}>
+                      <b>{remainingText(it)}</b>
+                    </span>
                   </div>
-                )}
+                  {it.memo && it.memo.trim() && (
+                    <div className={styles.memo}>{it.memo}</div>
+                  )}
+                  {it.history.length > 0 && (
+                    <details className={styles.history}>
+                      <summary>履歴（{it.history.length}）</summary>
+                      <ul>
+                        {[...it.history].reverse().map((h, i) => (
+                          <li key={i}>{historyText(h)}</li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+                </div>
 
                 {it.link && (
                   <div className={styles.cardBody} style={{ paddingTop: 0 }}>
@@ -886,14 +998,43 @@ export default function ToolClient() {
                 )}
 
                 <div className={styles.cardActions}>
+                  {!it.isUsed && it.trackMode === "count" && (
+                    <button
+                      type="button"
+                      className={styles.smallBtn}
+                      onClick={() => applyConsume(it.id, 1)}
+                    >
+                      1枚使う
+                    </button>
+                  )}
+                  {!it.isUsed && (
+                    <button
+                      type="button"
+                      className={styles.smallBtn}
+                      onClick={() => {
+                        const n = promptAmount(it, "use");
+                        if (n != null) applyConsume(it.id, n);
+                      }}
+                    >
+                      使う…
+                    </button>
+                  )}
                   <button
                     type="button"
-                    className={`${styles.smallBtn} ${
-                      it.isUsed ? styles.smallBtnOn : ""
-                    }`}
+                    className={styles.smallBtn}
+                    onClick={() => {
+                      const n = promptAmount(it, "add");
+                      if (n != null) applyRestock(it.id, n);
+                    }}
+                  >
+                    ＋追加
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.smallBtn}
                     onClick={() => toggleUsed(it.id)}
                   >
-                    {it.isUsed ? "使用済み" : "未使用"}
+                    {it.isUsed ? "未使用に戻す" : "全部使う"}
                   </button>
                   <button
                     type="button"
@@ -923,8 +1064,8 @@ export default function ToolClient() {
                 <th>優待</th>
                 <th style={{ width: 180 }}>企業</th>
                 <th style={{ width: 120 }}>状態</th>
-                <th style={{ width: 180 }}>メモ</th>
-                <th style={{ width: 240 }}>操作</th>
+                <th style={{ width: 160 }}>メモ</th>
+                <th style={{ width: 260 }}>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -935,15 +1076,18 @@ export default function ToolClient() {
                   </td>
                   <td>
                     <div className={styles.rowTitle}>{it.title}</div>
-                    {(it.quantity != null || it.amountYen != null) && (
-                      <div className={styles.rowSub}>
-                        {it.quantity != null && (
-                          <span>数量: {it.quantity}</span>
-                        )}
-                        {it.amountYen != null && (
-                          <span>金額: {it.amountYen.toLocaleString()}円</span>
-                        )}
-                      </div>
+                    <div className={styles.rowSub}>
+                      <span>{remainingText(it)}</span>
+                    </div>
+                    {it.history.length > 0 && (
+                      <details className={styles.history}>
+                        <summary>履歴（{it.history.length}）</summary>
+                        <ul>
+                          {[...it.history].reverse().map((h, i) => (
+                            <li key={i}>{historyText(h)}</li>
+                          ))}
+                        </ul>
+                      </details>
                     )}
 
                     {it.link && (
@@ -980,15 +1124,44 @@ export default function ToolClient() {
                   <td>{it.isUsed ? "使用済み" : "未使用"}</td>
                   <td className={styles.rowMemo}>{it.memo ?? ""}</td>
                   <td>
-                    <div className={styles.rowBtns}>
+                    <div className={styles.rowActions}>
+                      {!it.isUsed && it.trackMode === "count" && (
+                        <button
+                          type="button"
+                          className={styles.smallBtn}
+                          onClick={() => applyConsume(it.id, 1)}
+                        >
+                          1枚使う
+                        </button>
+                      )}
+                      {!it.isUsed && (
+                        <button
+                          type="button"
+                          className={styles.smallBtn}
+                          onClick={() => {
+                            const n = promptAmount(it, "use");
+                            if (n != null) applyConsume(it.id, n);
+                          }}
+                        >
+                          使う…
+                        </button>
+                      )}
                       <button
                         type="button"
-                        className={`${styles.smallBtn} ${
-                          it.isUsed ? styles.smallBtnOn : ""
-                        }`}
+                        className={styles.smallBtn}
+                        onClick={() => {
+                          const n = promptAmount(it, "add");
+                          if (n != null) applyRestock(it.id, n);
+                        }}
+                      >
+                        ＋追加
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.smallBtn}
                         onClick={() => toggleUsed(it.id)}
                       >
-                        {it.isUsed ? "使用済み" : "未使用"}
+                        {it.isUsed ? "未使用に戻す" : "全部使う"}
                       </button>
                       <button
                         type="button"
