@@ -25,6 +25,7 @@ import {
   consume,
   restock,
   setUsedAll,
+  removeHistoryEntry,
   itemValueYen,
   TrackMode,
   UsageEntry,
@@ -32,6 +33,7 @@ import {
 
 import EditBenefitDialog from "./components/EditBenefitDialog";
 import ImportBenefitDialog from "./components/ImportBenefitDialog";
+import UsageDialog from "./components/UsageDialog";
 
 type TabKey = "thisMonth" | "later" | "all" | "overdue";
 type ViewMode = "cards" | "table";
@@ -315,6 +317,7 @@ export default function ToolClient() {
   // dialogs
   const editDialogRef = useRef<HTMLDialogElement | null>(null);
   const importDialogRef = useRef<HTMLDialogElement | null>(null);
+  const usageDialogRef = useRef<HTMLDialogElement | null>(null);
 
   const [editMode, setEditMode] = useState<"add" | "edit">("add");
   const [draft, setDraft] = useState<Draft>(toDraft());
@@ -322,6 +325,15 @@ export default function ToolClient() {
 
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
+
+  // 使う / ＋追加 ダイアログ状態
+  const [usageTarget, setUsageTarget] = useState<{
+    itemId: string;
+    kind: "use" | "add";
+  } | null>(null);
+  const [usageAmount, setUsageAmount] = useState("");
+  const [usageNote, setUsageNote] = useState("");
+  const [usageError, setUsageError] = useState<string | null>(null);
 
   // --- derived ---
   const now = useMemo(() => new Date(), []);
@@ -507,30 +519,53 @@ export default function ToolClient() {
     );
   }
 
-  function applyConsume(id: string, amount: number) {
+  function applyConsume(id: string, amount: number, note?: string) {
     setItems((prev) =>
-      prev.map((p) => (p.id === id ? consume(p, amount) : p))
+      prev.map((p) => (p.id === id ? consume(p, amount, note) : p))
     );
   }
 
-  function applyRestock(id: string, amount: number) {
+  function applyRestock(id: string, amount: number, note?: string) {
     setItems((prev) =>
-      prev.map((p) => (p.id === id ? restock(p, amount) : p))
+      prev.map((p) => (p.id === id ? restock(p, amount, note) : p))
     );
   }
 
-  // 「使う…」「＋追加」用の数値入力（割り切り: prompt）
-  function promptAmount(it: BenefitItemV2, kind: "use" | "add"): number | null {
-    const unitLabel = it.trackMode === "amount" ? "金額(円)" : "枚数";
-    const verb = kind === "use" ? "使う" : "追加する";
-    const raw = window.prompt(`${verb}${unitLabel}を入力してください`, "");
-    if (raw == null) return null;
-    const n = coerceNumber(raw);
+  function openUsage(it: BenefitItemV2, kind: "use" | "add") {
+    setUsageTarget({ itemId: it.id, kind });
+    setUsageAmount("");
+    setUsageNote("");
+    setUsageError(null);
+    usageDialogRef.current?.showModal();
+  }
+
+  function submitUsage() {
+    if (!usageTarget) return;
+    const n = coerceNumber(usageAmount);
     if (n == null || n <= 0) {
-      setToast("数値を入力してください");
-      return null;
+      setUsageError("数値を入力してください（0より大きい）。");
+      return;
     }
-    return n;
+    const note = usageNote.trim() ? usageNote.trim() : undefined;
+    if (usageTarget.kind === "use") {
+      applyConsume(usageTarget.itemId, n, note);
+      setToast("使用しました");
+    } else {
+      applyRestock(usageTarget.itemId, n, note);
+      setToast("追加しました");
+    }
+    usageDialogRef.current?.close();
+  }
+
+  function removeHistoryAt(id: string, index: number) {
+    const ok = window.confirm(
+      "この履歴を取り消して残量を巻き戻しますか？（元に戻せません）"
+    );
+    if (!ok) return;
+    setItems((prev) =>
+      prev.map((p) => (p.id === id ? removeHistoryEntry(p, index) : p))
+    );
+    setToast("履歴を取り消しました");
   }
 
   function removeItem(id: string) {
@@ -959,9 +994,24 @@ export default function ToolClient() {
                     <details className={styles.history}>
                       <summary>履歴（{it.history.length}）</summary>
                       <ul>
-                        {[...it.history].reverse().map((h, i) => (
-                          <li key={i}>{historyText(h)}</li>
-                        ))}
+                        {it.history
+                          .map((h, idx) => ({ h, idx }))
+                          .slice()
+                          .reverse()
+                          .map(({ h, idx }) => (
+                            <li key={idx} className={styles.historyItem}>
+                              <span>{historyText(h)}</span>
+                              <button
+                                type="button"
+                                className={styles.historyDel}
+                                onClick={() => removeHistoryAt(it.id, idx)}
+                                aria-label="この履歴を取り消す"
+                                title="この履歴を取り消す（残量を巻き戻す）"
+                              >
+                                ✕
+                              </button>
+                            </li>
+                          ))}
                       </ul>
                     </details>
                   )}
@@ -1011,10 +1061,7 @@ export default function ToolClient() {
                     <button
                       type="button"
                       className={styles.smallBtn}
-                      onClick={() => {
-                        const n = promptAmount(it, "use");
-                        if (n != null) applyConsume(it.id, n);
-                      }}
+                      onClick={() => openUsage(it, "use")}
                     >
                       使う…
                     </button>
@@ -1022,10 +1069,7 @@ export default function ToolClient() {
                   <button
                     type="button"
                     className={styles.smallBtn}
-                    onClick={() => {
-                      const n = promptAmount(it, "add");
-                      if (n != null) applyRestock(it.id, n);
-                    }}
+                    onClick={() => openUsage(it, "add")}
                   >
                     ＋追加
                   </button>
@@ -1083,9 +1127,26 @@ export default function ToolClient() {
                       <details className={styles.history}>
                         <summary>履歴（{it.history.length}）</summary>
                         <ul>
-                          {[...it.history].reverse().map((h, i) => (
-                            <li key={i}>{historyText(h)}</li>
-                          ))}
+                          {it.history
+                            .map((h, idx) => ({ h, idx }))
+                            .slice()
+                            .reverse()
+                            .map(({ h, idx }) => (
+                              <li key={idx} className={styles.historyItem}>
+                                <span>{historyText(h)}</span>
+                                <button
+                                  type="button"
+                                  className={styles.historyDel}
+                                  onClick={() =>
+                                    removeHistoryAt(it.id, idx)
+                                  }
+                                  aria-label="この履歴を取り消す"
+                                  title="この履歴を取り消す（残量を巻き戻す）"
+                                >
+                                  ✕
+                                </button>
+                              </li>
+                            ))}
                         </ul>
                       </details>
                     )}
@@ -1138,10 +1199,7 @@ export default function ToolClient() {
                         <button
                           type="button"
                           className={styles.smallBtn}
-                          onClick={() => {
-                            const n = promptAmount(it, "use");
-                            if (n != null) applyConsume(it.id, n);
-                          }}
+                          onClick={() => openUsage(it, "use")}
                         >
                           使う…
                         </button>
@@ -1149,10 +1207,7 @@ export default function ToolClient() {
                       <button
                         type="button"
                         className={styles.smallBtn}
-                        onClick={() => {
-                          const n = promptAmount(it, "add");
-                          if (n != null) applyRestock(it.id, n);
-                        }}
+                        onClick={() => openUsage(it, "add")}
                       >
                         ＋追加
                       </button>
@@ -1239,6 +1294,23 @@ export default function ToolClient() {
         importError={importError}
         onImportReplace={() => doImport(false)}
         onImportMerge={() => doImport(true)}
+      />
+
+      {/* Use / +Add dialog */}
+      <UsageDialog
+        dialogRef={usageDialogRef}
+        item={
+          usageTarget
+            ? items.find((p) => p.id === usageTarget.itemId) ?? null
+            : null
+        }
+        kind={usageTarget?.kind ?? "use"}
+        amount={usageAmount}
+        setAmount={setUsageAmount}
+        note={usageNote}
+        setNote={setUsageNote}
+        error={usageError}
+        onSubmit={submitUsage}
       />
 
       {/* toast */}

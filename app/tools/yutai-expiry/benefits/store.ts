@@ -246,6 +246,30 @@ export function restock(
   );
 }
 
+// 履歴の1件を削除し、その操作分の差分を残量から巻き戻す（誤入力の取り消し用）
+export function removeHistoryEntry(
+  it: BenefitItemV2,
+  index: number
+): BenefitItemV2 {
+  if (index < 0 || index >= it.history.length) return it;
+  const entry = it.history[index];
+  const delta =
+    it.trackMode === "amount" ? entry.deltaYen ?? 0 : entry.deltaQty ?? 0;
+  const cur = it.remaining ?? 0;
+  // 元の操作が remaining に加えた delta を引き戻す。0 未満には落とさない。
+  const remaining = Math.max(0, cur - delta);
+  const history = it.history
+    .slice(0, index)
+    .concat(it.history.slice(index + 1));
+  return {
+    ...it,
+    remaining,
+    isUsed: remaining <= 0,
+    history,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 // 使用済みトグル（全消費 / 復元）
 export function setUsedAll(it: BenefitItemV2, used: boolean): BenefitItemV2 {
   if (used) {
