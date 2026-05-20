@@ -195,8 +195,14 @@ function validateDraft(d: Draft): { ok: boolean; message?: string } {
     const q = coerceNumber(d.qty);
     if (q == null || q < 0)
       return { ok: false, message: "枚数を0以上の数値で入力してください。" };
-    if (d.unitYen.trim() && coerceNumber(d.unitYen) == null)
-      return { ok: false, message: "1枚あたり額面は数値で入力してください。" };
+    if (d.unitYen.trim()) {
+      const u = coerceNumber(d.unitYen);
+      if (u == null || u < 0)
+        return {
+          ok: false,
+          message: "1枚あたり額面は0以上の数値で入力してください。",
+        };
+    }
   } else {
     const b = coerceNumber(d.balanceYen);
     if (b == null || b < 0)
@@ -464,7 +470,10 @@ export default function ToolClient() {
 
     setItems((prev) => {
       const prevItem = prev.find((p) => p.id === id);
-      // 編集時は initial / history / createdAt を保全（残のみユーザー編集を反映）
+      // 編集時は initial / history / createdAt を保全（残のみユーザー編集を反映）。
+      // ただしモード(枚数/金額)を変えた場合は単位が変わるので initial を新値で取り直す。
+      const keepInitial =
+        prevItem && prevItem.trackMode === draft.trackMode;
       const built = coerceItem({
         id,
         title: draft.title.trim(),
@@ -472,9 +481,9 @@ export default function ToolClient() {
         expiresOn,
         trackMode: draft.trackMode,
         unitYen,
-        initial: prevItem?.initial ?? remainingInput,
+        initial: keepInitial ? prevItem!.initial : remainingInput,
         remaining: remainingInput,
-        history: prevItem?.history ?? [],
+        history: keepInitial ? prevItem!.history : [],
         memo: draft.memo?.trim() ?? "",
         link: draft.link.trim() ? draft.link.trim() : undefined,
         createdAt: prevItem?.createdAt ?? nowIso,
