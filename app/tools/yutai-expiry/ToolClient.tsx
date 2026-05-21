@@ -566,6 +566,16 @@ export default function ToolClient() {
           setUsageError("換算した枚数が0です。金額または額面を見直してください。");
           return;
         }
+        // 「使う」で残量超過は履歴の整合性を壊すので弾く（追加側は青天井OK）
+        if (
+          usageTarget.kind === "use" &&
+          derived > (item.remaining ?? 0)
+        ) {
+          setUsageError(
+            `残${item.remaining ?? 0}枚を超えています（換算 ${derived}枚）。金額を見直してください。`
+          );
+          return;
+        }
         amount = derived;
         extraNote = `¥${yen.toLocaleString()} 相当（@¥${item.unitYen.toLocaleString()} → ${derived}枚）`;
       } else if (qty != null && qty > 0) {
