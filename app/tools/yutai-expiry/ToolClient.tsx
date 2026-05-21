@@ -332,6 +332,7 @@ export default function ToolClient() {
     kind: "use" | "add";
   } | null>(null);
   const [usageAmount, setUsageAmount] = useState("");
+  const [usageAmountYen, setUsageAmountYen] = useState("");
   const [usageNote, setUsageNote] = useState("");
   const [usageError, setUsageError] = useState<string | null>(null);
 
@@ -534,6 +535,7 @@ export default function ToolClient() {
   function openUsage(it: BenefitItemV2, kind: "use" | "add") {
     setUsageTarget({ itemId: it.id, kind });
     setUsageAmount("");
+    setUsageAmountYen("");
     setUsageNote("");
     setUsageError(null);
     usageDialogRef.current?.showModal();
@@ -541,17 +543,56 @@ export default function ToolClient() {
 
   function submitUsage() {
     if (!usageTarget) return;
-    const n = coerceNumber(usageAmount);
-    if (n == null || n <= 0) {
-      setUsageError("数値を入力してください（0より大きい）。");
-      return;
+    const item = items.find((p) => p.id === usageTarget.itemId);
+    if (!item) return;
+
+    const baseNote = usageNote.trim();
+    let amount: number | null = null;
+    let extraNote = "";
+
+    if (item.trackMode === "count") {
+      const qty = coerceNumber(usageAmount);
+      const yen = coerceNumber(usageAmountYen);
+      if (yen != null && yen > 0) {
+        // 金額入力を優先（unitYen で枚数換算）
+        if (!(item.unitYen && item.unitYen > 0)) {
+          setUsageError(
+            "1枚あたり額面が未設定です。編集で設定するか、枚数で入力してください。"
+          );
+          return;
+        }
+        const derived = Math.round(yen / item.unitYen);
+        if (derived <= 0) {
+          setUsageError("換算した枚数が0です。金額または額面を見直してください。");
+          return;
+        }
+        amount = derived;
+        extraNote = `¥${yen.toLocaleString()} 相当（@¥${item.unitYen.toLocaleString()} → ${derived}枚）`;
+      } else if (qty != null && qty > 0) {
+        amount = qty;
+      } else {
+        setUsageError("枚数または金額を入力してください（0より大きい）。");
+        return;
+      }
+    } else {
+      const yen = coerceNumber(usageAmount);
+      if (yen == null || yen <= 0) {
+        setUsageError("金額を入力してください（0より大きい）。");
+        return;
+      }
+      amount = yen;
     }
-    const note = usageNote.trim() ? usageNote.trim() : undefined;
+
+    const note =
+      baseNote && extraNote
+        ? `${baseNote} / ${extraNote}`
+        : baseNote || extraNote || undefined;
+
     if (usageTarget.kind === "use") {
-      applyConsume(usageTarget.itemId, n, note);
+      applyConsume(usageTarget.itemId, amount, note);
       setToast("使用しました");
     } else {
-      applyRestock(usageTarget.itemId, n, note);
+      applyRestock(usageTarget.itemId, amount, note);
       setToast("追加しました");
     }
     usageDialogRef.current?.close();
@@ -1307,6 +1348,8 @@ export default function ToolClient() {
         kind={usageTarget?.kind ?? "use"}
         amount={usageAmount}
         setAmount={setUsageAmount}
+        amountYen={usageAmountYen}
+        setAmountYen={setUsageAmountYen}
         note={usageNote}
         setNote={setUsageNote}
         error={usageError}

@@ -8,8 +8,11 @@ type Props = {
   dialogRef: React.RefObject<HTMLDialogElement | null>;
   item: BenefitItemV2 | null;
   kind: "use" | "add";
-  amount: string;
+  amount: string; // count: 枚数 / amount: 金額
   setAmount: (v: string) => void;
+  // count モード時の任意「金額入力」（unitYen が必要。amount モードでは無視）
+  amountYen: string;
+  setAmountYen: (v: string) => void;
   note: string;
   setNote: (v: string) => void;
   error: string | null;
@@ -22,6 +25,8 @@ export default function UsageDialog({
   kind,
   amount,
   setAmount,
+  amountYen,
+  setAmountYen,
   note,
   setNote,
   error,
@@ -72,7 +77,7 @@ export default function UsageDialog({
           </div>
 
           <label className={styles.field}>
-            <span>{unitLabel} *</span>
+            <span>{unitLabel}{isAmount ? " *" : ""}</span>
             <input
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
@@ -81,6 +86,24 @@ export default function UsageDialog({
               autoFocus
             />
           </label>
+
+          {!isAmount && (
+            <label className={styles.field}>
+              <span>
+                または 金額（円）
+                {item.unitYen != null
+                  ? `（1枚 ¥${item.unitYen.toLocaleString()} で換算）`
+                  : "（1枚あたり額面が未設定なので使えません）"}
+              </span>
+              <input
+                value={amountYen}
+                onChange={(e) => setAmountYen(e.target.value)}
+                placeholder="例：3000"
+                inputMode="numeric"
+                disabled={item.unitYen == null || !(item.unitYen > 0)}
+              />
+            </label>
+          )}
 
           {(chips.length > 0 || kind === "use") && (
             <div className={styles.kvRow}>
