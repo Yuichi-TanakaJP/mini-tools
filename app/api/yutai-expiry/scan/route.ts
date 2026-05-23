@@ -28,7 +28,18 @@ type GeminiResponse = {
   error?: { message?: string };
 };
 
+function isPocEnabled(): boolean {
+  return process.env.YUTAI_SCAN_POC_ENABLED === "1";
+}
+
 export async function POST(request: Request) {
+  // PoC エンドポイントは明示的な enable フラグが立っているときだけ受け付ける。
+  // production の Gemini key 抜き取り（モデルプロキシ濫用）を防ぐため、
+  // 存在自体を伏せる目的で 404 を返す。
+  if (!isPocEnabled()) {
+    return new NextResponse("Not Found", { status: 404 });
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
