@@ -10,6 +10,7 @@
 | [ペンギンシューター新ゲーム作成計画](./penguin-shooter-new-game-plan.md) | PDF企画書をベースにした新規ゲーム tool の段階実装計画 |
 | [プロジェクト継続・撤退判断基準](./project-continuation-criteria.md) | 継続、撤退、凍結の判断基準 |
 | [株価ランキング外部データ移行計画](./stock-ranking-external-data-migration-plan.md) | stock-ranking の外部データ公開移行計画 |
+| [yutai-expiry カメラ画像認識計画](./yutai-expiry-image-capture-plan.md) | 優待券をカメラ撮影し Gemini で自動入力する段階実装計画 |
 
 ## 更新ルール
 
