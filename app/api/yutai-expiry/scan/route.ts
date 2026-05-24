@@ -3,8 +3,13 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MODEL = "gemini-2.5-flash-lite";
-const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+// 既定は無料枠の広い Flash-Lite。混雑時や精度不足時は env で
+// "gemini-2.5-flash" 等に切り替えられる。
+const DEFAULT_MODEL = "gemini-2.5-flash-lite";
+function modelName(): string {
+  return process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
+}
+const ENDPOINT_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
 const PROMPT = `この画像は日本株の株主優待券・案内・メール画面・PDFのいずれかです。
 以下のスキーマに沿って情報を抽出し、JSONのみを返してください。
@@ -92,9 +97,10 @@ export async function POST(request: Request) {
     },
   };
 
+  const model = modelName();
   let res: Response;
   try {
-    res = await fetch(`${ENDPOINT}?key=${apiKey}`, {
+    res = await fetch(`${ENDPOINT_BASE}/${model}:generateContent?key=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(geminiBody),
@@ -108,9 +114,18 @@ export async function POST(request: Request) {
 
   const data = (await res.json()) as GeminiResponse;
   if (!res.ok) {
+    // 503 (UNAVAILABLE) / 429 (RESOURCE_EXHAUSTED) は混雑・レート制限なので
+    // クライアントにそのまま伝えて再試行を促す。
+    const upstream = res.status;
+    const retryable = upstream === 503 || upstream === 429;
     return NextResponse.json(
-      { error: data.error?.message ?? "Gemini error", status: res.status },
-      { status: 502 }
+      {
+        error: data.error?.message ?? "Gemini error",
+        upstreamStatus: upstream,
+        retryable,
+        model,
+      },
+      { status: retryable ? upstream : 502 }
     );
   }
 

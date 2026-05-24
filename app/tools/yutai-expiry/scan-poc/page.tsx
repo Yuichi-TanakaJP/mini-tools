@@ -69,7 +69,13 @@ export default function ScanPocPage() {
       const json = await res.json();
       setRawResponse(JSON.stringify(json, null, 2));
       if (!res.ok) {
-        setError(json.error ?? `HTTP ${res.status}`);
+        if (json.retryable) {
+          setError(
+            `Gemini が混雑中 / レート上限です（${json.upstreamStatus}）。数秒〜数分待って再試行してください。続くようなら GEMINI_MODEL を gemini-2.5-flash に切り替えるのも有効です。`
+          );
+        } else {
+          setError(json.error ?? `HTTP ${res.status}`);
+        }
       } else {
         setResult(json.result as ScanResult);
         console.log("[scan-poc] result", json.result);
