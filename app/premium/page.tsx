@@ -526,7 +526,27 @@ export default async function PremiumPage({
               </div>
             </div>
 
-            <LogoutButton />
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <Link
+                href="/admin"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "8px 14px",
+                  borderRadius: 999,
+                  background: "rgba(255,255,255,0.14)",
+                  color: "#fff",
+                  border: "1px solid rgba(255,255,255,0.28)",
+                  textDecoration: "none",
+                  fontSize: 12,
+                  fontWeight: 800,
+                  letterSpacing: 0.3,
+                }}
+              >
+                Admin
+              </Link>
+              <LogoutButton />
+            </div>
           </div>
         </div>
 
