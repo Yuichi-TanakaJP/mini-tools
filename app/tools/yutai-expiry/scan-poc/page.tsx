@@ -49,12 +49,14 @@ export default function ScanPocPage() {
   const [rawResponse, setRawResponse] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
+  const [modelUsed, setModelUsed] = useState<string | null>(null);
 
   async function handleFile(file: File) {
     setError(null);
     setResult(null);
     setRawResponse(null);
     setElapsedMs(null);
+    setModelUsed(null);
     setPreviewUrl(URL.createObjectURL(file));
 
     setPending(true);
@@ -68,6 +70,7 @@ export default function ScanPocPage() {
       });
       const json = await res.json();
       setRawResponse(JSON.stringify(json, null, 2));
+      if (json.model) setModelUsed(json.model);
       if (!res.ok) {
         if (json.retryable) {
           setError(
@@ -192,9 +195,31 @@ export default function ScanPocPage() {
         </div>
       )}
 
-      {elapsedMs != null && (
+      {(elapsedMs != null || modelUsed) && (
         <p style={{ fontSize: 12, color: "#666", marginTop: 8 }}>
-          所要時間: {elapsedMs} ms
+          {modelUsed && (
+            <>
+              モデル: <code>{modelUsed}</code>（
+              <a
+                href="https://ai.google.dev/gemini-api/docs/rate-limits"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                rate limits
+              </a>
+               /{" "}
+              <a
+                href="https://ai.google.dev/gemini-api/docs/pricing"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                pricing
+              </a>
+              ）
+            </>
+          )}
+          {modelUsed && elapsedMs != null && " ／ "}
+          {elapsedMs != null && <>所要時間: {elapsedMs} ms</>}
         </p>
       )}
 

@@ -139,8 +139,11 @@ export async function POST(request: Request) {
 
   try {
     const parsed = JSON.parse(text);
-    return NextResponse.json({ result: parsed });
+    return NextResponse.json({ result: parsed, model });
   } catch {
-    return NextResponse.json({ error: "Gemini returned non-JSON", text }, { status: 502 });
+    return NextResponse.json(
+      { error: "Gemini returned non-JSON", text, model },
+      { status: 502 }
+    );
   }
 }
