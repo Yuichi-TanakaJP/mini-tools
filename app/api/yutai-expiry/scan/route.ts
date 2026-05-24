@@ -45,8 +45,12 @@ async function isAuthorized(): Promise<boolean> {
 
 export async function POST(request: Request) {
   if (!(await isAuthorized())) {
-    // 未ログインからの呼び出しは存在を伏せて 404（pre-auth probe 防止）。
-    return new NextResponse("Not Found", { status: 404 });
+    // 未ログイン / セッション期限切れ。クライアントが JSON.parse できるよう JSON で返す。
+    // 存在自体を伏せたい意図で 404 を使うが、ボディは構造化エラー。
+    return NextResponse.json(
+      { error: "ログインが必要です。/premium/login からログインしてください。" },
+      { status: 404 }
+    );
   }
 
   const apiKey = process.env.GEMINI_API_KEY;

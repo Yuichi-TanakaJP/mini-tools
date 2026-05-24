@@ -64,7 +64,20 @@ export async function callScanApi(file: File): Promise<ScanCallResult> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ imageBase64: base64, mimeType }),
   });
-  const json = (await res.json()) as ScanApiResponse;
+  // 中間レイヤや認証系が plain text を返すケースに備えて defensive に parse する。
+  const rawText = await res.text();
+  let json: ScanApiResponse;
+  try {
+    json = rawText ? (JSON.parse(rawText) as ScanApiResponse) : {};
+  } catch {
+    return {
+      ok: false,
+      result: null,
+      model: null,
+      message: rawText.slice(0, 200) || `HTTP ${res.status}`,
+      retryable: false,
+    };
+  }
   const model = json.model ?? null;
   if (!res.ok || !json.result) {
     const message = json.retryable
