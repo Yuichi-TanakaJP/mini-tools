@@ -55,7 +55,9 @@ async function fetchManifestLatest(
   const fetchedAt = new Date().toISOString();
   if (!apiBase) return { latest: null, fetchedAt, history: [] };
   try {
-    const json = await fetchJson<unknown>(`${apiBase}${endpoint}`, 60);
+    // 管理画面なので fresh 性より通信量を優先: 10 分 (600s) キャッシュ。
+    // 1 ユーザー (= ほぼ自分のみ) が連続でタブを切替えても、各 manifest は 10 分に 1 回しか実 API を叩かない。
+    const json = await fetchJson<unknown>(`${apiBase}${endpoint}`, 600);
     return { latest: pick(json), fetchedAt, history: pickHistory ? pickHistory(json) : [] };
   } catch {
     return { latest: null, fetchedAt, history: [] };
@@ -643,7 +645,7 @@ function ScheduleView({ rows }: { rows: ToolRow[] }) {
 
         <Panel title="MANUAL · AD-HOC · LOCAL">
           {[...manual.map((r) => ({ r, label: "manual" })), ...adhoc.map((r) => ({ r, label: "ad-hoc" })), ...local.map((r) => ({ r, label: "local" }))].map(({ r, label }) => (
-            <div key={`${r.source}-${label}`} style={{ padding: "6px 0", borderTop: "1px solid rgba(255,255,255,0.04)", fontSize: 12, color: "#cbd5e1", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div key={`${r.href}-${r.name}-${label}`} style={{ padding: "6px 0", borderTop: "1px solid rgba(255,255,255,0.04)", fontSize: 12, color: "#cbd5e1", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span>
                 <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: CATEGORY_META[r.category].accent, marginRight: 6 }} />
                 {r.name}
