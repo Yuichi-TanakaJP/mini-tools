@@ -6,7 +6,7 @@
 |---|---|
 | [mini-tools システム構成概要](./system-architecture-overview.md) | アプリ全体の構成、データ取得、保存、外部依存 |
 | [React Server / Client 責任境界](./react-server-client-boundaries.md) | Server Component と Client Component の役割分担 |
-| [Market Tools データ取得経路一覧](./market-tools-data-fetch-paths.md) | market tools の取得元、fallback、内部 route |
+| [Market Tools データ取得経路一覧](./market-tools-data-fetch-paths.md) | market tools の取得元、fallback、内部 route、market_info / market-info-api への横断参照入口 |
 | [QR 共有 URL 仕様](./share-url-spec.md) | QR / コピー / SNS 共有 URL の生成方針 |
 | [UI カラーパレット仕様](./ui-color-palette.md) | 採用中・候補カラーパレットと CSS 変数 |
 | [株価ランキング UI JSON CLI 仕様](./stock-ranking-ui-json-cli-spec.md) | market_info 側 CLI の入出力 contract |

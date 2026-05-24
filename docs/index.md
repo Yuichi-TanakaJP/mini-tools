@@ -92,7 +92,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 - [横断仕様インデックス](./specs/cross-cutting/index.md)
   - [mini-tools システム構成概要](./specs/cross-cutting/system-architecture-overview.md)
   - [React Server / Client 責任境界](./specs/cross-cutting/react-server-client-boundaries.md)
-  - [Market Tools データ取得経路一覧](./specs/cross-cutting/market-tools-data-fetch-paths.md)
+  - [Market Tools データ取得経路一覧](./specs/cross-cutting/market-tools-data-fetch-paths.md)（market_info / market-info-api への横断参照入口を含む）
   - [QR 共有 URL 仕様](./specs/cross-cutting/share-url-spec.md)
   - [UI カラーパレット仕様](./specs/cross-cutting/ui-color-palette.md)
   - [株価ランキング UI JSON CLI 仕様](./specs/cross-cutting/stock-ranking-ui-json-cli-spec.md)
