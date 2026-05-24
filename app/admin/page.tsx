@@ -112,31 +112,31 @@ async function loadRows(): Promise<ToolRow[]> {
 
   return [
     // 株式データ
-    { category: "stocks", name: "TOPIX33業種", href: "/tools/topix33", source: "/topix33/manifest", rule: "日次 (大引け後)", latest: topix33.latest, fetchedAt: topix33.fetchedAt },
-    { category: "stocks", name: "日経225寄与度", href: "/tools/nikkei-contribution", source: "/nikkei/manifest", rule: "日次 (大引け後)", latest: nikkei.latest, fetchedAt: nikkei.fetchedAt },
-    { category: "stocks", name: "株価ランキング", href: "/tools/stock-ranking", source: "/ranking/manifest", rule: "日次 (大引け後)", latest: stockRanking.latest, fetchedAt: stockRanking.fetchedAt },
-    { category: "stocks", name: "米国株ランキング", href: "/tools/us-stock-ranking", source: "/us-ranking/manifest", rule: "日次 (米国大引け後)", latest: usRanking.latest, fetchedAt: usRanking.fetchedAt },
-    { category: "stocks", name: "市場ランキング (時価総額)", href: "/tools/market-rankings", source: "/market-rankings/market-cap/manifest", rule: "月次 (月初確定)", latest: marketCap.latest, fetchedAt: marketCap.fetchedAt },
-    { category: "stocks", name: "市場ランキング (配当利回り)", href: "/tools/market-rankings", source: "/market-rankings/dividend-yield/manifest", rule: "月次 (月初確定)", latest: dividendYield.latest, fetchedAt: dividendYield.fetchedAt },
+    { category: "stocks", name: "TOPIX33業種", href: "/tools/topix33", source: "/topix33/manifest", rule: "手動運用: run_naito_and_backup.ps1 wrapper で生成。自動日次は未確認。", latest: topix33.latest, fetchedAt: topix33.fetchedAt },
+    { category: "stocks", name: "日経225寄与度", href: "/tools/nikkei-contribution", source: "/nikkei/manifest", rule: "手動運用: run_naito_and_backup.ps1 wrapper で生成。自動日次は未確認。", latest: nikkei.latest, fetchedAt: nikkei.fetchedAt },
+    { category: "stocks", name: "株価ランキング", href: "/tools/stock-ranking", source: "/ranking/manifest", rule: "手動運用: run_naito_and_backup.ps1 wrapper で生成。自動日次は未確認。", latest: stockRanking.latest, fetchedAt: stockRanking.fetchedAt },
+    { category: "stocks", name: "米国株ランキング", href: "/tools/us-stock-ranking", source: "/us-ranking/manifest", rule: "生成は --with-us-ranking。publish 運用は要確認 (日次自動と断定しない)。", latest: usRanking.latest, fetchedAt: usRanking.fetchedAt },
+    { category: "stocks", name: "市場ランキング (時価総額)", href: "/tools/market-rankings", source: "/market-rankings/market-cap/manifest", rule: "月初の手動月次 CLI 運用。", latest: marketCap.latest, fetchedAt: marketCap.fetchedAt },
+    { category: "stocks", name: "市場ランキング (配当利回り)", href: "/tools/market-rankings", source: "/market-rankings/dividend-yield/manifest", rule: "月初の手動月次 CLI 運用。", latest: dividendYield.latest, fetchedAt: dividendYield.fetchedAt },
 
     // カレンダー
-    { category: "calendars", name: "決算カレンダー (国内)", href: "/tools/earnings-calendar", source: "/earnings-calendar/domestic/manifest", rule: "日次 (営業日朝)", latest: earningsDom.latest, fetchedAt: earningsDom.fetchedAt },
-    { category: "calendars", name: "決算カレンダー (海外)", href: "/tools/earnings-calendar", source: "/earnings-calendar/overseas/manifest", rule: "日次 (営業日朝)", latest: earningsOv.latest, fetchedAt: earningsOv.fetchedAt },
-    { category: "calendars", name: "経済指標カレンダー", href: "/tools/econ-calendar", source: "/econ-calendar/weekly/manifest", rule: "週次 (月曜朝)", latest: econ.latest, fetchedAt: econ.fetchedAt },
+    { category: "calendars", name: "決算カレンダー (国内)", href: "/tools/earnings-calendar", source: "/earnings-calendar/domestic/manifest", rule: "market_info 側は weekly task 運用。日次更新ではない。", latest: earningsDom.latest, fetchedAt: earningsDom.fetchedAt },
+    { category: "calendars", name: "決算カレンダー (海外)", href: "/tools/earnings-calendar", source: "/earnings-calendar/overseas/manifest", rule: "market_info 側は weekly task 運用。日次更新ではない。", latest: earningsOv.latest, fetchedAt: earningsOv.fetchedAt },
+    { category: "calendars", name: "経済指標カレンダー", href: "/tools/econ-calendar", source: "/econ-calendar/weekly/manifest", rule: "econ_weekly_scrape_daily が毎日 00:35 に週次 JSON を更新。", latest: econ.latest, fetchedAt: econ.fetchedAt },
 
     // 開示
-    { category: "disclosures", name: "EDINET書類一覧", href: "/tools/edinet-documents", source: "/edinet/document-list/manifest", rule: "日次", latest: edinet.latest, fetchedAt: edinet.fetchedAt },
-    { category: "disclosures", name: "TDNET適時開示", href: "/tools/tdnet-disclosures", source: "/tdnet/disclosures/latest", rule: "日次", latest: tdnet.latest, fetchedAt: tdnet.fetchedAt },
+    { category: "disclosures", name: "EDINET書類一覧", href: "/tools/edinet-documents", source: "/edinet/document-list/manifest", rule: "運用要確認 (自動日次と断定しない)。", latest: edinet.latest, fetchedAt: edinet.fetchedAt },
+    { category: "disclosures", name: "TDNET適時開示", href: "/tools/tdnet-disclosures", source: "/tdnet/disclosures/latest", rule: "運用要確認 (自動日次と断定しない)。", latest: tdnet.latest, fetchedAt: tdnet.fetchedAt },
 
     // 優待
-    { category: "yutai", name: "優待カレンダー", href: "/tools/yutai-candidates", source: "/yutai/manifest", rule: "月次", latest: yutai.latest, fetchedAt: yutai.fetchedAt },
+    { category: "yutai", name: "優待カレンダー", href: "/tools/yutai-candidates", source: "/yutai/manifest", rule: "月次。運用詳細は market_info 側 docs を参照。", latest: yutai.latest, fetchedAt: yutai.fetchedAt },
 
     // 信用
-    { category: "credit", name: "日興信用データ", href: "/tools/yutai-candidates", source: "/nikko/credit", rule: "日次", latest: nikkoCredit.latest, fetchedAt: nikkoCredit.fetchedAt },
-    { category: "credit", name: "SBI信用データ", href: "/tools/yutai-candidates", source: "/sbi/credit/latest", rule: "日次", latest: sbiCredit.latest, fetchedAt: sbiCredit.fetchedAt },
+    { category: "credit", name: "日興一般信用在庫", href: "/tools/yutai-candidates", source: "/nikko/credit", rule: "毎週土曜朝に手動実行 (scripts/run_nikko_inventory_and_publish.ps1)。ログイン/パスキー必要。naito_market_job 火曜 credit の信用残/信用倍率系とは別データ。", latest: nikkoCredit.latest, fetchedAt: nikkoCredit.fetchedAt },
+    { category: "credit", name: "SBI一般信用在庫", href: "/tools/yutai-candidates", source: "/sbi/credit/latest", rule: "毎週日曜朝に手動実行 (scripts/run_sbi_inventory_and_publish.ps1)。ログイン/パスキー必要。naito_market_job 火曜 credit の信用残/信用倍率系とは別データ。", latest: sbiCredit.latest, fetchedAt: sbiCredit.fetchedAt },
 
     // 参照データ
-    { category: "reference", name: "JPX 祝日カレンダー", href: "/tools/earnings-calendar", source: "/market-calendar/jpx-closed", rule: "随時更新", latest: jpxClosed.latest, fetchedAt: jpxClosed.fetchedAt },
+    { category: "reference", name: "JPX 祝日カレンダー", href: "/tools/earnings-calendar", source: "/market-calendar/jpx-closed", rule: "市場休場日の参照データ。複数ツール共通。更新運用は market_info 側 docs 参照。", latest: jpxClosed.latest, fetchedAt: jpxClosed.fetchedAt },
 
     // ローカル
     { category: "local", name: "合計計算", href: "/tools/total", source: "ブラウザ localStorage", rule: "ユーザー入力" },
@@ -549,6 +549,9 @@ export default async function AdminPage() {
             <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#64748b", marginRight: 6 }} />N/A = ローカル保存のみ</span>
           </div>
           <div>判定は YYYY-MM-DD ベースで現在時刻 (UTC) と比較。週末や祝日はオフセットせず単純差分で計算。</div>
+          <div style={{ marginTop: 6 }}>
+            更新ルールの出典: market_info repo の docs/operations/monthly_operations.md / docs/reference/policy_decision_rules.md / docs/reference/policy_decision_log.md / docs/reference/publish_contract_inventory.md / docs/reference/cli_inventory.md
+          </div>
         </footer>
       </main>
     </div>
