@@ -431,22 +431,41 @@ export default async function PremiumPage({
             }}
           >
             <div style={{ maxWidth: 700 }}>
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  fontSize: 12,
-                  fontWeight: 800,
-                  letterSpacing: 0.6,
-                  textTransform: "uppercase",
-                  padding: "8px 12px",
-                  borderRadius: 999,
-                  background: "rgba(255,255,255,0.12)",
-                  marginBottom: 14,
-                }}
-              >
-                Premium Preview / Graph Mock
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    fontSize: 12,
+                    fontWeight: 800,
+                    letterSpacing: 0.6,
+                    textTransform: "uppercase",
+                    padding: "8px 12px",
+                    borderRadius: 999,
+                    background: "rgba(255,255,255,0.12)",
+                  }}
+                >
+                  Premium Preview / Graph Mock
+                </div>
+                <Link
+                  href="/admin"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 12,
+                    fontWeight: 800,
+                    letterSpacing: 0.4,
+                    padding: "8px 12px",
+                    borderRadius: 999,
+                    background: "#facc15",
+                    color: "#422006",
+                    textDecoration: "none",
+                  }}
+                >
+                  ⚙ Admin
+                </Link>
               </div>
               <h1
                 style={{
