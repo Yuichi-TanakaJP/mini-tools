@@ -1,46 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
-const MAX_EDGE = 1600;
-const JPEG_QUALITY = 0.85;
-
-type ScanResult = {
-  title: string | null;
-  company: string | null;
-  expiresOn: string | null;
-  amountYen: number | null;
-  quantity: number | null;
-  confidence: number;
-};
-
-async function resizeToJpegBase64(
-  file: File
-): Promise<{ base64: string; mimeType: string }> {
-  const bitmap = await createImageBitmap(file);
-  const longer = Math.max(bitmap.width, bitmap.height);
-  const scale = longer > MAX_EDGE ? MAX_EDGE / longer : 1;
-  const w = Math.round(bitmap.width * scale);
-  const h = Math.round(bitmap.height * scale);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("canvas 2d context unavailable");
-  ctx.drawImage(bitmap, 0, 0, w, h);
-
-  const blob: Blob | null = await new Promise((resolve) =>
-    canvas.toBlob((b) => resolve(b), "image/jpeg", JPEG_QUALITY)
-  );
-  if (!blob) throw new Error("canvas.toBlob failed");
-
-  const buf = await blob.arrayBuffer();
-  let binary = "";
-  const bytes = new Uint8Array(buf);
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-  return { base64: btoa(binary), mimeType: "image/jpeg" };
-}
+import { resizeToJpegBase64, type ScanResult } from "../scan-utils";
 
 export default function ScanPocPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);

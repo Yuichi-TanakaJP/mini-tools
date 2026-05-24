@@ -34,6 +34,8 @@ import {
 import EditBenefitDialog from "./components/EditBenefitDialog";
 import ImportBenefitDialog from "./components/ImportBenefitDialog";
 import UsageDialog from "./components/UsageDialog";
+import CameraScanButton from "./components/CameraScanButton";
+import type { ScanResult } from "./scan-utils";
 
 type TabKey = "thisMonth" | "later" | "all" | "overdue";
 type ViewMode = "cards" | "table";
@@ -146,6 +148,24 @@ export type Draft = {
   memo: string;
   link: string; // URL（任意）
 };
+
+function scanResultToDraft(s: ScanResult): Draft {
+  const hasQty = s.quantity != null && s.quantity > 0;
+  const hasAmt = s.amountYen != null && s.amountYen > 0;
+  // 枚数が読めれば count、金額のみなら amount、どちらも無ければ count を初期に
+  const mode: TrackMode = hasQty ? "count" : hasAmt ? "amount" : "count";
+  return {
+    title: s.title ?? "",
+    company: s.company ?? "",
+    expiresOn: s.expiresOn ?? "",
+    trackMode: mode,
+    qty: mode === "count" && hasQty ? String(s.quantity) : "",
+    unitYen: mode === "count" && hasAmt ? String(s.amountYen) : "",
+    balanceYen: mode === "amount" && hasAmt ? String(s.amountYen) : "",
+    memo: "",
+    link: "",
+  };
+}
 
 function toDraft(x?: BenefitItemV2): Draft {
   const mode: TrackMode = x?.trackMode ?? "count";
@@ -272,7 +292,14 @@ function useHydrated() {
 }
 
 
-export default function ToolClient() {
+type Props = {
+  // 画像スキャン機能を露出するかどうか。page.tsx 側で premium セッションを
+  // 検証して渡す。サーバー側 API も同じ認証で gate されているため、
+  // 仮にクライアント側で書き換えても 404 が返る。
+  scanEnabled?: boolean;
+};
+
+export default function ToolClient({ scanEnabled = false }: Props) {
   const hydrated = useHydrated();
 
   const itemsStore = useSyncExternalStore(
@@ -452,6 +479,16 @@ export default function ToolClient() {
     setDraft(toDraft());
     setDraftError(null);
     editDialogRef.current?.showModal();
+  }
+
+  function openAddFromScan(s: ScanResult, model: string | null) {
+    setEditMode("add");
+    setDraft(scanResultToDraft(s));
+    setDraftError(null);
+    editDialogRef.current?.showModal();
+    const conf = (s.confidence * 100).toFixed(0);
+    const modelLabel = model ? ` / ${model}` : "";
+    setToast(`スキャン結果を反映しました（確信度 ${conf}%${modelLabel}）`);
   }
 
   function openEdit(it: BenefitItemV2) {
@@ -888,6 +925,14 @@ export default function ToolClient() {
             >
               ＋ 追加
             </button>
+
+            {scanEnabled && (
+              <CameraScanButton
+                className={`${styles.controlShell} ${styles.addBtnDesktop}`}
+                onResult={openAddFromScan}
+                onError={(m) => setToast(m)}
+              />
+            )}
           </div>
 
           <div className={styles.mobileControlRow}>
@@ -952,6 +997,14 @@ export default function ToolClient() {
               />
               <span>使用済含む</span>
             </label>
+
+            {scanEnabled && (
+              <CameraScanButton
+                className={`${styles.controlShell} ${styles.mobileToggle}`}
+                onResult={openAddFromScan}
+                onError={(m) => setToast(m)}
+              />
+            )}
           </div>
         </div>
       </div>
