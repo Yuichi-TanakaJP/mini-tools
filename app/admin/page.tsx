@@ -54,11 +54,13 @@ function pickString(obj: unknown, key: string): string | null {
   return null;
 }
 
-function pickFirstDate(obj: unknown): string | null {
+function pickLatestDate(obj: unknown): string | null {
   if (obj && typeof obj === "object" && "dates" in obj) {
     const dates = (obj as Record<string, unknown>).dates;
-    if (Array.isArray(dates) && typeof dates[0] === "string") {
-      return dates[0];
+    if (Array.isArray(dates)) {
+      const stringDates = dates.filter((d): d is string => typeof d === "string");
+      if (stringDates.length === 0) return null;
+      return stringDates.reduce((max, current) => (current > max ? current : max));
     }
   }
   return null;
@@ -78,14 +80,14 @@ async function loadRows(): Promise<ToolRow[]> {
     marketCap,
     dividendYield,
   ] = await Promise.all([
-    fetchManifestLatest("/topix33/manifest", (j) => pickString(j, "latest_date") ?? pickFirstDate(j)),
-    fetchManifestLatest("/nikkei/manifest", (j) => pickString(j, "latest_date") ?? pickFirstDate(j)),
-    fetchManifestLatest("/ranking/manifest", (j) => pickString(j, "latest") ?? pickFirstDate(j)),
-    fetchManifestLatest("/us-ranking/manifest", (j) => pickString(j, "latest") ?? pickFirstDate(j)),
+    fetchManifestLatest("/topix33/manifest", (j) => pickString(j, "latest_date") ?? pickLatestDate(j)),
+    fetchManifestLatest("/nikkei/manifest", (j) => pickString(j, "latest_date") ?? pickLatestDate(j)),
+    fetchManifestLatest("/ranking/manifest", (j) => pickString(j, "latest") ?? pickLatestDate(j)),
+    fetchManifestLatest("/us-ranking/manifest", (j) => pickString(j, "latest") ?? pickLatestDate(j)),
     fetchManifestLatest("/earnings-calendar/domestic/manifest", (j) => pickString(j, "as_of_date")),
     fetchManifestLatest("/earnings-calendar/overseas/manifest", (j) => pickString(j, "as_of_date")),
     fetchManifestLatest("/econ-calendar/weekly/manifest", (j) => pickString(j, "generated_at")),
-    fetchManifestLatest("/edinet/document-list/manifest", (j) => pickFirstDate(j)),
+    fetchManifestLatest("/edinet/document-list/manifest", (j) => pickLatestDate(j)),
     fetchManifestLatest("/yutai/manifest", (j) => pickString(j, "generated_at")),
     fetchManifestLatest("/market-rankings/market-cap/manifest", (j) => pickString(j, "generatedAt") ?? pickString(j, "latest")),
     fetchManifestLatest("/market-rankings/dividend-yield/manifest", (j) => pickString(j, "generatedAt") ?? pickString(j, "latest")),
