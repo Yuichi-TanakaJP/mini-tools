@@ -49,9 +49,13 @@ type ScanApiResponse = {
   upstreamStatus?: number;
 };
 
-export type ScanCallResult =
-  | { ok: true; result: ScanResult; model: string | null }
-  | { ok: false; message: string; retryable: boolean };
+export type ScanCallResult = {
+  ok: boolean;
+  result: ScanResult | null;
+  model: string | null;
+  message: string | null;
+  retryable: boolean;
+};
 
 export async function callScanApi(file: File): Promise<ScanCallResult> {
   const { base64, mimeType } = await resizeToJpegBase64(file);
@@ -61,11 +65,12 @@ export async function callScanApi(file: File): Promise<ScanCallResult> {
     body: JSON.stringify({ imageBase64: base64, mimeType }),
   });
   const json = (await res.json()) as ScanApiResponse;
+  const model = json.model ?? null;
   if (!res.ok || !json.result) {
     const message = json.retryable
       ? `Gemini が混雑中です（${json.upstreamStatus ?? res.status}）。数秒〜数分待って再試行してください。`
       : json.error ?? `HTTP ${res.status}`;
-    return { ok: false, message, retryable: Boolean(json.retryable) };
+    return { ok: false, result: null, model, message, retryable: Boolean(json.retryable) };
   }
-  return { ok: true, result: json.result, model: json.model ?? null };
+  return { ok: true, result: json.result, model, message: null, retryable: false };
 }

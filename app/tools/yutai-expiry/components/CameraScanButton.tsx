@@ -21,8 +21,11 @@ export default function CameraScanButton({
     setBusy(true);
     try {
       const r = await callScanApi(file);
-      if (r.ok) onResult(r.result, r.model);
-      else onError(r.message);
+      if (!r.ok || !r.result) {
+        onError(r.message ?? "unknown error");
+        return;
+      }
+      onResult(r.result, r.model);
     } catch (e) {
       onError(String(e));
     } finally {
