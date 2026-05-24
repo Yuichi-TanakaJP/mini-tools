@@ -38,6 +38,8 @@ type ToolRow = {
   note?: string;
   latest?: string | null;
   fetchedAt?: string;
+  /** manifest が dates[]/weeks[] を持つ場合の実履歴 (YYYY-MM-DD)。空配列 = 履歴なし */
+  history?: string[];
 };
 
 type Freshness = "fresh" | "recent" | "stale" | "failed" | "none";
@@ -47,16 +49,27 @@ type Freshness = "fresh" | "recent" | "stale" | "failed" | "none";
 async function fetchManifestLatest(
   endpoint: string,
   pick: (json: unknown) => string | null,
-): Promise<{ latest: string | null; fetchedAt: string }> {
+  pickHistory?: (json: unknown) => string[],
+): Promise<{ latest: string | null; fetchedAt: string; history: string[] }> {
   const apiBase = getApiBaseUrl();
   const fetchedAt = new Date().toISOString();
-  if (!apiBase) return { latest: null, fetchedAt };
+  if (!apiBase) return { latest: null, fetchedAt, history: [] };
   try {
     const json = await fetchJson<unknown>(`${apiBase}${endpoint}`, 60);
-    return { latest: pick(json), fetchedAt };
+    return { latest: pick(json), fetchedAt, history: pickHistory ? pickHistory(json) : [] };
   } catch {
-    return { latest: null, fetchedAt };
+    return { latest: null, fetchedAt, history: [] };
   }
+}
+
+function pickDatesArray(obj: unknown, key: string): string[] {
+  if (obj && typeof obj === "object" && key in obj) {
+    const arr = (obj as Record<string, unknown>)[key];
+    if (Array.isArray(arr)) {
+      return arr.filter((d): d is string => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d));
+    }
+  }
+  return [];
 }
 
 function pickString(obj: unknown, key: string): string | null {
@@ -99,14 +112,14 @@ async function loadRows(): Promise<ToolRow[]> {
     earningsDom, earningsOv, econ, edinet, yutai,
     marketCap, dividendYield,
   ] = await Promise.all([
-    fetchManifestLatest("/topix33/manifest", (j) => pickString(j, "latest_date") ?? pickLatestDate(j)),
-    fetchManifestLatest("/nikkei/manifest", (j) => pickString(j, "latest_date") ?? pickLatestDate(j)),
-    fetchManifestLatest("/ranking/manifest", (j) => pickString(j, "latest") ?? pickLatestDate(j)),
-    fetchManifestLatest("/us-ranking/manifest", (j) => pickString(j, "latest") ?? pickLatestDate(j)),
+    fetchManifestLatest("/topix33/manifest", (j) => pickString(j, "latest_date") ?? pickLatestDate(j), (j) => pickDatesArray(j, "dates")),
+    fetchManifestLatest("/nikkei/manifest", (j) => pickString(j, "latest_date") ?? pickLatestDate(j), (j) => pickDatesArray(j, "dates")),
+    fetchManifestLatest("/ranking/manifest", (j) => pickString(j, "latest") ?? pickLatestDate(j), (j) => pickDatesArray(j, "dates")),
+    fetchManifestLatest("/us-ranking/manifest", (j) => pickString(j, "latest") ?? pickLatestDate(j), (j) => pickDatesArray(j, "dates")),
     fetchManifestLatest("/earnings-calendar/domestic/manifest", (j) => pickString(j, "as_of_date")),
     fetchManifestLatest("/earnings-calendar/overseas/manifest", (j) => pickString(j, "as_of_date")),
-    fetchManifestLatest("/econ-calendar/weekly/manifest", (j) => pickString(j, "generated_at")),
-    fetchManifestLatest("/edinet/document-list/manifest", (j) => pickLatestDate(j)),
+    fetchManifestLatest("/econ-calendar/weekly/manifest", (j) => pickString(j, "generated_at"), (j) => pickDatesArray(j, "weeks")),
+    fetchManifestLatest("/edinet/document-list/manifest", (j) => pickLatestDate(j), (j) => pickDatesArray(j, "dates")),
     fetchManifestLatest("/yutai/manifest", (j) => pickString(j, "generated_at")),
     fetchManifestLatest("/market-rankings/market-cap/manifest", (j) => pickString(j, "generatedAt") ?? pickString(j, "latest")),
     fetchManifestLatest("/market-rankings/dividend-yield/manifest", (j) => pickString(j, "generatedAt") ?? pickString(j, "latest")),
@@ -119,18 +132,18 @@ async function loadRows(): Promise<ToolRow[]> {
   ]);
 
   return [
-    { category: "stocks", name: "TOPIX33業種", href: "/tools/topix33", source: "/topix33/manifest", rule: SCHED_MANUAL_NAITO.description, schedule: SCHED_MANUAL_NAITO, latest: topix33.latest, fetchedAt: topix33.fetchedAt },
-    { category: "stocks", name: "日経225寄与度", href: "/tools/nikkei-contribution", source: "/nikkei/manifest", rule: SCHED_MANUAL_NAITO.description, schedule: SCHED_MANUAL_NAITO, latest: nikkei.latest, fetchedAt: nikkei.fetchedAt },
-    { category: "stocks", name: "株価ランキング", href: "/tools/stock-ranking", source: "/ranking/manifest", rule: SCHED_MANUAL_NAITO.description, schedule: SCHED_MANUAL_NAITO, latest: stockRanking.latest, fetchedAt: stockRanking.fetchedAt },
-    { category: "stocks", name: "米国株ランキング", href: "/tools/us-stock-ranking", source: "/us-ranking/manifest", rule: "生成は --with-us-ranking。publish 運用は要確認。", schedule: SCHED_AD_HOC, latest: usRanking.latest, fetchedAt: usRanking.fetchedAt },
+    { category: "stocks", name: "TOPIX33業種", href: "/tools/topix33", source: "/topix33/manifest", rule: SCHED_MANUAL_NAITO.description, schedule: SCHED_MANUAL_NAITO, latest: topix33.latest, fetchedAt: topix33.fetchedAt, history: topix33.history },
+    { category: "stocks", name: "日経225寄与度", href: "/tools/nikkei-contribution", source: "/nikkei/manifest", rule: SCHED_MANUAL_NAITO.description, schedule: SCHED_MANUAL_NAITO, latest: nikkei.latest, fetchedAt: nikkei.fetchedAt, history: nikkei.history },
+    { category: "stocks", name: "株価ランキング", href: "/tools/stock-ranking", source: "/ranking/manifest", rule: SCHED_MANUAL_NAITO.description, schedule: SCHED_MANUAL_NAITO, latest: stockRanking.latest, fetchedAt: stockRanking.fetchedAt, history: stockRanking.history },
+    { category: "stocks", name: "米国株ランキング", href: "/tools/us-stock-ranking", source: "/us-ranking/manifest", rule: "生成は --with-us-ranking。publish 運用は要確認。", schedule: SCHED_AD_HOC, latest: usRanking.latest, fetchedAt: usRanking.fetchedAt, history: usRanking.history },
     { category: "stocks", name: "市場ランキング (時価総額)", href: "/tools/market-rankings", source: "/market-rankings/market-cap/manifest", rule: SCHED_MONTHLY.description, schedule: SCHED_MONTHLY, latest: marketCap.latest, fetchedAt: marketCap.fetchedAt },
     { category: "stocks", name: "市場ランキング (配当利回り)", href: "/tools/market-rankings", source: "/market-rankings/dividend-yield/manifest", rule: SCHED_MONTHLY.description, schedule: SCHED_MONTHLY, latest: dividendYield.latest, fetchedAt: dividendYield.fetchedAt },
 
     { category: "calendars", name: "決算カレンダー (国内)", href: "/tools/earnings-calendar", source: "/earnings-calendar/domestic/manifest", rule: SCHED_WEEKLY.description, schedule: SCHED_WEEKLY, latest: earningsDom.latest, fetchedAt: earningsDom.fetchedAt },
     { category: "calendars", name: "決算カレンダー (海外)", href: "/tools/earnings-calendar", source: "/earnings-calendar/overseas/manifest", rule: SCHED_WEEKLY.description, schedule: SCHED_WEEKLY, latest: earningsOv.latest, fetchedAt: earningsOv.fetchedAt },
-    { category: "calendars", name: "経済指標カレンダー", href: "/tools/econ-calendar", source: "/econ-calendar/weekly/manifest", rule: SCHED_DAILY.description, schedule: SCHED_DAILY, latest: econ.latest, fetchedAt: econ.fetchedAt },
+    { category: "calendars", name: "経済指標カレンダー", href: "/tools/econ-calendar", source: "/econ-calendar/weekly/manifest", rule: SCHED_DAILY.description, schedule: SCHED_DAILY, latest: econ.latest, fetchedAt: econ.fetchedAt, history: econ.history },
 
-    { category: "disclosures", name: "EDINET書類一覧", href: "/tools/edinet-documents", source: "/edinet/document-list/manifest", rule: "運用要確認 (自動日次と断定しない)。", schedule: SCHED_AD_HOC, latest: edinet.latest, fetchedAt: edinet.fetchedAt },
+    { category: "disclosures", name: "EDINET書類一覧", href: "/tools/edinet-documents", source: "/edinet/document-list/manifest", rule: "運用要確認 (自動日次と断定しない)。", schedule: SCHED_AD_HOC, latest: edinet.latest, fetchedAt: edinet.fetchedAt, history: edinet.history },
     { category: "disclosures", name: "TDNET適時開示", href: "/tools/tdnet-disclosures", source: "/tdnet/disclosures/latest", rule: "運用要確認 (自動日次と断定しない)。", schedule: SCHED_AD_HOC, latest: tdnet.latest, fetchedAt: tdnet.fetchedAt },
 
     { category: "yutai", name: "優待カレンダー", href: "/tools/yutai-candidates", source: "/yutai/manifest", rule: "月次。運用詳細は market_info docs 参照。", schedule: SCHED_MONTHLY, latest: yutai.latest, fetchedAt: yutai.fetchedAt },
@@ -470,6 +483,8 @@ function HeatmapView({ rows }: { rows: ToolRow[] }) {
             {dynamicRows.map((row) => {
               const fm = FRESHNESS_META[classifyFreshness(row)];
               const latestDay = row.latest ? row.latest.slice(0, 10) : null;
+              const historySet = new Set((row.history ?? []).map((d) => d.slice(0, 10)));
+              const hasHistory = historySet.size > 0;
               return (
                 <tr key={`${row.name}-${row.source}`}>
                   <td style={{ padding: "0 8px 0 0", color: "#cbd5e1", fontSize: 11.5, fontWeight: 700, whiteSpace: "nowrap" }}>
@@ -477,28 +492,38 @@ function HeatmapView({ rows }: { rows: ToolRow[] }) {
                   </td>
                   {days.map((d) => {
                     const expected = isExpectedUpdate(row.schedule, d);
-                    const isActual = latestDay === d.date;
+                    // 履歴がある場合: 該当日があれば実更新あり扱い
+                    // 履歴がない場合: 最新日のみ点灯
+                    const isActual = hasHistory ? historySet.has(d.date) : latestDay === d.date;
+                    const isLatest = latestDay === d.date;
                     return (
                       <td key={d.date} style={{ padding: 0 }}>
-                        <div style={{
-                          width: 28, height: 22, borderRadius: 4,
-                          background: isActual
-                            ? fm.dot
-                            : expected
-                              ? "rgba(99,102,241,0.20)"
-                              : "rgba(255,255,255,0.025)",
-                          border: isActual
-                            ? `1px solid ${fm.dot}`
-                            : expected
-                              ? "1px solid rgba(99,102,241,0.45)"
-                              : "1px solid rgba(255,255,255,0.04)",
-                          boxShadow: isActual ? `0 0 8px ${fm.dot}` : "none",
-                        }} title={`${d.date} ${expected ? "(expected)" : ""}${isActual ? " · actual update" : ""}`} />
+                        <div
+                          title={`${d.date}${expected ? " (expected)" : ""}${isActual ? " · actual update" : ""}${isLatest ? " · latest" : ""}`}
+                          style={{
+                            width: 28, height: 22, borderRadius: 4,
+                            background: isActual
+                              ? fm.dot
+                              : expected
+                                ? "rgba(99,102,241,0.20)"
+                                : "rgba(255,255,255,0.025)",
+                            border: isActual
+                              ? `1px solid ${fm.dot}`
+                              : expected
+                                ? "1px solid rgba(99,102,241,0.45)"
+                                : "1px solid rgba(255,255,255,0.04)",
+                            boxShadow: isLatest && isActual ? `0 0 8px ${fm.dot}` : "none",
+                            opacity: isActual && !isLatest ? 0.7 : 1,
+                          }}
+                        />
                       </td>
                     );
                   })}
                   <td style={{ padding: "0 0 0 6px", fontSize: 10, color: "#64748b", whiteSpace: "nowrap" }}>
-                    {scheduleShort(row.schedule)}
+                    <div>{scheduleShort(row.schedule)}</div>
+                    <div style={{ marginTop: 2, color: hasHistory ? "#34d399" : "#fbbf24" }}>
+                      {hasHistory ? `history ${historySet.size}` : "no history"}
+                    </div>
                   </td>
                 </tr>
               );
@@ -506,11 +531,13 @@ function HeatmapView({ rows }: { rows: ToolRow[] }) {
           </tbody>
         </table>
       </div>
-      <div style={{ display: "flex", gap: 16, marginTop: 14, fontSize: 10, color: "#64748b" }}>
+      <div style={{ display: "flex", gap: 16, marginTop: 14, fontSize: 10, color: "#64748b", flexWrap: "wrap" }}>
         <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "rgba(99,102,241,0.20)", border: "1px solid rgba(99,102,241,0.45)", marginRight: 5, verticalAlign: "middle" }} />expected update</span>
-        <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#10b981", boxShadow: "0 0 6px #10b981", marginRight: 5, verticalAlign: "middle" }} />actual latest update</span>
-        <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.04)", marginRight: 5, verticalAlign: "middle" }} />no expected update</span>
-        <span style={{ color: "#fbbf24" }}>※ expected はスケジュール推定で、weekly task は便宜上 金曜にマーク。実履歴は別途必要。</span>
+        <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#10b981", boxShadow: "0 0 6px #10b981", marginRight: 5, verticalAlign: "middle" }} />actual latest</span>
+        <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#10b981", opacity: 0.7, marginRight: 5, verticalAlign: "middle" }} />actual past update (manifest.dates / weeks)</span>
+        <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.04)", marginRight: 5, verticalAlign: "middle" }} />no update</span>
+        <span style={{ color: "#34d399" }}>history N = manifest 由来の実更新日数</span>
+        <span style={{ color: "#fbbf24" }}>no history = latest 1点のみ (信用/TDNet/JPX/yutai/月次系)</span>
       </div>
     </Panel>
   );
