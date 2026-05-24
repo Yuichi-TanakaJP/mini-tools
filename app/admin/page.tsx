@@ -416,14 +416,22 @@ export default async function AdminPage() {
   const categories: Category[] = ["stocks", "calendars", "disclosures", "yutai", "credit", "reference", "local"];
 
   return (
-    <div style={pageBg}>
+    <>
       <style>{`
         .admin-card:hover {
           transform: translateY(-3px);
           border-color: rgba(99, 102, 241, 0.45) !important;
           background: linear-gradient(180deg, rgba(99,102,241,0.08) 0%, rgba(255,255,255,0.02) 100%) !important;
         }
+        .admin-pc { display: block; }
+        .admin-mobile { display: none; }
+        @media (max-width: 820px) {
+          .admin-pc { display: none; }
+          .admin-mobile { display: block; }
+        }
       `}</style>
+
+      <div className="admin-pc" style={pageBg}>
 
       <main style={{ maxWidth: 1360, margin: "0 auto", padding: "40px 32px 0" }}>
         {/* Hero */}
@@ -554,6 +562,180 @@ export default async function AdminPage() {
           </div>
         </footer>
       </main>
-    </div>
+      </div>
+
+      {/* ============== Mobile ============== */}
+      <div className="admin-mobile">
+        <MobileAdmin rows={rows} apiBase={apiBase} nowIso={nowIso} />
+      </div>
+    </>
+  );
+}
+
+// ============== Mobile UI ==============
+
+const mobileTh: CSSProperties = {
+  padding: "8px 10px",
+  textAlign: "left",
+  fontSize: 10,
+  fontWeight: 800,
+  color: "#64748b",
+  letterSpacing: 0.4,
+  borderBottom: "1px solid #e2e8f0",
+};
+
+const mobileTd: CSSProperties = {
+  padding: "10px",
+  verticalAlign: "top",
+  fontSize: 11,
+};
+
+const CATEGORY_LABEL_JA: Record<Category, string> = {
+  stocks: "株式データ",
+  calendars: "カレンダー",
+  disclosures: "開示",
+  yutai: "優待",
+  credit: "信用 (一般信用在庫)",
+  reference: "参照データ",
+  local: "ローカル保存のみ",
+};
+
+function MobileFreshDot({ row }: { row: ToolRow }) {
+  const fresh = classifyFreshness(row);
+  const fm = FRESHNESS_META[fresh];
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        fontSize: 10,
+        fontWeight: 800,
+        color: "#475569",
+      }}
+    >
+      <span style={{ width: 7, height: 7, borderRadius: "50%", background: fm.dot }} />
+      {fm.label}
+    </span>
+  );
+}
+
+function MobileAdmin({
+  rows,
+  apiBase,
+  nowIso,
+}: {
+  rows: ToolRow[];
+  apiBase: string;
+  nowIso: string;
+}) {
+  const categories: Category[] = ["stocks", "calendars", "disclosures", "yutai", "credit", "reference", "local"];
+  return (
+    <main style={{ maxWidth: 720, margin: "0 auto", padding: "20px 14px 64px", color: "#0f172a" }}>
+      <header style={{ marginBottom: 18 }}>
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "5px 10px",
+            borderRadius: 999,
+            background: "#eef2ff",
+            color: "#3730a3",
+            fontSize: 10,
+            fontWeight: 800,
+            letterSpacing: 1,
+            marginBottom: 10,
+          }}
+        >
+          ADMIN · NOINDEX
+        </div>
+        <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 900, letterSpacing: -0.5 }}>
+          データ更新ダッシュボード
+        </h1>
+        <div style={{ fontSize: 11, color: "#64748b", lineHeight: 1.6 }}>
+          <div>API: <code>{apiBase || "(未設定)"}</code></div>
+          <div>取得時刻: <code>{nowIso}</code></div>
+          <div style={{ marginTop: 4 }}>
+            <Link href="/premium" style={{ color: "#2554ff" }}>← /premium に戻る</Link>
+          </div>
+        </div>
+      </header>
+
+      {categories.map((cat) => {
+        const catRows = rows.filter((r) => r.category === cat);
+        if (catRows.length === 0) return null;
+        return (
+          <section key={cat} style={{ marginBottom: 22 }}>
+            <h2
+              style={{
+                margin: "0 0 8px",
+                fontSize: 12,
+                fontWeight: 800,
+                color: "#475569",
+                letterSpacing: 0.5,
+                textTransform: "uppercase",
+              }}
+            >
+              {CATEGORY_LABEL_JA[cat]} ({catRows.length})
+            </h2>
+            <div
+              style={{
+                background: "#fff",
+                border: "1px solid #e2e8f0",
+                borderRadius: 12,
+                overflow: "hidden",
+              }}
+            >
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, tableLayout: "fixed" }}>
+                <thead>
+                  <tr style={{ background: "#f8fafc" }}>
+                    <th style={{ ...mobileTh, width: "40%" }}>ツール / ソース</th>
+                    <th style={{ ...mobileTh, width: "22%" }}>最終更新</th>
+                    <th style={{ ...mobileTh, width: "38%" }}>運用ルール</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {catRows.map((row) => (
+                    <tr
+                      key={`${row.name}-${row.href}-${row.source}`}
+                      style={{ borderTop: "1px solid #f1f5f9" }}
+                    >
+                      <td style={mobileTd}>
+                        <Link
+                          href={row.href}
+                          style={{ fontSize: 12, fontWeight: 800, color: "#0f172a", textDecoration: "none", display: "block", marginBottom: 3 }}
+                        >
+                          {row.name}
+                        </Link>
+                        <code style={{ fontSize: 10, color: "#94a3b8", wordBreak: "break-all", display: "block" }}>
+                          {row.source}
+                        </code>
+                      </td>
+                      <td style={mobileTd}>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: "#0f172a", fontFamily: "ui-monospace, SFMono-Regular, monospace", lineHeight: 1.3, marginBottom: 4, wordBreak: "break-all" }}>
+                          {formatLatest(row.latest)}
+                        </div>
+                        <MobileFreshDot row={row} />
+                      </td>
+                      <td style={{ ...mobileTd, fontSize: 11, color: "#475569", lineHeight: 1.5 }}>
+                        {row.rule}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        );
+      })}
+
+      <footer style={{ marginTop: 20, fontSize: 10, color: "#94a3b8", lineHeight: 1.7 }}>
+        <div>FRESH (≤2日) / RECENT (≤7日) / STALE (&gt;7日) / FAILED (取得不可) / N/A (ローカル保存のみ)</div>
+        <div style={{ marginTop: 4 }}>
+          出典: market_info repo の docs/operations & docs/reference 配下
+        </div>
+      </footer>
+    </main>
   );
 }
