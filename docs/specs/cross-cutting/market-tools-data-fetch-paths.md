@@ -9,6 +9,20 @@
 
 を一覧で把握するための参照用 spec です。
 
+## 横断参照入口
+
+market tools の API 取得経路や fallback を変更する前に、次の docs を確認する。
+
+| 参照先 | 確認すること |
+|---|---|
+| [`market_info/docs/architecture.md`](https://github.com/Yuichi-TanakaJP/market_info/blob/main/docs/architecture.md) | 3 repo 全体のデータフローと関連 docs |
+| [`market_info/docs/reference/policy_decision_rules.md`](https://github.com/Yuichi-TanakaJP/market_info/blob/main/docs/reference/policy_decision_rules.md) | API / publish / UI の責務分担ルール |
+| [`market_info/docs/reference/publish_contract_inventory.md`](https://github.com/Yuichi-TanakaJP/market_info/blob/main/docs/reference/publish_contract_inventory.md) | R2 published family、object path、schema source、compact artifact 候補 |
+| [`market-info-api/docs/api-contract.md`](https://github.com/Yuichi-TanakaJP/market-info-api/blob/main/docs/api-contract.md) | API endpoint、TTL、range/search cache contract、fallback/error contract |
+| [`market-info-api/docs/resource-usage.md`](https://github.com/Yuichi-TanakaJP/market-info-api/blob/main/docs/resource-usage.md) | Cloud Run / R2 の無料枠、現行データサイズ、cache / compact publish 判断材料 |
+
+`mini-tools` は UI state、入力、表示整形、API query construction を担当する。R2 object path や publish timing を UI に直接持ち込まず、`MARKET_INFO_API_BASE_URL` と API contract を入口にする。
+
 ## 前提
 
 - 「サーバー側」は `mini-tools` の Next.js サーバーを指す
