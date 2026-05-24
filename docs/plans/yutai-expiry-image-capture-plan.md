@@ -52,24 +52,29 @@
 
 ## 段階計画
 
-### Phase 1: PoC（最優先）
+### Phase 1: PoC（完了）
 
-- ブランチ: 別ブランチで段階的に PR を積む
-- 範囲:
-  - Gemini API key の取得と `.env.local` への設定方法を確認
-  - 単独の検証ページ or 既存 yutai-expiry 内に隠しボタンを設置
-  - 「撮影 → Gemini 呼び出し → 返ってきた JSON を console.log」までで完結
-  - UI 整形・既存フォーム統合・エラーハンドリングは含めない
-- 完了条件:
-  - 手元の優待券 3-5 枚で、銘柄／期限／金額が JSON として返ってくることを確認
-  - レスポンス時間・実用性を体感で評価
+- 検証用ページ [/tools/yutai-expiry/scan-poc](../../app/tools/yutai-expiry/scan-poc/page.tsx) を新設し、撮影 → Gemini → JSON 表示までを通した
+- API route [app/api/yutai-expiry/scan/route.ts](../../app/api/yutai-expiry/scan/route.ts) は `NODE_ENV !== "production"` + `YUTAI_SCAN_POC_ENABLED=1` の二重ガード
+- `GEMINI_MODEL` env でモデル切替可能、混雑エラー（503/429）はクライアントに retryable で伝達
+- 動作確認: 統合 OK、優待券以外の画像は確信度 0.5 で全 null（プロンプト通り）
 
 ### Phase 2: yutai-expiry への組み込み
 
-- 既存の「追加」フローに「カメラで追加」ボタンを追加
-- 撮影 → Gemini → 既存の追加ダイアログ（[ImportBenefitDialog](../../app/tools/yutai-expiry/components/ImportBenefitDialog.tsx) または新規ダイアログ）に prefill
-- ユーザーが内容を確認・修正してから保存できる導線
-- 失敗時のフォールバック（手入力に戻れる）
+- 既存の「追加」フローに「📷 カメラで追加」ボタンを追加
+- 撮影 → Gemini → 既存の [EditBenefitDialog](../../app/tools/yutai-expiry/components/EditBenefitDialog.tsx) に prefill
+- ユーザーが内容を確認・修正してから保存できる導線（既存の `upsertFromDraft` をそのまま利用）
+- 失敗時は toast で通知、フォームには進まないので手入力フォールバックは自動
+
+**Phase 2 で採用した方針**:
+- スキャンボタンは `NEXT_PUBLIC_YUTAI_SCAN_ENABLED=1` のときだけ表示（production では非表示）
+- 撮影/送信のロジックは [scan-utils.ts](../../app/tools/yutai-expiry/scan-utils.ts) に集約、PoC ページとボタンで共用
+- 個別ダイアログを新設せず既存ダイアログを再利用（ユーザーの編集導線が一貫する）
+
+**マッピングルール** (`scanResultToDraft`):
+- `quantity > 0`: count モード、qty に枚数、unitYen に額面（あれば）
+- `amountYen > 0` のみ: amount モード、balanceYen に金額
+- どちらも null: count モードで空フォーム
 
 ### Phase 3: 改善・共通化判断
 
