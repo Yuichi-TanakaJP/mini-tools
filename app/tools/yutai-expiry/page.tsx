@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import ShareButtons from "@/components/ShareButtonsSuspended";
+import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
 import ClientOnly from "./ClientOnly";
 
 export const metadata: Metadata = {
@@ -11,12 +13,20 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Page() {
+export default async function Page() {
+  // 画像スキャン機能はログイン済（premium セッション）ユーザーにのみ露出する。
+  // サーバー側 API も同じ verifyPremiumSession で gate しているので、
+  // 仮にクライアント側で flag を書き換えても 404 が返る。
+  const cookieStore = await cookies();
+  const scanEnabled = verifyPremiumSession(
+    cookieStore.get(PREMIUM_COOKIE_NAME)?.value
+  );
+
   return (
     <main
       style={{ maxWidth: 1120, margin: "0 auto", padding: "28px 16px 96px" }}
     >
-      <ClientOnly />
+      <ClientOnly scanEnabled={scanEnabled} />
 
       <footer
         style={{

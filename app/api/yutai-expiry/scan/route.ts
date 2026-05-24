@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,17 +35,17 @@ type GeminiResponse = {
   error?: { message?: string };
 };
 
-function isPocEnabled(): boolean {
-  // production では問答無用で無効。NODE_ENV を二重ガードに使い、誤設定で本番が
-  // 認証なし Gemini プロキシ化することを防ぐ（Vercel preview も production 扱いになる点に注意）。
-  if (process.env.NODE_ENV === "production") return false;
-  return process.env.YUTAI_SCAN_POC_ENABLED === "1";
+async function isAuthorized(): Promise<boolean> {
+  // 既存の premium セッション認証を gate に使う。production でも安全に有効化でき、
+  // 第三者が Gemini クォータを濫費するのを防ぐ。レート制限は別途検討。
+  const cookieStore = await cookies();
+  const session = cookieStore.get(PREMIUM_COOKIE_NAME)?.value;
+  return verifyPremiumSession(session);
 }
 
 export async function POST(request: Request) {
-  // PoC エンドポイントは development 環境で enable フラグが立っているときだけ受け付ける。
-  // 存在自体を伏せる目的で 404 を返す。
-  if (!isPocEnabled()) {
+  if (!(await isAuthorized())) {
+    // 未ログインからの呼び出しは存在を伏せて 404（pre-auth probe 防止）。
     return new NextResponse("Not Found", { status: 404 });
   }
 

@@ -37,11 +37,6 @@ import UsageDialog from "./components/UsageDialog";
 import CameraScanButton from "./components/CameraScanButton";
 import type { ScanResult } from "./scan-utils";
 
-// 画像スキャン機能はローカル PoC 専用。production ビルドに混ぜないよう
-// NEXT_PUBLIC_YUTAI_SCAN_ENABLED=1 が立っているときだけボタンを露出させる
-// （サーバー側 API も同名ではないがフラグ + NODE_ENV で二重ガード済み）。
-const SCAN_ENABLED = process.env.NEXT_PUBLIC_YUTAI_SCAN_ENABLED === "1";
-
 type TabKey = "thisMonth" | "later" | "all" | "overdue";
 type ViewMode = "cards" | "table";
 type SortKey = "expiryAsc" | "companyAsc" | "createdDesc";
@@ -297,7 +292,14 @@ function useHydrated() {
 }
 
 
-export default function ToolClient() {
+type Props = {
+  // 画像スキャン機能を露出するかどうか。page.tsx 側で premium セッションを
+  // 検証して渡す。サーバー側 API も同じ認証で gate されているため、
+  // 仮にクライアント側で書き換えても 404 が返る。
+  scanEnabled?: boolean;
+};
+
+export default function ToolClient({ scanEnabled = false }: Props) {
   const hydrated = useHydrated();
 
   const itemsStore = useSyncExternalStore(
@@ -924,7 +926,7 @@ export default function ToolClient() {
               ＋ 追加
             </button>
 
-            {SCAN_ENABLED && (
+            {scanEnabled && (
               <CameraScanButton
                 className={`${styles.controlShell} ${styles.addBtnDesktop}`}
                 onResult={openAddFromScan}
@@ -996,7 +998,7 @@ export default function ToolClient() {
               <span>使用済含む</span>
             </label>
 
-            {SCAN_ENABLED && (
+            {scanEnabled && (
               <CameraScanButton
                 className={`${styles.controlShell} ${styles.mobileToggle}`}
                 onResult={openAddFromScan}
