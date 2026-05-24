@@ -84,16 +84,18 @@ async function loadRows(): Promise<ToolRow[]> {
     fetchManifestLatest("/us-ranking/manifest", (j) => pickString(j, "latest") ?? pickFirstDate(j)),
     fetchManifestLatest("/earnings-calendar/domestic/manifest", (j) => pickString(j, "as_of_date")),
     fetchManifestLatest("/earnings-calendar/overseas/manifest", (j) => pickString(j, "as_of_date")),
-    fetchManifestLatest("/econ-calendar/weekly/manifest", (j) => pickString(j, "latest")),
+    fetchManifestLatest("/econ-calendar/weekly/manifest", (j) => pickString(j, "generated_at")),
     fetchManifestLatest("/edinet/document-list/manifest", (j) => pickFirstDate(j)),
     fetchManifestLatest("/yutai/manifest", (j) => pickString(j, "generated_at")),
-    fetchManifestLatest("/market-rankings/market-cap/manifest", (j) => pickString(j, "latest")),
-    fetchManifestLatest("/market-rankings/dividend-yield/manifest", (j) => pickString(j, "latest")),
+    fetchManifestLatest("/market-rankings/market-cap/manifest", (j) => pickString(j, "generatedAt") ?? pickString(j, "latest")),
+    fetchManifestLatest("/market-rankings/dividend-yield/manifest", (j) => pickString(j, "generatedAt") ?? pickString(j, "latest")),
   ]);
 
-  const [nikkoCredit, sbiCredit] = await Promise.all([
+  const [nikkoCredit, sbiCredit, tdnet, jpxClosed] = await Promise.all([
     fetchManifestLatest("/nikko/credit", (j) => pickString(j, "date") ?? pickString(j, "generated_at")),
     fetchManifestLatest("/sbi/credit/latest", (j) => pickString(j, "date") ?? pickString(j, "generated_at")),
+    fetchManifestLatest("/tdnet/disclosures/latest", (j) => pickString(j, "target_date")),
+    fetchManifestLatest("/market-calendar/jpx-closed", (j) => pickString(j, "as_of_date")),
   ]);
 
   return [
@@ -165,7 +167,7 @@ async function loadRows(): Promise<ToolRow[]> {
       name: "経済指標カレンダー",
       href: "/tools/econ-calendar",
       source: "market-info API: /econ-calendar/weekly/manifest",
-      rule: "週次 (毎週月曜 JST 朝に翌週分を確定)。",
+      rule: "週次 (毎週月曜 JST 朝に翌週分を確定)。manifest の generated_at を表示。",
       latest: econ.latest,
       fetchedAt: econ.fetchedAt,
     },
@@ -173,7 +175,7 @@ async function loadRows(): Promise<ToolRow[]> {
       name: "市場ランキング (時価総額)",
       href: "/tools/market-rankings",
       source: "market-info API: /market-rankings/market-cap/manifest",
-      rule: "月次。月初に前月分を確定。",
+      rule: "月次。月初に前月分を確定。manifest の generatedAt を表示。",
       latest: marketCap.latest,
       fetchedAt: marketCap.fetchedAt,
     },
@@ -181,7 +183,7 @@ async function loadRows(): Promise<ToolRow[]> {
       name: "市場ランキング (配当利回り)",
       href: "/tools/market-rankings",
       source: "market-info API: /market-rankings/dividend-yield/manifest",
-      rule: "月次。月初に前月分を確定。",
+      rule: "月次。月初に前月分を確定。manifest の generatedAt を表示。",
       latest: dividendYield.latest,
       fetchedAt: dividendYield.fetchedAt,
     },
@@ -229,8 +231,17 @@ async function loadRows(): Promise<ToolRow[]> {
       name: "TDNET適時開示一覧",
       href: "/tools/tdnet-disclosures",
       source: "market-info API: /tdnet/disclosures/latest",
-      rule: "日次。マニフェストなし、最新日付直叩き。",
-      note: "manifest 未提供のため latest 取得は未対応",
+      rule: "日次。最新日付 endpoint の target_date を表示。",
+      latest: tdnet.latest,
+      fetchedAt: tdnet.fetchedAt,
+    },
+    {
+      name: "JPX 祝日カレンダー (共通参照)",
+      href: "/tools/earnings-calendar",
+      source: "market-info API: /market-calendar/jpx-closed",
+      rule: "祝日・市場休場日の参照データ。複数ツール共通。as_of_date を表示。",
+      latest: jpxClosed.latest,
+      fetchedAt: jpxClosed.fetchedAt,
     },
     {
       name: "ペンギン・エイリアンシューター",
