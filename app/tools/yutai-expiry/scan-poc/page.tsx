@@ -88,8 +88,9 @@ export default function ScanPocPage() {
         優待スキャン PoC (Phase 1)
       </h1>
       <p style={{ fontSize: 13, color: "#666", marginBottom: 16 }}>
-        撮影またはファイル選択した画像を Gemini に送信し、抽出結果を表示します。
+        撮影またはファイル選択した <b>画像</b>（JPEG / PNG / HEIC など）を Gemini に送信し、抽出結果を表示します。
         確認用のため、本番の追加フォームとは繋がっていません。
+        PDF を試したい場合は、先にスクリーンショット等で画像化してください。
       </p>
 
       <div

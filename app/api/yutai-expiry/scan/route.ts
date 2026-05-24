@@ -29,12 +29,14 @@ type GeminiResponse = {
 };
 
 function isPocEnabled(): boolean {
+  // production では問答無用で無効。NODE_ENV を二重ガードに使い、誤設定で本番が
+  // 認証なし Gemini プロキシ化することを防ぐ（Vercel preview も production 扱いになる点に注意）。
+  if (process.env.NODE_ENV === "production") return false;
   return process.env.YUTAI_SCAN_POC_ENABLED === "1";
 }
 
 export async function POST(request: Request) {
-  // PoC エンドポイントは明示的な enable フラグが立っているときだけ受け付ける。
-  // production の Gemini key 抜き取り（モデルプロキシ濫用）を防ぐため、
+  // PoC エンドポイントは development 環境で enable フラグが立っているときだけ受け付ける。
   // 存在自体を伏せる目的で 404 を返す。
   if (!isPocEnabled()) {
     return new NextResponse("Not Found", { status: 404 });
