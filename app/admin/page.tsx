@@ -86,9 +86,14 @@ async function loadRows(): Promise<ToolRow[]> {
     fetchManifestLatest("/earnings-calendar/overseas/manifest", (j) => pickString(j, "as_of_date")),
     fetchManifestLatest("/econ-calendar/weekly/manifest", (j) => pickString(j, "latest")),
     fetchManifestLatest("/edinet/document-list/manifest", (j) => pickFirstDate(j)),
-    fetchManifestLatest("/yutai/manifest", (j) => pickString(j, "latest_month") ?? pickString(j, "generated_at")),
+    fetchManifestLatest("/yutai/manifest", (j) => pickString(j, "generated_at")),
     fetchManifestLatest("/market-rankings/market-cap/manifest", (j) => pickString(j, "latest")),
     fetchManifestLatest("/market-rankings/dividend-yield/manifest", (j) => pickString(j, "latest")),
+  ]);
+
+  const [nikkoCredit, sbiCredit] = await Promise.all([
+    fetchManifestLatest("/nikko/credit", (j) => pickString(j, "date") ?? pickString(j, "generated_at")),
+    fetchManifestLatest("/sbi/credit/latest", (j) => pickString(j, "date") ?? pickString(j, "generated_at")),
   ]);
 
   return [
@@ -120,9 +125,25 @@ async function loadRows(): Promise<ToolRow[]> {
       name: "優待カレンダー",
       href: "/tools/yutai-candidates",
       source: "market-info API: /yutai/manifest",
-      rule: "月次。新月度がリリース時点で更新。",
+      rule: "月次。manifest の generated_at をデータ生成時刻として表示。",
       latest: yutai.latest,
       fetchedAt: yutai.fetchedAt,
+    },
+    {
+      name: "優待カレンダー: 日興信用データ",
+      href: "/tools/yutai-candidates",
+      source: "market-info API: /nikko/credit",
+      rule: "日次。日興証券の貸借/一般信用銘柄を取り込み。レスポンスの date を表示。",
+      latest: nikkoCredit.latest,
+      fetchedAt: nikkoCredit.fetchedAt,
+    },
+    {
+      name: "優待カレンダー: SBI信用データ",
+      href: "/tools/yutai-candidates",
+      source: "market-info API: /sbi/credit/latest",
+      rule: "日次。SBI一般信用 (短期) の在庫を取り込み。レスポンスの date を表示。",
+      latest: sbiCredit.latest,
+      fetchedAt: sbiCredit.fetchedAt,
     },
     {
       name: "決算カレンダー (国内)",
