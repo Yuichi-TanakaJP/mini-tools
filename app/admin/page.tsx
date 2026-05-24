@@ -199,188 +199,456 @@ function formatLatest(value: string | null | undefined): string {
   return value;
 }
 
-function ToolCard({ row }: { row: ToolRow }) {
-  const fresh = classifyFreshness(row);
-  const fm = FRESHNESS_META[fresh];
+function getAgeDays(row: ToolRow): number | null {
+  if (!row.latest) return null;
+  const dateStr = row.latest.slice(0, 10);
+  const t = Date.parse(`${dateStr}T00:00:00Z`);
+  if (Number.isNaN(t)) return null;
+  return Math.max(0, Math.floor((Date.now() - t) / (1000 * 60 * 60 * 24)));
+}
 
+function formatAge(days: number | null): string {
+  if (days === null) return "—";
+  if (days === 0) return "today";
+  if (days === 1) return "1d";
+  return `${days}d`;
+}
+
+const FRESHNESS_ORDER: Record<Freshness, number> = {
+  failed: 0,
+  stale: 1,
+  recent: 2,
+  fresh: 3,
+  none: 4,
+};
+
+function sortRowsForAnalysis(rows: ToolRow[]): ToolRow[] {
+  return [...rows].sort((a, b) => {
+    const fa = classifyFreshness(a);
+    const fb = classifyFreshness(b);
+    if (fa !== fb) return FRESHNESS_ORDER[fa] - FRESHNESS_ORDER[fb];
+    const da = getAgeDays(a);
+    const db = getAgeDays(b);
+    if (da !== null && db !== null && da !== db) return db - da;
+    if (a.category !== b.category) return a.category.localeCompare(b.category);
+    return a.name.localeCompare(b.name, "ja");
+  });
+}
+
+function StatusPill({ row }: { row: ToolRow }) {
+  const fm = FRESHNESS_META[classifyFreshness(row)];
   return (
-    <Link
-      href={row.href}
+    <span
       style={{
-        position: "relative",
-        display: "block",
-        padding: "20px 22px",
-        borderRadius: 18,
-        background: "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.015) 100%)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        textDecoration: "none",
-        color: "inherit",
-        overflow: "hidden",
-        transition: "transform 0.18s ease, border-color 0.18s ease, background 0.18s ease",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "3px 9px",
+        borderRadius: 6,
+        background: fm.bg,
+        color: fm.fg,
+        border: `1px solid ${fm.border}`,
+        fontSize: 10,
+        fontWeight: 800,
+        letterSpacing: 0.6,
+        whiteSpace: "nowrap",
+        fontFamily: "ui-monospace, SFMono-Regular, monospace",
       }}
-      className="admin-card"
     >
-      {/* 上部アクセントライン */}
-      <span
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 2,
-          background: fm.dot,
-          opacity: 0.7,
-        }}
-      />
-
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
-        <div style={{ fontSize: 15, fontWeight: 800, color: "#f1f5f9", letterSpacing: -0.2, lineHeight: 1.4 }}>
-          {row.name}
-        </div>
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "4px 10px",
-            borderRadius: 999,
-            background: fm.bg,
-            color: fm.fg,
-            border: `1px solid ${fm.border}`,
-            fontSize: 10,
-            fontWeight: 800,
-            letterSpacing: 0.6,
-            whiteSpace: "nowrap",
-            flexShrink: 0,
-          }}
-        >
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: fm.dot, boxShadow: `0 0 8px ${fm.dot}` }} />
-          {fm.label}
-        </span>
-      </div>
-
-      <div style={{ display: "grid", gap: 6, marginBottom: 14 }}>
-        <code style={{ fontSize: 11, color: "#94a3b8", fontFamily: "ui-monospace, SFMono-Regular, monospace", wordBreak: "break-all" }}>
-          {row.source}
-        </code>
-        <div style={{ fontSize: 12, color: "#cbd5e1", lineHeight: 1.6 }}>
-          {row.rule}
-        </div>
-      </div>
-
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-        <div>
-          <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, letterSpacing: 0.6, marginBottom: 2 }}>
-            LAST UPDATE
-          </div>
-          <div style={{ fontSize: 18, fontWeight: 900, color: fm.fg, letterSpacing: -0.3, fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>
-            {formatLatest(row.latest)}
-          </div>
-        </div>
-      </div>
-
-      {row.note ? (
-        <div style={{ marginTop: 10, fontSize: 11, color: "#fbbf24" }}>※ {row.note}</div>
-      ) : null}
-    </Link>
+      <span style={{ width: 5, height: 5, borderRadius: "50%", background: fm.dot, boxShadow: `0 0 6px ${fm.dot}` }} />
+      {fm.label}
+    </span>
   );
 }
 
-function CategorySection({
-  category,
-  rows,
-}: {
-  category: Category;
-  rows: ToolRow[];
-}) {
+function CategoryTag({ category }: { category: Category }) {
   const meta = CATEGORY_META[category];
   return (
-    <section style={{ marginBottom: 36 }}>
-      <header style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-            background: meta.accent,
-            display: "grid",
-            placeItems: "center",
-            fontSize: 18,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
-          }}
-        >
-          {meta.icon}
-        </div>
-        <div>
-          <div style={{ fontSize: 11, color: "#64748b", fontWeight: 800, letterSpacing: 1 }}>SECTION</div>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: "#f1f5f9", letterSpacing: -0.4 }}>
-            {meta.label}
-          </h2>
-        </div>
-        <div style={{ marginLeft: "auto", fontSize: 12, color: "#64748b" }}>
-          {rows.length} item{rows.length === 1 ? "" : "s"}
-        </div>
-      </header>
-      <div
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        fontSize: 11,
+        color: "#cbd5e1",
+        fontWeight: 700,
+        whiteSpace: "nowrap",
+      }}
+    >
+      <span
         style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-          gap: 16,
+          width: 8,
+          height: 8,
+          borderRadius: 2,
+          background: meta.accent,
+          display: "inline-block",
         }}
-      >
-        {rows.map((row) => (
-          <ToolCard key={`${row.name}-${row.href}-${row.source}`} row={row} />
-        ))}
-      </div>
-    </section>
+      />
+      {meta.label}
+    </span>
   );
 }
 
-function StatCard({
+function KpiPill({
   label,
   value,
-  sub,
   accent,
+  total,
 }: {
   label: string;
-  value: string | number;
-  sub: string;
+  value: number;
   accent: string;
+  total?: number;
 }) {
+  const pct = total && total > 0 ? Math.round((value / total) * 100) : null;
   return (
     <div
       style={{
+        flex: 1,
+        minWidth: 160,
+        padding: "14px 16px",
+        borderRadius: 12,
+        background: "rgba(255,255,255,0.025)",
+        border: "1px solid rgba(255,255,255,0.06)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
         position: "relative",
-        padding: "20px 22px",
-        borderRadius: 18,
-        background: "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.015) 100%)",
-        border: "1px solid rgba(255,255,255,0.08)",
         overflow: "hidden",
       }}
     >
-      <span
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: 60,
-          height: 60,
-          borderRadius: "50%",
-          background: accent,
-          filter: "blur(40px)",
-          opacity: 0.55,
-        }}
-      />
-      <div style={{ position: "relative" }}>
-        <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 800, letterSpacing: 1.2, marginBottom: 8 }}>
-          {label}
-        </div>
-        <div style={{ fontSize: 36, fontWeight: 900, color: "#f8fafc", letterSpacing: -1, lineHeight: 1 }}>
-          {value}
-        </div>
-        <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 6 }}>{sub}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: accent, boxShadow: `0 0 8px ${accent}` }} />
+        <span style={{ fontSize: 10, fontWeight: 800, color: "#94a3b8", letterSpacing: 1 }}>{label}</span>
       </div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+        <span
+          style={{
+            fontSize: 28,
+            fontWeight: 900,
+            color: "#f8fafc",
+            letterSpacing: -0.8,
+            fontFamily: "ui-monospace, SFMono-Regular, monospace",
+            lineHeight: 1,
+          }}
+        >
+          {value}
+        </span>
+        {pct !== null ? (
+          <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+            {pct}%
+          </span>
+        ) : null}
+      </div>
+      {/* progress bar */}
+      {pct !== null ? (
+        <div style={{ height: 3, background: "rgba(255,255,255,0.05)", borderRadius: 2, overflow: "hidden", marginTop: 4 }}>
+          <div style={{ height: "100%", width: `${pct}%`, background: accent, opacity: 0.7 }} />
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+const tableCellHead: CSSProperties = {
+  textAlign: "left",
+  padding: "10px 14px",
+  fontSize: 10,
+  fontWeight: 800,
+  color: "#64748b",
+  letterSpacing: 1,
+  borderBottom: "1px solid rgba(255,255,255,0.08)",
+  background: "rgba(255,255,255,0.02)",
+  position: "sticky",
+  top: 0,
+  whiteSpace: "nowrap",
+};
+
+const tableCell: CSSProperties = {
+  padding: "12px 14px",
+  fontSize: 12.5,
+  color: "#cbd5e1",
+  borderBottom: "1px solid rgba(255,255,255,0.04)",
+  verticalAlign: "top",
+  lineHeight: 1.55,
+};
+
+
+// ============== SVG Charts ==============
+
+type StatusCount = { freshness: Freshness; count: number };
+
+function describeArc(cx: number, cy: number, r: number, startDeg: number, endDeg: number) {
+  const toRad = (d: number) => ((d - 90) * Math.PI) / 180;
+  const x1 = cx + r * Math.cos(toRad(startDeg));
+  const y1 = cy + r * Math.sin(toRad(startDeg));
+  const x2 = cx + r * Math.cos(toRad(endDeg));
+  const y2 = cy + r * Math.sin(toRad(endDeg));
+  const largeArc = endDeg - startDeg > 180 ? 1 : 0;
+  return { x1, y1, x2, y2, largeArc };
+}
+
+function DonutChart({ data, total }: { data: StatusCount[]; total: number }) {
+  const size = 220;
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = 88;
+  const inner = 62;
+  const safeTotal = total > 0 ? total : 1;
+
+  const filtered = data.filter((d) => d.count > 0);
+  const slices = filtered.map((d, idx) => {
+    const before = filtered.slice(0, idx).reduce((s, x) => s + x.count, 0);
+    const start = (before / safeTotal) * 360;
+    const end = ((before + d.count) / safeTotal) * 360;
+    return { ...d, start, end };
+  });
+
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} role="img" aria-label="Status distribution donut">
+      {slices.length === 0 ? (
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={r - inner} />
+      ) : null}
+      {slices.map((s) => {
+        const fm = FRESHNESS_META[s.freshness];
+        if (s.end - s.start >= 359.99) {
+          // 単一スライスが全周のときは円で描画
+          return (
+            <circle
+              key={s.freshness}
+              cx={cx}
+              cy={cy}
+              r={(r + inner) / 2}
+              fill="none"
+              stroke={fm.dot}
+              strokeWidth={r - inner}
+              opacity={0.92}
+            />
+          );
+        }
+        const a = describeArc(cx, cy, r, s.start, s.end);
+        const b = describeArc(cx, cy, inner, s.start, s.end);
+        const path = [
+          `M ${a.x1} ${a.y1}`,
+          `A ${r} ${r} 0 ${a.largeArc} 1 ${a.x2} ${a.y2}`,
+          `L ${b.x2} ${b.y2}`,
+          `A ${inner} ${inner} 0 ${a.largeArc} 0 ${b.x1} ${b.y1}`,
+          "Z",
+        ].join(" ");
+        return <path key={s.freshness} d={path} fill={fm.dot} opacity={0.92} />;
+      })}
+      {/* center label */}
+      <text x={cx} y={cy - 6} textAnchor="middle" fill="#f1f5f9" fontSize={28} fontWeight={900} fontFamily="ui-monospace, SFMono-Regular, monospace">
+        {total}
+      </text>
+      <text x={cx} y={cy + 14} textAnchor="middle" fill="#64748b" fontSize={10} fontWeight={800} letterSpacing={1.2}>
+        TRACKED
+      </text>
+    </svg>
+  );
+}
+
+function AgeBarList({ rows }: { rows: ToolRow[] }) {
+  // dynamic rows のみを年齢順 (古い → 新しい) に並べる。
+  const items = rows
+    .filter((r) => r.latest !== undefined)
+    .map((r) => ({ row: r, age: getAgeDays(r), fresh: classifyFreshness(r) }))
+    .sort((a, b) => {
+      const sev = FRESHNESS_ORDER[a.fresh] - FRESHNESS_ORDER[b.fresh];
+      if (sev !== 0) return sev;
+      if (a.age === null && b.age === null) return 0;
+      if (a.age === null) return 1;
+      if (b.age === null) return -1;
+      return b.age - a.age;
+    });
+
+  const finiteAges = items.map((it) => it.age).filter((v): v is number => v !== null);
+  const maxAge = Math.max(14, ...finiteAges); // 最低 14 日スケール
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {items.map(({ row, age, fresh }) => {
+        const fm = FRESHNESS_META[fresh];
+        const ratio = age === null ? 0 : Math.min(1, age / maxAge);
+        return (
+          <div
+            key={`${row.name}-${row.source}`}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(160px, 22%) 1fr 64px",
+              alignItems: "center",
+              gap: 12,
+              fontSize: 11.5,
+            }}
+          >
+            <div style={{ color: "#cbd5e1", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {row.name}
+            </div>
+            <div style={{ position: "relative", height: 12, background: "rgba(255,255,255,0.04)", borderRadius: 3, overflow: "hidden" }}>
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  bottom: 0,
+                  width: `${Math.max(2, ratio * 100)}%`,
+                  background: fm.dot,
+                  opacity: fresh === "failed" || fresh === "none" ? 0.5 : 0.85,
+                  borderRadius: 3,
+                }}
+              />
+              {fresh === "failed" ? (
+                <span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", fontSize: 9, color: "#fca5a5", fontWeight: 800, letterSpacing: 1 }}>
+                  FAILED
+                </span>
+              ) : null}
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                color: fm.fg,
+                fontFamily: "ui-monospace, SFMono-Regular, monospace",
+                fontWeight: 800,
+                textAlign: "right",
+              }}
+            >
+              {age === null ? (fresh === "failed" ? "—" : "N/A") : `${age}d`}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function AgeHistogram({ rows }: { rows: ToolRow[] }) {
+  // 0, 1, 2, 3-7, 8-14, 15-30, 30+ のバケットに集計
+  const buckets = [
+    { label: "today", min: 0, max: 0 },
+    { label: "1d", min: 1, max: 1 },
+    { label: "2d", min: 2, max: 2 },
+    { label: "3-7d", min: 3, max: 7 },
+    { label: "8-14d", min: 8, max: 14 },
+    { label: "15-30d", min: 15, max: 30 },
+    { label: "30d+", min: 31, max: Infinity },
+  ];
+
+  const counts = buckets.map((b) => {
+    let count = 0;
+    let dominantFresh: Freshness = "fresh";
+    let maxSeverity = -1;
+    for (const row of rows) {
+      const age = getAgeDays(row);
+      if (age === null) continue;
+      if (age >= b.min && age <= b.max) {
+        count++;
+        const f = classifyFreshness(row);
+        const sev = FRESHNESS_ORDER[f];
+        if (sev > maxSeverity && f !== "none") {
+          // 大きい severity 値 = よりFRESH側。低い値が問題側。逆向きに使いたいので min を取る
+        }
+        // 一番厳しい状態 (低い severity 数値) を採用
+        if (maxSeverity === -1 || FRESHNESS_ORDER[f] < maxSeverity) {
+          maxSeverity = FRESHNESS_ORDER[f];
+          dominantFresh = f;
+        }
+      }
+    }
+    return { ...b, count, fresh: dominantFresh };
+  });
+
+  const maxCount = Math.max(1, ...counts.map((c) => c.count));
+  const W = 720;
+  const H = 140;
+  const padL = 10;
+  const padR = 10;
+  const padT = 10;
+  const padB = 28;
+  const barW = (W - padL - padR) / counts.length - 8;
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none" role="img" aria-label="Age distribution histogram">
+      {/* y grid lines */}
+      {[0, 0.5, 1].map((g) => {
+        const y = padT + (1 - g) * (H - padT - padB);
+        return (
+          <line key={g} x1={padL} y1={y} x2={W - padR} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
+        );
+      })}
+      {counts.map((c, idx) => {
+        const fm = FRESHNESS_META[c.fresh];
+        const x = padL + idx * ((W - padL - padR) / counts.length) + 4;
+        const h = c.count === 0 ? 0 : (c.count / maxCount) * (H - padT - padB);
+        const y = H - padB - h;
+        return (
+          <g key={c.label}>
+            {h > 0 ? (
+              <rect x={x} y={y} width={barW} height={h} fill={fm.dot} opacity={0.85} rx={2} />
+            ) : (
+              <rect x={x} y={H - padB - 2} width={barW} height={2} fill="rgba(255,255,255,0.08)" rx={1} />
+            )}
+            {c.count > 0 ? (
+              <text x={x + barW / 2} y={y - 6} textAnchor="middle" fill="#f1f5f9" fontSize={11} fontWeight={800} fontFamily="ui-monospace, SFMono-Regular, monospace">
+                {c.count}
+              </text>
+            ) : null}
+            <text x={x + barW / 2} y={H - padB + 16} textAnchor="middle" fill="#64748b" fontSize={10} fontWeight={700}>
+              {c.label}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function CategoryStackedBar({ rows }: { rows: ToolRow[] }) {
+  const categories: Category[] = ["stocks", "calendars", "disclosures", "yutai", "credit", "reference", "local"];
+  const W = 720;
+  const rowH = 22;
+  const labelW = 130;
+  const H = categories.length * (rowH + 6);
+
+  // 各 category 内の freshness 集計
+  const data = categories.map((cat) => {
+    const catRows = rows.filter((r) => r.category === cat);
+    const breakdown: Record<Freshness, number> = { fresh: 0, recent: 0, stale: 0, failed: 0, none: 0 };
+    for (const r of catRows) breakdown[classifyFreshness(r)]++;
+    return { cat, total: catRows.length, breakdown };
+  });
+  const maxTotal = Math.max(1, ...data.map((d) => d.total));
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} role="img" aria-label="Category breakdown stacked bar">
+      {data.map((d, idx) => {
+        const y = idx * (rowH + 6);
+        const fullW = W - labelW - 60;
+        const scale = (d.total / maxTotal) * fullW;
+        let acc = 0;
+        const order: Freshness[] = ["fresh", "recent", "stale", "failed", "none"];
+        return (
+          <g key={d.cat}>
+            <text x={labelW - 10} y={y + rowH / 2 + 4} textAnchor="end" fill="#cbd5e1" fontSize={11.5} fontWeight={700}>
+              {CATEGORY_META[d.cat].label}
+            </text>
+            <rect x={labelW} y={y} width={fullW} height={rowH} fill="rgba(255,255,255,0.03)" rx={4} />
+            {order.map((f) => {
+              const v = d.breakdown[f];
+              if (v === 0) return null;
+              const w = (v / d.total) * scale;
+              const x = labelW + acc;
+              acc += w;
+              return (
+                <rect key={f} x={x} y={y} width={w} height={rowH} fill={FRESHNESS_META[f].dot} opacity={0.85} />
+              );
+            })}
+            <text x={labelW + scale + 8} y={y + rowH / 2 + 4} fill="#64748b" fontSize={11} fontWeight={800} fontFamily="ui-monospace, SFMono-Regular, monospace">
+              {d.total}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
   );
 }
 
@@ -413,16 +681,11 @@ export default async function AdminPage() {
   const staleCount = dynamicRows.filter((r) => classifyFreshness(r) === "stale").length;
   const failedCount = dynamicRows.filter((r) => classifyFreshness(r) === "failed").length;
 
-  const categories: Category[] = ["stocks", "calendars", "disclosures", "yutai", "credit", "reference", "local"];
-
   return (
     <>
       <style>{`
-        .admin-card:hover {
-          transform: translateY(-3px);
-          border-color: rgba(99, 102, 241, 0.45) !important;
-          background: linear-gradient(180deg, rgba(99,102,241,0.08) 0%, rgba(255,255,255,0.02) 100%) !important;
-        }
+        .admin-row { transition: background 0.12s ease; }
+        .admin-row:hover { background: rgba(99,102,241,0.06); }
         .admin-pc { display: block; }
         .admin-mobile { display: none; }
         @media (max-width: 820px) {
@@ -433,132 +696,317 @@ export default async function AdminPage() {
 
       <div className="admin-pc" style={pageBg}>
 
-      <main style={{ maxWidth: 1360, margin: "0 auto", padding: "40px 32px 0" }}>
-        {/* Hero */}
-        <header style={{ marginBottom: 36 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <main style={{ maxWidth: 1440, margin: "0 auto", padding: "28px 28px 0" }}>
+        {/* Compact Hero */}
+        <header style={{ marginBottom: 22 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 8,
-                  padding: "7px 14px",
-                  borderRadius: 999,
-                  background: "rgba(99,102,241,0.14)",
+                  gap: 7,
+                  padding: "5px 11px",
+                  borderRadius: 6,
+                  background: "rgba(99,102,241,0.12)",
                   color: "#a5b4fc",
-                  border: "1px solid rgba(99,102,241,0.35)",
-                  fontSize: 11,
+                  border: "1px solid rgba(99,102,241,0.30)",
+                  fontSize: 10,
                   fontWeight: 800,
                   letterSpacing: 1.4,
                 }}
               >
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", boxShadow: "0 0 10px #10b981" }} />
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981", boxShadow: "0 0 8px #10b981" }} />
                 ADMIN · NOINDEX
               </span>
               <Link
                 href="/premium"
                 style={{
-                  fontSize: 12,
+                  fontSize: 11,
                   color: "#94a3b8",
                   textDecoration: "none",
-                  padding: "6px 12px",
-                  borderRadius: 999,
+                  padding: "5px 10px",
+                  borderRadius: 6,
                   border: "1px solid rgba(255,255,255,0.08)",
                 }}
               >
-                ← /premium に戻る
+                ← /premium
               </Link>
             </div>
-            <div style={{ fontSize: 12, color: "#94a3b8", fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>
-              {nowIso}
+            <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 11, color: "#64748b", fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>
+              <span>API <span style={{ color: "#cbd5e1" }}>{apiBase || "(未設定)"}</span></span>
+              <span>·</span>
+              <span>NOW {nowIso}</span>
             </div>
           </div>
 
           <h1
             style={{
-              margin: "0 0 10px",
-              fontSize: 44,
+              margin: 0,
+              fontSize: 26,
               fontWeight: 900,
-              letterSpacing: -1.6,
-              lineHeight: 1.05,
-              background: "linear-gradient(135deg, #f8fafc 0%, #a5b4fc 60%, #60a5fa 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
+              letterSpacing: -0.6,
+              color: "#f1f5f9",
+              lineHeight: 1.15,
             }}
           >
             Data Update Dashboard
+            <span style={{ marginLeft: 12, fontSize: 12, color: "#64748b", fontWeight: 600, letterSpacing: 0 }}>
+              tracking {totalDynamic} sources · {rows.length} tools total
+            </span>
           </h1>
-          <p style={{ margin: 0, fontSize: 14, color: "#94a3b8", lineHeight: 1.7, maxWidth: 720 }}>
-            各ツールのデータソース・更新ルール・最終更新日を一望できる管理画面。
-            API <code style={{ color: "#cbd5e1" }}>{apiBase || "(未設定)"}</code> の manifest を並列取得しています。
-          </p>
         </header>
 
-        {/* Stats */}
-        <section
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: 16,
-            marginBottom: 40,
-          }}
-        >
-          <StatCard
-            label="TRACKED SOURCES"
-            value={totalDynamic}
-            sub="動的取得しているデータソース数"
-            accent="#6366f1"
-          />
-          <StatCard
-            label="FRESH (≤ 2日)"
-            value={freshCount}
-            sub="最新営業日近辺で更新済み"
-            accent="#10b981"
-          />
-          <StatCard
-            label="STALE (> 7日)"
-            value={staleCount}
-            sub="1週間以上更新が止まっている"
-            accent="#f59e0b"
-          />
-          <StatCard
-            label="FAILED"
-            value={failedCount}
-            sub="API 取得失敗 / 未設定"
-            accent="#ef4444"
-          />
+        {/* KPI strip */}
+        <section style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
+          <KpiPill label="TRACKED" value={totalDynamic} accent="#6366f1" />
+          <KpiPill label="FRESH" value={freshCount} accent="#10b981" total={totalDynamic} />
+          <KpiPill label="RECENT" value={dynamicRows.filter((r) => classifyFreshness(r) === "recent").length} accent="#3b82f6" total={totalDynamic} />
+          <KpiPill label="STALE" value={staleCount} accent="#f59e0b" total={totalDynamic} />
+          <KpiPill label="FAILED" value={failedCount} accent="#ef4444" total={totalDynamic} />
         </section>
 
-        {/* Sections */}
-        {categories.map((cat) => {
-          const catRows = rows.filter((r) => r.category === cat);
-          if (catRows.length === 0) return null;
-          return <CategorySection key={cat} category={cat} rows={catRows} />;
-        })}
+        {/* Analytics row: Donut + Age bar list */}
+        <section style={{ display: "grid", gridTemplateColumns: "minmax(320px, 380px) 1fr", gap: 16, marginBottom: 16 }}>
+          {/* Donut panel */}
+          <div
+            style={{
+              background: "rgba(255,255,255,0.015)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: 12,
+              padding: "18px 18px 16px",
+            }}
+          >
+            <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 800, letterSpacing: 1, marginBottom: 14 }}>
+              STATUS DISTRIBUTION
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+              <DonutChart
+                total={totalDynamic}
+                data={(["fresh", "recent", "stale", "failed"] as Freshness[]).map((f) => ({
+                  freshness: f,
+                  count: dynamicRows.filter((r) => classifyFreshness(r) === f).length,
+                }))}
+              />
+              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8, flex: 1 }}>
+                {(["fresh", "recent", "stale", "failed", "none"] as Freshness[]).map((f) => {
+                  const count = f === "none"
+                    ? rows.filter((r) => r.latest === undefined).length
+                    : dynamicRows.filter((r) => classifyFreshness(r) === f).length;
+                  const denom = f === "none" ? rows.length : totalDynamic;
+                  const pct = denom > 0 ? Math.round((count / denom) * 100) : 0;
+                  const fm = FRESHNESS_META[f];
+                  return (
+                    <li key={f} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 2, background: fm.dot }} />
+                      <span style={{ fontSize: 11, fontWeight: 800, color: "#cbd5e1", letterSpacing: 0.4, flex: 1 }}>
+                        {fm.label}
+                      </span>
+                      <span style={{ fontSize: 13, fontWeight: 900, color: "#f1f5f9", fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>
+                        {count}
+                      </span>
+                      <span style={{ fontSize: 10, color: "#64748b", fontWeight: 700, fontFamily: "ui-monospace, SFMono-Regular, monospace", width: 32, textAlign: "right" }}>
+                        {pct}%
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+
+          {/* Age bar list panel */}
+          <div
+            style={{
+              background: "rgba(255,255,255,0.015)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: 12,
+              padding: "18px 20px 18px",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
+              <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 800, letterSpacing: 1 }}>
+                SOURCES BY AGE (oldest first)
+              </div>
+              <div style={{ fontSize: 10, color: "#64748b" }}>
+                bar = age days (scale: 14d min)
+              </div>
+            </div>
+            <AgeBarList rows={rows} />
+          </div>
+        </section>
+
+        {/* Charts row: Histogram + Category breakdown */}
+        <section style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+          <div
+            style={{
+              background: "rgba(255,255,255,0.015)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: 12,
+              padding: "18px 20px",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
+              <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 800, letterSpacing: 1 }}>
+                AGE DISTRIBUTION
+              </div>
+              <div style={{ fontSize: 10, color: "#64748b" }}>
+                bucket color = worst severity in bucket
+              </div>
+            </div>
+            <AgeHistogram rows={rows} />
+          </div>
+
+          <div
+            style={{
+              background: "rgba(255,255,255,0.015)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: 12,
+              padding: "18px 20px",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
+              <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 800, letterSpacing: 1 }}>
+                CATEGORY × STATUS
+              </div>
+              <div style={{ fontSize: 10, color: "#64748b" }}>
+                stacked bar per category
+              </div>
+            </div>
+            <CategoryStackedBar rows={rows} />
+          </div>
+        </section>
+
+        {/* Table panel */}
+        <section
+          style={{
+            background: "rgba(255,255,255,0.015)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            borderRadius: 12,
+            overflow: "hidden",
+            marginBottom: 18,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "12px 16px",
+              borderBottom: "1px solid rgba(255,255,255,0.06)",
+              background: "rgba(255,255,255,0.02)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: "#f1f5f9", letterSpacing: -0.2 }}>
+                All Data Sources
+              </span>
+              <span style={{ fontSize: 10, color: "#64748b", fontWeight: 700, letterSpacing: 0.5 }}>
+                sorted by severity (FAILED → STALE → RECENT → FRESH → N/A) then age desc
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: 12, fontSize: 10, color: "#64748b" }}>
+              {(["fresh", "recent", "stale", "failed", "none"] as Freshness[]).map((f) => (
+                <span key={f} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: FRESHNESS_META[f].dot }} />
+                  {FRESHNESS_META[f].label}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, tableLayout: "fixed", minWidth: 1100 }}>
+              <colgroup>
+                <col style={{ width: 4 }} />
+                <col style={{ width: 110 }} />
+                <col style={{ width: 130 }} />
+                <col style={{ width: 280 }} />
+                <col style={{ width: 170 }} />
+                <col />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th style={{ ...tableCellHead, padding: 0 }} aria-hidden />
+                  <th style={tableCellHead}>STATUS</th>
+                  <th style={tableCellHead}>CATEGORY</th>
+                  <th style={tableCellHead}>DATA SOURCE</th>
+                  <th style={tableCellHead}>LAST UPDATE / AGE</th>
+                  <th style={tableCellHead}>OPERATION RULE</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortRowsForAnalysis(rows).map((row) => {
+                  const fresh = classifyFreshness(row);
+                  const fm = FRESHNESS_META[fresh];
+                  const ageDays = getAgeDays(row);
+                  return (
+                    <tr key={`${row.name}-${row.href}-${row.source}`} className="admin-row">
+                      <td style={{ padding: 0, background: fm.dot, opacity: fresh === "none" ? 0.25 : 0.85 }} />
+                      <td style={tableCell}>
+                        <StatusPill row={row} />
+                      </td>
+                      <td style={tableCell}>
+                        <CategoryTag category={row.category} />
+                      </td>
+                      <td style={tableCell}>
+                        <Link
+                          href={row.href}
+                          style={{ display: "block", fontSize: 13, fontWeight: 800, color: "#f1f5f9", textDecoration: "none", letterSpacing: -0.2, marginBottom: 3 }}
+                        >
+                          {row.name}
+                        </Link>
+                        <code style={{ fontSize: 11, color: "#94a3b8", fontFamily: "ui-monospace, SFMono-Regular, monospace", wordBreak: "break-all" }}>
+                          {row.source}
+                        </code>
+                      </td>
+                      <td style={tableCell}>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+                          <span
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 800,
+                              color: fm.fg,
+                              fontFamily: "ui-monospace, SFMono-Regular, monospace",
+                              letterSpacing: -0.2,
+                            }}
+                          >
+                            {formatLatest(row.latest)}
+                          </span>
+                        </div>
+                        <div style={{ marginTop: 4, fontSize: 10, color: "#64748b", fontFamily: "ui-monospace, SFMono-Regular, monospace", letterSpacing: 0.4 }}>
+                          AGE {formatAge(ageDays)}
+                        </div>
+                      </td>
+                      <td style={{ ...tableCell, color: "#cbd5e1", fontSize: 12, lineHeight: 1.6 }}>
+                        {row.rule}
+                        {row.note ? (
+                          <div style={{ marginTop: 4, fontSize: 10.5, color: "#fbbf24" }}>※ {row.note}</div>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         {/* Footer */}
         <footer
           style={{
-            marginTop: 24,
-            paddingTop: 24,
-            borderTop: "1px solid rgba(255,255,255,0.06)",
             fontSize: 11,
             color: "#64748b",
             lineHeight: 1.8,
+            padding: "12px 4px 24px",
           }}
         >
-          <div style={{ display: "flex", gap: 18, flexWrap: "wrap", marginBottom: 8 }}>
-            <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#10b981", marginRight: 6 }} />FRESH = 2日以内</span>
-            <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#3b82f6", marginRight: 6 }} />RECENT = 7日以内</span>
-            <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#f59e0b", marginRight: 6 }} />STALE = 8日以上</span>
-            <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#ef4444", marginRight: 6 }} />FAILED = 取得不可</span>
-            <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#64748b", marginRight: 6 }} />N/A = ローカル保存のみ</span>
+          <div style={{ marginBottom: 4 }}>
+            FRESH ≤ 2日 · RECENT ≤ 7日 · STALE &gt; 7日 · FAILED = 取得不可 · N/A = ローカル保存のみ。
+            判定は YYYY-MM-DD ベースで現在時刻 (UTC) と単純差分で計算。
           </div>
-          <div>判定は YYYY-MM-DD ベースで現在時刻 (UTC) と比較。週末や祝日はオフセットせず単純差分で計算。</div>
-          <div style={{ marginTop: 6 }}>
-            更新ルールの出典: market_info repo の docs/operations/monthly_operations.md / docs/reference/policy_decision_rules.md / docs/reference/policy_decision_log.md / docs/reference/publish_contract_inventory.md / docs/reference/cli_inventory.md
+          <div>
+            出典: market_info repo の docs/operations/monthly_operations.md / docs/reference/policy_decision_rules.md / policy_decision_log.md / publish_contract_inventory.md / cli_inventory.md
           </div>
         </footer>
       </main>
