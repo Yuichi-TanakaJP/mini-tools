@@ -61,9 +61,15 @@
 - **manifest を 1 分キャッシュ**: 管理画面でこの鮮度は過剰。市場データ自体が日次以上のサイクル
 - **admin 側で日次スナップショットを永続化して履歴を伸ばす**: 実装コスト > 価値。必要になったら market_info 側 manifest に `dates[]` を生やしてもらう方が筋が良い
 
+## Codex review 指摘で確定した方針
+
+PR #315 の Codex review (review-medium) で 2 件 P2 指摘を受け、当日中に対応:
+
+- **`dynamic = "force-dynamic"` は付けない**: cookies() を読むだけで自動的に動的扱いになるため不要。付けると `fetch` の `next.revalidate` が no-store 化されて Data Cache が機能せず、リロード / タブ切替のたびに market_info を叩いてしまう。
+- **age 判定は JST 固定**: ソースの schedule は JST 前提なので、age 計算も JST で行う。UTC で計算すると 00:00-08:59 JST の間に 1 日分若く出てしまい、SLA breach を見逃す。`Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" })` で今日の JST 日付を取得して差分する。
+
 ## 今後の課題 / TODO
 
 - 信用 (日興/SBI) / TDNet / JPX 祝日 / yutai / 月次系は manifest に履歴がないため heatmap で 1 点表示。market_info 側で `dates[]` を生やすか、admin 側スナップショット運用に踏み切るかは未決
 - weekly-task の "期待更新日" は heatmap 上では便宜的に金曜にマークしている。実 publish 曜日を market_info docs から決め打ちすべき
 - 米国株ランキング・EDINET・TDNET の運用は要確認 (今は ad-hoc 扱い)
-- Schedule view の "TODAY" が日本時間でなく UTC 起点なので、深夜 0-9 時の表示がずれる可能性。JST 化を検討

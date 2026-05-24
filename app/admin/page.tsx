@@ -13,7 +13,10 @@ export const metadata: Metadata = {
   alternates: { canonical: "/admin" },
 };
 
-export const dynamic = "force-dynamic";
+// `dynamic = "force-dynamic"` は付けない:
+// このページは cookies() を読むため自動的に動的レンダリング扱いになる。
+// 一方 force-dynamic を付けると fetch の next.revalidate が事実上 no-store 化されて
+// Data Cache が効かなくなり、リロード / タブ切替のたびに全 manifest を再取得してしまう。
 
 // ============== Types ==============
 
@@ -192,11 +195,24 @@ function classifyFreshness(row: ToolRow): Freshness {
   return "stale";
 }
 
+/** JST (Asia/Tokyo) 基準で YYYY-MM-DD を返す */
+function jstDateString(date: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
 function getAgeDays(row: ToolRow): number | null {
   if (!row.latest) return null;
-  const t = Date.parse(`${row.latest.slice(0, 10)}T00:00:00Z`);
-  if (Number.isNaN(t)) return null;
-  return Math.max(0, Math.floor((Date.now() - t) / 86_400_000));
+  const latestDate = row.latest.slice(0, 10);
+  const todayJst = jstDateString();
+  const t1 = Date.parse(`${latestDate}T00:00:00Z`);
+  const t2 = Date.parse(`${todayJst}T00:00:00Z`);
+  if (Number.isNaN(t1) || Number.isNaN(t2)) return null;
+  return Math.max(0, Math.round((t2 - t1) / 86_400_000));
 }
 
 function formatAge(days: number | null): string {
@@ -435,8 +451,9 @@ function SlaStat({ label, value, sub, color }: { label: string; value: string; s
 
 function HeatmapView({ rows }: { rows: ToolRow[] }) {
   const DAYS = 14;
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
+  // JST 基準で今日 00:00 を起点にする
+  const todayJst = jstDateString();
+  const today = new Date(`${todayJst}T00:00:00Z`);
 
   const days: { date: string; dow: number; dom: number; month: number }[] = [];
   for (let i = DAYS - 1; i >= 0; i--) {
@@ -548,7 +565,8 @@ function HeatmapView({ rows }: { rows: ToolRow[] }) {
 // ============== View C: Weekly Schedule ==============
 
 function ScheduleView({ rows }: { rows: ToolRow[] }) {
-  const today = new Date();
+  const todayJst = jstDateString();
+  const today = new Date(`${todayJst}T00:00:00Z`);
   const todayDow = today.getUTCDay();
   const dayLabels = ["日","月","火","水","木","金","土"];
 
@@ -576,7 +594,7 @@ function ScheduleView({ rows }: { rows: ToolRow[] }) {
   return (
     <div style={{ display: "grid", gap: 16 }}>
       {/* Today */}
-      <Panel title={`TODAY · ${today.toISOString().slice(0, 10)} (${dayLabels[todayDow]})`} sub="今日 fire するスケジュール">
+      <Panel title={`TODAY · ${todayJst} (${dayLabels[todayDow]}) JST`} sub="今日 fire するスケジュール">
         <div style={{ display: "grid", gap: 8 }}>
           {daily.map((r) => <ScheduleItem key={r.source} row={r} when="毎日 00:35 JST" />)}
           {weekly[todayDow].map((r) => <ScheduleItem key={r.source} row={r} when={`${dayLabels[todayDow]}曜朝 (週次)`} />)}
