@@ -92,6 +92,63 @@ export default function ScanPocPage() {
         確認用のため、本番の追加フォームとは繋がっていません。
       </p>
 
+      <div
+        style={{
+          padding: 12,
+          background: "#fffbeb",
+          border: "1px solid #fde68a",
+          borderRadius: 6,
+          fontSize: 13,
+          lineHeight: 1.6,
+          marginBottom: 16,
+        }}
+      >
+        <strong>⚠️ 送信前に確認</strong>
+        <ul style={{ margin: "6px 0 0 18px", padding: 0 }}>
+          <li>
+            Gemini API の無料枠は、送信画像と生成結果が Google のサービス改善・モデル学習に使われる可能性があります（
+            <a
+              href="https://ai.google.dev/gemini-api/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              公式 terms
+            </a>
+            ）。
+          </li>
+          <li>
+            検証時は <b>氏名 / 会員番号 / QR / バーコード / 住所 / メール本文</b>
+             などをマスクするか、ダミー画像で試してください。
+          </li>
+          <li>Billing は有効化しない（無料枠内に留める）。</li>
+        </ul>
+      </div>
+
+      <details
+        style={{
+          padding: 10,
+          background: "#f9fafb",
+          border: "1px solid #e5e7eb",
+          borderRadius: 6,
+          fontSize: 13,
+          marginBottom: 16,
+        }}
+      >
+        <summary style={{ cursor: "pointer", fontWeight: 500 }}>
+          精度評価のチェック観点
+        </summary>
+        <ul style={{ margin: "8px 0 0 18px", padding: 0, lineHeight: 1.7 }}>
+          <li>期限日（YYYY-MM-DD で正しく取れたか）</li>
+          <li>会社名</li>
+          <li>券種 / 優待名</li>
+          <li>金額 / 枚数</li>
+          <li>注意書きを誤って金額等に混入させていないか</li>
+        </ul>
+        <p style={{ margin: "8px 0 0", color: "#666" }}>
+          外したフィールドをメモしておくと、プロンプト調整やモデル変更の判断材料になります。
+        </p>
+      </details>
+
       <label
         style={{
           display: "inline-block",

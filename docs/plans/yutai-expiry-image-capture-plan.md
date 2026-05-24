@@ -82,12 +82,46 @@
 - 追加: Gemini API キーの環境変数（`.env.example` にキー名のみ追加）
 - 既存の保存処理・データ shape は変更しない
 
+## 既知の制約・注意事項
+
+### データ利用懸念（重要）
+
+Gemini API の **無料枠（Unpaid Services）では、送信内容と生成結果が Google のサービス改善・モデル学習に使われる** ことが [公式 terms](https://ai.google.dev/gemini-api/terms) に明記されている。
+
+- 優待券には氏名・会員番号・QR・バーコード・住所などの個人情報が含まれることが多いため、**そのまま無料枠に送信するのは不適切**
+- 検証段階では、個人情報・QR・バーコードをマスクした画像 or ダミー画像のみを使う
+- Phase 2 以降で実運用する場合は、次のいずれかの方針を選ぶ必要がある:
+  - (a) クライアント側で個人情報部分を検出・マスクしてから送信する
+  - (b) 課金プロジェクトに切り替えて従量課金 Tier を使う（学習に使われない）
+  - (c) 画像を送らず、ユーザーが手入力した文字列のみを Gemini に渡すハイブリッド方式に切り替える
+
+### Billing / 料金
+
+- Free Tier 内（Flash-Lite で 1,000 req/日）に留めれば無料
+- 課金プロジェクトに切り替えると従量課金の対象。誤って billing 有効化しないよう注意
+- Billing を有効化する場合は予算アラート + API key のリファラ制限を必ず設定する
+
+### `getUserMedia` の secure context 制約
+
+- `getUserMedia` は **HTTPS or localhost のみで動作**
+- スマホから PC の dev server に `http://<PCのIP>:3000` 経由でアクセスすると Chrome の secure context 制限で動かない
+- Phase 2 で `getUserMedia` に置き換えるなら、次のどちらかが必要:
+  - `next dev --experimental-https` で開発サーバを HTTPS 化
+  - Vercel Preview など HTTPS ホスティングにデプロイして確認
+- 現 Phase 1 PoC は `<input type="file" capture="environment">` を採用しているため、http の IP アクセスでも動く
+
 ## 未決事項
 
-- **Gemini API key の置き場所**: クライアントから直接叩くと key が露出するため、Next.js の API route で proxy する設計が妥当か検証する（Phase 1 で確定させる）
+- **個人情報マスク方針**: 手動マスクで運用するか、自動マスク（Canvas で塗りつぶし UI 等）を Phase 2 で実装するか
 - **画像の保存有無**: 撮影画像をローカルに保存するか、その場で破棄するか（プライバシー観点で破棄が無難）
 - **無料枠を超えた場合の挙動**: 1 日 1,000 リクエストを超えたときのエラー表示と、手入力フォールバックの導線
 - **PWA 化の優先度**: Android Chrome の「ホーム画面に追加」を前提にするか、当面はブラウザ UI のままにするか
+
+### 確定事項（Phase 1 で決まったこと）
+
+- **API key の置き場所**: Next.js の server route で proxy。クライアントには露出させない（採用済み）
+- **PoC エンドポイントの公開制御**: `YUTAI_SCAN_POC_ENABLED=1` の明示フラグでのみ有効化。未設定時は 404 を返して存在を伏せる（Codex review P1 対応）
+- **PoC の撮影 I/F**: `<input capture>` を採用。secure context 制限を回避でき、Android Chrome で標準カメラが直接起動する
 
 ## 関連
 
