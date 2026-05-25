@@ -34,7 +34,7 @@ export default function LoginForm() {
   const nextPath = getSafeNextPath(searchParams.get("next"));
 
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; kind: "auth" | "config" | "network" } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -52,15 +52,16 @@ export default function LoginForm() {
       });
 
       if (!response.ok) {
-        const data = (await response.json()) as { error?: string };
-        setError(data.error ?? "ログインに失敗しました。");
+        const data = (await response.json()) as { error?: string; code?: string };
+        const kind = data.code === "not_configured" ? "config" : "auth";
+        setError({ message: data.error ?? "ログインに失敗しました。", kind });
         return;
       }
 
       router.push(nextPath);
       router.refresh();
     } catch {
-      setError("通信に失敗しました。時間をおいて再度お試しください。");
+      setError({ message: "通信に失敗しました。時間をおいて再度お試しください。", kind: "network" });
     } finally {
       setIsSubmitting(false);
     }
@@ -104,18 +105,35 @@ export default function LoginForm() {
       />
 
       {error ? (
-        <div
-          style={{
-            borderRadius: 12,
-            background: "#fef2f2",
-            border: "1px solid #fecaca",
-            color: "#991b1b",
-            padding: "10px 12px",
-            fontSize: 13,
-          }}
-        >
-          {error}
-        </div>
+        error.kind === "config" ? (
+          <div
+            style={{
+              borderRadius: 12,
+              background: "#fffbeb",
+              border: "1px solid #fcd34d",
+              color: "#78350f",
+              padding: "12px 14px",
+              fontSize: 13,
+              lineHeight: 1.6,
+            }}
+          >
+            <div style={{ fontWeight: 800, marginBottom: 4 }}>⚙ サーバー設定が未完了</div>
+            <div>{error.message}</div>
+          </div>
+        ) : (
+          <div
+            style={{
+              borderRadius: 12,
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              color: "#991b1b",
+              padding: "10px 12px",
+              fontSize: 13,
+            }}
+          >
+            {error.message}
+          </div>
+        )
       ) : null}
 
       <button
