@@ -10,8 +10,11 @@ import {
 export async function POST(request: Request) {
   if (!isPremiumAuthConfigured()) {
     return NextResponse.json(
-      { error: "PREMIUM_ACCESS_PASSWORD / PREMIUM_ACCESS_SECRET が未設定です。" },
-      { status: 500 }
+      {
+        error: "サーバー側で premium 認証が有効化されていません。PREMIUM_ACCESS_PASSWORD / PREMIUM_ACCESS_SECRET を Vercel の環境変数に設定してください。",
+        code: "not_configured",
+      },
+      { status: 503 }
     );
   }
 
