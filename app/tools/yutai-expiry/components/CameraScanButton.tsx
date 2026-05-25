@@ -42,13 +42,12 @@ export default function CameraScanButton({
         disabled={busy}
         onClick={() => fileRef.current?.click()}
       >
-        {busy ? "解析中…" : "📷 カメラで追加"}
+        {busy ? "解析中…" : "🖼️ 画像から追加"}
       </button>
       <input
         ref={fileRef}
         type="file"
         accept="image/*"
-        capture="environment"
         style={{ display: "none" }}
         onChange={(e) => {
           const f = e.target.files?.[0];
