@@ -927,11 +927,20 @@ export default function ToolClient({ scanEnabled = false }: Props) {
             </button>
 
             {scanEnabled && (
-              <CameraScanButton
-                className={`${styles.controlShell} ${styles.addBtnDesktop}`}
-                onResult={openAddFromScan}
-                onError={(m) => setToast(m)}
-              />
+              <>
+                <CameraScanButton
+                  mode="camera"
+                  className={`${styles.controlShell} ${styles.addBtnDesktop}`}
+                  onResult={openAddFromScan}
+                  onError={(m) => setToast(m)}
+                />
+                <CameraScanButton
+                  mode="gallery"
+                  className={`${styles.controlShell} ${styles.addBtnDesktop}`}
+                  onResult={openAddFromScan}
+                  onError={(m) => setToast(m)}
+                />
+              </>
             )}
           </div>
 
@@ -999,11 +1008,20 @@ export default function ToolClient({ scanEnabled = false }: Props) {
             </label>
 
             {scanEnabled && (
-              <CameraScanButton
-                className={`${styles.controlShell} ${styles.mobileToggle}`}
-                onResult={openAddFromScan}
-                onError={(m) => setToast(m)}
-              />
+              <>
+                <CameraScanButton
+                  mode="camera"
+                  className={`${styles.controlShell} ${styles.mobileToggle}`}
+                  onResult={openAddFromScan}
+                  onError={(m) => setToast(m)}
+                />
+                <CameraScanButton
+                  mode="gallery"
+                  className={`${styles.controlShell} ${styles.mobileToggle}`}
+                  onResult={openAddFromScan}
+                  onError={(m) => setToast(m)}
+                />
+              </>
             )}
           </div>
         </div>
