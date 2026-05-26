@@ -114,6 +114,10 @@ function fmtYen(n: number): string {
   return `¥${Math.round(n).toLocaleString()}`;
 }
 
+function isExpired(it: BenefitItemV2, today: string): boolean {
+  return !!it.expiresOn && it.expiresOn < today;
+}
+
 function remainingText(it: BenefitItemV2): string {
   const rem = it.remaining ?? 0;
   if (it.trackMode === "amount") return `残高 ${fmtYen(rem)}`;
@@ -399,8 +403,7 @@ export default function ToolClient({ scanEnabled = false }: Props) {
       }
 
       if (tab === "overdue") {
-        if (!it.expiresOn) return false;
-        return it.expiresOn < today;
+        return isExpired(it, today);
       }
 
       // all
@@ -447,11 +450,7 @@ export default function ToolClient({ scanEnabled = false }: Props) {
 
   const overdueCount = useMemo(() => {
     const today = todayISODate();
-    return items.filter((it) => {
-      if (it.isUsed) return false;
-      if (!it.expiresOn) return false;
-      return it.expiresOn < today;
-    }).length;
+    return items.filter((it) => !it.isUsed && isExpired(it, today)).length;
   }, [items]);
 
   const noExpiryCount = useMemo(() => {
@@ -459,10 +458,11 @@ export default function ToolClient({ scanEnabled = false }: Props) {
   }, [items]);
 
   const unusedTotalYen = useMemo(() => {
-    return items.reduce(
-      (sum, it) => (it.isUsed ? sum : sum + itemValueYen(it)),
-      0
-    );
+    const today = todayISODate();
+    return items.reduce((sum, it) => {
+      if (it.isUsed || isExpired(it, today)) return sum;
+      return sum + itemValueYen(it);
+    }, 0);
   }, [items]);
 
   const expiringThisMonthYen = useMemo(() => {
@@ -472,6 +472,14 @@ export default function ToolClient({ scanEnabled = false }: Props) {
       return sum + itemValueYen(it);
     }, 0);
   }, [items, now]);
+
+  const expiredTotalYen = useMemo(() => {
+    const today = todayISODate();
+    return items.reduce((sum, it) => {
+      if (it.isUsed || !isExpired(it, today)) return sum;
+      return sum + itemValueYen(it);
+    }, 0);
+  }, [items]);
 
   // --- actions ---
   function openAdd() {
@@ -779,6 +787,13 @@ export default function ToolClient({ scanEnabled = false }: Props) {
               {fmtYen(expiringThisMonthYen)}
             </strong>
             <span className={styles.statHint}>{formatMonthLabel(now)}に期限切れ</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statLabel}>これまでの失効金額</span>
+            <strong className={styles.statValueYen} suppressHydrationWarning>
+              {fmtYen(expiredTotalYen)}
+            </strong>
+            <span className={styles.statHint}>未使用のまま期限切れ</span>
           </div>
         </div>
       </section>
