@@ -119,6 +119,33 @@ function isExpired(it: BenefitItemV2, today: string): boolean {
   return !!it.expiresOn && it.expiresOn < today;
 }
 
+function StatTile({
+  label,
+  value,
+  variant = "yen",
+  positive = false,
+}: {
+  label: string;
+  value: React.ReactNode;
+  variant?: "yen" | "num";
+  positive?: boolean;
+}) {
+  const valueClass = [
+    variant === "num" ? styles.statTileValueNum : styles.statTileValue,
+    positive ? styles.statTileValuePositive : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return (
+    <div className={styles.statTile}>
+      <span className={styles.statTileLabel}>{label}</span>
+      <strong className={valueClass} suppressHydrationWarning>
+        {value}
+      </strong>
+    </div>
+  );
+}
+
 function remainingText(it: BenefitItemV2): string {
   const rem = it.remaining ?? 0;
   if (it.trackMode === "amount") return `残高 ${fmtYen(rem)}`;
@@ -757,58 +784,27 @@ export default function ToolClient({ scanEnabled = false }: Props) {
           </p>
         </div>
 
-        <div className={styles.heroStats}>
-          <div className={styles.statCard}>
-            <span className={styles.statLabel}>今月の未使用</span>
-            <strong className={styles.statValue} suppressHydrationWarning>
-              {thisMonthCount}
-            </strong>
-            <span className={styles.statHint}>{formatMonthLabel(now)}に使う候補</span>
-          </div>
-          <div className={styles.statCard}>
-            <span className={styles.statLabel}>期限切れ注意</span>
-            <strong className={styles.statValue} suppressHydrationWarning>
-              {overdueCount}
-            </strong>
-            <span className={styles.statHint}>未使用の期限切れ分</span>
-          </div>
-          <div className={styles.statCard}>
-            <span className={styles.statLabel}>期限未設定</span>
-            <strong className={styles.statValue} suppressHydrationWarning>
-              {noExpiryCount}
-            </strong>
-            <span className={styles.statHint}>あとで整理したい優待</span>
-          </div>
-          <div className={styles.statCard}>
-            <span className={styles.statLabel}>未使用合計額</span>
-            <strong className={styles.statValueYen} suppressHydrationWarning>
+        <div className={styles.statDashboard}>
+          <div className={styles.statDashHeadline}>
+            <span className={styles.statDashHeadlineLabel}>未使用合計額</span>
+            <strong className={styles.statDashHeadlineValue} suppressHydrationWarning>
               {fmtYen(unusedTotalYen)}
             </strong>
-            <span className={styles.statHint}>残っている優待の額面合計</span>
+            <span className={styles.statDashHeadlineHint}>残っている優待の額面合計</span>
           </div>
-          <div className={styles.statCard}>
-            <span className={styles.statLabel}>今月失効する金額</span>
-            <strong className={styles.statValueYen} suppressHydrationWarning>
-              {fmtYen(expiringThisMonthYen)}
-            </strong>
-            <span className={styles.statHint}>{formatMonthLabel(now)}に期限切れ</span>
+
+          <div className={styles.statDashRow}>
+            <StatTile label="今月失効" value={fmtYen(expiringThisMonthYen)} />
+            <StatTile label="使った" value={fmtYen(usedTotalYen)} positive />
+            <StatTile label="失効" value={fmtYen(expiredTotalYen)} />
           </div>
-          <div className={styles.statCard}>
-            <span className={styles.statLabel}>これまで使った金額</span>
-            <strong
-              className={`${styles.statValueYen} ${styles.statValueYenPositive}`}
-              suppressHydrationWarning
-            >
-              {fmtYen(usedTotalYen)}
-            </strong>
-            <span className={styles.statHint}>消費した優待の合計</span>
-          </div>
-          <div className={styles.statCard}>
-            <span className={styles.statLabel}>これまでの失効金額</span>
-            <strong className={styles.statValueYen} suppressHydrationWarning>
-              {fmtYen(expiredTotalYen)}
-            </strong>
-            <span className={styles.statHint}>未使用のまま期限切れ</span>
+
+          <div className={styles.statDashDivider} />
+
+          <div className={styles.statDashRow}>
+            <StatTile label="今月の未使用" value={thisMonthCount} variant="num" />
+            <StatTile label="期限切れ" value={overdueCount} variant="num" />
+            <StatTile label="期限未設定" value={noExpiryCount} variant="num" />
           </div>
         </div>
       </section>
