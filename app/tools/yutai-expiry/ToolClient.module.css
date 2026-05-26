@@ -79,9 +79,50 @@
 }
 
 .heroStats {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.statSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.statSectionLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(31, 63, 184, 0.7);
+  text-transform: uppercase;
+}
+
+.statSectionGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px;
+}
+
+.statSectionPair {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.statCardPrimary {
+  background:
+    linear-gradient(135deg, rgba(37, 84, 255, 0.12), rgba(96, 165, 250, 0.08));
+  border-color: rgba(37, 84, 255, 0.2);
+  padding: 22px 24px;
+}
+
+.statValueYenLarge {
+  font-size: clamp(28px, 5vw, 40px);
+  line-height: 1.05;
+  font-weight: 900;
+  color: #1f3fb8;
+  letter-spacing: -0.02em;
 }
 
 .rowActions {
@@ -1032,8 +1073,20 @@
 
 @media (max-width: 879px) {
   .heroStats {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 14px;
+  }
+
+  .statSectionGrid {
+    grid-template-columns: repeat(2, 1fr);
     gap: 10px;
+  }
+
+  .statSectionPair {
+    gap: 10px;
+  }
+
+  .statCardPrimary {
+    padding: 18px 18px;
   }
 
   .statCard {
@@ -1189,6 +1242,11 @@
   }
 
   .heroStats {
+    gap: 12px;
+  }
+
+  .statSectionGrid,
+  .statSectionPair {
     gap: 8px;
   }
 
@@ -1198,8 +1256,16 @@
     gap: 4px;
   }
 
+  .statCardPrimary {
+    padding: 16px 14px;
+  }
+
   .statValue {
     font-size: 22px;
+  }
+
+  .statValueYenLarge {
+    font-size: clamp(26px, 7vw, 32px);
   }
 
   .statHint {
