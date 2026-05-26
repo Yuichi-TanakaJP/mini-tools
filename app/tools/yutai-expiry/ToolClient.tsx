@@ -114,6 +114,10 @@ function fmtYen(n: number): string {
   return `¥${Math.round(n).toLocaleString()}`;
 }
 
+function isExpired(it: BenefitItemV2, today: string): boolean {
+  return !!it.expiresOn && it.expiresOn < today;
+}
+
 function remainingText(it: BenefitItemV2): string {
   const rem = it.remaining ?? 0;
   if (it.trackMode === "amount") return `残高 ${fmtYen(rem)}`;
@@ -399,8 +403,7 @@ export default function ToolClient({ scanEnabled = false }: Props) {
       }
 
       if (tab === "overdue") {
-        if (!it.expiresOn) return false;
-        return it.expiresOn < today;
+        return isExpired(it, today);
       }
 
       // all
@@ -447,11 +450,7 @@ export default function ToolClient({ scanEnabled = false }: Props) {
 
   const overdueCount = useMemo(() => {
     const today = todayISODate();
-    return items.filter((it) => {
-      if (it.isUsed) return false;
-      if (!it.expiresOn) return false;
-      return it.expiresOn < today;
-    }).length;
+    return items.filter((it) => !it.isUsed && isExpired(it, today)).length;
   }, [items]);
 
   const noExpiryCount = useMemo(() => {
@@ -461,8 +460,7 @@ export default function ToolClient({ scanEnabled = false }: Props) {
   const unusedTotalYen = useMemo(() => {
     const today = todayISODate();
     return items.reduce((sum, it) => {
-      if (it.isUsed) return sum;
-      if (it.expiresOn && it.expiresOn < today) return sum;
+      if (it.isUsed || isExpired(it, today)) return sum;
       return sum + itemValueYen(it);
     }, 0);
   }, [items]);
@@ -478,8 +476,7 @@ export default function ToolClient({ scanEnabled = false }: Props) {
   const expiredTotalYen = useMemo(() => {
     const today = todayISODate();
     return items.reduce((sum, it) => {
-      if (it.isUsed || !it.expiresOn) return sum;
-      if (it.expiresOn >= today) return sum;
+      if (it.isUsed || !isExpired(it, today)) return sum;
       return sum + itemValueYen(it);
     }, 0);
   }, [items]);
