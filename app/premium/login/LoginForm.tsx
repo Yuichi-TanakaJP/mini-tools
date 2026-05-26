@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 function getSafeNextPath(rawNextPath: string | null) {
   if (!rawNextPath) return "/premium";
@@ -29,7 +29,6 @@ function getSafeNextPath(rawNextPath: string | null) {
 }
 
 export default function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = getSafeNextPath(searchParams.get("next"));
 
@@ -55,14 +54,19 @@ export default function LoginForm() {
         const data = (await response.json()) as { error?: string; code?: string };
         const kind = data.code === "not_configured" ? "config" : "auth";
         setError({ message: data.error ?? "ログインに失敗しました。", kind });
+        setIsSubmitting(false);
         return;
       }
 
-      router.push(nextPath);
-      router.refresh();
+      // フルナビゲーションで遷移する。
+      // router.push + router.refresh の組み合わせだと、新しい cookie が App Router の
+      // Server Router Cache に反映される前にナビゲーションが走り、最初の遷移で
+      // 「未認証扱い → /premium/login にリダイレクト」になることがあった (要 2 回クリック)。
+      // window.location.assign なら次のリクエストで cookie が確実に送られ 1 クリックで完了する。
+      // 遷移するので isSubmitting はそのまま (ボタンを無効化のまま) にする。
+      window.location.assign(nextPath);
     } catch {
       setError({ message: "通信に失敗しました。時間をおいて再度お試しください。", kind: "network" });
-    } finally {
       setIsSubmitting(false);
     }
   }
