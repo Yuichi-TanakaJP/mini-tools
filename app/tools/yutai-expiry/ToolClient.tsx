@@ -459,10 +459,12 @@ export default function ToolClient({ scanEnabled = false }: Props) {
   }, [items]);
 
   const unusedTotalYen = useMemo(() => {
-    return items.reduce(
-      (sum, it) => (it.isUsed ? sum : sum + itemValueYen(it)),
-      0
-    );
+    const today = todayISODate();
+    return items.reduce((sum, it) => {
+      if (it.isUsed) return sum;
+      if (it.expiresOn && it.expiresOn < today) return sum;
+      return sum + itemValueYen(it);
+    }, 0);
   }, [items]);
 
   const expiringThisMonthYen = useMemo(() => {
@@ -472,6 +474,15 @@ export default function ToolClient({ scanEnabled = false }: Props) {
       return sum + itemValueYen(it);
     }, 0);
   }, [items, now]);
+
+  const expiredTotalYen = useMemo(() => {
+    const today = todayISODate();
+    return items.reduce((sum, it) => {
+      if (it.isUsed || !it.expiresOn) return sum;
+      if (it.expiresOn >= today) return sum;
+      return sum + itemValueYen(it);
+    }, 0);
+  }, [items]);
 
   // --- actions ---
   function openAdd() {
@@ -779,6 +790,13 @@ export default function ToolClient({ scanEnabled = false }: Props) {
               {fmtYen(expiringThisMonthYen)}
             </strong>
             <span className={styles.statHint}>{formatMonthLabel(now)}に期限切れ</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statLabel}>これまでの失効金額</span>
+            <strong className={styles.statValueYen} suppressHydrationWarning>
+              {fmtYen(expiredTotalYen)}
+            </strong>
+            <span className={styles.statHint}>未使用のまま期限切れ</span>
           </div>
         </div>
       </section>
