@@ -27,6 +27,7 @@ import {
   setUsedAll,
   removeHistoryEntry,
   itemValueYen,
+  itemUsedYen,
   TrackMode,
   UsageEntry,
 } from "./benefits/store";
@@ -481,6 +482,10 @@ export default function ToolClient({ scanEnabled = false }: Props) {
     }, 0);
   }, [items]);
 
+  const usedTotalYen = useMemo(() => {
+    return items.reduce((sum, it) => sum + itemUsedYen(it), 0);
+  }, [items]);
+
   // --- actions ---
   function openAdd() {
     setEditMode("add");
@@ -787,6 +792,16 @@ export default function ToolClient({ scanEnabled = false }: Props) {
               {fmtYen(expiringThisMonthYen)}
             </strong>
             <span className={styles.statHint}>{formatMonthLabel(now)}に期限切れ</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statLabel}>これまで使った金額</span>
+            <strong
+              className={`${styles.statValueYen} ${styles.statValueYenPositive}`}
+              suppressHydrationWarning
+            >
+              {fmtYen(usedTotalYen)}
+            </strong>
+            <span className={styles.statHint}>消費した優待の合計</span>
           </div>
           <div className={styles.statCard}>
             <span className={styles.statLabel}>これまでの失効金額</span>

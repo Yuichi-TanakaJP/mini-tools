@@ -146,6 +146,10 @@
   color: #1f3fb8;
 }
 
+.statValueYenPositive {
+  color: var(--color-success);
+}
+
 .statCard {
   display: flex;
   flex-direction: column;

@@ -198,6 +198,17 @@ export function itemValueYen(it: BenefitItemV2): number {
   return Math.max(0, rem) * (it.unitYen ?? 0);
 }
 
+// 履歴から消費分（負デルタ）のみを合計した「使った金額」
+export function itemUsedYen(it: BenefitItemV2): number {
+  return it.history.reduce((sum, e) => {
+    const d =
+      it.trackMode === "amount"
+        ? e.deltaYen ?? 0
+        : (e.deltaQty ?? 0) * (it.unitYen ?? 0);
+    return d < 0 ? sum + -d : sum;
+  }, 0);
+}
+
 function touch(it: BenefitItemV2, entry: UsageEntry): BenefitItemV2 {
   const nowIso = new Date().toISOString();
   const remaining =
