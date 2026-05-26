@@ -757,69 +757,59 @@ export default function ToolClient({ scanEnabled = false }: Props) {
           </p>
         </div>
 
-        <div className={styles.heroStats}>
-          <div className={`${styles.statCard} ${styles.statCardPrimary}`}>
-            <span className={styles.statLabel}>未使用合計額</span>
-            <strong className={styles.statValueYenLarge} suppressHydrationWarning>
+        <div className={styles.statDashboard}>
+          <div className={styles.statDashHeadline}>
+            <span className={styles.statDashHeadlineLabel}>未使用合計額</span>
+            <strong className={styles.statDashHeadlineValue} suppressHydrationWarning>
               {fmtYen(unusedTotalYen)}
             </strong>
-            <span className={styles.statHint}>残っている優待の額面合計</span>
+            <span className={styles.statDashHeadlineHint}>残っている優待の額面合計</span>
           </div>
 
-          <div className={styles.statSection}>
-            <span className={styles.statSectionLabel}>今のアクション</span>
-            <div className={styles.statSectionGrid}>
-              <div className={styles.statCard}>
-                <span className={styles.statLabel}>今月の未使用</span>
-                <strong className={styles.statValue} suppressHydrationWarning>
-                  {thisMonthCount}
-                </strong>
-                <span className={styles.statHint}>{formatMonthLabel(now)}に使う候補</span>
-              </div>
-              <div className={styles.statCard}>
-                <span className={styles.statLabel}>期限切れ注意</span>
-                <strong className={styles.statValue} suppressHydrationWarning>
-                  {overdueCount}
-                </strong>
-                <span className={styles.statHint}>未使用の期限切れ分</span>
-              </div>
-              <div className={styles.statCard}>
-                <span className={styles.statLabel}>期限未設定</span>
-                <strong className={styles.statValue} suppressHydrationWarning>
-                  {noExpiryCount}
-                </strong>
-                <span className={styles.statHint}>あとで整理したい優待</span>
-              </div>
-              <div className={styles.statCard}>
-                <span className={styles.statLabel}>今月失効する金額</span>
-                <strong className={styles.statValueYen} suppressHydrationWarning>
-                  {fmtYen(expiringThisMonthYen)}
-                </strong>
-                <span className={styles.statHint}>{formatMonthLabel(now)}に期限切れ</span>
-              </div>
+          <div className={styles.statDashRow}>
+            <div className={styles.statTile}>
+              <span className={styles.statTileLabel}>今月失効</span>
+              <span className={styles.statTileValue} suppressHydrationWarning>
+                {fmtYen(expiringThisMonthYen)}
+              </span>
+            </div>
+            <div className={styles.statTile}>
+              <span className={styles.statTileLabel}>使った</span>
+              <span
+                className={`${styles.statTileValue} ${styles.statTileValuePositive}`}
+                suppressHydrationWarning
+              >
+                {fmtYen(usedTotalYen)}
+              </span>
+            </div>
+            <div className={styles.statTile}>
+              <span className={styles.statTileLabel}>失効</span>
+              <span className={styles.statTileValue} suppressHydrationWarning>
+                {fmtYen(expiredTotalYen)}
+              </span>
             </div>
           </div>
 
-          <div className={styles.statSection}>
-            <span className={styles.statSectionLabel}>これまでの実績</span>
-            <div className={styles.statSectionPair}>
-              <div className={styles.statCard}>
-                <span className={styles.statLabel}>使った金額</span>
-                <strong
-                  className={`${styles.statValueYen} ${styles.statValueYenPositive}`}
-                  suppressHydrationWarning
-                >
-                  {fmtYen(usedTotalYen)}
-                </strong>
-                <span className={styles.statHint}>消費した優待の合計</span>
-              </div>
-              <div className={styles.statCard}>
-                <span className={styles.statLabel}>失効した金額</span>
-                <strong className={styles.statValueYen} suppressHydrationWarning>
-                  {fmtYen(expiredTotalYen)}
-                </strong>
-                <span className={styles.statHint}>未使用のまま期限切れ</span>
-              </div>
+          <div className={styles.statDashDivider} />
+
+          <div className={styles.statDashRow}>
+            <div className={styles.statTile}>
+              <span className={styles.statTileLabel}>今月の未使用</span>
+              <span className={styles.statTileValueNum} suppressHydrationWarning>
+                {thisMonthCount}
+              </span>
+            </div>
+            <div className={styles.statTile}>
+              <span className={styles.statTileLabel}>期限切れ</span>
+              <span className={styles.statTileValueNum} suppressHydrationWarning>
+                {overdueCount}
+              </span>
+            </div>
+            <div className={styles.statTile}>
+              <span className={styles.statTileLabel}>期限未設定</span>
+              <span className={styles.statTileValueNum} suppressHydrationWarning>
+                {noExpiryCount}
+              </span>
             </div>
           </div>
         </div>
