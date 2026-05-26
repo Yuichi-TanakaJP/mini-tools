@@ -119,6 +119,33 @@ function isExpired(it: BenefitItemV2, today: string): boolean {
   return !!it.expiresOn && it.expiresOn < today;
 }
 
+function StatTile({
+  label,
+  value,
+  variant = "yen",
+  positive = false,
+}: {
+  label: string;
+  value: React.ReactNode;
+  variant?: "yen" | "num";
+  positive?: boolean;
+}) {
+  const valueClass = [
+    variant === "num" ? styles.statTileValueNum : styles.statTileValue,
+    positive ? styles.statTileValuePositive : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return (
+    <div className={styles.statTile}>
+      <span className={styles.statTileLabel}>{label}</span>
+      <strong className={valueClass} suppressHydrationWarning>
+        {value}
+      </strong>
+    </div>
+  );
+}
+
 function remainingText(it: BenefitItemV2): string {
   const rem = it.remaining ?? 0;
   if (it.trackMode === "amount") return `残高 ${fmtYen(rem)}`;
@@ -767,50 +794,17 @@ export default function ToolClient({ scanEnabled = false }: Props) {
           </div>
 
           <div className={styles.statDashRow}>
-            <div className={styles.statTile}>
-              <span className={styles.statTileLabel}>今月失効</span>
-              <span className={styles.statTileValue} suppressHydrationWarning>
-                {fmtYen(expiringThisMonthYen)}
-              </span>
-            </div>
-            <div className={styles.statTile}>
-              <span className={styles.statTileLabel}>使った</span>
-              <span
-                className={`${styles.statTileValue} ${styles.statTileValuePositive}`}
-                suppressHydrationWarning
-              >
-                {fmtYen(usedTotalYen)}
-              </span>
-            </div>
-            <div className={styles.statTile}>
-              <span className={styles.statTileLabel}>失効</span>
-              <span className={styles.statTileValue} suppressHydrationWarning>
-                {fmtYen(expiredTotalYen)}
-              </span>
-            </div>
+            <StatTile label="今月失効" value={fmtYen(expiringThisMonthYen)} />
+            <StatTile label="使った" value={fmtYen(usedTotalYen)} positive />
+            <StatTile label="失効" value={fmtYen(expiredTotalYen)} />
           </div>
 
           <div className={styles.statDashDivider} />
 
           <div className={styles.statDashRow}>
-            <div className={styles.statTile}>
-              <span className={styles.statTileLabel}>今月の未使用</span>
-              <span className={styles.statTileValueNum} suppressHydrationWarning>
-                {thisMonthCount}
-              </span>
-            </div>
-            <div className={styles.statTile}>
-              <span className={styles.statTileLabel}>期限切れ</span>
-              <span className={styles.statTileValueNum} suppressHydrationWarning>
-                {overdueCount}
-              </span>
-            </div>
-            <div className={styles.statTile}>
-              <span className={styles.statTileLabel}>期限未設定</span>
-              <span className={styles.statTileValueNum} suppressHydrationWarning>
-                {noExpiryCount}
-              </span>
-            </div>
+            <StatTile label="今月の未使用" value={thisMonthCount} variant="num" />
+            <StatTile label="期限切れ" value={overdueCount} variant="num" />
+            <StatTile label="期限未設定" value={noExpiryCount} variant="num" />
           </div>
         </div>
       </section>

@@ -1068,27 +1068,8 @@
 
 @media (max-width: 879px) {
   .statDashboard {
-    padding: 18px 18px;
+    padding: 18px;
     gap: 14px;
-  }
-
-  .statCard {
-    padding: 14px 12px;
-    border-radius: 18px;
-  }
-
-  .statLabel {
-    font-size: 10px;
-    letter-spacing: 0.04em;
-  }
-
-  .statValue {
-    font-size: clamp(24px, 5vw, 30px);
-  }
-
-  .statHint {
-    font-size: 11px;
-    line-height: 1.35;
   }
 }
 
