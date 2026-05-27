@@ -347,12 +347,20 @@ function validateDraft(d: Draft): { ok: boolean; message?: string } {
     const q = coerceNumber(d.qty);
     if (q == null || q < 0)
       return { ok: false, message: "枚数を0以上の数値で入力してください。" };
+    // qty > 0 のとき 1 枚あたり額面は必須（未設定だと金額集計に反映されないため）
+    if (q > 0 && !d.unitYen.trim()) {
+      return {
+        ok: false,
+        message:
+          "1枚あたり額面を入力してください。額面が不明な場合は『金額モード』に切り替えてください。",
+      };
+    }
     if (d.unitYen.trim()) {
       const u = coerceNumber(d.unitYen);
-      if (u == null || u < 0)
+      if (u == null || u <= 0)
         return {
           ok: false,
-          message: "1枚あたり額面は0以上の数値で入力してください。",
+          message: "1枚あたり額面は 0 より大きい数値で入力してください。",
         };
     }
   } else {
@@ -639,6 +647,20 @@ export default function ToolClient({ scanEnabled = false }: Props) {
   const grantedTotalYen = useMemo(() => {
     return items.reduce((sum, it) => sum + itemGrantedYen(it), 0);
   }, [items]);
+
+  // 額面未設定の count アイテム数（金額集計に反映されない既存データの救済導線）
+  const missingUnitYenCount = useMemo(() => {
+    return items.filter(
+      (it) => it.trackMode === "count" && it.unitYen == null && (it.initial ?? 0) > 0
+    ).length;
+  }, [items]);
+
+  function openFirstMissingUnitYen() {
+    const target = items.find(
+      (it) => it.trackMode === "count" && it.unitYen == null && (it.initial ?? 0) > 0
+    );
+    if (target) openEdit(target);
+  }
 
   // --- actions ---
   function openAdd() {
@@ -984,6 +1006,21 @@ export default function ToolClient({ scanEnabled = false }: Props) {
             <StatTile label="期限未設定" value={noExpiryCount} variant="num" />
           </div>
         </div>
+
+        {missingUnitYenCount > 0 && (
+          <button
+            type="button"
+            className={styles.unitYenBanner}
+            onClick={openFirstMissingUnitYen}
+          >
+            <span className={styles.unitYenBannerLabel}>
+              額面未設定の優待が <b>{missingUnitYenCount}</b> 件あります
+            </span>
+            <span className={styles.unitYenBannerHint}>
+              金額集計に反映されていません ・ タップで修正 →
+            </span>
+          </button>
+        )}
       </section>
 
       <div className={styles.topBar}>

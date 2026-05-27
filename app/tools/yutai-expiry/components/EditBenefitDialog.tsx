@@ -131,7 +131,7 @@ export default function EditBenefitDialog({
               </label>
 
               <label className={styles.field}>
-                <span>1枚あたり額面（任意）</span>
+                <span>1枚あたり額面 *</span>
                 <input
                   value={draft.unitYen}
                   onChange={(e) =>
@@ -142,7 +142,7 @@ export default function EditBenefitDialog({
                 />
                 {!draft.unitYen.trim() && (
                   <span className={styles.fieldHint}>
-                    未入力だと「もらった」「使った」など金額集計に反映されません
+                    額面が不明な場合は「金額モード」に切り替えてください
                   </span>
                 )}
               </label>
