@@ -724,6 +724,13 @@
   line-height: 1.7;
 }
 
+.itemTotals {
+  font-size: 12px;
+  color: var(--color-text-sub);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
 .cardActions {
   display: flex;
   gap: 8px;

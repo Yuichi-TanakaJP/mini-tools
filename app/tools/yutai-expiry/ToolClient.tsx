@@ -156,6 +156,13 @@ function remainingText(it: BenefitItemV2): string {
   return base;
 }
 
+function itemTotalsText(it: BenefitItemV2): string | null {
+  const granted = itemGrantedYen(it);
+  const used = itemUsedYen(it);
+  if (granted === 0 && used === 0) return null;
+  return `もらった ${fmtYen(granted)} ／ 使った ${fmtYen(used)}`;
+}
+
 function historyText(h: UsageEntry): string {
   const d = h.at ? h.at.slice(0, 10) : "";
   if (h.deltaYen != null) {
@@ -1178,6 +1185,9 @@ export default function ToolClient({ scanEnabled = false }: Props) {
                       <b>{remainingText(it)}</b>
                     </span>
                   </div>
+                  {itemTotalsText(it) && (
+                    <div className={styles.itemTotals}>{itemTotalsText(it)}</div>
+                  )}
                   {it.memo && it.memo.trim() && (
                     <div className={styles.memo}>{it.memo}</div>
                   )}
@@ -1314,6 +1324,9 @@ export default function ToolClient({ scanEnabled = false }: Props) {
                     <div className={styles.rowSub}>
                       <span>{remainingText(it)}</span>
                     </div>
+                    {itemTotalsText(it) && (
+                      <div className={styles.itemTotals}>{itemTotalsText(it)}</div>
+                    )}
                     {it.history.length > 0 && (
                       <details className={styles.history}>
                         <summary>履歴（{it.history.length}）</summary>
