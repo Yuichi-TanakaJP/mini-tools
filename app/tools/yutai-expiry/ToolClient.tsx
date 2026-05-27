@@ -371,7 +371,26 @@ export default function ToolClient({ scanEnabled = false }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("expiryAsc");
   const [query, setQuery] = useState("");
 
-  const [toast, setToast] = useState<string | null>(null);
+  type ToastState = { message: string; action?: { label: string; onClick: () => void } };
+  const [toast, setToast] = useState<ToastState | null>(null);
+
+  // 単一アイテムを変更前のスナップショットに戻す。Undo Toast 用。
+  function restoreItemSnapshot(snapshot: BenefitItemV2) {
+    setItems((prev) => prev.map((p) => (p.id === snapshot.id ? snapshot : p)));
+  }
+
+  function showUndoableToast(message: string, snapshot: BenefitItemV2) {
+    setToast({
+      message,
+      action: {
+        label: "取り消す",
+        onClick: () => {
+          restoreItemSnapshot(snapshot);
+          setToast({ message: "操作を取り消しました" });
+        },
+      },
+    });
+  }
 
   // dialogs
   const editDialogRef = useRef<HTMLDialogElement | null>(null);
@@ -528,7 +547,7 @@ export default function ToolClient({ scanEnabled = false }: Props) {
     editDialogRef.current?.showModal();
     const conf = (s.confidence * 100).toFixed(0);
     const modelLabel = model ? ` / ${model}` : "";
-    setToast(`スキャン結果を反映しました（確信度 ${conf}%${modelLabel}）`);
+    setToast({ message: `スキャン結果を反映しました（確信度 ${conf}%${modelLabel}）` });
   }
 
   function openEdit(it: BenefitItemV2) {
@@ -588,13 +607,17 @@ export default function ToolClient({ scanEnabled = false }: Props) {
     });
 
     editDialogRef.current?.close();
-    setToast(editMode === "add" ? "追加しました" : "更新しました");
+    setToast({ message: editMode === "add" ? "追加しました" : "更新しました" });
   }
 
   function toggleUsed(id: string) {
+    const snapshot = items.find((p) => p.id === id);
+    if (!snapshot) return;
     setItems((prev) =>
       prev.map((p) => (p.id === id ? setUsedAll(p, !p.isUsed) : p))
     );
+    const message = snapshot.isUsed ? "未使用に戻しました" : "全部使ったとして記録しました";
+    showUndoableToast(message, snapshot);
   }
 
   function applyConsume(id: string, amount: number, note?: string) {
@@ -675,32 +698,45 @@ export default function ToolClient({ scanEnabled = false }: Props) {
         ? `${baseNote} / ${extraNote}`
         : baseNote || extraNote || undefined;
 
+    const snapshot = items.find((p) => p.id === usageTarget.itemId);
     if (usageTarget.kind === "use") {
       applyConsume(usageTarget.itemId, amount, note);
-      setToast("使用しました");
+      if (snapshot) showUndoableToast("使用を記録しました", snapshot);
     } else {
       applyRestock(usageTarget.itemId, amount, note);
-      setToast("追加しました");
+      if (snapshot) showUndoableToast("追加しました", snapshot);
     }
     usageDialogRef.current?.close();
   }
 
   function removeHistoryAt(id: string, index: number) {
-    const ok = window.confirm(
-      "この履歴を取り消して残量を巻き戻しますか？（元に戻せません）"
-    );
-    if (!ok) return;
+    const snapshot = items.find((p) => p.id === id);
+    if (!snapshot) return;
     setItems((prev) =>
       prev.map((p) => (p.id === id ? removeHistoryEntry(p, index) : p))
     );
-    setToast("履歴を取り消しました");
+    showUndoableToast("履歴を取り消しました", snapshot);
   }
 
   function removeItem(id: string) {
-    const ok = window.confirm("削除しますか？（元に戻せません）");
-    if (!ok) return;
+    const snapshot = items.find((p) => p.id === id);
+    if (!snapshot) return;
+    const snapshotIndex = items.findIndex((p) => p.id === id);
     setItems((prev) => prev.filter((p) => p.id !== id));
-    setToast("削除しました");
+    setToast({
+      message: "削除しました",
+      action: {
+        label: "取り消す",
+        onClick: () => {
+          setItems((prev) => {
+            const next = [...prev];
+            next.splice(snapshotIndex, 0, snapshot);
+            return next;
+          });
+          setToast({ message: "削除を取り消しました" });
+        },
+      },
+    });
   }
 
   function exportJSON() {
@@ -743,18 +779,19 @@ export default function ToolClient({ scanEnabled = false }: Props) {
       });
 
       importDialogRef.current?.close();
-      setToast(
-        merge ? "インポート（統合）しました" : "インポート（置換）しました"
-      );
+      setToast({
+        message: merge ? "インポート（統合）しました" : "インポート（置換）しました",
+      });
     } catch {
       setImportError("JSONの形式が正しくありません。");
     }
   }
 
-  // toast auto clear
+  // toast auto clear（取り消しボタン付きは長め）
   useEffect(() => {
     if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), 1600);
+    const duration = toast.action ? 5000 : 1600;
+    const t = window.setTimeout(() => setToast(null), duration);
     return () => window.clearTimeout(t);
   }, [toast]);
 
@@ -958,13 +995,13 @@ export default function ToolClient({ scanEnabled = false }: Props) {
                   mode="camera"
                   className={`${styles.controlShell} ${styles.addBtnDesktop}`}
                   onResult={openAddFromScan}
-                  onError={(m) => setToast(m)}
+                  onError={(m) => setToast({ message: m })}
                 />
                 <CameraScanButton
                   mode="gallery"
                   className={`${styles.controlShell} ${styles.addBtnDesktop}`}
                   onResult={openAddFromScan}
-                  onError={(m) => setToast(m)}
+                  onError={(m) => setToast({ message: m })}
                 />
               </>
             )}
@@ -1039,13 +1076,13 @@ export default function ToolClient({ scanEnabled = false }: Props) {
                   mode="camera"
                   className={`${styles.controlShell} ${styles.mobileToggle}`}
                   onResult={openAddFromScan}
-                  onError={(m) => setToast(m)}
+                  onError={(m) => setToast({ message: m })}
                 />
                 <CameraScanButton
                   mode="gallery"
                   className={`${styles.controlShell} ${styles.mobileToggle}`}
                   onResult={openAddFromScan}
-                  onError={(m) => setToast(m)}
+                  onError={(m) => setToast({ message: m })}
                 />
               </>
             )}
@@ -1182,11 +1219,11 @@ export default function ToolClient({ scanEnabled = false }: Props) {
                         className={styles.smallBtn}
                         onClick={async () => {
                           const ok = await copyToClipboard(it.link!);
-                          setToast(
-                            ok
+                          setToast({
+                            message: ok
                               ? "リンクをコピーしました"
-                              : "コピーに失敗しました"
-                          );
+                              : "コピーに失敗しました",
+                          });
                         }}
                       >
                         コピー
@@ -1316,11 +1353,11 @@ export default function ToolClient({ scanEnabled = false }: Props) {
                           className={styles.smallBtn}
                           onClick={async () => {
                             const ok = await copyToClipboard(it.link!);
-                            setToast(
-                              ok
+                            setToast({
+                              message: ok
                                 ? "リンクをコピーしました"
-                                : "コピーに失敗しました"
-                            );
+                                : "コピーに失敗しました",
+                            });
                           }}
                           style={{ marginLeft: 8 }}
                         >
@@ -1464,7 +1501,20 @@ export default function ToolClient({ scanEnabled = false }: Props) {
       />
 
       {/* toast */}
-      {toast && <div className={styles.toast}>{toast}</div>}
+      {toast && (
+        <div className={styles.toast} role="status">
+          <span>{toast.message}</span>
+          {toast.action && (
+            <button
+              type="button"
+              className={styles.toastAction}
+              onClick={toast.action.onClick}
+            >
+              {toast.action.label}
+            </button>
+          )}
+        </div>
+      )}
     </>
   );
 
