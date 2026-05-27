@@ -198,9 +198,9 @@ export function itemValueYen(it: BenefitItemV2): number {
   return Math.max(0, rem) * (it.unitYen ?? 0);
 }
 
-// 「未使用に戻す」操作で追記されるエントリの識別子（note 文字列マッチ）。
-// 履歴集計でこれを除外することで restock と undo を区別する。
+// 履歴エントリの note に使うラベル。集計の分岐 / 操作の意図記録に使う。
 const RESTORE_NOTE = "未使用に戻す";
+export const SCAN_MERGE_NOTE = "スキャン統合";
 
 function entryYen(it: BenefitItemV2, e: UsageEntry): number {
   return it.trackMode === "amount"
