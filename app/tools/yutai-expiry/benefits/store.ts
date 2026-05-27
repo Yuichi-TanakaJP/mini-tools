@@ -293,6 +293,13 @@ export function setUsedAll(it: BenefitItemV2, used: boolean): BenefitItemV2 {
     if (cur <= 0) return { ...it, isUsed: true };
     return consume(it, cur, "全部使用");
   }
+  // 「全部使う」と「未使用に戻す」を逆操作にする:
+  // 直近のエントリが "全部使用" ならそれを pop して残量を巻き戻す。
+  const lastIdx = it.history.length - 1;
+  if (lastIdx >= 0 && it.history[lastIdx].note === "全部使用") {
+    return removeHistoryEntry(it, lastIdx);
+  }
+  // 直近 "全部使用" が無い場合（手動で remaining=0 まで使い切ったケース等）は initial に戻す
   const back = it.initial ?? 1;
   const next: BenefitItemV2 = { ...it, remaining: back };
   return touch(
