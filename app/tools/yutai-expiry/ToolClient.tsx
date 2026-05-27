@@ -28,6 +28,7 @@ import {
   removeHistoryEntry,
   itemValueYen,
   itemUsedYen,
+  itemGrantedYen,
   TrackMode,
   UsageEntry,
 } from "./benefits/store";
@@ -532,6 +533,10 @@ export default function ToolClient({ scanEnabled = false }: Props) {
     return items.reduce((sum, it) => sum + itemUsedYen(it), 0);
   }, [items]);
 
+  const grantedTotalYen = useMemo(() => {
+    return items.reduce((sum, it) => sum + itemGrantedYen(it), 0);
+  }, [items]);
+
   // --- actions ---
   function openAdd() {
     setEditMode("add");
@@ -830,10 +835,11 @@ export default function ToolClient({ scanEnabled = false }: Props) {
             <span className={styles.statDashHeadlineHint}>残っている優待の額面合計</span>
           </div>
 
-          <div className={styles.statDashRow}>
-            <StatTile label="今月失効" value={fmtYen(expiringThisMonthYen)} />
+          <div className={`${styles.statDashRow} ${styles.statDashRowWide}`}>
+            <StatTile label="もらった" value={fmtYen(grantedTotalYen)} />
             <StatTile label="使った" value={fmtYen(usedTotalYen)} positive />
             <StatTile label="失効" value={fmtYen(expiredTotalYen)} />
+            <StatTile label="今月失効" value={fmtYen(expiringThisMonthYen)} />
           </div>
 
           <div className={styles.statDashDivider} />
