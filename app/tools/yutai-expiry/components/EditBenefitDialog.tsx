@@ -140,6 +140,11 @@ export default function EditBenefitDialog({
                   placeholder="例：1000"
                   inputMode="numeric"
                 />
+                {!draft.unitYen.trim() && (
+                  <span className={styles.fieldHint}>
+                    未入力だと「もらった」「使った」など金額集計に反映されません
+                  </span>
+                )}
               </label>
             </div>
           ) : (
