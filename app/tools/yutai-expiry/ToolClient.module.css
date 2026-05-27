@@ -962,6 +962,57 @@
   border-top: 1px solid rgba(15, 23, 42, 0.06);
 }
 
+.dupLead {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-text-sub);
+  padding: 0 18px;
+  margin: 12px 0 4px;
+}
+
+.dupScan {
+  font-size: 12px;
+  color: var(--color-text-sub);
+  padding: 0 18px;
+  margin: 0 0 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dupList {
+  list-style: none;
+  margin: 0;
+  padding: 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dupItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(239, 244, 255, 0.5);
+}
+
+.dupItemTitle {
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.dupItemMeta {
+  font-size: 12px;
+  color: var(--color-text-sub);
+}
+
+.dupItemHint {
+  font-size: 12px;
+  color: #1f3fb8;
+  margin-bottom: 6px;
+}
+
 .toast {
   position: fixed;
   left: 50%;

@@ -29,6 +29,7 @@ import {
   itemValueYen,
   itemUsedYen,
   itemGrantedYen,
+  SCAN_MERGE_NOTE,
   TrackMode,
   UsageEntry,
 } from "./benefits/store";
@@ -161,6 +162,90 @@ function itemTotalsText(it: BenefitItemV2): string | null {
   const used = itemUsedYen(it);
   if (granted === 0 && used === 0) return null;
   return `もらった ${fmtYen(granted)} ／ 使った ${fmtYen(used)}`;
+}
+
+type DuplicateMatch = {
+  item: BenefitItemV2;
+  // restock 量。null なら統合不可（スキャン情報不足）
+  restockQty: number | null;
+  restockYen: number | null;
+  hint: string;
+};
+
+function normalizeKey(s: string): string {
+  return s.toLowerCase().replace(/\s+/g, "");
+}
+
+function findScanDuplicates(
+  items: BenefitItemV2[],
+  s: ScanResult
+): DuplicateMatch[] {
+  const sc = normalizeKey(s.company ?? "");
+  const st = normalizeKey(s.title ?? "");
+  if (!sc || !st) return [];
+  const today = todayISODate();
+  return items
+    .filter(
+      (it) =>
+        normalizeKey(it.company) === sc && normalizeKey(it.title) === st
+    )
+    .sort((a, b) => {
+      // 未期限切れ → 期限切れ、その上で期限が近いものを優先
+      const aExp = !!a.expiresOn && a.expiresOn < today;
+      const bExp = !!b.expiresOn && b.expiresOn < today;
+      if (aExp !== bExp) return aExp ? 1 : -1;
+      const ae = a.expiresOn ?? "9999-12-31";
+      const be = b.expiresOn ?? "9999-12-31";
+      return ae < be ? -1 : ae > be ? 1 : 0;
+    })
+    .map((item): DuplicateMatch => {
+      if (item.trackMode === "amount") {
+        if (s.amountYen != null && s.amountYen > 0) {
+          return {
+            item,
+            restockQty: null,
+            restockYen: s.amountYen,
+            hint: `残高に +${fmtYen(s.amountYen)} を追加`,
+          };
+        }
+        return {
+          item,
+          restockQty: null,
+          restockYen: null,
+          hint: "金額未取得のため統合不可（新規追加してください）",
+        };
+      }
+      if (s.quantity != null && s.quantity > 0) {
+        return {
+          item,
+          restockQty: s.quantity,
+          restockYen: null,
+          hint: `+${s.quantity} 枚を既存に追加`,
+        };
+      }
+      if (
+        s.amountYen != null &&
+        s.amountYen > 0 &&
+        item.unitYen != null &&
+        item.unitYen > 0
+      ) {
+        const qty = Math.floor(s.amountYen / item.unitYen);
+        if (qty > 0) {
+          return {
+            item,
+            restockQty: qty,
+            restockYen: null,
+            hint: `+${qty} 枚を追加（${fmtYen(s.amountYen)} ÷ @${fmtYen(item.unitYen)}）`,
+          };
+        }
+      }
+      return {
+        item,
+        restockQty: null,
+        restockYen: null,
+        hint: "枚数未取得のため統合不可（新規追加してください）",
+      };
+    });
 }
 
 function historyText(h: UsageEntry): string {
@@ -404,6 +489,12 @@ export default function ToolClient({ scanEnabled = false }: Props) {
   const editDialogRef = useRef<HTMLDialogElement | null>(null);
   const importDialogRef = useRef<HTMLDialogElement | null>(null);
   const usageDialogRef = useRef<HTMLDialogElement | null>(null);
+  const scanDupDialogRef = useRef<HTMLDialogElement | null>(null);
+  const [scanDup, setScanDup] = useState<{
+    scan: ScanResult;
+    model: string | null;
+    matches: DuplicateMatch[];
+  } | null>(null);
 
   const [editMode, setEditMode] = useState<"add" | "edit">("add");
   const [draft, setDraft] = useState<Draft>(toDraft());
@@ -553,6 +644,16 @@ export default function ToolClient({ scanEnabled = false }: Props) {
   }
 
   function openAddFromScan(s: ScanResult, model: string | null) {
+    const matches = findScanDuplicates(items, s);
+    if (matches.length > 0) {
+      setScanDup({ scan: s, model, matches });
+      scanDupDialogRef.current?.showModal();
+      return;
+    }
+    proceedAddFromScan(s, model);
+  }
+
+  function proceedAddFromScan(s: ScanResult, model: string | null) {
     setEditMode("add");
     setDraft(scanResultToDraft(s));
     setDraftError(null);
@@ -560,6 +661,27 @@ export default function ToolClient({ scanEnabled = false }: Props) {
     const conf = (s.confidence * 100).toFixed(0);
     const modelLabel = model ? ` / ${model}` : "";
     setToast({ message: `スキャン結果を反映しました（確信度 ${conf}%${modelLabel}）` });
+  }
+
+  function mergeIntoExisting(match: DuplicateMatch) {
+    const snapshot = items.find((p) => p.id === match.item.id);
+    if (!snapshot) return;
+    const amount =
+      match.restockYen != null ? match.restockYen : match.restockQty ?? 0;
+    if (amount <= 0) return;
+    applyRestock(match.item.id, amount, SCAN_MERGE_NOTE);
+    scanDupDialogRef.current?.close();
+    setScanDup(null);
+    showUndoableToast(`「${match.item.title}」に追加しました`, snapshot);
+  }
+
+  function dismissScanDup(addAsNew: boolean) {
+    const pending = scanDup;
+    scanDupDialogRef.current?.close();
+    setScanDup(null);
+    if (addAsNew && pending) {
+      proceedAddFromScan(pending.scan, pending.model);
+    }
   }
 
   function openEdit(it: BenefitItemV2) {
@@ -1518,6 +1640,89 @@ export default function ToolClient({ scanEnabled = false }: Props) {
         error={usageError}
         onSubmit={submitUsage}
       />
+
+      {/* Scan duplicate dialog */}
+      <dialog ref={scanDupDialogRef} className={styles.dialog}>
+        <form
+          method="dialog"
+          className={styles.dialogInner}
+          onSubmit={(e) => {
+            e.preventDefault();
+            dismissScanDup(false);
+          }}
+        >
+          <div className={styles.dialogHeader}>
+            <h2 className={styles.dialogTitle}>同じ優待が登録済み</h2>
+          </div>
+          <div className={styles.formGrid}>
+            {scanDup && (
+              <>
+                <p className={styles.dupLead}>
+                  <b>{scanDup.scan.company ?? ""}</b> /{" "}
+                  <b>{scanDup.scan.title ?? ""}</b> と一致する優待が既にあります。
+                  どうしますか？
+                </p>
+                <p className={styles.dupScan}>
+                  スキャン結果:
+                  {scanDup.scan.quantity != null
+                    ? ` ${scanDup.scan.quantity} 枚`
+                    : ""}
+                  {scanDup.scan.amountYen != null
+                    ? ` / ${fmtYen(scanDup.scan.amountYen)}`
+                    : ""}
+                  {scanDup.scan.expiresOn
+                    ? ` / 期限 ${fmtJPDate(scanDup.scan.expiresOn)}`
+                    : ""}
+                </p>
+                <ul className={styles.dupList}>
+                  {scanDup.matches.map((m) => {
+                    const canRestock =
+                      (m.restockQty != null && m.restockQty > 0) ||
+                      (m.restockYen != null && m.restockYen > 0);
+                    return (
+                      <li key={m.item.id} className={styles.dupItem}>
+                        <div className={styles.dupItemTitle}>{m.item.title}</div>
+                        <div className={styles.dupItemMeta}>
+                          {remainingText(m.item)}
+                          {m.item.expiresOn
+                            ? ` ・ 期限 ${fmtJPDate(m.item.expiresOn)}`
+                            : ""}
+                        </div>
+                        <div className={styles.dupItemHint}>{m.hint}</div>
+                        {canRestock && (
+                          <button
+                            type="button"
+                            className={styles.primaryBtn}
+                            onClick={() => mergeIntoExisting(m)}
+                          >
+                            これに統合する
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
+          </div>
+          <div className={styles.dialogFooter}>
+            <button
+              type="button"
+              className={styles.smallBtn}
+              onClick={() => dismissScanDup(false)}
+            >
+              キャンセル
+            </button>
+            <button
+              type="button"
+              className={styles.smallBtn}
+              onClick={() => dismissScanDup(true)}
+            >
+              別アイテムとして追加
+            </button>
+          </div>
+        </form>
+      </dialog>
 
       {/* toast */}
       {toast && (
