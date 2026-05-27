@@ -906,6 +906,15 @@
   margin-bottom: 6px;
 }
 
+.fieldHint {
+  display: block;
+  font-size: 11px;
+  color: var(--color-warning);
+  margin-top: 6px;
+  margin-bottom: 0;
+  line-height: 1.5;
+}
+
 .field input,
 .field textarea,
 .bigTextarea {

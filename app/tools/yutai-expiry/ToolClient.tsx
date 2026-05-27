@@ -158,6 +158,11 @@ function remainingText(it: BenefitItemV2): string {
 }
 
 function itemTotalsText(it: BenefitItemV2): string | null {
+  // 額面未設定の count アイテムは yen 換算不可。乖離理由を明示する。
+  if (it.trackMode === "count" && it.unitYen == null) {
+    const hasActivity = (it.initial ?? 0) > 0 || it.history.length > 0;
+    return hasActivity ? "額面未設定のため累計金額に反映されません" : null;
+  }
   const granted = itemGrantedYen(it);
   const used = itemUsedYen(it);
   if (granted === 0 && used === 0) return null;
