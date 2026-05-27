@@ -7,6 +7,7 @@
 |---|---|
 | [TDNET 複数日検索 range API 化 検討メモ](./tdnet-range-api-architecture.md) | TDNET 複数日検索を mini-tools 側結合から API 層結合へ寄せるかの比較・今後の候補 |
 | [yutai-expiry UI / data model backlog](./yutai-expiry-ui-data-model.md) | 優待期限帳の券種管理、日付入力、データモデル改善候補 |
+| [yutai-expiry ユースケース棚卸し](./yutai-expiry-usecases.md) | 優待期限帳の全ユースケース一覧と継続サイクル視点での設計の穴 |
 
 ## 更新ルール
 
