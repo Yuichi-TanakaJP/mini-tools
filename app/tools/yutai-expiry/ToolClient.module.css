@@ -123,6 +123,14 @@
   gap: 4px;
 }
 
+.statDashRowWide {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.statDashRowWide .statTileValue {
+  font-size: clamp(15px, 3.6vw, 20px);
+}
+
 .statDashDivider {
   height: 1px;
   background: rgba(37, 84, 255, 0.12);

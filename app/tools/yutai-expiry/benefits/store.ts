@@ -198,18 +198,42 @@ export function itemValueYen(it: BenefitItemV2): number {
   return Math.max(0, rem) * (it.unitYen ?? 0);
 }
 
-// 履歴の全デルタを符号付きで合計した「正味の使った金額」。
-// 正デルタ（未使用に戻す / 追加 / チャージ）が負デルタを相殺するため、
-// 「全部使う → 未使用に戻す」のような操作ミスは自動で打ち消される。
-export function itemUsedYen(it: BenefitItemV2): number {
-  const net = it.history.reduce((sum, e) => {
-    const d =
-      it.trackMode === "amount"
-        ? e.deltaYen ?? 0
-        : (e.deltaQty ?? 0) * (it.unitYen ?? 0);
-    return sum + d;
+// 「未使用に戻す」操作で追記されるエントリの識別子（note 文字列マッチ）。
+// 履歴集計でこれを除外することで restock と undo を区別する。
+const RESTORE_NOTE = "未使用に戻す";
+
+function entryYen(it: BenefitItemV2, e: UsageEntry): number {
+  return it.trackMode === "amount"
+    ? e.deltaYen ?? 0
+    : (e.deltaQty ?? 0) * (it.unitYen ?? 0);
+}
+
+// 累計でもらった金額（初期付与 + 後からの restock）。
+// 「未使用に戻す」が追記する正デルタは付与ではないので除外する。
+export function itemGrantedYen(it: BenefitItemV2): number {
+  const initial = it.initial ?? 0;
+  const baseYen =
+    it.trackMode === "amount" ? initial : initial * (it.unitYen ?? 0);
+  const grants = it.history.reduce((sum, e) => {
+    if (e.note === RESTORE_NOTE) return sum;
+    const d = entryYen(it, e);
+    return d > 0 ? sum + d : sum;
   }, 0);
-  return Math.max(0, -net);
+  return Math.max(0, baseYen + grants);
+}
+
+// 「使った金額」= gross 消費 − 未使用に戻す分。restock を相殺しないので
+// `granted − used − expired = remaining` の関係が保たれる。
+// 「全部使う → 未使用に戻す」の操作ミスは note=未使用に戻す が undo credit として効く。
+export function itemUsedYen(it: BenefitItemV2): number {
+  let usedGross = 0;
+  let undoCredits = 0;
+  for (const e of it.history) {
+    const d = entryYen(it, e);
+    if (d < 0) usedGross += -d;
+    else if (d > 0 && e.note === RESTORE_NOTE) undoCredits += d;
+  }
+  return Math.max(0, usedGross - undoCredits);
 }
 
 function touch(it: BenefitItemV2, entry: UsageEntry): BenefitItemV2 {
@@ -305,8 +329,8 @@ export function setUsedAll(it: BenefitItemV2, used: boolean): BenefitItemV2 {
   return touch(
     next,
     it.trackMode === "amount"
-      ? { at: "", deltaYen: back - (it.remaining ?? 0), note: "未使用に戻す" }
-      : { at: "", deltaQty: back - (it.remaining ?? 0), note: "未使用に戻す" }
+      ? { at: "", deltaYen: back - (it.remaining ?? 0), note: RESTORE_NOTE }
+      : { at: "", deltaQty: back - (it.remaining ?? 0), note: RESTORE_NOTE }
   );
 }
 
