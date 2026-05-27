@@ -952,13 +952,34 @@
   left: 50%;
   bottom: 20px;
   transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
   background: rgba(18, 30, 63, 0.92);
   color: #fff;
-  padding: 11px 14px;
+  padding: 10px 8px 10px 16px;
   border-radius: 999px;
   font-size: 13px;
   z-index: 50;
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.24);
+  max-width: calc(100vw - 32px);
+}
+
+.toastAction {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.toastAction:hover {
+  background: rgba(255, 255, 255, 0.28);
 }
 
 .fab {
