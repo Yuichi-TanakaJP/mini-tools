@@ -490,6 +490,16 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                           <div style={styles.cardNameRow}>
                             <span style={styles.companyName}>{item.company_name}</span>
                             <span style={styles.codeChip}>{item.code}</span>
+                            <button
+                              type="button"
+                              onClick={() => togglePick(item.code)}
+                              aria-pressed={picked}
+                              aria-label={picked ? "ピックを解除" : "ピックに追加"}
+                              title={picked ? "ピックを解除" : "ピックに追加"}
+                              style={picked ? styles.pickStarActive : styles.pickStar}
+                            >
+                              {picked ? "★" : "☆"}
+                            </button>
                           </div>
                           <div style={styles.metaRow}>
                             <span style={styles.metaItem}>{item.month}月権利</span>
@@ -505,19 +515,11 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                             {renderSbiCreditBadge(data.sbiCredit, item.code, styles)}
                           </div>
                         </div>
-                        <div style={styles.stateChips}>
-                          {added && <span style={styles.addedChip}>✓ Memo</span>}
-                          <button
-                            type="button"
-                            onClick={() => togglePick(item.code)}
-                            aria-pressed={picked}
-                            aria-label={picked ? "ピックを解除" : "ピックに追加"}
-                            title={picked ? "ピックを解除" : "ピックに追加"}
-                            style={picked ? styles.pickStarActive : styles.pickStar}
-                          >
-                            {picked ? "★" : "☆"}
-                          </button>
-                        </div>
+                        {added && (
+                          <div style={styles.stateChips}>
+                            <span style={styles.addedChip}>✓ Memo</span>
+                          </div>
+                        )}
                       </div>
 
                       {item.benefit_summary && (
@@ -884,33 +886,35 @@ const styles: Record<string, React.CSSProperties> = {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    width: 32,
-    height: 32,
+    width: 26,
+    height: 26,
     borderRadius: 999,
     border: "1px solid rgba(15,23,42,0.10)",
     background: "#ffffff",
     color: "#94a3b8",
-    fontSize: 18,
+    fontSize: 15,
     lineHeight: 1,
     cursor: "pointer",
     padding: 0,
-    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+    marginLeft: "auto",
+    flexShrink: 0,
   },
   pickStarActive: {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    width: 32,
-    height: 32,
+    width: 26,
+    height: 26,
     borderRadius: 999,
-    border: "1px solid rgba(245,158,11,0.30)",
+    border: "1px solid rgba(245,158,11,0.35)",
     background: "#fef3c7",
     color: "#d97706",
-    fontSize: 18,
+    fontSize: 15,
     lineHeight: 1,
     cursor: "pointer",
     padding: 0,
-    boxShadow: "0 1px 2px rgba(245,158,11,0.20)",
+    marginLeft: "auto",
+    flexShrink: 0,
   },
   cardTop: {
     display: "flex",
@@ -1094,10 +1098,10 @@ const styles: Record<string, React.CSSProperties> = {
   },
   cardFooter: {
     display: "grid",
-    gridTemplateColumns: "minmax(0,0.8fr) minmax(0,1fr) minmax(0,1.15fr) minmax(0,1.35fr)",
-    alignItems: "center",
+    gridTemplateColumns: "auto auto 1fr 1.3fr",
+    alignItems: "stretch",
     gap: 8,
-    paddingTop: 6,
+    paddingTop: 10,
     borderTop: "1px solid rgba(15,23,42,0.06)",
     marginTop: 0,
   },
@@ -1105,28 +1109,29 @@ const styles: Record<string, React.CSSProperties> = {
     display: "inline-flex",
     justifyContent: "center",
     alignItems: "center",
-    padding: "3px 10px",
-    borderRadius: 8,
-    background: "#f1f5f9",
+    padding: "6px 12px",
+    borderRadius: 10,
+    background: "#ffffff",
     color: "#475569",
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: 700,
     textDecoration: "none",
-    border: "1px solid rgba(15,23,42,0.08)",
+    border: "1px solid rgba(15,23,42,0.10)",
     minWidth: 0,
     whiteSpace: "nowrap",
+    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
   },
   linkStatusChip: {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: "4px 8px",
-    borderRadius: 999,
+    padding: "6px 12px",
+    borderRadius: 10,
     background: "#f8fafc",
     color: "#94a3b8",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 700,
-    border: "1px solid rgba(15,23,42,0.06)",
+    border: "1px dashed rgba(15,23,42,0.10)",
     minWidth: 0,
     whiteSpace: "nowrap",
   },
