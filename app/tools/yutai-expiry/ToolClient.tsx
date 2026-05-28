@@ -30,6 +30,7 @@ import {
   itemUsedYen,
   itemGrantedYen,
   SCAN_MERGE_NOTE,
+  EDIT_ADJUST_NOTE,
   TrackMode,
   UsageEntry,
 } from "./benefits/store";
@@ -744,6 +745,21 @@ export default function ToolClient({ scanEnabled = false }: Props) {
       // ただしモード(枚数/金額)を変えた場合は単位が変わるので initial を新値で取り直す。
       const keepInitial =
         prevItem && prevItem.trackMode === draft.trackMode;
+      // 編集で remaining が変わった場合は履歴に差分を記録して集計の整合を保つ。
+      // 例: 残高 0 → 3000 に編集すると history += {+3000, "編集による補正"} となり
+      // 「もらった」も +3000 される（restock と同等扱い）。
+      const adjustedHistory = (() => {
+        if (!keepInitial || !prevItem || remainingInput == null)
+          return keepInitial ? prevItem!.history : [];
+        const prevRem = prevItem.remaining ?? 0;
+        const delta = remainingInput - prevRem;
+        if (delta === 0) return prevItem.history;
+        const entry: UsageEntry =
+          draft.trackMode === "amount"
+            ? { at: nowIso, deltaYen: delta, note: EDIT_ADJUST_NOTE }
+            : { at: nowIso, deltaQty: delta, note: EDIT_ADJUST_NOTE };
+        return [...prevItem.history, entry];
+      })();
       const built = coerceItem({
         id,
         title: draft.title.trim(),
@@ -753,7 +769,7 @@ export default function ToolClient({ scanEnabled = false }: Props) {
         unitYen,
         initial: keepInitial ? prevItem!.initial : remainingInput,
         remaining: remainingInput,
-        history: keepInitial ? prevItem!.history : [],
+        history: adjustedHistory,
         memo: draft.memo?.trim() ?? "",
         link: draft.link.trim() ? draft.link.trim() : undefined,
         createdAt: prevItem?.createdAt ?? nowIso,
