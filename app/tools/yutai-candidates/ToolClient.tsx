@@ -7,8 +7,9 @@ import { loadItems } from "@/app/tools/yutai-memo/storage";
 import type { MonthlyYutaiCandidate, MonthlyYutaiPageData } from "./types";
 
 const PICKED_KEY = "monthly_yutai_picks_v1";
+const PASSED_KEY = "monthly_yutai_passes_v1";
 
-type StatusFilter = "all" | "picked" | "added" | "unselected";
+type StatusFilter = "all" | "picked" | "passed" | "added" | "unselected";
 type LinkFilter = "all" | "with" | "without";
 type CrossFilter = "all" | "general" | "general_watch" | "institutional" | "any";
 type SbiFilter = "all" | "sbi_any";
@@ -43,10 +44,10 @@ function formatKenriLastDate(value: string | null) {
   }).format(new Date(time))}`;
 }
 
-function loadPickedCodes() {
+function loadCodeSet(storageKey: string) {
   if (typeof window === "undefined") return new Set<string>();
   try {
-    const raw = window.localStorage.getItem(PICKED_KEY);
+    const raw = window.localStorage.getItem(storageKey);
     if (!raw) return new Set<string>();
     const parsed = JSON.parse(raw) as string[];
     return new Set(Array.isArray(parsed) ? parsed.filter((value) => typeof value === "string") : []);
@@ -55,9 +56,9 @@ function loadPickedCodes() {
   }
 }
 
-function savePickedCodes(codes: Set<string>) {
+function saveCodeSet(storageKey: string, codes: Set<string>) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(PICKED_KEY, JSON.stringify([...codes]));
+  window.localStorage.setItem(storageKey, JSON.stringify([...codes]));
 }
 
 type NikkoCreditRecord = NonNullable<MonthlyYutaiPageData["nikkoCredit"]>["by_code"][string];
@@ -146,6 +147,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const [sbiFilter, setSbiFilter] = useState<SbiFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("code");
   const [pickedCodes, setPickedCodes] = useState<Set<string>>(new Set());
+  const [passedCodes, setPassedCodes] = useState<Set<string>>(new Set());
   const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
   const [hydrated, setHydrated] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -153,7 +155,8 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   useEffect(() => {
     // localStorage はサーバーで読めないため、マウント後に初期化する（hydration mismatch 回避）
     /* eslint-disable react-hooks/set-state-in-effect */
-    setPickedCodes(loadPickedCodes());
+    setPickedCodes(loadCodeSet(PICKED_KEY));
+    setPassedCodes(loadCodeSet(PASSED_KEY));
     const items = loadItems();
     setAddedKeys(new Set(
       items.flatMap((item) => (item.months ?? []).map((month) => `${item.code ?? ""}:${month}`)),
@@ -165,8 +168,13 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   useEffect(() => {
     // hydrated 前は空 Set を保存しない
     if (!hydrated) return;
-    savePickedCodes(pickedCodes);
+    saveCodeSet(PICKED_KEY, pickedCodes);
   }, [hydrated, pickedCodes]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    saveCodeSet(PASSED_KEY, passedCodes);
+  }, [hydrated, passedCodes]);
 
   const availableTags = useMemo(() => {
     return Array.from(
@@ -198,9 +206,11 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
 
         const added = addedKeys.has(`${item.code}:${item.month}`);
         const picked = pickedCodes.has(item.code);
+        const passed = passedCodes.has(item.code);
         if (statusFilter === "picked" && !picked) return false;
+        if (statusFilter === "passed" && !passed) return false;
         if (statusFilter === "added" && !added) return false;
-        if (statusFilter === "unselected" && (picked || added)) return false;
+        if (statusFilter === "unselected" && (picked || passed || added)) return false;
 
         if (crossFilter !== "all" && byCode) {
           const credit = byCode[item.code];
@@ -241,13 +251,35 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
         if (byName !== 0) return byName;
         return (a.minimum_investment_yen ?? Number.POSITIVE_INFINITY) - (b.minimum_investment_yen ?? Number.POSITIVE_INFINITY);
       });
-  }, [addedKeys, crossFilter, sbiFilter, data.items, data.nikkoCredit, data.sbiCredit, linkFilter, pickedCodes, query, sortKey, statusFilter, tagFilter]);
+  }, [addedKeys, crossFilter, sbiFilter, data.items, data.nikkoCredit, data.sbiCredit, linkFilter, passedCodes, pickedCodes, query, sortKey, statusFilter, tagFilter]);
 
   function togglePick(code: string) {
     setPickedCodes((prev) => {
       const next = new Set(prev);
       if (next.has(code)) next.delete(code);
       else next.add(code);
+      return next;
+    });
+    // ピックとパスは排他
+    setPassedCodes((prev) => {
+      if (!prev.has(code)) return prev;
+      const next = new Set(prev);
+      next.delete(code);
+      return next;
+    });
+  }
+
+  function togglePass(code: string) {
+    setPassedCodes((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+    setPickedCodes((prev) => {
+      if (!prev.has(code)) return prev;
+      const next = new Set(prev);
+      next.delete(code);
       return next;
     });
   }
@@ -382,6 +414,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
               <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as StatusFilter)} style={styles.select}>
                 <option value="all">状態: すべて</option>
                 <option value="picked">状態: ピック済み</option>
+                <option value="passed">状態: パス済み</option>
                 <option value="added">状態: メモ追加済み</option>
                 <option value="unselected">状態: 未選択</option>
               </select>
@@ -442,7 +475,14 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                 {filteredItems.map((item) => {
                   const added = addedKeys.has(`${item.code}:${item.month}`);
                   const picked = pickedCodes.has(item.code);
-                  const cardStyle = added ? styles.cardAdded : picked ? styles.cardPicked : styles.card;
+                  const passed = passedCodes.has(item.code);
+                  const cardStyle = added
+                    ? styles.cardAdded
+                    : picked
+                      ? styles.cardPicked
+                      : passed
+                        ? styles.cardPassed
+                        : styles.card;
                   return (
                     <article key={`${item.code}:${item.month}`} style={cardStyle}>
                       <div style={styles.cardTop}>
@@ -466,8 +506,17 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                           </div>
                         </div>
                         <div style={styles.stateChips}>
-                          {picked && <span style={styles.pickedChip}>★ Pick</span>}
                           {added && <span style={styles.addedChip}>✓ Memo</span>}
+                          <button
+                            type="button"
+                            onClick={() => togglePick(item.code)}
+                            aria-pressed={picked}
+                            aria-label={picked ? "ピックを解除" : "ピックに追加"}
+                            title={picked ? "ピックを解除" : "ピックに追加"}
+                            style={picked ? styles.pickStarActive : styles.pickStar}
+                          >
+                            {picked ? "★" : "☆"}
+                          </button>
                         </div>
                       </div>
 
@@ -488,10 +537,10 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                         )}
                         <button
                           type="button"
-                          onClick={() => togglePick(item.code)}
-                          style={picked ? styles.secondaryButtonActive : styles.secondaryButton}
+                          onClick={() => togglePass(item.code)}
+                          style={passed ? styles.secondaryButtonActive : styles.secondaryButton}
                         >
-                          {picked ? "★ ピック解除" : "ピック"}
+                          {passed ? "パス解除" : "パス"}
                         </button>
                         <button
                           type="button"
@@ -823,6 +872,45 @@ const styles: Record<string, React.CSSProperties> = {
     background: "#f0fdf4",
     border: "1px solid rgba(34,197,94,0.20)",
     borderLeft: "3px solid #22c55e",
+  },
+  cardPassed: {
+    ...baseCard,
+    background: "#f8fafc",
+    border: "1px solid rgba(15,23,42,0.06)",
+    borderLeft: "3px solid #cbd5e1",
+    opacity: 0.62,
+  },
+  pickStar: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 32,
+    height: 32,
+    borderRadius: 999,
+    border: "1px solid rgba(15,23,42,0.10)",
+    background: "#ffffff",
+    color: "#94a3b8",
+    fontSize: 18,
+    lineHeight: 1,
+    cursor: "pointer",
+    padding: 0,
+    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+  },
+  pickStarActive: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 32,
+    height: 32,
+    borderRadius: 999,
+    border: "1px solid rgba(245,158,11,0.30)",
+    background: "#fef3c7",
+    color: "#d97706",
+    fontSize: 18,
+    lineHeight: 1,
+    cursor: "pointer",
+    padding: 0,
+    boxShadow: "0 1px 2px rgba(245,158,11,0.20)",
   },
   cardTop: {
     display: "flex",
