@@ -201,6 +201,7 @@ export function itemValueYen(it: BenefitItemV2): number {
 // 履歴エントリの note に使うラベル。集計の分岐 / 操作の意図記録に使う。
 const RESTORE_NOTE = "未使用に戻す";
 export const SCAN_MERGE_NOTE = "スキャン統合";
+export const EDIT_ADJUST_NOTE = "編集による補正";
 
 function entryYen(it: BenefitItemV2, e: UsageEntry): number {
   return it.trackMode === "amount"
