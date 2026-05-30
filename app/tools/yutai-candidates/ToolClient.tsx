@@ -78,6 +78,12 @@ function canNikkoGeneralCrossNow(credit: NikkoCreditRecord | undefined) {
   return Boolean(credit?.general_short && (credit.available_shares ?? 0) > 0 && !hasNikkoSellStop(credit));
 }
 
+// 一般売建は可能だが在庫残数が 0（＝今はクロス約定できない）状態。
+// available_shares が null（在庫不明）は対象外で、内部監視扱いのまま。
+function isNikkoGeneralOutOfStock(credit: NikkoCreditRecord | undefined) {
+  return Boolean(credit?.general_short && credit.available_shares === 0 && !hasNikkoSellStop(credit));
+}
+
 function shouldWatchNikkoGeneral(credit: NikkoCreditRecord | undefined) {
   if (!credit) return false;
   return hasNikkoSellStop(credit) || canNikkoGeneralCrossNow(credit) || (
@@ -97,14 +103,16 @@ function renderCreditBadges(
   if (!credit) return null;
   const badges: React.ReactNode[] = [];
   if (hasNikkoSellStop(credit)) {
-    badges.push(<span key="gen-regulated" style={styles.creditChipGeneralRegulation}>一般規制</span>);
+    badges.push(<span key="gen-regulated" style={styles.creditChipGeneralRegulation} title="一般信用 売建規制（取引停止）">一般×</span>);
   } else if (canNikkoGeneralCrossNow(credit) && hasNikkoLendingCaution(credit)) {
-    badges.push(<span key="gen-caution" style={styles.creditChipGeneralCaution}>一般注意</span>);
+    badges.push(<span key="gen-caution" style={styles.creditChipGeneralCaution} title="一般信用 売建可（貸株注意喚起）">一般規制</span>);
   } else if (canNikkoGeneralCrossNow(credit)) {
-    badges.push(<span key="gen" style={styles.creditChipGeneral}>一般売可</span>);
+    badges.push(<span key="gen" style={styles.creditChipGeneral} title="一般信用 売建可（在庫あり）">一般可</span>);
+  } else if (isNikkoGeneralOutOfStock(credit)) {
+    badges.push(<span key="gen-oos" style={styles.creditChipNoCross} title="一般信用 売建可だが在庫0">一般—</span>);
   }
   if (credit.institutional_short) {
-    badges.push(<span key="inst" style={styles.creditChipInstitutional}>制度売可</span>);
+    badges.push(<span key="inst" style={styles.creditChipInstitutional} title="制度信用 売建可">制度可</span>);
   }
   return badges;
 }
