@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useRouterTransition } from "@/app/tools/_shared/use-router-transition";
 import type {
   MarketRankingMarket,
   MarketRankingPageData,
@@ -95,6 +96,8 @@ type SegmentedProps<T extends string> = {
   items: { id: T; label: string; description?: string }[];
   value: T;
   onChange: (value: T) => void;
+  isPendingFor?: (key: string) => boolean;
+  pendingKeyPrefix?: string;
 };
 
 type SortKey =
@@ -114,17 +117,28 @@ type SortState = {
   direction: SortDirection;
 } | null;
 
-function Segmented<T extends string>({ items, value, onChange }: SegmentedProps<T>) {
+function Segmented<T extends string>({
+  items,
+  value,
+  onChange,
+  isPendingFor,
+  pendingKeyPrefix = "segment",
+}: SegmentedProps<T>) {
   return (
     <div style={styles.segmented}>
       {items.map((item) => {
         const active = item.id === value;
+        const pending = isPendingFor?.(`${pendingKeyPrefix}:${item.id}`) ?? false;
+        const baseStyle = active ? styles.segmentButtonActive : styles.segmentButton;
+        const buttonStyle = pending ? { ...baseStyle, opacity: 0.55, cursor: "wait" } : baseStyle;
         return (
           <button
             key={item.id}
             type="button"
             onClick={() => onChange(item.id)}
-            style={active ? styles.segmentButtonActive : styles.segmentButton}
+            disabled={pending || active}
+            aria-busy={pending}
+            style={buttonStyle}
           >
             <span>{item.label}</span>
             {item.description ? (
@@ -294,16 +308,20 @@ function MonthNav({
   months,
   selected,
   onChange,
+  isPendingFor,
 }: {
   months: string[];
   selected: string;
   onChange: (month: string) => void;
+  isPendingFor?: (key: string) => boolean;
 }) {
   // months は降順（新しい月が先頭）のため idx-1 が未来、idx+1 が過去
   const idx = months.indexOf(selected);
   if (idx === -1) return null;
   const hasPast = idx < months.length - 1;
   const hasFuture = idx > 0;
+  const pendingPrev = isPendingFor?.("month-nav:prev") ?? false;
+  const pendingNext = isPendingFor?.("month-nav:next") ?? false;
   const arrowBase: React.CSSProperties = {
     width: 32,
     height: 32,
@@ -314,13 +332,19 @@ function MonthNav({
     justifyContent: "center",
     flexShrink: 0,
   };
+  const pendingOverlay: React.CSSProperties = { opacity: 0.55, cursor: "wait" };
   return (
     <div style={styles.monthNav}>
       <button
         type="button"
-        disabled={!hasPast}
+        disabled={!hasPast || pendingPrev}
+        aria-busy={pendingPrev}
         onClick={() => onChange(months[idx + 1])}
-        style={hasPast ? { ...arrowBase, ...styles.monthNavArrow } : { ...arrowBase, ...styles.monthNavArrowDisabled }}
+        style={{
+          ...arrowBase,
+          ...(hasPast ? styles.monthNavArrow : styles.monthNavArrowDisabled),
+          ...(pendingPrev ? pendingOverlay : null),
+        }}
         aria-label="前の月"
       >
         ←
@@ -328,9 +352,14 @@ function MonthNav({
       <span style={styles.monthNavLabel}>{formatMonth(selected)}</span>
       <button
         type="button"
-        disabled={!hasFuture}
+        disabled={!hasFuture || pendingNext}
+        aria-busy={pendingNext}
         onClick={() => onChange(months[idx - 1])}
-        style={hasFuture ? { ...arrowBase, ...styles.monthNavArrow } : { ...arrowBase, ...styles.monthNavArrowDisabled }}
+        style={{
+          ...arrowBase,
+          ...(hasFuture ? styles.monthNavArrow : styles.monthNavArrowDisabled),
+          ...(pendingNext ? pendingOverlay : null),
+        }}
         aria-label="次の月"
       >
         →
@@ -340,7 +369,7 @@ function MonthNav({
 }
 
 export default function ToolClient({ data }: { data: MarketRankingPageData }) {
-  const router = useRouter();
+  const { navigate, isPendingFor } = useRouterTransition();
   const searchParams = useSearchParams();
   const [selectedMarket, setSelectedMarket] = useState<MarketRankingMarket>("prime");
   const [sortState, setSortState] = useState<SortState>(null);
@@ -407,7 +436,7 @@ export default function ToolClient({ data }: { data: MarketRankingPageData }) {
     });
   }
 
-  function replaceQuery(next: Partial<Record<"type" | "month", string>>) {
+  function replaceQuery(next: Partial<Record<"type" | "month", string>>, pendingKey: string) {
     const params = new URLSearchParams(searchParams.toString());
     const rankingType = next.type ?? data.rankingType;
     const month = next.month ?? data.selectedMonth;
@@ -419,7 +448,10 @@ export default function ToolClient({ data }: { data: MarketRankingPageData }) {
     else params.set("month", month);
 
     const query = params.toString();
-    router.replace(query ? `/tools/market-rankings?${query}` : "/tools/market-rankings");
+    navigate(query ? `/tools/market-rankings?${query}` : "/tools/market-rankings", {
+      key: pendingKey,
+      method: "replace",
+    });
   }
 
   return (
@@ -458,7 +490,9 @@ export default function ToolClient({ data }: { data: MarketRankingPageData }) {
                 <Segmented
                   items={TYPE_OPTIONS}
                   value={data.rankingType}
-                  onChange={(nextType) => replaceQuery({ type: nextType })}
+                  onChange={(nextType) => replaceQuery({ type: nextType }, `type:${nextType}`)}
+                  isPendingFor={isPendingFor}
+                  pendingKeyPrefix="type"
                 />
               </div>
 
@@ -467,7 +501,13 @@ export default function ToolClient({ data }: { data: MarketRankingPageData }) {
                 <MonthNav
                   months={availableMonths}
                   selected={data.selectedMonth}
-                  onChange={(month) => replaceQuery({ month })}
+                  onChange={(month) => {
+                    const idx = availableMonths.indexOf(data.selectedMonth);
+                    const nextIdx = availableMonths.indexOf(month);
+                    const direction = nextIdx < idx ? "next" : "prev";
+                    replaceQuery({ month }, `month-nav:${direction}`);
+                  }}
+                  isPendingFor={isPendingFor}
                 />
               </div>
 

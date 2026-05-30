@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouterTransition } from "@/app/tools/_shared/use-router-transition";
 import type { TdnetDisclosureItem, TdnetDisclosureListResponse } from "./types";
 
 type FilterKey = "financialOnly" | "earningsOnly" | "hideCorrections";
@@ -275,7 +275,7 @@ export default function ToolClient({
   requestedDate?: string;
   requestedRange?: string;
 }) {
-  const router = useRouter();
+  const { navigate, isPendingFor } = useRouterTransition();
   const [dateInput, setDateInput] = useState(toDateInputValue(requestedDate ?? data?.target_date));
   const [rangeDays, setRangeDays] = useState<RangeDays>(toRangeDays(requestedRange));
   const [searchQuery, setSearchQuery] = useState("");
@@ -328,10 +328,13 @@ export default function ToolClient({
 
   const applyDate = () => {
     if (!dateInput) {
-      router.push(rangeDays === "1" ? "/tools/tdnet-disclosures" : `/tools/tdnet-disclosures?range=${rangeDays}`);
+      navigate(
+        rangeDays === "1" ? "/tools/tdnet-disclosures" : `/tools/tdnet-disclosures?range=${rangeDays}`,
+        { key: "apply" },
+      );
       return;
     }
-    router.push(`/tools/tdnet-disclosures?date=${dateInput}&range=${rangeDays}`);
+    navigate(`/tools/tdnet-disclosures?date=${dateInput}&range=${rangeDays}`, { key: "apply" });
   };
 
   const navigateByDays = (days: number) => {
@@ -339,16 +342,21 @@ export default function ToolClient({
     if (!baseDate) return;
     const nextDate = addDays(baseDate, days);
     setDateInput(nextDate);
-    router.push(`/tools/tdnet-disclosures?date=${nextDate}&range=${rangeDays}`);
+    navigate(`/tools/tdnet-disclosures?date=${nextDate}&range=${rangeDays}`, {
+      key: days < 0 ? "prev" : "next",
+    });
   };
 
   const changeRange = (nextRange: RangeDays) => {
     setRangeDays(nextRange);
     if (!dateInput) {
-      router.push(nextRange === "1" ? "/tools/tdnet-disclosures" : `/tools/tdnet-disclosures?range=${nextRange}`);
+      navigate(
+        nextRange === "1" ? "/tools/tdnet-disclosures" : `/tools/tdnet-disclosures?range=${nextRange}`,
+        { key: "range" },
+      );
       return;
     }
-    router.push(`/tools/tdnet-disclosures?date=${dateInput}&range=${nextRange}`);
+    navigate(`/tools/tdnet-disclosures?date=${dateInput}&range=${nextRange}`, { key: "range" });
   };
 
   const resetFilters = () => {
@@ -418,8 +426,9 @@ export default function ToolClient({
         <button
           type="button"
           onClick={() => navigateByDays(-1)}
-          disabled={!dateInput && !targetDate}
+          disabled={(!dateInput && !targetDate) || isPendingFor("prev")}
           aria-label="前の日"
+          aria-busy={isPendingFor("prev")}
           style={{
             width: 36,
             minHeight: 36,
@@ -429,8 +438,8 @@ export default function ToolClient({
             color: "var(--color-text)",
             fontSize: 18,
             fontWeight: 900,
-            cursor: dateInput || targetDate ? "pointer" : "default",
-            opacity: dateInput || targetDate ? 1 : 0.35,
+            cursor: isPendingFor("prev") ? "wait" : dateInput || targetDate ? "pointer" : "default",
+            opacity: isPendingFor("prev") ? 0.55 : dateInput || targetDate ? 1 : 0.35,
           }}
         >
           ←
@@ -438,8 +447,9 @@ export default function ToolClient({
         <button
           type="button"
           onClick={() => navigateByDays(1)}
-          disabled={!dateInput && !targetDate}
+          disabled={(!dateInput && !targetDate) || isPendingFor("next")}
           aria-label="次の日"
+          aria-busy={isPendingFor("next")}
           style={{
             width: 36,
             minHeight: 36,
@@ -449,8 +459,8 @@ export default function ToolClient({
             color: "var(--color-text)",
             fontSize: 18,
             fontWeight: 900,
-            cursor: dateInput || targetDate ? "pointer" : "default",
-            opacity: dateInput || targetDate ? 1 : 0.35,
+            cursor: isPendingFor("next") ? "wait" : dateInput || targetDate ? "pointer" : "default",
+            opacity: isPendingFor("next") ? 0.55 : dateInput || targetDate ? 1 : 0.35,
           }}
         >
           →
@@ -458,6 +468,8 @@ export default function ToolClient({
         <button
           type="button"
           onClick={applyDate}
+          disabled={isPendingFor("apply")}
+          aria-busy={isPendingFor("apply")}
           style={{
             minHeight: 36,
             padding: "6px 12px",
@@ -467,7 +479,8 @@ export default function ToolClient({
             color: "#fff",
             fontSize: 13,
             fontWeight: 800,
-            cursor: "pointer",
+            cursor: isPendingFor("apply") ? "wait" : "pointer",
+            opacity: isPendingFor("apply") ? 0.55 : 1,
           }}
         >
           表示
@@ -476,8 +489,13 @@ export default function ToolClient({
           type="button"
           onClick={() => {
             setDateInput("");
-            router.push(rangeDays === "1" ? "/tools/tdnet-disclosures" : `/tools/tdnet-disclosures?range=${rangeDays}`);
+            navigate(
+              rangeDays === "1" ? "/tools/tdnet-disclosures" : `/tools/tdnet-disclosures?range=${rangeDays}`,
+              { key: "latest" },
+            );
           }}
+          disabled={isPendingFor("latest")}
+          aria-busy={isPendingFor("latest")}
           style={{
             minHeight: 36,
             padding: "6px 12px",
@@ -487,7 +505,8 @@ export default function ToolClient({
             color: "var(--color-text)",
             fontSize: 13,
             fontWeight: 800,
-            cursor: "pointer",
+            cursor: isPendingFor("latest") ? "wait" : "pointer",
+            opacity: isPendingFor("latest") ? 0.55 : 1,
           }}
         >
           latest
@@ -499,6 +518,8 @@ export default function ToolClient({
           <select
             value={rangeDays}
             onChange={(e) => changeRange(e.target.value as RangeDays)}
+            disabled={isPendingFor("range")}
+            aria-busy={isPendingFor("range")}
             style={{
               minHeight: 36,
               padding: "6px 10px",
@@ -508,6 +529,8 @@ export default function ToolClient({
               color: "var(--color-text)",
               fontSize: 13,
               fontWeight: 700,
+              cursor: isPendingFor("range") ? "wait" : "pointer",
+              opacity: isPendingFor("range") ? 0.55 : 1,
             }}
           >
             {RANGE_OPTIONS.map((option) => (
