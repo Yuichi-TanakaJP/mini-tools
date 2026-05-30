@@ -11,6 +11,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 
 設計・方針・トレードオフの判断理由を記録します。
 
+- [2026-05-28 yutai-candidates の「パス」アクションとカードレイアウト見直し](./decision-log/2026-05-28-yutai-candidates-pass-action.md)
 - [2026-05-06 ペンギン・エイリアンシューター 敵キャラクター変更](./decision-log/2026-05-06-penguin-alien-enemy-visual.md)
 - [2026-05-16 TDNET適時開示一覧の初期実装方針](./decision-log/2026-05-16-tdnet-disclosures-page.md)
 - [2026-05-19 優待期限台帳 UI と入出力データ方針](./decision-log/2026-05-19-yutai-expiry-ui-and-data-policy.md)
