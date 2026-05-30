@@ -160,34 +160,44 @@ source|restriction|effective_date
 ### `yutai-candidates` の日興信用 badge 判定
 
 UI は「今、一般信用売りでクロス可能か」と「監視継続すべきか」を分けて扱う。
-一般信用の表示は `一般売可` / `一般注意` / `一般規制` の 3 種類に限定し、`一般在庫?` は表示しない。
-制度信用は一般クロス可否とは別表示として `制度売可` を出す。
+バッジは記号・短語化し、`一般` 系は状態を記号で表す。`制度` は一般クロス可否とは別表示にする。
+ラベルの意味（記号は `title` 属性で補足）:
 
-| ケース | Before 表示 | After 表示 | クロス対象 | 監視継続 |
+- `一般○`: 一般信用 売建可（在庫あり、今クロス可）
+- `一般△`: 一般信用 売建可だが貸株注意喚起あり
+- `一般×`: 一般信用 売建規制（取引停止）
+- `一般—`: 一般信用 売建可だが在庫0（今はクロス不可）
+- `制度○`: 制度信用 売建可
+
+`available_shares=null`（在庫不明）は引き続き表示しない（内部監視扱い）。
+
+| ケース | 旧ラベル | 現ラベル | クロス対象 | 監視継続 |
 |---|---|---|---|---|
-| `general_short=true` かつ `available_shares>0` | 一般売可 | 一般売可 | Yes | Yes |
-| 上記 + 貸株注意喚起 | 一般売可 | 一般注意 | Yes | Yes |
-| 新規売建規制 + 取引停止 | 表示なし | 一般規制 | No | Yes |
+| `general_short=true` かつ `available_shares>0` | 一般売可 | 一般○ | Yes | Yes |
+| 上記 + 貸株注意喚起 | 一般注意 | 一般△ | Yes | Yes |
+| 新規売建規制 + 取引停止 | 一般規制 | 一般× | No | Yes |
+| `general_short=true` かつ `available_shares=0`、売建規制なし | 表示なし | 一般— | No | Yes |
 | `general_short=false` かつ `available_shares>0`、売建規制なし | 表示なし | 表示なし | No | Yes |
 | `general_short=false` かつ `available_shares=0/null`、売建規制なし | 表示なし | 表示なし | No | 低頻度 |
-| `institutional_short=true` | 制度売可 | 制度売可 | 一般クロス判定には使わない | 任意 |
-| `institutional_short=true` かつ一般は不可 | 制度売可 | 制度売可 のみ | No | 任意 |
+| `institutional_short=true` | 制度売可 | 制度○ | 一般クロス判定には使わない | 任意 |
 | 一般・制度どちらも不可 | 表示なし | 表示なし | No | 低頻度 |
 
 判定順:
 
 ```ts
-if (hasSellStop) show "一般規制";
-else if (canCrossNow && hasLendingCaution) show "一般注意";
-else if (canCrossNow) show "一般売可";
+if (hasSellStop) show "一般×";
+else if (canCrossNow && hasLendingCaution) show "一般△";
+else if (canCrossNow) show "一般○";
+else if (isOutOfStock) show "一般—";
 
-if (institutional_short) show "制度売可";
+if (institutional_short) show "制度○";
 ```
 
 - `hasSellStop`: `regulation_details` に `新規売建規制` と `取引停止` を含む明細がある
 - `hasLendingCaution`: `regulation_details` に `貸株注意喚起` を含む明細がある
 - `canCrossNow`: `general_short=true` かつ `available_shares>0` かつ売建停止なし
-- `3549` は After 表示で `一般規制` として扱う
+- `isOutOfStock`: `general_short=true` かつ `available_shares===0` かつ売建停止なし
+- `3549` は `一般×` として扱う
 
 ## 関連ファイル
 
