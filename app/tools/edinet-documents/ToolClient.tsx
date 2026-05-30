@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useRouterTransition } from "@/app/tools/_shared/use-router-transition";
 import type { EdinetDocumentListResponse, EdinetDocItem, EdinetManifest } from "./types";
 
 const DOC_TYPE_LABELS: Record<string, string> = {
@@ -185,6 +186,7 @@ export default function ToolClient({
   currentDate?: string;
 }) {
   const router = useRouter();
+  const { navigate: navigateRoute, isPendingFor } = useRouterTransition();
   const [secCodeOnly, setSecCodeOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [docTypeFilter, setDocTypeFilter] = useState("all");
@@ -208,8 +210,8 @@ export default function ToolClient({
   const prevDate = currentIdx < dates.length - 1 ? dates[currentIdx + 1] : null;
   const nextDate = currentIdx > 0 ? dates[currentIdx - 1] : null;
 
-  const navigate = (date: string) => {
-    router.push(`/tools/edinet-documents?date=${date}`);
+  const navigate = (date: string, key: string) => {
+    navigateRoute(`/tools/edinet-documents?date=${date}`, { key });
   };
 
   useEffect(() => {
@@ -255,15 +257,15 @@ export default function ToolClient({
     [filteredItems, secCodeOnly],
   );
 
-  const navButtonStyle = (disabled: boolean) => ({
+  const navButtonStyle = (disabled: boolean, pending: boolean) => ({
     padding: "4px 10px",
     borderRadius: 6,
     border: "1.5px solid var(--color-border)",
     background: "transparent",
     color: disabled ? "var(--color-text-muted)" : "var(--color-text)",
     fontSize: 16,
-    cursor: disabled ? "default" : "pointer",
-    opacity: disabled ? 0.35 : 1,
+    cursor: pending ? "wait" : disabled ? "default" : "pointer",
+    opacity: pending ? 0.55 : disabled ? 0.35 : 1,
     lineHeight: 1,
   });
 
@@ -300,21 +302,52 @@ export default function ToolClient({
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button
             type="button"
-            onClick={() => prevDate && navigate(prevDate)}
-            disabled={!prevDate}
-            style={navButtonStyle(!prevDate)}
+            onClick={() => prevDate && navigate(prevDate, "prev")}
+            disabled={!prevDate || isPendingFor("prev")}
+            aria-busy={isPendingFor("prev")}
+            style={navButtonStyle(!prevDate, isPendingFor("prev"))}
             aria-label="前の日"
           >
             ←
           </button>
-          <span style={{ fontSize: 14, fontWeight: 800, color: "var(--color-text)", minWidth: 160, textAlign: "center" }}>
-            {normalizedDisplayDate ? formatAsOfDate(normalizedDisplayDate) : "—"}
-          </span>
+          {dates.length > 0 ? (
+            <select
+              value={normalizedDisplayDate}
+              onChange={(e) => navigate(e.target.value, "select")}
+              disabled={isPendingFor("select")}
+              aria-busy={isPendingFor("select")}
+              aria-label="日付を選択"
+              style={{
+                minWidth: 160,
+                padding: "4px 8px",
+                borderRadius: 6,
+                border: "1.5px solid var(--color-border)",
+                background: "var(--color-bg-input)",
+                color: "var(--color-text)",
+                fontSize: 14,
+                fontWeight: 800,
+                textAlign: "center",
+                cursor: isPendingFor("select") ? "wait" : "pointer",
+                opacity: isPendingFor("select") ? 0.55 : 1,
+              }}
+            >
+              {dates.map((d) => (
+                <option key={d} value={d}>
+                  {formatAsOfDate(d)}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span style={{ fontSize: 14, fontWeight: 800, color: "var(--color-text)", minWidth: 160, textAlign: "center" }}>
+              {normalizedDisplayDate ? formatAsOfDate(normalizedDisplayDate) : "—"}
+            </span>
+          )}
           <button
             type="button"
-            onClick={() => nextDate && navigate(nextDate)}
-            disabled={!nextDate}
-            style={navButtonStyle(!nextDate)}
+            onClick={() => nextDate && navigate(nextDate, "next")}
+            disabled={!nextDate || isPendingFor("next")}
+            aria-busy={isPendingFor("next")}
+            style={navButtonStyle(!nextDate, isPendingFor("next"))}
             aria-label="次の日"
           >
             →
