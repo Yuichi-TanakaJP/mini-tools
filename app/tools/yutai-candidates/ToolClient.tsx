@@ -78,10 +78,12 @@ function canNikkoGeneralCrossNow(credit: NikkoCreditRecord | undefined) {
   return Boolean(credit?.general_short && (credit.available_shares ?? 0) > 0 && !hasNikkoSellStop(credit));
 }
 
-// 一般売建は可能だが在庫残数が 0（＝今はクロス約定できない）状態。
-// available_shares が null（在庫不明）は対象外で、内部監視扱いのまま。
+// 一般信用売建の対象だが在庫が尽きている（＝今はクロス約定できない）状態。
+// available_shares が明示的に 0 = 在庫枠を管理している銘柄で残数 0。
+// general_short は在庫連動で false に倒れるため条件に含めない（在庫0なら false でも対象扱い）。
+// available_shares が null（在庫データを持たない非対象）は対象外で、従来どおり表示しない。
 function isNikkoGeneralOutOfStock(credit: NikkoCreditRecord | undefined) {
-  return Boolean(credit?.general_short && credit.available_shares === 0 && !hasNikkoSellStop(credit));
+  return Boolean(credit && credit.available_shares === 0 && !hasNikkoSellStop(credit));
 }
 
 function shouldWatchNikkoGeneral(credit: NikkoCreditRecord | undefined) {
@@ -103,13 +105,13 @@ function renderCreditBadges(
   if (!credit) return null;
   const badges: React.ReactNode[] = [];
   if (hasNikkoSellStop(credit)) {
-    badges.push(<span key="gen-regulated" style={styles.creditChipGeneralRegulation} title="一般信用 売建規制（取引停止）">一般×</span>);
+    badges.push(<span key="gen-regulated" style={styles.creditChipGeneralRegulation} title="一般信用 売建規制（取引停止）">一般停止</span>);
   } else if (canNikkoGeneralCrossNow(credit) && hasNikkoLendingCaution(credit)) {
-    badges.push(<span key="gen-caution" style={styles.creditChipGeneralCaution} title="一般信用 売建可（貸株注意喚起）">一般規制</span>);
+    badges.push(<span key="gen-caution" style={styles.creditChipGeneralCaution} title="一般信用 売建可（貸株注意喚起）">一般注意</span>);
   } else if (canNikkoGeneralCrossNow(credit)) {
     badges.push(<span key="gen" style={styles.creditChipGeneral} title="一般信用 売建可（在庫あり）">一般可</span>);
   } else if (isNikkoGeneralOutOfStock(credit)) {
-    badges.push(<span key="gen-oos" style={styles.creditChipNoCross} title="一般信用 売建可だが在庫0">一般—</span>);
+    badges.push(<span key="gen-oos" style={styles.creditChipNoCross} title="一般信用売建の対象だが在庫0（今クロス不可）">一般×</span>);
   }
   if (credit.institutional_short) {
     badges.push(<span key="inst" style={styles.creditChipInstitutional} title="制度信用 売建可">制度可</span>);
