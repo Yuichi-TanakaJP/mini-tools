@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { addMemoItemFromCandidate, isImportedMonthlyYutaiCandidate } from "@/app/tools/yutai-memo/candidate-import";
 import { loadItems } from "@/app/tools/yutai-memo/storage";
+import { useRouterTransition } from "@/app/tools/_shared/use-router-transition";
 import type { MonthlyYutaiCandidate, MonthlyYutaiPageData } from "./types";
 
 const PICKED_KEY = "monthly_yutai_picks_v1";
@@ -137,7 +138,7 @@ function getOfficialLinkLabel(item: MonthlyYutaiCandidate) {
 }
 
 export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
-  const router = useRouter();
+  const { navigate, isPendingFor } = useRouterTransition();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [tagFilter, setTagFilter] = useState<string>("all");
@@ -322,7 +323,10 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
       params.set("month", nextMonthId);
     }
     const nextQuery = params.toString();
-    router.replace(nextQuery ? `/tools/yutai-candidates?${nextQuery}` : "/tools/yutai-candidates");
+    navigate(
+      nextQuery ? `/tools/yutai-candidates?${nextQuery}` : "/tools/yutai-candidates",
+      { key: `month:${nextMonthId}`, method: "replace" },
+    );
   }
 
   return (
@@ -369,12 +373,17 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
               <div style={styles.monthChipList}>
                 {availableMonths.map((month) => {
                   const active = month.id === data.selectedMonthId;
+                  const pending = isPendingFor(`month:${month.id}`);
+                  const baseStyle = active ? styles.monthChipActive : styles.monthChip;
+                  const chipStyle = pending ? { ...baseStyle, ...styles.monthChipPending } : baseStyle;
                   return (
                     <button
                       key={month.id}
                       type="button"
                       onClick={() => handleMonthChange(month.id)}
-                      style={active ? styles.monthChipActive : styles.monthChip}
+                      disabled={pending || active}
+                      aria-busy={pending}
+                      style={chipStyle}
                     >
                       <span>{month.shortLabel}</span>
                       <span style={active ? styles.monthChipCountActive : styles.monthChipCount}>{month.count}</span>
@@ -749,6 +758,10 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 800,
     cursor: "default",
     boxShadow: "0 0 0 2px rgba(79,70,229,0.08)",
+  },
+  monthChipPending: {
+    opacity: 0.55,
+    cursor: "wait",
   },
   monthChipCount: {
     fontSize: 10,
