@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { InvestorFlowPageData, InvestorFlowRecord } from "./types";
 
@@ -18,7 +18,81 @@ const CATEGORY_ORDER = [
   "投資信託",
   "金融機関計",
   "信託銀行",
+  "生保・損保",
+  "都銀・地銀等",
+  "その他金融機関",
   "証券会社",
+  "その他法人等",
+  "自己現金",
+  "自己信用",
+];
+
+const SEGMENT_COLORS = ["#0f766e", "#2563eb", "#dc2626", "#9333ea", "#f59e0b", "#64748b"];
+
+const CATEGORY_LABELS: Record<string, string> = {
+  自己計: "自己計（証券会社の自己売買）",
+  委託計: "委託計（顧客注文）",
+};
+
+const CATEGORY_NOTES = [
+  {
+    term: "自己計",
+    description: "証券会社が顧客注文ではなく、自社の勘定で売買した分です。",
+  },
+  {
+    term: "委託計",
+    description: "海外投資家・個人・法人など、顧客からの注文として扱われる売買です。",
+  },
+  {
+    term: "総計",
+    description: "自己計と委託計を合わせた市場全体の売買です。",
+  },
+];
+
+const COMPOSITION_GROUPS = [
+  {
+    title: "総計の内訳",
+    description: "まず市場全体を、証券会社自身の売買（自己計）と顧客注文（委託計）に分けます。",
+    denominator: "総計",
+    categories: ["自己計", "委託計"],
+  },
+  {
+    title: "委託売買の内訳",
+    description: "次に顧客注文である委託計を、海外投資家・個人・法人などに分けます。",
+    denominator: "委託計",
+    categories: ["海外投資家", "個人", "法人計", "証券会社"],
+  },
+];
+
+const DETAIL_GROUPS = [
+  {
+    title: "個人の内訳",
+    denominator: "個人",
+    categories: ["個人現金", "個人信用"],
+  },
+  {
+    title: "法人の内訳",
+    denominator: "法人計",
+    categories: ["事業法人", "投資信託", "金融機関計", "その他法人等"],
+  },
+  {
+    title: "金融機関の内訳",
+    denominator: "金融機関計",
+    categories: ["信託銀行", "生保・損保", "都銀・地銀等", "その他金融機関"],
+  },
+  {
+    title: "自己売買の内訳",
+    denominator: "自己計",
+    categories: ["自己現金", "自己信用"],
+  },
+];
+
+type ViewMode = "summary" | "structure" | "details";
+
+const VIEW_TABS: { mode: ViewMode; label: string; description: string }[] = [
+  { mode: "summary", label: "サマリー", description: "今週の主な買い越し・売り越しを見る" },
+  { mode: "structure", label: "構造", description: "総計・自己計・委託計の関係を見る" },
+  { mode: "details", label: "詳細", description: "内訳表で細かい数字を確認する" },
 ];
 
 function formatDate(value?: string) {
@@ -78,6 +152,23 @@ function getRecord(records: InvestorFlowRecord[], category: string) {
   return records.find((record) => record.category === category) ?? null;
 }
 
+function getCategoryLabel(category: string) {
+  return CATEGORY_LABELS[category] ?? category;
+}
+
+function pickRecords(records: InvestorFlowRecord[], categories: string[]) {
+  return categories
+    .map((category) => getRecord(records, category))
+    .filter((record): record is InvestorFlowRecord => record !== null);
+}
+
+function getTopMovers(records: InvestorFlowRecord[]) {
+  return records
+    .filter((record) => record.category !== "総計")
+    .sort((a, b) => Math.abs(b.diff_yen) - Math.abs(a.diff_yen))
+    .slice(0, 6);
+}
+
 function MetricCard({
   label,
   record,
@@ -128,44 +219,386 @@ function WeekSelector({ data }: { data: InvestorFlowPageData }) {
   );
 }
 
-function FlowTable({ records }: { records: InvestorFlowRecord[] }) {
+function ShareCell({
+  value,
+  denominator,
+}: {
+  value: number;
+  denominator: number | null | undefined;
+}) {
+  const pct = denominator ? (value / denominator) * 100 : null;
+  const width = pct == null || Number.isNaN(pct) ? 0 : Math.max(0, Math.min(100, pct));
+  return (
+    <div style={styles.shareCell}>
+      <span style={styles.shareText}>{pct == null ? "—" : formatPct(pct)}</span>
+      <span style={styles.shareTrack} aria-hidden="true">
+        <span style={{ ...styles.shareBar, width: `${width}%` }} />
+      </span>
+    </div>
+  );
+}
+
+function CompositionStack({
+  label,
+  records,
+  denominator,
+  valueKey,
+}: {
+  label: string;
+  records: InvestorFlowRecord[];
+  denominator: number | null | undefined;
+  valueKey: "buy_yen" | "sell_yen";
+}) {
+  const total = denominator && !Number.isNaN(denominator) ? denominator : 0;
+  return (
+    <div style={styles.stackRow}>
+      <div style={styles.stackLabel}>{label}</div>
+      <div style={styles.stackTrack}>
+        {records.map((record, index) => {
+          const pct = total > 0 ? (record[valueKey] / total) * 100 : 0;
+          return (
+            <span
+              key={`${label}-${record.category}`}
+              title={`${record.category}: ${formatPct(pct)}`}
+              style={{
+                ...styles.stackSegment,
+                width: `${Math.max(0, Math.min(100, pct))}%`,
+                background: SEGMENT_COLORS[index % SEGMENT_COLORS.length],
+              }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CompositionCard({
+  title,
+  description,
+  denominator,
+  records,
+}: {
+  title: string;
+  description: string;
+  denominator: InvestorFlowRecord | null;
+  records: InvestorFlowRecord[];
+}) {
+  if (!denominator || records.length === 0) return null;
+
+  return (
+    <article style={styles.compositionCard}>
+      <div style={styles.compositionHeader}>
+        <div>
+          <div style={styles.compositionTitle}>{title}</div>
+          <div style={styles.compositionDescription}>{description}</div>
+          <div style={styles.compositionSub}>分母: {denominator.category}</div>
+        </div>
+        <div style={styles.compositionTotal}>
+          買い {formatYen(denominator.buy_yen)} / 売り {formatYen(denominator.sell_yen)}
+        </div>
+      </div>
+      <div style={styles.stackGroup}>
+        <CompositionStack
+          label="買い"
+          records={records}
+          denominator={denominator.buy_yen}
+          valueKey="buy_yen"
+        />
+        <CompositionStack
+          label="売り"
+          records={records}
+          denominator={denominator.sell_yen}
+          valueKey="sell_yen"
+        />
+      </div>
+      <div style={styles.legend}>
+        {records.map((record, index) => (
+          <span key={record.category} style={styles.legendItem}>
+            <span
+              style={{
+                ...styles.legendSwatch,
+                background: SEGMENT_COLORS[index % SEGMENT_COLORS.length],
+              }}
+            />
+            <span>{getCategoryLabel(record.category)}</span>
+          </span>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function CompactCompositionCard({
+  title,
+  denominator,
+  records,
+}: {
+  title: string;
+  denominator: InvestorFlowRecord | null;
+  records: InvestorFlowRecord[];
+}) {
+  if (!denominator || records.length === 0) return null;
+
+  return (
+    <article style={styles.compactCompositionCard}>
+      <div style={styles.compactCardTitle}>{title}</div>
+      <CompositionStack
+        label="買い"
+        records={records}
+        denominator={denominator.buy_yen}
+        valueKey="buy_yen"
+      />
+      <CompositionStack
+        label="売り"
+        records={records}
+        denominator={denominator.sell_yen}
+        valueKey="sell_yen"
+      />
+      <div style={styles.compactLegend}>
+        {records.map((record, index) => (
+          <span key={record.category} style={styles.legendItem}>
+            <span
+              style={{
+                ...styles.legendSwatch,
+                background: SEGMENT_COLORS[index % SEGMENT_COLORS.length],
+              }}
+            />
+            <span>{getCategoryLabel(record.category)}</span>
+          </span>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function MoverList({ records }: { records: InvestorFlowRecord[] }) {
+  const movers = getTopMovers(records);
+  return (
+    <section style={styles.moverPanel}>
+      <div style={styles.panelHeader}>
+        <div>
+          <div style={styles.panelTitle}>差引が大きい主体</div>
+          <div style={styles.panelSub}>買い越しは赤、売り越しは青で表示しています。</div>
+        </div>
+      </div>
+      <div style={styles.moverList}>
+        {movers.map((record) => {
+          const color = getDiffColor(record.diff_yen);
+          return (
+            <div key={record.category} style={styles.moverRow}>
+              <div>
+                <div style={styles.moverName}>{getCategoryLabel(record.category)}</div>
+                <div style={styles.moverSub}>
+                  買い {formatYen(record.buy_yen)} / 売り {formatYen(record.sell_yen)}
+                </div>
+              </div>
+              <div style={{ ...styles.moverValue, color }}>{formatYen(record.diff_yen)}</div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function SummaryView({ records }: { records: InvestorFlowRecord[] }) {
+  return (
+    <div style={styles.viewGrid}>
+      <MoverList records={records} />
+      <section style={styles.compactCompositionGrid}>
+        {COMPOSITION_GROUPS.map((group) => (
+          <CompactCompositionCard
+            key={group.title}
+            title={group.title}
+            denominator={getRecord(records, group.denominator)}
+            records={pickRecords(records, group.categories)}
+          />
+        ))}
+      </section>
+    </div>
+  );
+}
+
+function StructureNode({
+  record,
+  note,
+  tone = "default",
+}: {
+  record: InvestorFlowRecord | null;
+  note: string;
+  tone?: "default" | "primary";
+}) {
+  if (!record) return null;
+  const diffColor = getDiffColor(record.diff_yen);
+  return (
+    <article style={tone === "primary" ? styles.structureNodePrimary : styles.structureNode}>
+      <div style={styles.structureName}>{getCategoryLabel(record.category)}</div>
+      <div style={{ ...styles.structureValue, color: diffColor }}>{formatYen(record.diff_yen)}</div>
+      <div style={styles.structureNote}>{note}</div>
+    </article>
+  );
+}
+
+function StructureView({ records }: { records: InvestorFlowRecord[] }) {
+  const commissionRecords = pickRecords(records, ["海外投資家", "個人", "法人計", "証券会社"]);
+  return (
+    <div style={styles.structureLayout}>
+      <section style={styles.structureBand}>
+        <StructureNode
+          record={getRecord(records, "総計")}
+          note="市場全体。自己計と委託計を合わせた合計です。"
+          tone="primary"
+        />
+        <div style={styles.structureSplit}>
+          <StructureNode
+            record={getRecord(records, "自己計")}
+            note="証券会社が自社の勘定で売買した分です。"
+          />
+          <StructureNode
+            record={getRecord(records, "委託計")}
+            note="顧客注文として扱われる売買です。"
+          />
+        </div>
+      </section>
+      <section style={styles.structureBand}>
+        <div style={styles.panelTitle}>委託計の中身</div>
+        <div style={styles.structureChildGrid}>
+          {commissionRecords.map((record) => (
+            <StructureNode
+              key={record.category}
+              record={record}
+              note={`委託計に含まれる ${record.category} の売買です。`}
+            />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function DetailTable({
+  title,
+  denominator,
+  records,
+}: {
+  title: string;
+  denominator: InvestorFlowRecord | null;
+  records: InvestorFlowRecord[];
+}) {
+  if (!denominator || records.length === 0) return null;
+
+  return (
+    <details style={styles.detailPanel}>
+      <summary style={styles.detailSummary}>
+        <span>{title}</span>
+        <span style={styles.detailSummarySub}>分母: {denominator.category}</span>
+      </summary>
+      <div style={styles.tableWrapCompact}>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.thLeft}>投資主体</th>
+              <th style={styles.thRight}>買い</th>
+              <th style={styles.thRight}>売り</th>
+              <th style={styles.thRight}>差引</th>
+              <th style={styles.thRight}>買い構成比</th>
+              <th style={styles.thRight}>売り構成比</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((record) => {
+              const diffColor = getDiffColor(record.diff_yen);
+              return (
+                <tr key={`${record.row_index}-${record.category}`} style={styles.row}>
+                  <td style={styles.tdLeft}>
+                    <span style={styles.categoryName}>{record.category}</span>
+                  </td>
+                  <td style={styles.tdRight}>{formatYen(record.buy_yen)}</td>
+                  <td style={styles.tdRight}>{formatYen(record.sell_yen)}</td>
+                  <td style={{ ...styles.tdRightStrong, color: diffColor }}>
+                    {formatYen(record.diff_yen)}
+                  </td>
+                  <td style={styles.tdRightMuted}>
+                    <ShareCell value={record.buy_yen} denominator={denominator.buy_yen} />
+                  </td>
+                  <td style={styles.tdRightMuted}>
+                    <ShareCell value={record.sell_yen} denominator={denominator.sell_yen} />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  );
+}
+
+function FlowOverview({ records }: { records: InvestorFlowRecord[] }) {
+  const [mode, setMode] = useState<ViewMode>("summary");
+
   if (records.length === 0) {
     return <div style={styles.emptyBlock}>表示できる行がありません。</div>;
   }
 
   return (
-    <div style={styles.tableWrap}>
-      <table style={styles.table}>
-        <thead>
-          <tr>
-            <th style={styles.thLeft}>投資主体</th>
-            <th style={styles.thRight}>買い</th>
-            <th style={styles.thRight}>売り</th>
-            <th style={styles.thRight}>差引</th>
-            <th style={styles.thRight}>買いシェア</th>
-            <th style={styles.thRight}>売りシェア</th>
-          </tr>
-        </thead>
-        <tbody>
-          {records.map((record) => {
-            const diffColor = getDiffColor(record.diff_yen);
-            return (
-              <tr key={`${record.row_index}-${record.category}`} style={styles.row}>
-                <td style={styles.tdLeft}>
-                  <span style={styles.categoryName}>{record.category}</span>
-                </td>
-                <td style={styles.tdRight}>{formatYen(record.buy_yen)}</td>
-                <td style={styles.tdRight}>{formatYen(record.sell_yen)}</td>
-                <td style={{ ...styles.tdRightStrong, color: diffColor }}>
-                  {formatYen(record.diff_yen)}
-                </td>
-                <td style={styles.tdRightMuted}>{formatPct(record.share_buy_pct)}</td>
-                <td style={styles.tdRightMuted}>{formatPct(record.share_sell_pct)}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div style={styles.flowLayout}>
+      <section style={styles.viewTabs} aria-label="表示方法">
+        {VIEW_TABS.map((tab) => {
+          const active = mode === tab.mode;
+          return (
+            <button
+              key={tab.mode}
+              type="button"
+              onClick={() => setMode(tab.mode)}
+              style={active ? styles.viewTabActive : styles.viewTab}
+            >
+              <span style={styles.viewTabLabel}>{tab.label}</span>
+              <span style={styles.viewTabDescription}>{tab.description}</span>
+            </button>
+          );
+        })}
+      </section>
+      {mode === "summary" ? <SummaryView records={records} /> : null}
+      {mode === "structure" ? <StructureView records={records} /> : null}
+      {mode === "details" ? (
+        <>
+          <section style={styles.termNote} aria-label="投資主体区分の説明">
+            <div style={styles.termNoteTitle}>区分の見方</div>
+            <div style={styles.termGrid}>
+              {CATEGORY_NOTES.map((note) => (
+                <div key={note.term} style={styles.termItem}>
+                  <span style={styles.termName}>{note.term}</span>
+                  <span style={styles.termDescription}>{note.description}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+          <section style={styles.compositionGrid}>
+            {COMPOSITION_GROUPS.map((group) => (
+              <CompositionCard
+                key={group.title}
+                title={group.title}
+                description={group.description}
+                denominator={getRecord(records, group.denominator)}
+                records={pickRecords(records, group.categories)}
+              />
+            ))}
+          </section>
+          <section style={styles.detailList}>
+            <div style={styles.detailListHeader}>詳細内訳</div>
+            {DETAIL_GROUPS.map((group) => (
+              <DetailTable
+                key={group.title}
+                title={group.title}
+                denominator={getRecord(records, group.denominator)}
+                records={pickRecords(records, group.categories)}
+              />
+            ))}
+          </section>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -252,7 +685,7 @@ export default function ToolClient({ data }: { data: InvestorFlowPageData }) {
                       </a>
                     ) : null}
                   </div>
-                  <FlowTable records={records} />
+                  <FlowOverview records={records} />
                 </section>
               </>
             )}
@@ -427,11 +860,344 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 800,
     textDecoration: "none",
   },
+  flowLayout: {
+    display: "grid",
+    gap: 16,
+  },
+  viewTabs: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+    gap: 8,
+    padding: 6,
+    borderRadius: 14,
+    background: "#f1f5f9",
+    border: "1px solid rgba(15,23,42,0.06)",
+  },
+  viewTab: {
+    display: "grid",
+    gap: 3,
+    minHeight: 58,
+    padding: "10px 12px",
+    border: "1px solid transparent",
+    borderRadius: 10,
+    background: "transparent",
+    color: "#475569",
+    textAlign: "left",
+    cursor: "pointer",
+  },
+  viewTabActive: {
+    display: "grid",
+    gap: 3,
+    minHeight: 58,
+    padding: "10px 12px",
+    border: "1px solid rgba(15,118,110,0.26)",
+    borderRadius: 10,
+    background: "#ffffff",
+    color: "#0f172a",
+    textAlign: "left",
+    cursor: "pointer",
+    boxShadow: "0 6px 16px rgba(15,23,42,0.08)",
+  },
+  viewTabLabel: {
+    fontSize: 13,
+    fontWeight: 900,
+  },
+  viewTabDescription: {
+    fontSize: 11,
+    lineHeight: 1.4,
+    color: "#64748b",
+  },
+  viewGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
+    gap: 14,
+  },
+  moverPanel: {
+    padding: 14,
+    borderRadius: 14,
+    border: "1px solid rgba(15,23,42,0.08)",
+    background: "#ffffff",
+  },
+  panelHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 8,
+  },
+  panelTitle: {
+    fontSize: 14,
+    fontWeight: 900,
+    color: "#0f172a",
+  },
+  panelSub: {
+    marginTop: 3,
+    fontSize: 11,
+    lineHeight: 1.5,
+    color: "#64748b",
+  },
+  moverList: {
+    display: "grid",
+  },
+  moverRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 14,
+    padding: "12px 0",
+    borderTop: "1px solid rgba(15,23,42,0.07)",
+  },
+  moverName: {
+    fontSize: 13,
+    fontWeight: 900,
+    color: "#0f172a",
+  },
+  moverSub: {
+    marginTop: 4,
+    fontSize: 11,
+    color: "#64748b",
+    lineHeight: 1.4,
+  },
+  moverValue: {
+    flex: "0 0 auto",
+    fontSize: 18,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  compactCompositionGrid: {
+    display: "grid",
+    gap: 12,
+  },
+  compactCompositionCard: {
+    display: "grid",
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    border: "1px solid rgba(15,23,42,0.08)",
+    background: "#f8fafc",
+  },
+  compactCardTitle: {
+    fontSize: 13,
+    fontWeight: 900,
+    color: "#0f172a",
+  },
+  compactLegend: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "6px 10px",
+  },
+  compositionGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: 14,
+  },
+  compositionCard: {
+    display: "grid",
+    gap: 14,
+    padding: 14,
+    borderRadius: 14,
+    border: "1px solid rgba(15,23,42,0.08)",
+    background: "#f8fafc",
+  },
+  compositionHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  compositionTitle: {
+    fontSize: 14,
+    fontWeight: 900,
+    color: "#0f172a",
+  },
+  compositionDescription: {
+    marginTop: 5,
+    maxWidth: 520,
+    fontSize: 12,
+    lineHeight: 1.6,
+    color: "#475569",
+  },
+  compositionSub: {
+    marginTop: 3,
+    fontSize: 11,
+    color: "#64748b",
+    fontWeight: 700,
+  },
+  compositionTotal: {
+    fontSize: 11,
+    color: "#64748b",
+    fontWeight: 800,
+  },
+  stackGroup: {
+    display: "grid",
+    gap: 10,
+  },
+  stackRow: {
+    display: "grid",
+    gridTemplateColumns: "42px minmax(0, 1fr)",
+    alignItems: "center",
+    gap: 10,
+  },
+  stackLabel: {
+    fontSize: 12,
+    fontWeight: 900,
+    color: "#475569",
+  },
+  stackTrack: {
+    display: "flex",
+    height: 22,
+    overflow: "hidden",
+    borderRadius: 8,
+    background: "#e2e8f0",
+  },
+  stackSegment: {
+    display: "block",
+    height: "100%",
+  },
+  legend: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "7px 10px",
+  },
+  legendItem: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
+    fontSize: 11,
+    color: "#475569",
+    fontWeight: 800,
+  },
+  legendSwatch: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+  },
+  detailList: {
+    display: "grid",
+    gap: 10,
+  },
+  detailListHeader: {
+    fontSize: 13,
+    fontWeight: 900,
+    color: "#0f172a",
+  },
+  structureLayout: {
+    display: "grid",
+    gap: 14,
+  },
+  structureBand: {
+    display: "grid",
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    border: "1px solid rgba(15,23,42,0.08)",
+    background: "#ffffff",
+  },
+  structureSplit: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: 12,
+  },
+  structureChildGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+    gap: 10,
+  },
+  structureNodePrimary: {
+    display: "grid",
+    gap: 5,
+    padding: 14,
+    borderRadius: 12,
+    border: "1px solid rgba(15,118,110,0.22)",
+    background: "#f0fdfa",
+  },
+  structureNode: {
+    display: "grid",
+    gap: 5,
+    padding: 12,
+    borderRadius: 12,
+    border: "1px solid rgba(15,23,42,0.08)",
+    background: "#f8fafc",
+  },
+  structureName: {
+    fontSize: 13,
+    fontWeight: 900,
+    color: "#0f172a",
+  },
+  structureValue: {
+    fontSize: 20,
+    fontWeight: 900,
+  },
+  structureNote: {
+    fontSize: 11,
+    lineHeight: 1.5,
+    color: "#64748b",
+  },
+  termNote: {
+    display: "grid",
+    gap: 10,
+    padding: 14,
+    borderRadius: 14,
+    border: "1px solid rgba(15,118,110,0.16)",
+    background: "#f0fdfa",
+  },
+  termNoteTitle: {
+    fontSize: 13,
+    fontWeight: 900,
+    color: "#134e4a",
+  },
+  termGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+    gap: 8,
+  },
+  termItem: {
+    display: "grid",
+    gap: 3,
+  },
+  termName: {
+    fontSize: 12,
+    fontWeight: 900,
+    color: "#0f766e",
+  },
+  termDescription: {
+    fontSize: 12,
+    lineHeight: 1.55,
+    color: "#334155",
+  },
+  detailPanel: {
+    border: "1px solid rgba(15,23,42,0.08)",
+    borderRadius: 12,
+    overflow: "hidden",
+    background: "#ffffff",
+  },
+  detailSummary: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    padding: "11px 13px",
+    cursor: "pointer",
+    color: "#0f172a",
+    fontSize: 13,
+    fontWeight: 900,
+  },
+  detailSummarySub: {
+    color: "#64748b",
+    fontSize: 11,
+    fontWeight: 800,
+  },
   tableWrap: {
     overflowX: "auto",
     WebkitOverflowScrolling: "touch",
     border: "1px solid rgba(15,23,42,0.08)",
     borderRadius: 14,
+  },
+  tableWrapCompact: {
+    overflowX: "auto",
+    WebkitOverflowScrolling: "touch",
+    borderTop: "1px solid rgba(15,23,42,0.08)",
   },
   table: {
     width: "100%",
@@ -486,6 +1252,32 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 900,
     color: "#0f172a",
     whiteSpace: "nowrap",
+  },
+  shareCell: {
+    display: "grid",
+    gridTemplateColumns: "48px minmax(54px, 1fr)",
+    alignItems: "center",
+    gap: 8,
+    justifyContent: "end",
+  },
+  shareText: {
+    color: "#475569",
+    fontWeight: 800,
+    fontVariantNumeric: "tabular-nums",
+  },
+  shareTrack: {
+    display: "block",
+    width: "100%",
+    height: 7,
+    borderRadius: 999,
+    background: "#e2e8f0",
+    overflow: "hidden",
+  },
+  shareBar: {
+    display: "block",
+    height: "100%",
+    borderRadius: 999,
+    background: "#0f766e",
   },
   emptyCard: {
     padding: "32px 24px",
