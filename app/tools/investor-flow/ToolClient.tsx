@@ -176,6 +176,7 @@ export default function ToolClient({ data }: { data: InvestorFlowPageData }) {
   const individual = getRecord(records, "個人");
   const trust = getRecord(records, "信託銀行");
   const total = getRecord(records, "総計");
+  const payload = data.payload;
 
   return (
     <main style={styles.page}>
@@ -186,15 +187,17 @@ export default function ToolClient({ data }: { data: InvestorFlowPageData }) {
           <p style={styles.description}>
             JPX公式の週間売買状況から、海外投資家・個人・法人などの買い越し / 売り越しを確認できます。
           </p>
-          <div style={styles.metaRow}>
-            <span style={styles.metaChip}>
-              {formatWeek(data.payload?.start_date, data.payload?.end_date)}
-            </span>
-            <span style={styles.metaChip}>
-              更新 {formatGeneratedAt(data.payload?.generated_at_jst)}
-            </span>
-            <span style={styles.metaChip}>{data.payload?.market_scope ?? "二市場"}</span>
-          </div>
+          {payload ? (
+            <div style={styles.metaRow}>
+              <span style={styles.metaChip}>
+                {formatWeek(payload.start_date, payload.end_date)}
+              </span>
+              <span style={styles.metaChip}>
+                更新 {formatGeneratedAt(payload.generated_at_jst)}
+              </span>
+              <span style={styles.metaChip}>{payload.market_scope}</span>
+            </div>
+          ) : null}
         </section>
 
         {!data.manifest ? (
