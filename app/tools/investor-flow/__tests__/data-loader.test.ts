@@ -1,0 +1,148 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+import {
+  loadInvestorFlowLatest,
+  loadInvestorFlowManifest,
+  loadInvestorFlowPageData,
+  loadInvestorFlowWeek,
+} from "../data-loader";
+import type { InvestorFlowManifest, InvestorFlowPayload } from "../types";
+
+const MANIFEST: InvestorFlowManifest = {
+  data_source: "JPX",
+  latest: {
+    start_date: "2026-05-18",
+    end_date: "2026-05-22",
+    path: "investor_flow_2026-05-18_to_2026-05-22.json",
+  },
+  weeks: [
+    {
+      start_date: "2026-05-18",
+      end_date: "2026-05-22",
+      path: "investor_flow_2026-05-18_to_2026-05-22.json",
+    },
+    {
+      start_date: "2026-05-11",
+      end_date: "2026-05-15",
+      path: "investor_flow_2026-05-11_to_2026-05-15.json",
+    },
+  ],
+  generated_at_jst: "2026-05-28T16:00:00+09:00",
+};
+
+const PAYLOAD: InvestorFlowPayload = {
+  data_source: "JPX",
+  source_url: "https://www.jpx.co.jp/example.xls",
+  source_file: "stock_val_1_260522.xls",
+  week_label_raw: "2026年5月第3週（5/18 - 5/22）",
+  start_date: "2026-05-18",
+  end_date: "2026-05-22",
+  market_scope: "二市場",
+  unit: "thousand_yen",
+  generated_at_jst: "2026-05-28T16:00:00+09:00",
+  records: [],
+};
+
+function makeFetchOk(body: unknown): Response {
+  return {
+    ok: true,
+    json: async () => body,
+  } as unknown as Response;
+}
+
+function makeFetch404(): Response {
+  return { ok: false, status: 404 } as unknown as Response;
+}
+
+describe("investor-flow data-loader", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+    process.env.NODE_ENV = "test";
+    delete process.env.MARKET_INFO_API_BASE_URL;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("API 未設定のとき null を返す", async () => {
+    await expect(loadInvestorFlowManifest()).resolves.toBeNull();
+    await expect(loadInvestorFlowLatest()).resolves.toBeNull();
+    await expect(loadInvestorFlowWeek("2026-05-18", "2026-05-22")).resolves.toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("manifest / latest / week を API から取得する", async () => {
+    process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com/";
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(makeFetchOk(MANIFEST))
+      .mockResolvedValueOnce(makeFetchOk(PAYLOAD))
+      .mockResolvedValueOnce(makeFetchOk(PAYLOAD));
+
+    await expect(loadInvestorFlowManifest()).resolves.toEqual(MANIFEST);
+    await expect(loadInvestorFlowLatest()).resolves.toEqual(PAYLOAD);
+    await expect(loadInvestorFlowWeek("2026-05-11", "2026-05-15")).resolves.toEqual(PAYLOAD);
+
+    expect(fetch).toHaveBeenNthCalledWith(
+      1,
+      "https://api.example.com/investor-flow/manifest",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      "https://api.example.com/investor-flow/latest",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      3,
+      "https://api.example.com/investor-flow/weeks/2026-05-11/2026-05-15",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  });
+
+  it("page data は latest 週なら latest endpoint を使う", async () => {
+    process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(makeFetchOk(MANIFEST))
+      .mockResolvedValueOnce(makeFetchOk(PAYLOAD));
+
+    const result = await loadInvestorFlowPageData();
+
+    expect(result.payload).toEqual(PAYLOAD);
+    expect(result.selectedWeek?.start_date).toBe("2026-05-18");
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      "https://api.example.com/investor-flow/latest",
+      expect.any(Object),
+    );
+  });
+
+  it("page data は過去週なら weeks endpoint を使う", async () => {
+    process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(makeFetchOk(MANIFEST))
+      .mockResolvedValueOnce(makeFetchOk({ ...PAYLOAD, start_date: "2026-05-11", end_date: "2026-05-15" }));
+
+    const result = await loadInvestorFlowPageData("2026-05-11", "2026-05-15");
+
+    expect(result.payload?.start_date).toBe("2026-05-11");
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      "https://api.example.com/investor-flow/weeks/2026-05-11/2026-05-15",
+      expect.any(Object),
+    );
+  });
+
+  it("API 失敗時は null / loadFailed を返す", async () => {
+    process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(makeFetchOk(MANIFEST))
+      .mockResolvedValueOnce(makeFetch404());
+
+    const result = await loadInvestorFlowPageData("2026-05-11", "2026-05-15");
+
+    expect(result.payload).toBeNull();
+    expect(result.loadFailed).toBe(true);
+  });
+});

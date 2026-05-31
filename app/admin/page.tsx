@@ -97,6 +97,37 @@ function pickLatestDate(obj: unknown): string | null {
   return null;
 }
 
+function pickInvestorFlowLatestStart(obj: unknown): string | null {
+  if (obj && typeof obj === "object" && "latest" in obj) {
+    const latest = (obj as Record<string, unknown>).latest;
+    if (latest && typeof latest === "object" && "start_date" in latest) {
+      const startDate = (latest as Record<string, unknown>).start_date;
+      if (typeof startDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+        return startDate;
+      }
+    }
+  }
+  return null;
+}
+
+function pickInvestorFlowWeeks(obj: unknown): string[] {
+  if (obj && typeof obj === "object" && "weeks" in obj) {
+    const weeks = (obj as Record<string, unknown>).weeks;
+    if (Array.isArray(weeks)) {
+      return weeks
+        .map((week) => {
+          if (week && typeof week === "object" && "start_date" in week) {
+            const startDate = (week as Record<string, unknown>).start_date;
+            return typeof startDate === "string" ? startDate : null;
+          }
+          return null;
+        })
+        .filter((d): d is string => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d));
+    }
+  }
+  return [];
+}
+
 // ============== Schedule presets ==============
 
 const SCHED_DAILY: Schedule = { kind: "daily-cron", description: "毎日 00:35 JST (econ_weekly_scrape_daily)", expectedMaxDays: 2 };
@@ -115,7 +146,7 @@ async function loadRows(): Promise<ToolRow[]> {
   const [
     topix33, nikkei, stockRanking, usRanking,
     earningsDom, earningsOv, econ, edinet, yutai,
-    marketCap, dividendYield,
+    marketCap, dividendYield, investorFlow,
   ] = await Promise.all([
     fetchManifestLatest("/topix33/manifest", (j) => pickString(j, "latest_date") ?? pickLatestDate(j), (j) => pickDatesArray(j, "dates")),
     fetchManifestLatest("/nikkei/manifest", (j) => pickString(j, "latest_date") ?? pickLatestDate(j), (j) => pickDatesArray(j, "dates")),
@@ -128,6 +159,7 @@ async function loadRows(): Promise<ToolRow[]> {
     fetchManifestLatest("/yutai/manifest", (j) => pickString(j, "generated_at")),
     fetchManifestLatest("/market-rankings/market-cap/manifest", (j) => pickString(j, "generatedAt") ?? pickString(j, "latest")),
     fetchManifestLatest("/market-rankings/dividend-yield/manifest", (j) => pickString(j, "generatedAt") ?? pickString(j, "latest")),
+    fetchManifestLatest("/investor-flow/manifest", pickInvestorFlowLatestStart, pickInvestorFlowWeeks),
   ]);
   const [nikkoCredit, sbiCredit, tdnet, jpxClosed] = await Promise.all([
     fetchManifestLatest("/nikko/credit", (j) => pickString(j, "date") ?? pickString(j, "generated_at")),
@@ -143,6 +175,7 @@ async function loadRows(): Promise<ToolRow[]> {
     { category: "stocks", name: "米国株ランキング", href: "/tools/us-stock-ranking", source: "/us-ranking/manifest", rule: "生成は --with-us-ranking。publish 運用は要確認。", schedule: SCHED_AD_HOC, latest: usRanking.latest, fetchedAt: usRanking.fetchedAt, history: usRanking.history },
     { category: "stocks", name: "市場ランキング (時価総額)", href: "/tools/market-rankings", source: "/market-rankings/market-cap/manifest", rule: SCHED_MONTHLY.description, schedule: SCHED_MONTHLY, latest: marketCap.latest, fetchedAt: marketCap.fetchedAt },
     { category: "stocks", name: "市場ランキング (配当利回り)", href: "/tools/market-rankings", source: "/market-rankings/dividend-yield/manifest", rule: SCHED_MONTHLY.description, schedule: SCHED_MONTHLY, latest: dividendYield.latest, fetchedAt: dividendYield.fetchedAt },
+    { category: "stocks", name: "投資主体別売買動向", href: "/tools/investor-flow", source: "/investor-flow/manifest", rule: SCHED_WEEKLY.description, schedule: SCHED_WEEKLY, latest: investorFlow.latest, fetchedAt: investorFlow.fetchedAt, history: investorFlow.history },
 
     { category: "calendars", name: "決算カレンダー (国内)", href: "/tools/earnings-calendar", source: "/earnings-calendar/domestic/manifest", rule: SCHED_WEEKLY.description, schedule: SCHED_WEEKLY, latest: earningsDom.latest, fetchedAt: earningsDom.fetchedAt },
     { category: "calendars", name: "決算カレンダー (海外)", href: "/tools/earnings-calendar", source: "/earnings-calendar/overseas/manifest", rule: SCHED_WEEKLY.description, schedule: SCHED_WEEKLY, latest: earningsOv.latest, fetchedAt: earningsOv.fetchedAt },
@@ -270,6 +303,7 @@ const TOOL_SOURCE_MAP: { tool: string; href: string; sources: string[] }[] = [
   { tool: "決算カレンダー", href: "/tools/earnings-calendar", sources: ["/earnings-calendar/domestic/manifest", "/earnings-calendar/overseas/manifest", "/market-calendar/jpx-closed"] },
   { tool: "経済指標カレンダー", href: "/tools/econ-calendar", sources: ["/econ-calendar/weekly/manifest"] },
   { tool: "市場ランキング", href: "/tools/market-rankings", sources: ["/market-rankings/market-cap/manifest", "/market-rankings/dividend-yield/manifest"] },
+  { tool: "投資主体別売買動向", href: "/tools/investor-flow", sources: ["/investor-flow/manifest"] },
   { tool: "株価ランキング", href: "/tools/stock-ranking", sources: ["/ranking/manifest", "/market-calendar/jpx-closed"] },
   { tool: "米国株ランキング", href: "/tools/us-stock-ranking", sources: ["/us-ranking/manifest"] },
   { tool: "日経225寄与度", href: "/tools/nikkei-contribution", sources: ["/nikkei/manifest", "/market-calendar/jpx-closed"] },

@@ -47,6 +47,7 @@ market tools の API 取得経路や fallback を変更する前に、次の doc
 | `stock-ranking` | サーバーで `loadRankingManifest()` / `loadRankingDayData()` と共通休場日 loader を呼ぶ | クライアントは `/tools/stock-ranking/data/[date]` を叩き、route 内で同じ loader を呼ぶ | `MARKET_INFO_API_BASE_URL` | production ではなし。非 production / 明示 env のみ `app/tools/stock-ranking/data` とローカル休場日 JSON | repo 同梱 JSON は履歴保管の主用途にしない |
 | `us-stock-ranking` | サーバーで `loadUsRankingManifest()` を読み、`manifest.dates` を最大 5 件試して最初に取得できた日次データを初期表示に使う | クライアントは `/tools/us-stock-ranking/data/[date]` を叩き、route 内で同じ loader を呼ぶ | `MARKET_INFO_API_BASE_URL` | なし。未設定時 / fetch 失敗時は「データ取得不可」表示 | API パスは `/us-stock-ranking/*` ではなく `/us-ranking/*` |
 | `market-rankings` | サーバーで `loadMarketRankingManifest()` / `loadMarketRankingMonthData()` を呼び、`type` / `month` を正規化して初期表示を決める | クライアント再 fetch は基本なし。`type` / `month` の変更は query string を更新して server を再評価する | `MARKET_INFO_API_BASE_URL` | なし。未設定時は「API 未接続」表示、対象月 fetch 失敗時は error card 表示 | 月次 API 前提。repo 同梱 JSON は持たない |
+| `investor-flow` | サーバーで `loadInvestorFlowPageData()` を呼び、manifest と latest / week snapshot を取得する | 週切替は query string を更新して server を再評価する | `MARKET_INFO_API_BASE_URL` | なし。未設定時は「データ取得先が未接続」表示、対象週 fetch 失敗時は error card 表示 | JPX公式データ由来の週次 API 前提。repo 同梱 JSON は持たない |
 | `yutai-candidates` | サーバーで `loadMonthlyYutaiPageData()` | クライアント再 fetch は基本なし。月切替は route 遷移でサーバー再評価 | `MARKET_INFO_API_BASE_URL` | production ではなし。非 production / 明示 env のみ manifest / month data / sample を使用 | SBI は `is_short=true` の扱い有無だけを表示し、在庫状態では除外しない |
 | `earnings-calendar` | サーバーで `loadEarningsCalendarPageData()` を呼ぶ | クライアント再 fetch なし | `MARKET_INFO_API_BASE_URL` | production ではなし。非 production / 明示 env のみ国内同梱 JSON を使用。海外は API 未設定/失敗時は非表示 | 国内・海外ともに `earnings-calendar/{domestic\|overseas}/*` API を優先取得する |
 
@@ -212,6 +213,7 @@ if (institutional_short) show "制度可";
 - [app/tools/stock-ranking/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-ranking/data-loader.ts)
 - [app/tools/us-stock-ranking/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/us-stock-ranking/data-loader.ts)
 - [app/tools/market-rankings/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/market-rankings/data-loader.ts)
+- [app/tools/investor-flow/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/investor-flow/data-loader.ts)
 - [app/tools/yutai-candidates/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/yutai-candidates/data-loader.ts)
 - [app/tools/yutai-candidates/types.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/yutai-candidates/types.ts)
 - [app/tools/earnings-calendar/page.tsx](/c:/Users/yutaz/dev/mini-tools/app/tools/earnings-calendar/page.tsx)
