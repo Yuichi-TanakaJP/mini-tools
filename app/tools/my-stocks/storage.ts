@@ -7,9 +7,47 @@ function isStockTab(value: unknown): value is StockListTab {
   return value === "holding" || value === "watch";
 }
 
+/** 端末・テスト双方で動く ID 生成。 */
+export function newId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+/**
+ * 任意の入力（localStorage / インポートファイル）を MyStockItem[] に正規化する。
+ * 不正な要素は捨て、欠損フィールドは補完する。純粋関数（window 非依存）。
+ */
+export function normalizeItems(parsed: unknown): MyStockItem[] {
+  if (!Array.isArray(parsed)) return [];
+
+  const normalized: MyStockItem[] = [];
+  for (const it of parsed) {
+    if (
+      it &&
+      typeof it === "object" &&
+      typeof (it as MyStockItem).id === "string" &&
+      typeof (it as MyStockItem).code === "string" &&
+      typeof (it as MyStockItem).name === "string" &&
+      isStockTab((it as MyStockItem).tab)
+    ) {
+      const item = it as MyStockItem;
+      normalized.push({
+        ...item,
+        market: typeof item.market === "string" ? item.market : "",
+        sector: typeof item.sector === "string" ? item.sector : null,
+        addedAt: typeof item.addedAt === "number" ? item.addedAt : Date.now(),
+        updatedAt:
+          typeof item.updatedAt === "number" ? item.updatedAt : item.addedAt ?? Date.now(),
+      });
+    }
+  }
+  return normalized;
+}
+
 /**
  * localStorage から銘柄一覧を読む。
- * 壊れたデータや旧形式は読み取り時に正規化し、保存し直す。
  * SSR では window が無いので空配列を返す（hydration ガイドライン準拠）。
  */
 export function loadItems(): MyStockItem[] {
@@ -17,31 +55,7 @@ export function loadItems(): MyStockItem[] {
   try {
     const raw = localStorage.getItem(ITEMS_KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-
-    const normalized: MyStockItem[] = [];
-    for (const it of parsed) {
-      if (
-        it &&
-        typeof it === "object" &&
-        typeof (it as MyStockItem).id === "string" &&
-        typeof (it as MyStockItem).code === "string" &&
-        typeof (it as MyStockItem).name === "string" &&
-        isStockTab((it as MyStockItem).tab)
-      ) {
-        const item = it as MyStockItem;
-        normalized.push({
-          ...item,
-          market: typeof item.market === "string" ? item.market : "",
-          sector: typeof item.sector === "string" ? item.sector : null,
-          addedAt: typeof item.addedAt === "number" ? item.addedAt : Date.now(),
-          updatedAt:
-            typeof item.updatedAt === "number" ? item.updatedAt : item.addedAt ?? Date.now(),
-        });
-      }
-    }
-    return normalized;
+    return normalizeItems(JSON.parse(raw) as unknown);
   } catch {
     return [];
   }

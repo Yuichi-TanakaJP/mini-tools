@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import TabBar from "@/app/tools/_shared/TabBar";
-import { loadItems, saveItems } from "./storage";
+import { loadItems, newId, saveItems } from "./storage";
+import { mergeItems, parseBackupItems, serializeBackup } from "./backup";
 import { useStockMaster } from "./useStockMaster";
 import type { MyStockItem, MyStocksReference, StockListTab, StockMaster } from "./types";
 
@@ -18,13 +19,6 @@ const TAB_OPTIONS = [TAB_LABELS.holding, TAB_LABELS.watch] as const;
 
 const UNDO_MS = 5000;
 
-function newId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
 function formatEarnings(iso: string): string {
   const m = iso.match(/^\d{4}-(\d{2})-(\d{2})$/);
   if (!m) return iso;
@@ -39,6 +33,7 @@ export default function ToolClient({ reference }: Props) {
   const [pendingUndo, setPendingUndo] = useState<MyStockItem | null>(null);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const master = useStockMaster();
 
@@ -114,6 +109,52 @@ export default function ToolClient({ reference }: Props) {
     if (undoTimer.current) clearTimeout(undoTimer.current);
   }
 
+  function exportBackup() {
+    if (items.length === 0) {
+      flashNotice("書き出す銘柄がありません");
+      return;
+    }
+    const blob = new Blob([serializeBackup(items)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const stamp = new Date()
+      .toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" })
+      .replaceAll("-", "");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `my-stocks-backup-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    flashNotice(`${items.length}件をバックアップしました`);
+  }
+
+  function importBackup(file: File) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const parsed = parseBackupItems(String(reader.result ?? ""));
+      if (!parsed) {
+        flashNotice("バックアップファイルを読み込めませんでした");
+        return;
+      }
+      const { merged, added, skipped } = mergeItems(items, parsed);
+      persist(merged);
+      flashNotice(
+        skipped > 0
+          ? `${added}件を取り込みました（重複${skipped}件はスキップ）`
+          : `${added}件を取り込みました`,
+      );
+    };
+    reader.onerror = () => flashNotice("ファイルの読み込みに失敗しました");
+    reader.readAsText(file);
+  }
+
+  function onImportInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) importBackup(file);
+    e.target.value = ""; // 同じファイルを連続選択できるようにリセット
+  }
+
   return (
     <main style={{ padding: "24px 16px 96px" }}>
       <section style={{ maxWidth: 760, margin: "0 auto", display: "grid", gap: 16 }}>
@@ -178,6 +219,42 @@ export default function ToolClient({ reference }: Props) {
               ))}
             </ul>
           )}
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gap: 8,
+            marginTop: 8,
+            paddingTop: 16,
+            borderTop: "1px solid var(--color-border)",
+          }}
+        >
+          <div style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 700 }}>
+            バックアップ
+          </div>
+          <p style={{ fontSize: 12, color: "var(--color-text-sub)", margin: 0 }}>
+            端末を変えるときや誤って消したときのために、JSON で書き出し・取り込みできます。取り込みは既存に追加され、同じ銘柄は重複しません。
+          </p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button type="button" onClick={exportBackup} style={toolbarButtonStyle}>
+              エクスポート（書き出し）
+            </button>
+            <button
+              type="button"
+              onClick={() => importInputRef.current?.click()}
+              style={toolbarButtonStyle}
+            >
+              インポート（取り込み）
+            </button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept="application/json,.json"
+              onChange={onImportInputChange}
+              style={{ display: "none" }}
+            />
+          </div>
         </div>
       </section>
 
@@ -466,4 +543,15 @@ const numberInputStyle: React.CSSProperties = {
   background: "var(--color-bg-input)",
   color: "var(--color-text)",
   fontSize: 13,
+};
+
+const toolbarButtonStyle: React.CSSProperties = {
+  padding: "8px 14px",
+  borderRadius: 8,
+  border: "1.5px solid var(--color-border-strong)",
+  background: "var(--color-bg-card)",
+  color: "var(--color-text-sub)",
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: "pointer",
 };
