@@ -3,7 +3,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import PortfolioDashboard from "./PortfolioDashboard";
-import { sampleEvents, sampleHoldings } from "./sample-data";
+import { loadPortfolio } from "./data";
 import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
 
 export const metadata: Metadata = {
@@ -29,6 +29,8 @@ export default async function PremiumPortfolioPage() {
     day: "2-digit",
   }).format(new Date());
 
+  const { holdings, events } = await loadPortfolio();
+
   return (
     <main style={{ padding: "28px 16px 72px" }}>
       <section style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gap: 16 }}>
@@ -42,7 +44,7 @@ export default async function PremiumPortfolioPage() {
               fontWeight: 800,
             }}
           >
-            Premium Preview
+            ← Premium ホーム
           </Link>
           <Link
             href="/tools/yutai-memo"
@@ -57,7 +59,7 @@ export default async function PremiumPortfolioPage() {
           </Link>
         </nav>
 
-        <PortfolioDashboard holdings={sampleHoldings} events={sampleEvents} today={today} />
+        <PortfolioDashboard holdings={holdings} events={events} today={today} />
       </section>
     </main>
   );
