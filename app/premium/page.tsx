@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import LogoutButton from "./LogoutButton";
 import PremiumPreviewChart from "./PremiumPreviewChart";
+import CollapsibleSection from "./CollapsibleSection";
 import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
 import { loadJpxMarketClosedData } from "@/lib/jpx-market-closed";
 import { loadTopix33DayData, loadTopix33Manifest } from "@/app/tools/topix33/data-loader";
@@ -446,7 +447,7 @@ export default async function PremiumPage({
                     background: "rgba(255,255,255,0.12)",
                   }}
                 >
-                  Premium Preview / Graph Mock
+                  Premium ホーム
                 </div>
                 <Link
                   href="/admin"
@@ -475,9 +476,7 @@ export default async function PremiumPage({
                   letterSpacing: -1.1,
                 }}
               >
-                TOPIX33 の見せ方を
-                <br />
-                実物に近い preview で固める
+                おかえりなさい
               </h1>
               <p
                 style={{
@@ -487,62 +486,11 @@ export default async function PremiumPage({
                   color: "rgba(255,255,255,0.82)",
                 }}
               >
-                まずは premium の仮ページ上で、{preview.targetMonthLabel}の月初を100にした業種比較チャートと、
-                月内ヒートマップの見え方を試せるようにしました。実データが取れるときはそれを使い、
-                取れないときも preview が崩れないようにしています。
+                ログイン中の個人向けホームです。まず下のサマリーで地合いを確認できます。
+                詳しい市況グラフ（業種比較チャート・月内ヒートマップ）は、必要なときに開けます。
+                <br />
+                データ対象: {preview.targetMonthLabel}
               </p>
-
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 18 }}>
-                {preview.nextMonth ? (
-                  <Link
-                    href={`/premium?month=${preview.nextMonth}`}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      padding: "10px 14px",
-                      borderRadius: 999,
-                      background: "#fff",
-                      color: "#1d4ed8",
-                      textDecoration: "none",
-                      fontSize: 13,
-                      fontWeight: 800,
-                    }}
-                  >
-                    翌月へ: {formatMonthLabel(`${preview.nextMonth}-01`)}
-                  </Link>
-                ) : null}
-                <div
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    padding: "10px 14px",
-                    borderRadius: 999,
-                    background: "rgba(255,255,255,0.12)",
-                    fontSize: 13,
-                    fontWeight: 800,
-                  }}
-                >
-                  表示中: {preview.targetMonthLabel}
-                </div>
-                {preview.previousMonth ? (
-                  <Link
-                    href={`/premium?month=${preview.previousMonth}`}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      padding: "10px 14px",
-                      borderRadius: 999,
-                      background: "#fff",
-                      color: "#1d4ed8",
-                      textDecoration: "none",
-                      fontSize: 13,
-                      fontWeight: 800,
-                    }}
-                  >
-                    前月へ: {formatMonthLabel(`${preview.previousMonth}-01`)}
-                  </Link>
-                ) : null}
-              </div>
             </div>
 
             <LogoutButton />
@@ -582,14 +530,110 @@ export default async function PremiumPage({
           />
         </div>
 
-        <section
-          style={{
-            background: "var(--color-bg-card)",
-            borderRadius: 24,
-            border: "1px solid var(--color-border)",
-            padding: "24px 20px",
-          }}
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <Link
+            href="/premium/portfolio"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: 46,
+              padding: "0 18px",
+              borderRadius: 14,
+              background: "#102033",
+              color: "#fff",
+              textDecoration: "none",
+              fontWeight: 800,
+            }}
+          >
+            保有銘柄ダッシュボード
+          </Link>
+          <Link
+            href="/tools/topix33"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: 46,
+              padding: "0 18px",
+              borderRadius: 14,
+              background: "var(--color-accent)",
+              color: "#fff",
+              textDecoration: "none",
+              fontWeight: 800,
+            }}
+          >
+            TOPIX33 を見る
+          </Link>
+        </div>
+
+        <CollapsibleSection
+          title="業種比較チャートと月内ヒートマップ"
+          description="必要なときだけ開けます。月初を100にした業種比較チャートと、月内ヒートマップをまとめています。"
         >
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {preview.nextMonth ? (
+              <Link
+                href={`/premium?month=${preview.nextMonth}`}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "8px 14px",
+                  borderRadius: 999,
+                  border: "1px solid var(--color-border)",
+                  background: "#fff",
+                  color: "#1d4ed8",
+                  textDecoration: "none",
+                  fontSize: 13,
+                  fontWeight: 800,
+                }}
+              >
+                翌月へ: {formatMonthLabel(`${preview.nextMonth}-01`)}
+              </Link>
+            ) : null}
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "8px 14px",
+                borderRadius: 999,
+                background: "#f1f5f9",
+                color: "var(--color-text-sub)",
+                fontSize: 13,
+                fontWeight: 800,
+              }}
+            >
+              表示中: {preview.targetMonthLabel}
+            </div>
+            {preview.previousMonth ? (
+              <Link
+                href={`/premium?month=${preview.previousMonth}`}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "8px 14px",
+                  borderRadius: 999,
+                  border: "1px solid var(--color-border)",
+                  background: "#fff",
+                  color: "#1d4ed8",
+                  textDecoration: "none",
+                  fontSize: 13,
+                  fontWeight: 800,
+                }}
+              >
+                前月へ: {formatMonthLabel(`${preview.previousMonth}-01`)}
+              </Link>
+            ) : null}
+          </div>
+
+          <section
+            style={{
+              background: "var(--color-bg-card)",
+              borderRadius: 24,
+              border: "1px solid var(--color-border)",
+              padding: "24px 20px",
+            }}
+          >
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
             <div>
               <div style={eyebrowStyle}>月間ヒートマップ Preview</div>
@@ -675,12 +719,13 @@ export default async function PremiumPage({
           </div>
         </section>
 
-        <PremiumPreviewChart
-          monthLabel={preview.targetMonthLabel}
-          dateLabels={orderedDays.map((day) => formatShortDate(day.date))}
-          series={preview.chartSeries}
-          defaultSelected={preview.defaultSelectedSectors}
-        />
+          <PremiumPreviewChart
+            monthLabel={preview.targetMonthLabel}
+            dateLabels={orderedDays.map((day) => formatShortDate(day.date))}
+            series={preview.chartSeries}
+            defaultSelected={preview.defaultSelectedSectors}
+          />
+        </CollapsibleSection>
 
         <section
           style={{
@@ -741,60 +786,6 @@ export default async function PremiumPage({
           </div>
         </section>
 
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <Link
-            href="/premium/portfolio"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              height: 46,
-              padding: "0 18px",
-              borderRadius: 14,
-              background: "#102033",
-              color: "#fff",
-              textDecoration: "none",
-              fontWeight: 800,
-            }}
-          >
-            保有銘柄ダッシュボード
-          </Link>
-          <Link
-            href="/tools/topix33"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              height: 46,
-              padding: "0 18px",
-              borderRadius: 14,
-              background: "var(--color-accent)",
-              color: "#fff",
-              textDecoration: "none",
-              fontWeight: 800,
-            }}
-          >
-            既存の TOPIX33 を見る
-          </Link>
-          <Link
-            href="/premium/login"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              height: 46,
-              padding: "0 18px",
-              borderRadius: 14,
-              background: "#fff",
-              color: "var(--color-text-sub)",
-              border: "1px solid var(--color-border)",
-              textDecoration: "none",
-              fontWeight: 800,
-            }}
-          >
-            ログイン画面に戻る
-          </Link>
-        </div>
       </section>
     </main>
   );
