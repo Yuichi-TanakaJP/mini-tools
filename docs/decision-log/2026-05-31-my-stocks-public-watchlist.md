@@ -1,0 +1,89 @@
+# 2026-05-31 公開ツール「マイ銘柄リスト」(/tools/my-stocks) の方針
+
+## 背景
+
+- 個人投資家が「保有している銘柄」と「気になって監視している銘柄（ウォッチ）」を
+  端末内で簡単に貯められる公開ツールが欲しいという要望が出た。
+- 既に `/premium/portfolio` に保有銘柄ダッシュボードがあるが、
+  これは将来サーバ保存を前提にした premium 配下の機能であり
+  ([2026-04-25-premium-portfolio-dashboard.md](./2026-04-25-premium-portfolio-dashboard.md))、
+  「すぐ使える端末内の簡易リスト」とは目的が異なる。
+- そこで公開ツール側に、localStorage 完結の軽量な銘柄リストを別途用意する。
+
+## 今回決めたこと
+
+### 配置・命名
+
+- route は `/tools/my-stocks`、表示名は「マイ銘柄リスト」。
+- 画面内のタブは「保有メモ」「ウォッチ」とする。
+  - premium portfolio の「保有銘柄」と語感を分け、
+    公開版が「正確な資産管理」ではなく「端末内の軽いメモ」であることを示す。
+
+### 保存とプライバシー（最重要）
+
+- データは **localStorage 完結**。サーバには送信しない。
+  yutai-memo の保存パターン（`app/tools/yutai-memo/storage.ts`）と
+  SSR/localStorage hydration ガイドライン
+  ([2026-03-12-ssr-localstorage-hydration-guidelines.md](./2026-03-12-ssr-localstorage-hydration-guidelines.md))
+  に準拠する。
+- 既存の公開データ（決算・優待など）との突き合わせは、
+  **公開データ側を広めに取得し、クライアント上でユーザーの銘柄コード集合により
+  filter する**方式に限定する。
+  - これにより、保有/ウォッチ銘柄のコード集合をサーバへ送らない。
+  - 「自分の銘柄コードを API に投げて自分の分だけ取得する」設計は MVP では採らない。
+    採用する場合は、銘柄コードがサーバへ出ることを別途 decision-log に明記してから行う。
+- 公開版では評価額・含み損益を表示しない。取得単価のみ手入力で保持・表示する。
+  - 任意銘柄の現在値を引ける公開データソースが無いという制約に加え、
+    「公開版は損益管理をしない」境界を premium portfolio との差として明確にする狙い。
+
+### premium portfolio との棲み分け
+
+| | /tools/my-stocks（公開） | /premium/portfolio（premium） |
+|---|---|---|
+| 位置づけ | 端末内の簡易リスト | 保有データのダッシュボード |
+| 保存先 | localStorage 完結 | 将来サーバ保存を前提 |
+| 損益・評価額 | 出さない | 出す（将来） |
+| 認証 | なし（公開） | premium cookie |
+
+### MVP スコープ
+
+- 銘柄管理: `public/data/jpx_listed_companies.json` をマスターに、
+  コード/名前のインクリメンタル検索 → 候補確定で名前・市場・業種を補完。
+- 2タブ: 保有メモ（数量 + 取得単価手入力 + メモ）、ウォッチ（メモ + 追加日）。
+- 連携バッジ（クライアント側 code filter）:
+  - 次の決算予定日 … earnings-calendar（`EarningsCalendarItem.code`）
+  - 優待権利確定月 … **yutai-candidates**（`MonthlyYutaiCandidate.code` / `month`）。
+    yutai-expiry は端末内の優待券期限管理でコードマスターを持たないため連携先にしない。
+- 削除は signed sum + Undo Toast パターンで可逆にする。
+- 将来の JSON エクスポート/インポートを見据えたスキーマにする。
+
+## 判断理由
+
+- localStorage 完結にすることで、公開ツールでも個人データをサーバへ出さずに済み、
+  premium portfolio の「個人データを git/サーバに置かない」方針とも矛盾しない。
+- code filter をクライアント側に閉じることで、
+  「広く公開されているデータを取得するだけ」で「誰が何を持っているか」を漏らさない。
+- 損益を出さないことで premium portfolio との境界を保ち、
+  公開版の責務を「銘柄を貯める/監視する」に絞れる。
+
+## 影響範囲
+
+- `app/tools/my-stocks/`（新規）
+- `app/page.tsx` のツール一覧（導線追加）
+- 連携で参照する既存データ: earnings-calendar / yutai-candidates / jpx_listed_companies.json
+
+## 残課題（fast-follow 以降）
+
+- TDNET / EDINET のマイ銘柄フィード連携（`security_code` / `sec_code` で filter 可能）。
+  情報量とデータ取得設計が増えるため MVP では見送る。
+- JSON エクスポート/インポート（バックアップ・端末移行）。
+- premium portfolio との将来的なデータ共有/インポート導線。
+
+## 関連
+
+- Issue:
+- PR:
+- 参照 docs:
+  - [2026-04-25-premium-portfolio-dashboard.md](./2026-04-25-premium-portfolio-dashboard.md)
+  - [2026-03-12-ssr-localstorage-hydration-guidelines.md](./2026-03-12-ssr-localstorage-hydration-guidelines.md)
+  - `docs/specs/tools/yutai-memo.md`

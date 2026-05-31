@@ -13,6 +13,7 @@ const smokeCases: SmokeCase[] = [
   { slug: "charcount", path: "/tools/charcount", heading: /X投稿文字数カウント/, action: "fill-charcount" },
   { slug: "total", path: "/tools/total", heading: /数字を貼るだけで合計/, action: "fill-total" },
   { slug: "yutai-memo", path: "/tools/yutai-memo", heading: /優待銘柄メモ帳/ },
+  { slug: "my-stocks", path: "/tools/my-stocks", heading: /マイ銘柄リスト/ },
   { slug: "yutai-expiry", path: "/tools/yutai-expiry", heading: /株主優待リスト|株主優待期限帳/ },
   { slug: "stock-ranking", path: "/tools/stock-ranking", heading: /株価ランキング|ランキング/ },
   { slug: "topix33", path: "/tools/topix33", heading: /TOPIX33|業種/ },
