@@ -79,10 +79,28 @@
 - JSON エクスポート/インポート（バックアップ・端末移行）。
 - premium portfolio との将来的なデータ共有/インポート導線。
 
+## 追記（2026-05-31）次フェーズの着手判断
+
+MVP マージ後、残課題の進め方を整理した。
+
+- **Phase 2a（JSON エクスポート/インポート）を先行実装**する。
+  - 自己完結・privacy 懸念なし・外部依存なしのため低リスク。
+  - インポートは**非破壊マージ**（同一タブ・同一コードは既存優先でスキップ、id 衝突は振り直し）。
+  - バックアップ形式は `{ schema: "mini-tools/my-stocks", version, exportedAt, items }`。
+    items 配列のみの JSON も寛容に受け付ける。
+- **Phase 2b（TDNET/EDINET フィード連携）は保留**する。
+  - TDNET/EDINET は API 専用・日次フィードで、開示は件数が多い（7日で数百〜、30日で数千件）。
+  - 「銘柄コードをサーバへ送らない」方針と転送量がトレードオフになるため、
+    着手前に次の方式を決める:
+    - 案A: 広めに取得しクライアントで code filter（現方針踏襲・転送量重い）
+    - 案B: 自社 API ルートへコード集合を送り該当分のみ取得（軽量だがコードがサーバに出る→新 decision-log 必要）
+  - バッジ（code→1値の点引き）はデータ量が小さく案A相当で問題なかったが、
+    フィードは件数が桁違いのため同じ方式だと転送量が効く点が判断ポイント。
+
 ## 関連
 
 - Issue:
-- PR:
+- PR: #346（MVP）
 - 参照 docs:
   - [2026-04-25-premium-portfolio-dashboard.md](./2026-04-25-premium-portfolio-dashboard.md)
   - [2026-03-12-ssr-localstorage-hydration-guidelines.md](./2026-03-12-ssr-localstorage-hydration-guidelines.md)
