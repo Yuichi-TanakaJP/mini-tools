@@ -1,12 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 import {
+  loadInvestorFlowAnalysisLatest,
+  loadInvestorFlowAnalysisManifest,
+  loadInvestorFlowAnalysisWeek,
   loadInvestorFlowLatest,
   loadInvestorFlowManifest,
   loadInvestorFlowPageData,
   loadInvestorFlowWeek,
 } from "../data-loader";
-import type { InvestorFlowManifest, InvestorFlowPayload } from "../types";
+import type {
+  InvestorFlowAnalysisManifest,
+  InvestorFlowAnalysisPayload,
+  InvestorFlowManifest,
+  InvestorFlowPayload,
+} from "../types";
 
 const MANIFEST: InvestorFlowManifest = {
   data_source: "JPX",
@@ -43,6 +51,52 @@ const PAYLOAD: InvestorFlowPayload = {
   records: [],
 };
 
+const ANALYSIS_MANIFEST: InvestorFlowAnalysisManifest = {
+  data_source: "JPX",
+  schema_version: "investor-flow-analysis-v1",
+  latest: {
+    start_date: "2026-05-18",
+    end_date: "2026-05-22",
+    path: "investor_flow_analysis_2026-05-18_to_2026-05-22.json",
+  },
+  weeks: [
+    {
+      start_date: "2026-05-18",
+      end_date: "2026-05-22",
+      path: "investor_flow_analysis_2026-05-18_to_2026-05-22.json",
+    },
+    {
+      start_date: "2026-05-11",
+      end_date: "2026-05-15",
+      path: "investor_flow_analysis_2026-05-11_to_2026-05-15.json",
+    },
+  ],
+  generated_at_jst: "2026-05-31T12:00:00+09:00",
+};
+
+const ANALYSIS: InvestorFlowAnalysisPayload = {
+  schema_version: "investor-flow-analysis-v1",
+  data_source: "JPX",
+  analysis_scope: "weekly_investor_flow",
+  start_date: "2026-05-18",
+  end_date: "2026-05-22",
+  previous_start_date: "2026-05-11",
+  previous_end_date: "2026-05-15",
+  generated_at_jst: "2026-05-31T12:00:00+09:00",
+  source_snapshot_path: "investor_flow_2026-05-18_to_2026-05-22.json",
+  lookback_weeks: 13,
+  summary: {
+    largest_net_buy: { category: "海外投資家", diff_yen: 450_000_000_000 },
+    largest_net_sell: { category: "自己計", diff_yen: -290_000_000_000 },
+  },
+  buy_composition: [],
+  sell_composition: [],
+  net_ranking: [],
+  reversals: [],
+  streaks: [],
+  major_flows: [],
+};
+
 function makeFetchOk(body: unknown): Response {
   return {
     ok: true,
@@ -68,21 +122,30 @@ describe("investor-flow data-loader", () => {
 
   it("API 未設定のとき null を返す", async () => {
     await expect(loadInvestorFlowManifest()).resolves.toBeNull();
+    await expect(loadInvestorFlowAnalysisManifest()).resolves.toBeNull();
     await expect(loadInvestorFlowLatest()).resolves.toBeNull();
+    await expect(loadInvestorFlowAnalysisLatest()).resolves.toBeNull();
     await expect(loadInvestorFlowWeek("2026-05-18", "2026-05-22")).resolves.toBeNull();
+    await expect(loadInvestorFlowAnalysisWeek("2026-05-18", "2026-05-22")).resolves.toBeNull();
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("manifest / latest / week を API から取得する", async () => {
+  it("manifest / latest / week / analysis を API から取得する", async () => {
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com/";
     vi.mocked(fetch)
       .mockResolvedValueOnce(makeFetchOk(MANIFEST))
+      .mockResolvedValueOnce(makeFetchOk(ANALYSIS_MANIFEST))
       .mockResolvedValueOnce(makeFetchOk(PAYLOAD))
+      .mockResolvedValueOnce(makeFetchOk(ANALYSIS))
       .mockResolvedValueOnce(makeFetchOk(PAYLOAD));
+    vi.mocked(fetch).mockResolvedValueOnce(makeFetchOk(ANALYSIS));
 
     await expect(loadInvestorFlowManifest()).resolves.toEqual(MANIFEST);
+    await expect(loadInvestorFlowAnalysisManifest()).resolves.toEqual(ANALYSIS_MANIFEST);
     await expect(loadInvestorFlowLatest()).resolves.toEqual(PAYLOAD);
+    await expect(loadInvestorFlowAnalysisLatest()).resolves.toEqual(ANALYSIS);
     await expect(loadInvestorFlowWeek("2026-05-11", "2026-05-15")).resolves.toEqual(PAYLOAD);
+    await expect(loadInvestorFlowAnalysisWeek("2026-05-11", "2026-05-15")).resolves.toEqual(ANALYSIS);
 
     expect(fetch).toHaveBeenNthCalledWith(
       1,
@@ -91,12 +154,27 @@ describe("investor-flow data-loader", () => {
     );
     expect(fetch).toHaveBeenNthCalledWith(
       2,
-      "https://api.example.com/investor-flow/latest",
+      "https://api.example.com/investor-flow/analysis/manifest",
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
     expect(fetch).toHaveBeenNthCalledWith(
       3,
+      "https://api.example.com/investor-flow/latest",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      4,
+      "https://api.example.com/investor-flow/analysis/latest",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      5,
       "https://api.example.com/investor-flow/weeks/2026-05-11/2026-05-15",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      6,
+      "https://api.example.com/investor-flow/analysis/weeks/2026-05-11/2026-05-15",
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
   });
@@ -105,15 +183,23 @@ describe("investor-flow data-loader", () => {
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
     vi.mocked(fetch)
       .mockResolvedValueOnce(makeFetchOk(MANIFEST))
-      .mockResolvedValueOnce(makeFetchOk(PAYLOAD));
+      .mockResolvedValueOnce(makeFetchOk(ANALYSIS_MANIFEST))
+      .mockResolvedValueOnce(makeFetchOk(PAYLOAD))
+      .mockResolvedValueOnce(makeFetchOk(ANALYSIS));
 
     const result = await loadInvestorFlowPageData();
 
     expect(result.payload).toEqual(PAYLOAD);
+    expect(result.analysis).toEqual(ANALYSIS);
     expect(result.selectedWeek?.start_date).toBe("2026-05-18");
     expect(fetch).toHaveBeenNthCalledWith(
-      2,
+      3,
       "https://api.example.com/investor-flow/latest",
+      expect.any(Object),
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      4,
+      "https://api.example.com/investor-flow/analysis/latest",
       expect.any(Object),
     );
   });
@@ -122,14 +208,22 @@ describe("investor-flow data-loader", () => {
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
     vi.mocked(fetch)
       .mockResolvedValueOnce(makeFetchOk(MANIFEST))
-      .mockResolvedValueOnce(makeFetchOk({ ...PAYLOAD, start_date: "2026-05-11", end_date: "2026-05-15" }));
+      .mockResolvedValueOnce(makeFetchOk(ANALYSIS_MANIFEST))
+      .mockResolvedValueOnce(makeFetchOk({ ...PAYLOAD, start_date: "2026-05-11", end_date: "2026-05-15" }))
+      .mockResolvedValueOnce(makeFetchOk({ ...ANALYSIS, start_date: "2026-05-11", end_date: "2026-05-15" }));
 
     const result = await loadInvestorFlowPageData("2026-05-11", "2026-05-15");
 
     expect(result.payload?.start_date).toBe("2026-05-11");
+    expect(result.analysis?.start_date).toBe("2026-05-11");
     expect(fetch).toHaveBeenNthCalledWith(
-      2,
+      3,
       "https://api.example.com/investor-flow/weeks/2026-05-11/2026-05-15",
+      expect.any(Object),
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      4,
+      "https://api.example.com/investor-flow/analysis/weeks/2026-05-11/2026-05-15",
       expect.any(Object),
     );
   });
@@ -138,11 +232,60 @@ describe("investor-flow data-loader", () => {
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
     vi.mocked(fetch)
       .mockResolvedValueOnce(makeFetchOk(MANIFEST))
+      .mockResolvedValueOnce(makeFetchOk(ANALYSIS_MANIFEST))
       .mockResolvedValueOnce(makeFetch404());
+    vi.mocked(fetch).mockResolvedValueOnce(makeFetchOk(ANALYSIS));
 
     const result = await loadInvestorFlowPageData("2026-05-11", "2026-05-15");
 
     expect(result.payload).toBeNull();
     expect(result.loadFailed).toBe(true);
+  });
+
+  it("analysis 失敗時も raw payload があればページデータは表示可能にする", async () => {
+    process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(makeFetchOk(MANIFEST))
+      .mockResolvedValueOnce(makeFetchOk(ANALYSIS_MANIFEST))
+      .mockResolvedValueOnce(makeFetchOk(PAYLOAD))
+      .mockResolvedValueOnce(makeFetch404());
+
+    const result = await loadInvestorFlowPageData();
+
+    expect(result.payload).toEqual(PAYLOAD);
+    expect(result.analysis).toBeNull();
+    expect(result.loadFailed).toBe(false);
+    expect(result.analysisLoadFailed).toBe(true);
+  });
+
+  it("analysis が raw と別週なら採用しない", async () => {
+    process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(makeFetchOk(MANIFEST))
+      .mockResolvedValueOnce(
+        makeFetchOk({
+          ...ANALYSIS_MANIFEST,
+          latest: {
+            start_date: "2026-05-11",
+            end_date: "2026-05-15",
+            path: "investor_flow_analysis_2026-05-11_to_2026-05-15.json",
+          },
+          weeks: [
+            {
+              start_date: "2026-05-11",
+              end_date: "2026-05-15",
+              path: "investor_flow_analysis_2026-05-11_to_2026-05-15.json",
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(makeFetchOk(PAYLOAD));
+
+    const result = await loadInvestorFlowPageData();
+
+    expect(result.payload).toEqual(PAYLOAD);
+    expect(result.analysis).toBeNull();
+    expect(result.analysisLoadFailed).toBe(false);
+    expect(fetch).toHaveBeenCalledTimes(3);
   });
 });
