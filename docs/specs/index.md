@@ -22,6 +22,7 @@
 | 優待銘柄メモ帳 | `/tools/yutai-memo` | [yutai-memo.md](./tools/yutai-memo.md) |
 | 決算カレンダー | `/tools/earnings-calendar` | [earnings-calendar.md](./tools/earnings-calendar.md) |
 | TDNET適時開示一覧 | `/tools/tdnet-disclosures` | [tdnet-disclosures.md](./tools/tdnet-disclosures.md) |
+| 投資主体別売買動向 | `/tools/investor-flow` | [investor-flow.md](./tools/investor-flow.md) |
 | ペンギンシューター | `/tools/penguin-shooter` | [penguin-shooter.md](./tools/penguin-shooter.md) |
 
 ## テンプレート

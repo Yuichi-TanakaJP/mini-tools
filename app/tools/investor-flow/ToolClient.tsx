@@ -3,7 +3,13 @@
 import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import type { InvestorFlowPageData, InvestorFlowRecord } from "./types";
+import type {
+  InvestorFlowAnalysisPayload,
+  InvestorFlowCompositionItem,
+  InvestorFlowNetRankingItem,
+  InvestorFlowPageData,
+  InvestorFlowRecord,
+} from "./types";
 
 const CATEGORY_ORDER = [
   "総計",
@@ -132,6 +138,13 @@ function formatPct(value: number | null | undefined) {
   return `${value.toFixed(1)}%`;
 }
 
+function formatDirection(value: string | null | undefined) {
+  if (value === "net_buy") return "買い越し";
+  if (value === "net_sell") return "売り越し";
+  if (value === "flat") return "中立";
+  return "不明";
+}
+
 function getDiffColor(value: number) {
   if (value > 0) return "#dc2626";
   if (value < 0) return "#2563eb";
@@ -169,6 +182,20 @@ function getTopMovers(records: InvestorFlowRecord[]) {
     .slice(0, 6);
 }
 
+function getTopAnalysisMovers(analysis: InvestorFlowAnalysisPayload) {
+  return analysis.net_ranking
+    .filter((item) => item.category !== "総計" && item.category !== "委託計")
+    .slice(0, 6);
+}
+
+function getCompositionShare(
+  items: InvestorFlowCompositionItem[],
+  group: "total" | "commission",
+  category: string,
+) {
+  return items.find((item) => item.group === group && item.category === category)?.share_pct ?? null;
+}
+
 function MetricCard({
   label,
   record,
@@ -187,6 +214,27 @@ function MetricCard({
         買い {record ? formatYen(record.buy_yen) : "—"} / 売り{" "}
         {record ? formatYen(record.sell_yen) : "—"}
       </div>
+    </article>
+  );
+}
+
+function AnalysisMetricCard({
+  title,
+  value,
+  sub,
+  tone,
+}: {
+  title: string;
+  value: string;
+  sub: string;
+  tone: "buy" | "sell" | "neutral";
+}) {
+  const color = tone === "buy" ? "#dc2626" : tone === "sell" ? "#2563eb" : "#0f766e";
+  return (
+    <article style={styles.analysisMetricCard}>
+      <div style={styles.metricLabel}>{title}</div>
+      <div style={{ ...styles.metricValue, color }}>{value}</div>
+      <div style={styles.metricSub}>{sub}</div>
     </article>
   );
 }
@@ -402,7 +450,137 @@ function MoverList({ records }: { records: InvestorFlowRecord[] }) {
   );
 }
 
-function SummaryView({ records }: { records: InvestorFlowRecord[] }) {
+function AnalysisMoverList({ items }: { items: InvestorFlowNetRankingItem[] }) {
+  return (
+    <section style={styles.moverPanel}>
+      <div style={styles.panelHeader}>
+        <div>
+          <div style={styles.panelTitle}>買い越し・売り越しの大きさ</div>
+          <div style={styles.panelSub}>差引金額の絶対値が大きい主体を並べています。</div>
+        </div>
+      </div>
+      <div style={styles.moverList}>
+        {items.map((item) => {
+          const color = getDiffColor(item.diff_yen);
+          return (
+            <div key={item.category} style={styles.moverRow}>
+              <div>
+                <div style={styles.moverName}>{getCategoryLabel(item.category)}</div>
+                <div style={styles.moverSub}>
+                  {formatDirection(item.direction)}
+                  {item.diff_change_yen == null ? "" : ` / 前週比 ${formatYen(item.diff_change_yen)}`}
+                </div>
+              </div>
+              <div style={{ ...styles.moverValue, color }}>{formatYen(item.diff_yen)}</div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function AnalysisSummaryView({ analysis }: { analysis: InvestorFlowAnalysisPayload }) {
+  const topMovers = getTopAnalysisMovers(analysis);
+  const latestReversals = analysis.reversals.slice(0, 4);
+  const streaks = analysis.streaks.slice(0, 4);
+  const overseasBuyShare = getCompositionShare(analysis.buy_composition, "commission", "海外投資家");
+  const individualBuyShare = getCompositionShare(analysis.buy_composition, "commission", "個人");
+  const proprietaryBuyShare = getCompositionShare(analysis.buy_composition, "total", "自己計");
+
+  return (
+    <div style={styles.analysisLayout}>
+      <section style={styles.analysisMetricGrid}>
+        <AnalysisMetricCard
+          title="最大の買い越し"
+          value={
+            analysis.summary.largest_net_buy
+              ? formatYen(analysis.summary.largest_net_buy.diff_yen)
+              : "—"
+          }
+          sub={analysis.summary.largest_net_buy?.category ?? "該当なし"}
+          tone="buy"
+        />
+        <AnalysisMetricCard
+          title="最大の売り越し"
+          value={
+            analysis.summary.largest_net_sell
+              ? formatYen(analysis.summary.largest_net_sell.diff_yen)
+              : "—"
+          }
+          sub={analysis.summary.largest_net_sell?.category ?? "該当なし"}
+          tone="sell"
+        />
+        <AnalysisMetricCard
+          title="海外投資家の買い構成"
+          value={formatPct(overseasBuyShare)}
+          sub="委託計の買いに占める割合"
+          tone="neutral"
+        />
+        <AnalysisMetricCard
+          title="個人の買い構成"
+          value={formatPct(individualBuyShare)}
+          sub={`自己計は総計の ${formatPct(proprietaryBuyShare)}`}
+          tone="neutral"
+        />
+      </section>
+
+      <div style={styles.viewGrid}>
+        <AnalysisMoverList items={topMovers} />
+        <section style={styles.signalPanel}>
+          <div style={styles.panelTitle}>反転した主体</div>
+          <div style={styles.panelSub}>前週と売買方向が変わった主体です。</div>
+          <div style={styles.signalList}>
+            {latestReversals.length > 0 ? (
+              latestReversals.map((item) => (
+                <div key={item.category} style={styles.signalRow}>
+                  <div>
+                    <div style={styles.moverName}>{getCategoryLabel(item.category)}</div>
+                    <div style={styles.moverSub}>
+                      {formatDirection(item.from_direction)} → {formatDirection(item.to_direction)}
+                    </div>
+                  </div>
+                  <div style={{ ...styles.moverValue, color: getDiffColor(item.current_diff_yen) }}>
+                    {formatYen(item.current_diff_yen)}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div style={styles.emptyMini}>反転した主体はありません。</div>
+            )}
+          </div>
+        </section>
+      </div>
+
+      <section style={styles.signalPanel}>
+        <div style={styles.panelTitle}>継続している流れ</div>
+        <div style={styles.panelSub}>同じ方向の買い越し・売り越しが続いている主体です。</div>
+        <div style={styles.streakGrid}>
+          {streaks.map((item) => (
+            <div key={item.category} style={styles.streakItem}>
+              <span style={styles.streakName}>{getCategoryLabel(item.category)}</span>
+              <span style={{ ...styles.streakValue, color: getDiffColor(item.current_diff_yen ?? 0) }}>
+                {formatDirection(item.direction)} {item.weeks}週
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SummaryView({
+  records,
+  analysis,
+}: {
+  records: InvestorFlowRecord[];
+  analysis: InvestorFlowAnalysisPayload | null;
+}) {
+  if (analysis) {
+    return <AnalysisSummaryView analysis={analysis} />;
+  }
+
   return (
     <div style={styles.viewGrid}>
       <MoverList records={records} />
@@ -535,7 +713,13 @@ function DetailTable({
   );
 }
 
-function FlowOverview({ records }: { records: InvestorFlowRecord[] }) {
+function FlowOverview({
+  records,
+  analysis,
+}: {
+  records: InvestorFlowRecord[];
+  analysis: InvestorFlowAnalysisPayload | null;
+}) {
   const [mode, setMode] = useState<ViewMode>("summary");
 
   if (records.length === 0) {
@@ -560,7 +744,7 @@ function FlowOverview({ records }: { records: InvestorFlowRecord[] }) {
           );
         })}
       </section>
-      {mode === "summary" ? <SummaryView records={records} /> : null}
+      {mode === "summary" ? <SummaryView records={records} analysis={analysis} /> : null}
       {mode === "structure" ? <StructureView records={records} /> : null}
       {mode === "details" ? (
         <>
@@ -610,6 +794,7 @@ export default function ToolClient({ data }: { data: InvestorFlowPageData }) {
   const trust = getRecord(records, "信託銀行");
   const total = getRecord(records, "総計");
   const payload = data.payload;
+  const analysis = data.analysis;
 
   return (
     <main style={styles.page}>
@@ -664,6 +849,12 @@ export default function ToolClient({ data }: { data: InvestorFlowPageData }) {
                   <MetricCard label="総計" record={total} />
                 </section>
 
+                {data.analysisLoadFailed ? (
+                  <article style={styles.noticeCard}>
+                    分析サマリーを取得できなかったため、生データから表示しています。
+                  </article>
+                ) : null}
+
                 <section style={styles.tableSection}>
                   <div style={styles.summaryRow}>
                     <div>
@@ -685,7 +876,7 @@ export default function ToolClient({ data }: { data: InvestorFlowPageData }) {
                       </a>
                     ) : null}
                   </div>
-                  <FlowOverview records={records} />
+                  <FlowOverview records={records} analysis={analysis} />
                 </section>
               </>
             )}
@@ -808,6 +999,12 @@ const styles: Record<string, CSSProperties> = {
     padding: 16,
     boxShadow: "0 8px 24px rgba(15,23,42,0.05)",
   },
+  analysisMetricCard: {
+    background: "#ffffff",
+    border: "1px solid rgba(15,23,42,0.08)",
+    borderRadius: 14,
+    padding: 14,
+  },
   metricLabel: {
     fontSize: 12,
     fontWeight: 800,
@@ -864,6 +1061,15 @@ const styles: Record<string, CSSProperties> = {
     display: "grid",
     gap: 16,
   },
+  analysisLayout: {
+    display: "grid",
+    gap: 14,
+  },
+  analysisMetricGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+    gap: 10,
+  },
   viewTabs: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
@@ -918,6 +1124,14 @@ const styles: Record<string, CSSProperties> = {
     border: "1px solid rgba(15,23,42,0.08)",
     background: "#ffffff",
   },
+  signalPanel: {
+    display: "grid",
+    gap: 10,
+    padding: 14,
+    borderRadius: 14,
+    border: "1px solid rgba(15,23,42,0.08)",
+    background: "#ffffff",
+  },
   panelHeader: {
     display: "flex",
     alignItems: "center",
@@ -963,6 +1177,39 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 18,
     fontWeight: 900,
     whiteSpace: "nowrap",
+  },
+  signalList: {
+    display: "grid",
+  },
+  signalRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 14,
+    padding: "11px 0",
+    borderTop: "1px solid rgba(15,23,42,0.07)",
+  },
+  streakGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+    gap: 8,
+  },
+  streakItem: {
+    display: "grid",
+    gap: 4,
+    padding: 11,
+    borderRadius: 10,
+    background: "#f8fafc",
+    border: "1px solid rgba(15,23,42,0.06)",
+  },
+  streakName: {
+    fontSize: 12,
+    fontWeight: 900,
+    color: "#0f172a",
+  },
+  streakValue: {
+    fontSize: 12,
+    fontWeight: 900,
   },
   compactCompositionGrid: {
     display: "grid",
@@ -1303,6 +1550,21 @@ const styles: Record<string, CSSProperties> = {
     textAlign: "center",
     color: "#64748b",
     fontSize: 14,
+  },
+  emptyMini: {
+    padding: "14px 0",
+    color: "#64748b",
+    fontSize: 12,
+  },
+  noticeCard: {
+    marginBottom: 16,
+    padding: "12px 14px",
+    borderRadius: 12,
+    border: "1px solid rgba(245,158,11,0.22)",
+    background: "#fffbeb",
+    color: "#92400e",
+    fontSize: 12,
+    fontWeight: 800,
   },
   errorCard: {
     padding: "24px 20px",
