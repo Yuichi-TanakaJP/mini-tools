@@ -182,6 +182,27 @@ function getTopMovers(records: InvestorFlowRecord[]) {
     .slice(0, 6);
 }
 
+function getRawNetRanking(records: InvestorFlowRecord[]): InvestorFlowNetRankingItem[] {
+  return records
+    .filter((record) => record.category !== "総計" && record.category !== "委託計")
+    .map((record) => ({
+      category: record.category,
+      buy_yen: record.buy_yen,
+      sell_yen: record.sell_yen,
+      diff_yen: record.diff_yen,
+      direction: record.diff_yen > 0 ? "net_buy" : record.diff_yen < 0 ? "net_sell" : "flat",
+      previous_diff_yen: null,
+      diff_change_yen: null,
+      rank_by_abs_diff: 0,
+    }))
+    .sort((a, b) => Math.abs(b.diff_yen) - Math.abs(a.diff_yen))
+    .map((item, index) => ({ ...item, rank_by_abs_diff: index + 1 }));
+}
+
+function getLargestByDirection(items: InvestorFlowNetRankingItem[], direction: "net_buy" | "net_sell") {
+  return items.find((item) => item.direction === direction) ?? null;
+}
+
 function getTopAnalysisMovers(analysis: InvestorFlowAnalysisPayload) {
   return analysis.net_ranking
     .filter((item) => item.category !== "総計" && item.category !== "委託計")
@@ -194,6 +215,18 @@ function getCompositionShare(
   category: string,
 ) {
   return items.find((item) => item.group === group && item.category === category)?.share_pct ?? null;
+}
+
+function getRawShare(
+  records: InvestorFlowRecord[],
+  denominatorCategory: string,
+  category: string,
+  amountKey: "buy_yen" | "sell_yen",
+) {
+  const denominator = getRecord(records, denominatorCategory)?.[amountKey];
+  const amount = getRecord(records, category)?.[amountKey];
+  if (!denominator || !amount) return null;
+  return (amount / denominator) * 100;
 }
 
 function MetricCard({
@@ -570,6 +603,61 @@ function AnalysisSummaryView({ analysis }: { analysis: InvestorFlowAnalysisPaylo
   );
 }
 
+function RawSummaryView({ records }: { records: InvestorFlowRecord[] }) {
+  const ranking = getRawNetRanking(records);
+  const largestNetBuy = getLargestByDirection(ranking, "net_buy");
+  const largestNetSell = getLargestByDirection(ranking, "net_sell");
+  const overseasBuyShare = getRawShare(records, "委託計", "海外投資家", "buy_yen");
+  const individualBuyShare = getRawShare(records, "委託計", "個人", "buy_yen");
+  const proprietaryBuyShare = getRawShare(records, "総計", "自己計", "buy_yen");
+
+  return (
+    <div style={styles.analysisLayout}>
+      <section style={styles.analysisMetricGrid}>
+        <AnalysisMetricCard
+          title="最大の買い越し"
+          value={largestNetBuy ? formatYen(largestNetBuy.diff_yen) : "—"}
+          sub={largestNetBuy?.category ?? "該当なし"}
+          tone="buy"
+        />
+        <AnalysisMetricCard
+          title="最大の売り越し"
+          value={largestNetSell ? formatYen(largestNetSell.diff_yen) : "—"}
+          sub={largestNetSell?.category ?? "該当なし"}
+          tone="sell"
+        />
+        <AnalysisMetricCard
+          title="海外投資家の買い構成"
+          value={formatPct(overseasBuyShare)}
+          sub="委託計の買いに占める割合"
+          tone="neutral"
+        />
+        <AnalysisMetricCard
+          title="個人の買い構成"
+          value={formatPct(individualBuyShare)}
+          sub={`自己計は総計の ${formatPct(proprietaryBuyShare)}`}
+          tone="neutral"
+        />
+      </section>
+
+      <div style={styles.viewGrid}>
+        <AnalysisMoverList items={ranking.slice(0, 6)} />
+        <section style={styles.signalPanel}>
+          <div style={styles.panelTitle}>反転した主体</div>
+          <div style={styles.panelSub}>前週比較が取得できると表示されます。</div>
+          <div style={styles.emptyMini}>分析サマリーの公開待ちです。</div>
+        </section>
+      </div>
+
+      <section style={styles.signalPanel}>
+        <div style={styles.panelTitle}>継続している流れ</div>
+        <div style={styles.panelSub}>複数週の比較データが取得できると表示されます。</div>
+        <div style={styles.emptyMini}>現在は当週の raw データから分かる範囲を表示しています。</div>
+      </section>
+    </div>
+  );
+}
+
 function SummaryView({
   records,
   analysis,
@@ -581,21 +669,7 @@ function SummaryView({
     return <AnalysisSummaryView analysis={analysis} />;
   }
 
-  return (
-    <div style={styles.viewGrid}>
-      <MoverList records={records} />
-      <section style={styles.compactCompositionGrid}>
-        {COMPOSITION_GROUPS.map((group) => (
-          <CompactCompositionCard
-            key={group.title}
-            title={group.title}
-            denominator={getRecord(records, group.denominator)}
-            records={pickRecords(records, group.categories)}
-          />
-        ))}
-      </section>
-    </div>
-  );
+  return <RawSummaryView records={records} />;
 }
 
 function StructureNode({
@@ -1127,6 +1201,7 @@ const styles: Record<string, CSSProperties> = {
   signalPanel: {
     display: "grid",
     gap: 10,
+    alignSelf: "start",
     padding: 14,
     borderRadius: 14,
     border: "1px solid rgba(15,23,42,0.08)",

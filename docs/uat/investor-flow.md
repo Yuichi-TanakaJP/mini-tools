@@ -14,8 +14,8 @@
 |---|---|---|
 | raw manifest | `MARKET_INFO_API_BASE_URL/investor-flow/manifest` | 未接続表示 |
 | raw latest / week | `MARKET_INFO_API_BASE_URL/investor-flow/latest` または `/weeks/{start}/{end}` | 選択週の error card |
-| analysis manifest | `MARKET_INFO_API_BASE_URL/investor-flow/analysis/manifest` | raw 表示に fallback |
-| analysis latest / week | `MARKET_INFO_API_BASE_URL/investor-flow/analysis/latest` または `/analysis/weeks/{start}/{end}` | raw 表示に fallback |
+| analysis manifest | `MARKET_INFO_API_BASE_URL/investor-flow/analysis/manifest` | raw から計算できるサマリーに fallback |
+| analysis latest / week | `MARKET_INFO_API_BASE_URL/investor-flow/analysis/latest` または `/analysis/weeks/{start}/{end}` | raw から計算できるサマリーに fallback |
 
 - repo 同梱 JSON fallback は持たない
 - 週切替は query string 更新で server component を再評価する
@@ -37,7 +37,7 @@
 |---|---|
 | `MARKET_INFO_API_BASE_URL` 未設定 | 「データ取得先が未接続です」表示 |
 | raw manifest は取れるが raw week が失敗 | 選択週の error card |
-| analysis だけ失敗 | 注意表示を出し、生データ由来のサマリーを表示 |
+| analysis だけ失敗 | 注意表示を出し、生データ由来のサマリーを表示。反転・継続は比較データ待ち表示 |
 | query string の週が manifest にない | manifest latest に正規化 |
 
 ## 環境ごとの注意点
