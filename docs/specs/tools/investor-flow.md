@@ -27,7 +27,8 @@
   - 差引金額ランキング
   - 前週から買い越し/売り越しが反転した主体
   - 同方向が継続している主体
-- 分析 API が取得できない場合は、raw investor-flow payload から従来のサマリーを表示する
+- 分析 API が取得できない場合も、raw investor-flow payload から計算できる範囲で同じサマリー枠を表示する
+- raw のみの場合、反転・継続は比較データ待ちとして表示する
 - 構造タブは `総計 -> 自己計 / 委託計 -> 委託内訳` の関係を表示する
 - 詳細タブは各内訳テーブルを表示する
 
@@ -61,7 +62,7 @@
 | 週切替 | query string を更新し、server component を再評価する |
 | API 未設定 | データ取得先が未接続 |
 | raw payload 取得失敗 | 選択週のデータ取得失敗 card |
-| analysis payload 取得失敗 | 注意表示を出し、raw payload 由来の表示に fallback |
+| analysis payload 取得失敗 | 注意表示を出し、raw payload から計算できるサマリーに fallback |
 
 ## premium / 権限制御
 
