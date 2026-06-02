@@ -6,6 +6,8 @@ import Link from "next/link";
 import type {
   InvestorFlowAnalysisPayload,
   InvestorFlowCompositionItem,
+  InvestorFlowHistoryMatrix,
+  InvestorFlowHistoryMatrixCell,
   InvestorFlowNetRankingItem,
   InvestorFlowPageData,
   InvestorFlowRecord,
@@ -149,6 +151,23 @@ function getDiffColor(value: number) {
   if (value > 0) return "#dc2626";
   if (value < 0) return "#2563eb";
   return "#64748b";
+}
+
+function getHeatmapCellStyle(cell: InvestorFlowHistoryMatrixCell, maxAbsDiff: number): CSSProperties {
+  if (cell.diff_yen == null || cell.direction === "unknown") {
+    return { ...styles.heatmapCell, background: "#e2e8f0", borderColor: "rgba(100,116,139,0.16)" };
+  }
+  if (cell.direction === "flat" || cell.diff_yen === 0) {
+    return { ...styles.heatmapCell, background: "#f1f5f9", borderColor: "rgba(100,116,139,0.18)" };
+  }
+  const base = cell.direction === "net_buy" ? "220,38,38" : "37,99,235";
+  const intensity = maxAbsDiff > 0 ? Math.min(1, Math.abs(cell.diff_yen) / maxAbsDiff) : 0;
+  const alpha = 0.22 + intensity * 0.68;
+  return {
+    ...styles.heatmapCell,
+    background: `rgba(${base}, ${alpha.toFixed(3)})`,
+    borderColor: `rgba(${base}, 0.28)`,
+  };
 }
 
 function sortRecords(records: InvestorFlowRecord[]) {
@@ -513,6 +532,90 @@ function AnalysisMoverList({ items }: { items: InvestorFlowNetRankingItem[] }) {
   );
 }
 
+function InvestorFlowHistoryHeatmap({ matrix }: { matrix: InvestorFlowHistoryMatrix | undefined }) {
+  const weeks = matrix?.weeks ?? [];
+  const rows = matrix?.rows ?? [];
+  if (weeks.length === 0 || rows.length === 0) return null;
+  const maxAbsDiff = rows.reduce((max, row) => {
+    return Math.max(
+      max,
+      ...row.cells.map((cell) => (cell.diff_yen == null ? 0 : Math.abs(cell.diff_yen))),
+    );
+  }, 0);
+
+  return (
+    <section style={styles.heatmapPanel}>
+      <div style={styles.heatmapHeader}>
+        <div>
+          <div style={styles.panelTitle}>主体別・週次ヒートマップ</div>
+          <div style={styles.panelSub}>赤は買い越し、青は売り越し。濃いほど差引金額が大きい週です。</div>
+        </div>
+        <div style={styles.heatmapLegend}>
+          <span style={styles.legendItem}>
+            <span style={{ ...styles.legendSwatch, background: "#dc2626" }} />
+            買い越し
+          </span>
+          <span style={styles.legendItem}>
+            <span style={{ ...styles.legendSwatch, background: "#2563eb" }} />
+            売り越し
+          </span>
+        </div>
+      </div>
+      <div style={styles.heatmapScroller}>
+        <div
+          style={{
+            ...styles.heatmapGrid,
+            gridTemplateColumns: `132px repeat(${weeks.length}, 34px) 132px`,
+          }}
+        >
+          <div style={styles.heatmapSourceHeader}>投資主体</div>
+          {weeks.map((week) => (
+            <div key={`${week.start_date}-${week.end_date}`} style={styles.heatmapWeekHeader}>
+              <span>{formatDate(week.start_date ?? undefined).slice(5)}</span>
+            </div>
+          ))}
+          <div style={styles.heatmapSourceHeader}>直近</div>
+          {rows.map((row) => {
+            const latest = row.cells[0];
+            return (
+              <div key={row.category} style={{ display: "contents" }}>
+                <div style={styles.heatmapCategory}>{getCategoryLabel(row.category)}</div>
+                {weeks.map((week, index) => {
+                  const cell = row.cells[index] ?? {
+                    start_date: week.start_date,
+                    end_date: week.end_date,
+                    buy_yen: null,
+                    sell_yen: null,
+                    diff_yen: null,
+                    direction: "unknown",
+                    strength: null,
+                  };
+                  return (
+                    <div
+                      key={`${row.category}-${week.start_date}-${week.end_date}`}
+                      title={`${getCategoryLabel(row.category)} ${formatWeek(
+                        cell.start_date ?? undefined,
+                        cell.end_date ?? undefined,
+                      )}: ${formatYen(cell.diff_yen)}`}
+                      style={getHeatmapCellStyle(cell, maxAbsDiff)}
+                    />
+                  );
+                })}
+                <div style={styles.heatmapLatest}>
+                  <span style={{ color: getDiffColor(latest?.diff_yen ?? 0) }}>
+                    {formatYen(latest?.diff_yen)}
+                  </span>
+                  <span>{formatDirection(latest?.direction)}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function AnalysisSummaryView({ analysis }: { analysis: InvestorFlowAnalysisPayload }) {
   const topMovers = getTopAnalysisMovers(analysis);
   const latestReversals = analysis.reversals.slice(0, 4);
@@ -557,6 +660,8 @@ function AnalysisSummaryView({ analysis }: { analysis: InvestorFlowAnalysisPaylo
           tone="neutral"
         />
       </section>
+
+      <InvestorFlowHistoryHeatmap matrix={analysis.history_matrix} />
 
       <div style={styles.viewGrid}>
         <AnalysisMoverList items={topMovers} />
@@ -1206,6 +1311,76 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: 14,
     border: "1px solid rgba(15,23,42,0.08)",
     background: "#ffffff",
+  },
+  heatmapPanel: {
+    display: "grid",
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    border: "1px solid rgba(15,23,42,0.08)",
+    background: "#ffffff",
+  },
+  heatmapHeader: {
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+    flexWrap: "wrap",
+  },
+  heatmapLegend: {
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "7px 10px",
+  },
+  heatmapScroller: {
+    overflowX: "auto",
+    WebkitOverflowScrolling: "touch",
+  },
+  heatmapGrid: {
+    display: "grid",
+    alignItems: "center",
+    gap: 7,
+    minWidth: "max-content",
+  },
+  heatmapSourceHeader: {
+    fontSize: 11,
+    fontWeight: 900,
+    color: "#64748b",
+  },
+  heatmapWeekHeader: {
+    display: "grid",
+    placeItems: "center",
+    minWidth: 34,
+    fontSize: 10,
+    fontWeight: 800,
+    color: "#64748b",
+    fontVariantNumeric: "tabular-nums",
+  },
+  heatmapCategory: {
+    minHeight: 28,
+    display: "flex",
+    alignItems: "center",
+    fontSize: 12,
+    fontWeight: 900,
+    color: "#0f172a",
+    whiteSpace: "nowrap",
+  },
+  heatmapCell: {
+    width: 34,
+    height: 28,
+    borderRadius: 7,
+    border: "1px solid rgba(15,23,42,0.08)",
+  },
+  heatmapLatest: {
+    display: "grid",
+    gap: 2,
+    minHeight: 28,
+    alignContent: "center",
+    fontSize: 11,
+    fontWeight: 900,
+    color: "#64748b",
+    whiteSpace: "nowrap",
   },
   panelHeader: {
     display: "flex",

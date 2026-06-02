@@ -101,6 +101,32 @@ export type InvestorFlowMajorFlowItem = {
   diff_change_yen: number | null;
 };
 
+export type InvestorFlowHistoryMatrixCell = {
+  start_date: string | null;
+  end_date: string | null;
+  buy_yen: number | null;
+  sell_yen: number | null;
+  diff_yen: number | null;
+  direction: "net_buy" | "net_sell" | "flat" | "unknown" | string;
+  strength: "large" | "medium" | "small" | null | string;
+};
+
+export type InvestorFlowHistoryMatrixWeek = {
+  start_date: string | null;
+  end_date: string | null;
+  source_snapshot_path: string;
+};
+
+export type InvestorFlowHistoryMatrixRow = {
+  category: string;
+  cells: InvestorFlowHistoryMatrixCell[];
+};
+
+export type InvestorFlowHistoryMatrix = {
+  weeks: InvestorFlowHistoryMatrixWeek[];
+  rows: InvestorFlowHistoryMatrixRow[];
+};
+
 export type InvestorFlowAnalysisPayload = {
   schema_version: string;
   data_source: string;
@@ -122,6 +148,7 @@ export type InvestorFlowAnalysisPayload = {
   reversals: InvestorFlowReversalItem[];
   streaks: InvestorFlowStreakItem[];
   major_flows: InvestorFlowMajorFlowItem[];
+  history_matrix?: InvestorFlowHistoryMatrix;
 };
 
 export type InvestorFlowPageData = {
