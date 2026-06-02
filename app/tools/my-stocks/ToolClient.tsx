@@ -31,6 +31,8 @@ export default function ToolClient({ reference }: Props) {
   const [query, setQuery] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [pendingUndo, setPendingUndo] = useState<MyStockItem | null>(null);
+  const [pasteImportOpen, setPasteImportOpen] = useState(false);
+  const [pasteImportText, setPasteImportText] = useState("");
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -132,21 +134,33 @@ export default function ToolClient({ reference }: Props) {
   function importBackup(file: File) {
     const reader = new FileReader();
     reader.onload = () => {
-      const parsed = parseBackupItems(String(reader.result ?? ""));
-      if (!parsed) {
-        flashNotice("バックアップファイルを読み込めませんでした");
-        return;
-      }
-      const { merged, added, skipped } = mergeItems(items, parsed);
-      persist(merged);
-      flashNotice(
-        skipped > 0
-          ? `${added}件を取り込みました（重複${skipped}件はスキップ）`
-          : `${added}件を取り込みました`,
-      );
+      importBackupText(String(reader.result ?? ""), "file");
     };
     reader.onerror = () => flashNotice("ファイルの読み込みに失敗しました");
     reader.readAsText(file);
+  }
+
+  function importBackupText(text: string, source: "file" | "paste") {
+    const parsed = parseBackupItems(text);
+    if (!parsed) {
+      flashNotice(
+        source === "file"
+          ? "バックアップファイルを読み込めませんでした"
+          : "貼り付けたJSONを読み込めませんでした",
+      );
+      return;
+    }
+    const { merged, added, skipped } = mergeItems(items, parsed);
+    persist(merged);
+    if (source === "paste") {
+      setPasteImportText("");
+      setPasteImportOpen(false);
+    }
+    flashNotice(
+      skipped > 0
+        ? `${added}件を取り込みました（重複${skipped}件はスキップ）`
+        : `${added}件を取り込みました`,
+    );
   }
 
   function onImportInputChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -245,7 +259,14 @@ export default function ToolClient({ reference }: Props) {
               onClick={() => importInputRef.current?.click()}
               style={toolbarButtonStyle}
             >
-              インポート（取り込み）
+              ファイルから取り込み
+            </button>
+            <button
+              type="button"
+              onClick={() => setPasteImportOpen((prev) => !prev)}
+              style={toolbarButtonStyle}
+            >
+              JSONを貼り付け
             </button>
             <input
               ref={importInputRef}
@@ -255,6 +276,56 @@ export default function ToolClient({ reference }: Props) {
               style={{ display: "none" }}
             />
           </div>
+          {pasteImportOpen && (
+            <div style={{ display: "grid", gap: 8 }}>
+              <textarea
+                value={pasteImportText}
+                onChange={(e) => setPasteImportText(e.target.value)}
+                placeholder='{"schema":"mini-tools/my-stocks","version":1,"items":[...]}'
+                aria-label="バックアップJSONを貼り付け"
+                rows={8}
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  border: "1.5px solid var(--color-border-strong)",
+                  background: "var(--color-bg-input)",
+                  color: "var(--color-text)",
+                  fontSize: 13,
+                  fontFamily:
+                    'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                  resize: "vertical",
+                }}
+              />
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => importBackupText(pasteImportText, "paste")}
+                  disabled={!pasteImportText.trim()}
+                  style={{
+                    ...toolbarButtonStyle,
+                    opacity: pasteImportText.trim() ? 1 : 0.55,
+                    cursor: pasteImportText.trim() ? "pointer" : "not-allowed",
+                  }}
+                >
+                  取り込む
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPasteImportText("")}
+                  disabled={!pasteImportText}
+                  style={{
+                    ...toolbarButtonStyle,
+                    opacity: pasteImportText ? 1 : 0.55,
+                    cursor: pasteImportText ? "pointer" : "not-allowed",
+                  }}
+                >
+                  クリア
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
