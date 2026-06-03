@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import styles from "./ToolClient.module.css";
-import type { ArchivedMemoItem, CrossType, MemoItem, Tag } from "./types";
+import type {
+  ArchivedMemoItem,
+  CrossType,
+  MemoItem,
+  NikkoShortBalanceData,
+  Tag,
+} from "./types";
 import { CROSS_TYPES, DEFAULT_TAGS } from "./types";
 import {
   loadArchivedItems,
@@ -179,7 +185,13 @@ const CROSS_TYPE_DESCRIPTIONS: Record<CrossType, string> = {
     "1株だけ持ち続けて保有年数を積み、将来の長期優待条件を満たすことを狙います。",
 };
 
-export default function ToolClient() {
+type ShortBalanceRequestState = "idle" | "loading" | "done" | "error";
+
+export default function ToolClient({
+  shortBalance,
+}: {
+  shortBalance: NikkoShortBalanceData;
+}) {
   const [items, setItems] = useState<MemoItem[]>(() => loadItems());
   const [archives, setArchives] = useState<ArchivedMemoItem[]>(() =>
     loadArchivedItems()
@@ -220,6 +232,9 @@ export default function ToolClient() {
     new Set()
   );
   const [strategyHelpOpen, setStrategyHelpOpen] = useState(false);
+  const [shortBalanceRequest, setShortBalanceRequest] =
+    useState<ShortBalanceRequestState>("idle");
+  const [shortBalanceMessage, setShortBalanceMessage] = useState<string | null>(null);
   const [tickerMaster, setTickerMaster] = useState<TickerMasterItem[]>([]);
   const [tickerMasterError, setTickerMasterError] = useState<string | null>(null);
 
@@ -341,6 +356,64 @@ export default function ToolClient() {
       .slice()
       .sort(compare);
   }, [items, q, monthFilter, tagFilter, tagNameById, sortState]);
+
+  // 日興の信用売り残高: code（大文字）→ 株数。公開 JSON を自分の銘柄で filter する。
+  const sellBalanceByCode = useMemo(() => {
+    const m = new Map<string, number | null>();
+    for (const [code, rec] of Object.entries(shortBalance.byCode)) {
+      m.set(code.toUpperCase(), rec?.sellBalance ?? null);
+    }
+    return m;
+  }, [shortBalance]);
+
+  const numberFormat = useMemo(() => new Intl.NumberFormat("ja-JP"), []);
+
+  // 現在の表示（フィルタ後）からコード付きの銘柄コードを集める。
+  const visibleCodes = useMemo(() => {
+    const set = new Set<string>();
+    for (const it of filtered) {
+      const code = it.code?.trim().toUpperCase();
+      if (code) set.add(code);
+    }
+    return [...set];
+  }, [filtered]);
+
+  // 「取得」: 表示中の銘柄コードを market-info に取得対象として登録する（完全非同期）。
+  // 結果は次回ページ読込で反映されるため、ここでは受付できたかだけを伝える。
+  async function requestShortBalances() {
+    if (shortBalanceRequest === "loading") return;
+    if (visibleCodes.length === 0) {
+      setShortBalanceRequest("error");
+      setShortBalanceMessage("コードが登録された銘柄がありません。");
+      return;
+    }
+    setShortBalanceRequest("loading");
+    setShortBalanceMessage(null);
+    try {
+      const res = await fetch("/api/nikko/short-balance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codes: visibleCodes }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        accepted?: boolean;
+        requested?: number;
+        error?: string;
+      };
+      if (!res.ok || !data.accepted) {
+        setShortBalanceRequest("error");
+        setShortBalanceMessage(data.error ?? "取得の依頼に失敗しました。");
+        return;
+      }
+      setShortBalanceRequest("done");
+      setShortBalanceMessage(
+        `${data.requested ?? visibleCodes.length}件を取得依頼しました。反映までしばらくかかります（再読み込みで確認）。`,
+      );
+    } catch {
+      setShortBalanceRequest("error");
+      setShortBalanceMessage("通信に失敗しました。時間をおいて再度お試しください。");
+    }
+  }
 
   function openNew(seed?: Partial<Draft>) {
     if (typeof window !== "undefined") {
@@ -1029,6 +1102,31 @@ export default function ToolClient() {
             </select>
           </div>
 
+          <div className={styles.shortBalanceBar}>
+            <button
+              className={styles.btn}
+              type="button"
+              onClick={requestShortBalances}
+              disabled={shortBalanceRequest === "loading"}
+              title="表示中の銘柄の日興・信用売り残高を取得依頼します（反映は後ほど）"
+            >
+              {shortBalanceRequest === "loading"
+                ? "取得依頼中…"
+                : `売り残を取得（表示中${visibleCodes.length}件）`}
+            </button>
+            {shortBalance.asOf ? (
+              <span className={styles.small}>売り残基準日: {shortBalance.asOf}</span>
+            ) : null}
+            {shortBalanceMessage ? (
+              <span
+                className={styles.small}
+                style={{ color: shortBalanceRequest === "error" ? "#c0392b" : undefined }}
+              >
+                {shortBalanceMessage}
+              </span>
+            ) : null}
+          </div>
+
           {showTickerSearchHint ? (
             <div className={styles.small}>{tickerSearchHintMessage}</div>
           ) : null}
@@ -1217,6 +1315,18 @@ export default function ToolClient() {
                                 ({normalizeDisplayText(it.code)})
                               </span>
                             ) : null}
+                            {(() => {
+                              if (!it.code) return null;
+                              const code = it.code.trim().toUpperCase();
+                              if (!sellBalanceByCode.has(code)) return null;
+                              const bal = sellBalanceByCode.get(code) ?? null;
+                              return (
+                                <span className={styles.shortBalanceBadge}>
+                                  売り残{" "}
+                                  {bal === null ? "—" : `${numberFormat.format(bal)}株`}
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
                         <div className={styles.monthPriorityRow}>

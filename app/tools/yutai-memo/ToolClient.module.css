@@ -381,6 +381,26 @@
   gap: 8px;
 }
 
+/* ===== 信用売り残高（日興） ===== */
+.shortBalanceBar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.shortBalanceBadge {
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 600;
+  background: #ccfbf1;
+  padding: 1px 6px;
+  border-radius: 5px;
+  white-space: nowrap;
+  width: fit-content;
+}
+
 /* ===== Month badges ===== */
 .monthPriorityRow {
   display: flex;

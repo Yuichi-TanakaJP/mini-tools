@@ -41,6 +41,23 @@ export type MemoItem = {
   updatedAt: string; // ISO
 };
 
+/**
+ * 日興証券の信用売り残高（株数）。クロス取引が今可能かの判断材料。
+ * market-info が「登録された銘柄コードだけ」取得して公開する JSON の shape。
+ * 用途を信用売り残高に限定しているため項目は最小（買い残・前週比などは持たない）。
+ */
+export type NikkoShortBalanceRecord = {
+  /** 信用売り残高（株数）。取得できなければ null。 */
+  sellBalance: number | null;
+};
+
+export type NikkoShortBalanceData = {
+  /** 基準日（YYYY-MM-DD）。取得できなければ null。 */
+  asOf: string | null;
+  /** code → 信用売り残高。market-info に登録済みのコードのみ載る。 */
+  byCode: Record<string, NikkoShortBalanceRecord>;
+};
+
 export type ArchivedMemoItem = {
   id: string;
   memoId: string;
