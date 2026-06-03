@@ -1,7 +1,14 @@
 "use client";
 
-import { createClientOnlyTool } from "@/components/createClientOnlyTool";
+import dynamic from "next/dynamic";
+import type { NikkoShortBalanceData } from "./types";
 
-const ClientOnly = createClientOnlyTool(() => import("./ToolClient"));
+const ToolClient = dynamic(() => import("./ToolClient"), { ssr: false });
 
-export default ClientOnly;
+export default function ClientOnly({
+  shortBalance,
+}: {
+  shortBalance: NikkoShortBalanceData;
+}) {
+  return <ToolClient shortBalance={shortBalance} />;
+}

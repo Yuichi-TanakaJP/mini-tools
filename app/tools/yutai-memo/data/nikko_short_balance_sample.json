@@ -1,0 +1,8 @@
+{
+  "asOf": "2026-06-02",
+  "byCode": {
+    "7203": { "sellBalance": 1234500 },
+    "8591": { "sellBalance": 56700 },
+    "9433": { "sellBalance": null }
+  }
+}
