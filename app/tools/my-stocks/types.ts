@@ -3,6 +3,14 @@
 /** 保有メモ / ウォッチ の2タブ */
 export type StockListTab = "holding" | "watch";
 
+export type StockAccountType =
+  | "specific"
+  | "nisa-growth"
+  | "nisa-tsumitate"
+  | "old-nisa"
+  | "general"
+  | "other";
+
 /** jpx_listed_companies.json の1レコード（銘柄マスタ） */
 export type StockMaster = {
   code: string;
@@ -24,6 +32,9 @@ export type MyStockItem = {
   market: string;
   sector: string | null;
   tab: StockListTab;
+  /** 保有メモのみ。NISA / 特定などの口座区分を分けて表示・重複判定する。 */
+  accountType?: StockAccountType | null;
+  accountLabel?: string | null;
   /** 保有メモのみ。手入力。評価額・損益は出さない方針のため取得単価のみ。 */
   quantity?: number | null;
   acquisitionPrice?: number | null;

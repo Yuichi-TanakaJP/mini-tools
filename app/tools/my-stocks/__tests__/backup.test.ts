@@ -63,14 +63,34 @@ describe("serializeBackup / parseBackupItems", () => {
 });
 
 describe("mergeItems", () => {
-  it("同一タブ・同一コードはスキップして既存を優先する", () => {
-    const current = [item({ id: "cur", memo: "既存メモ" })];
-    const incoming = [item({ id: "inc", memo: "取込メモ" })];
+  it("保有メモは同一コード・同一口座区分をスキップして既存を優先する", () => {
+    const current = [item({ id: "cur", accountType: "specific", memo: "既存メモ" })];
+    const incoming = [item({ id: "inc", accountType: "specific", memo: "取込メモ" })];
     const result = mergeItems(current, incoming);
     expect(result.added).toBe(0);
     expect(result.skipped).toBe(1);
     expect(result.merged).toHaveLength(1);
     expect(result.merged[0].memo).toBe("既存メモ");
+  });
+
+  it("保有メモは同一コードでも口座区分が違えば追加する", () => {
+    const current = [item({ id: "cur", accountType: "specific", accountLabel: "特定預り" })];
+    const incoming = [
+      item({ id: "inc", accountType: "nisa-growth", accountLabel: "NISA預り（成長投資枠）" }),
+    ];
+    const result = mergeItems(current, incoming);
+    expect(result.added).toBe(1);
+    expect(result.skipped).toBe(0);
+    expect(result.merged).toHaveLength(2);
+  });
+
+  it("ウォッチは同一コードをスキップする", () => {
+    const current = [item({ id: "cur", tab: "watch", accountType: null })];
+    const incoming = [item({ id: "inc", tab: "watch", accountType: "nisa-growth" })];
+    const result = mergeItems(current, incoming);
+    expect(result.added).toBe(0);
+    expect(result.skipped).toBe(1);
+    expect(result.merged).toHaveLength(1);
   });
 
   it("タブが違えば同一コードでも追加する", () => {

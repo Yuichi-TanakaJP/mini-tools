@@ -5,7 +5,13 @@ import TabBar from "@/app/tools/_shared/TabBar";
 import { loadItems, newId, saveItems } from "./storage";
 import { mergeItems, parseBackupItems, serializeBackup } from "./backup";
 import { useStockMaster } from "./useStockMaster";
-import type { MyStockItem, MyStocksReference, StockListTab, StockMaster } from "./types";
+import type {
+  MyStockItem,
+  MyStocksReference,
+  StockAccountType,
+  StockListTab,
+  StockMaster,
+} from "./types";
 
 type Props = {
   reference: MyStocksReference;
@@ -16,6 +22,15 @@ const TAB_LABELS: Record<StockListTab, string> = {
   watch: "ウォッチ",
 };
 const TAB_OPTIONS = [TAB_LABELS.holding, TAB_LABELS.watch] as const;
+const ACCOUNT_OPTIONS: Array<{ type: StockAccountType | ""; label: string }> = [
+  { type: "", label: "口座未設定" },
+  { type: "specific", label: "特定預り" },
+  { type: "nisa-growth", label: "NISA成長" },
+  { type: "nisa-tsumitate", label: "NISAつみたて" },
+  { type: "old-nisa", label: "旧NISA" },
+  { type: "general", label: "一般預り" },
+  { type: "other", label: "その他" },
+];
 
 const UNDO_MS = 5000;
 
@@ -23,6 +38,16 @@ function formatEarnings(iso: string): string {
   const m = iso.match(/^\d{4}-(\d{2})-(\d{2})$/);
   if (!m) return iso;
   return `${Number(m[1])}/${Number(m[2])}`;
+}
+
+function accountMergeKey(item: MyStockItem): string {
+  if (item.tab !== "holding") return `${item.tab}:${item.code}`;
+  return `${item.tab}:${item.code}:${item.accountType ?? item.accountLabel ?? ""}`;
+}
+
+function accountLabel(item: MyStockItem): string | null {
+  if (item.accountLabel) return item.accountLabel;
+  return ACCOUNT_OPTIONS.find((option) => option.type === item.accountType)?.label ?? null;
 }
 
 export default function ToolClient({ reference }: Props) {
@@ -65,7 +90,9 @@ export default function ToolClient({ reference }: Props) {
   const candidates = useMemo(() => master.search(query, 20), [master, query]);
 
   function addStock(stock: StockMaster) {
-    const exists = items.some((it) => it.tab === tab && it.code === stock.code);
+    const nextKey =
+      tab === "holding" ? `holding:${stock.code}:` : `watch:${stock.code}`;
+    const exists = items.some((it) => accountMergeKey(it) === nextKey);
     if (exists) {
       flashNotice(`${stock.name} はすでに「${TAB_LABELS[tab]}」にあります`);
       return;
@@ -78,6 +105,8 @@ export default function ToolClient({ reference }: Props) {
       market: stock.market,
       sector: stock.sector,
       tab,
+      accountType: tab === "holding" ? null : undefined,
+      accountLabel: tab === "holding" ? null : undefined,
       quantity: tab === "holding" ? null : undefined,
       acquisitionPrice: tab === "holding" ? null : undefined,
       memo: "",
@@ -478,6 +507,7 @@ type StockRowProps = {
 function StockRow({ item, reference, onUpdate, onRemove }: StockRowProps) {
   const earnings = reference.nextEarningsByCode[item.code];
   const yutaiMonths = reference.yutaiMonthsByCode[item.code];
+  const holdingAccountLabel = accountLabel(item);
 
   return (
     <li
@@ -497,6 +527,11 @@ function StockRow({ item, reference, onUpdate, onRemove }: StockRowProps) {
         <span style={{ color: "var(--color-text)", fontSize: 14 }}>{item.name}</span>
         {item.market && (
           <span style={{ color: "var(--color-text-muted)", fontSize: 11 }}>{item.market}</span>
+        )}
+        {item.tab === "holding" && holdingAccountLabel && (
+          <span style={badgeStyle("var(--color-bg-input)", "var(--color-text-sub)")}>
+            {holdingAccountLabel}
+          </span>
         )}
         <button
           type="button"
@@ -534,6 +569,27 @@ function StockRow({ item, reference, onUpdate, onRemove }: StockRowProps) {
 
       {item.tab === "holding" && (
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <label style={fieldLabelStyle}>
+            口座
+            <select
+              value={item.accountType ?? ""}
+              onChange={(e) => {
+                const nextType = e.target.value as StockAccountType | "";
+                const nextOption = ACCOUNT_OPTIONS.find((option) => option.type === nextType);
+                onUpdate(item.id, {
+                  accountType: nextType || null,
+                  accountLabel: nextType ? nextOption?.label ?? null : null,
+                });
+              }}
+              style={selectInputStyle}
+            >
+              {ACCOUNT_OPTIONS.map((option) => (
+                <option key={option.type || "unset"} value={option.type}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <label style={fieldLabelStyle}>
             数量
             <input
@@ -608,6 +664,16 @@ const fieldLabelStyle: React.CSSProperties = {
 
 const numberInputStyle: React.CSSProperties = {
   width: 110,
+  padding: "6px 9px",
+  borderRadius: 7,
+  border: "1px solid var(--color-border)",
+  background: "var(--color-bg-input)",
+  color: "var(--color-text)",
+  fontSize: 13,
+};
+
+const selectInputStyle: React.CSSProperties = {
+  minWidth: 132,
   padding: "6px 9px",
   borderRadius: 7,
   border: "1px solid var(--color-border)",

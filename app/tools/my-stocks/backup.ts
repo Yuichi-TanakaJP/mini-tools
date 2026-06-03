@@ -58,20 +58,26 @@ export type MergeResult = {
   skipped: number;
 };
 
+function mergeKey(item: MyStockItem): string {
+  if (item.tab !== "holding") return `${item.tab}:${item.code}`;
+  return `${item.tab}:${item.code}:${item.accountType ?? item.accountLabel ?? ""}`;
+}
+
 /**
  * 既存 items に incoming を非破壊マージする。
- * - 同一タブ・同一コードは既存を優先してスキップ
+ * - 保有メモは同一コードでも口座区分が違えば別行として追加
+ * - ウォッチは同一コードを既存優先でスキップ
  * - id が衝突する場合は新しい id を振り直す
  */
 export function mergeItems(current: MyStockItem[], incoming: MyStockItem[]): MergeResult {
-  const seenKeys = new Set(current.map((it) => `${it.tab}:${it.code}`));
+  const seenKeys = new Set(current.map(mergeKey));
   const usedIds = new Set(current.map((it) => it.id));
 
   const additions: MyStockItem[] = [];
   let skipped = 0;
 
   for (const item of incoming) {
-    const key = `${item.tab}:${item.code}`;
+    const key = mergeKey(item);
     if (seenKeys.has(key)) {
       skipped += 1;
       continue;
