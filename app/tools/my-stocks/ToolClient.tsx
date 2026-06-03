@@ -5,7 +5,13 @@ import TabBar from "@/app/tools/_shared/TabBar";
 import { loadItems, newId, saveItems } from "./storage";
 import { mergeItems, parseBackupItems, serializeBackup } from "./backup";
 import { useStockMaster } from "./useStockMaster";
-import type { MyStockItem, MyStocksReference, StockListTab, StockMaster } from "./types";
+import type {
+  MyStockItem,
+  MyStocksReference,
+  StockAccountType,
+  StockListTab,
+  StockMaster,
+} from "./types";
 
 type Props = {
   reference: MyStocksReference;
@@ -16,6 +22,15 @@ const TAB_LABELS: Record<StockListTab, string> = {
   watch: "ウォッチ",
 };
 const TAB_OPTIONS = [TAB_LABELS.holding, TAB_LABELS.watch] as const;
+const ACCOUNT_OPTIONS: Array<{ type: StockAccountType | ""; label: string }> = [
+  { type: "", label: "口座未設定" },
+  { type: "specific", label: "特定預り" },
+  { type: "nisa-growth", label: "NISA成長" },
+  { type: "nisa-tsumitate", label: "NISAつみたて" },
+  { type: "old-nisa", label: "旧NISA" },
+  { type: "general", label: "一般預り" },
+  { type: "other", label: "その他" },
+];
 
 const UNDO_MS = 5000;
 
@@ -25,10 +40,21 @@ function formatEarnings(iso: string): string {
   return `${Number(m[1])}/${Number(m[2])}`;
 }
 
+function accountMergeKey(item: MyStockItem): string {
+  if (item.tab !== "holding") return `${item.tab}:${item.code}`;
+  return `${item.tab}:${item.code}:${item.accountType ?? item.accountLabel ?? ""}`;
+}
+
+function accountLabel(item: MyStockItem): string | null {
+  if (item.accountLabel) return item.accountLabel;
+  return ACCOUNT_OPTIONS.find((option) => option.type === item.accountType)?.label ?? null;
+}
+
 export default function ToolClient({ reference }: Props) {
   const [items, setItems] = useState<MyStockItem[]>(() => loadItems());
   const [tab, setTab] = useState<StockListTab>("holding");
   const [query, setQuery] = useState("");
+  const [newHoldingAccountType, setNewHoldingAccountType] = useState<StockAccountType | "">("");
   const [notice, setNotice] = useState<string | null>(null);
   const [pendingUndo, setPendingUndo] = useState<MyStockItem | null>(null);
   const [pasteImportOpen, setPasteImportOpen] = useState(false);
@@ -65,7 +91,12 @@ export default function ToolClient({ reference }: Props) {
   const candidates = useMemo(() => master.search(query, 20), [master, query]);
 
   function addStock(stock: StockMaster) {
-    const exists = items.some((it) => it.tab === tab && it.code === stock.code);
+    const nextAccountOption = ACCOUNT_OPTIONS.find(
+      (option) => option.type === newHoldingAccountType,
+    );
+    const nextKey =
+      tab === "holding" ? `holding:${stock.code}:${newHoldingAccountType}` : `watch:${stock.code}`;
+    const exists = items.some((it) => accountMergeKey(it) === nextKey);
     if (exists) {
       flashNotice(`${stock.name} はすでに「${TAB_LABELS[tab]}」にあります`);
       return;
@@ -78,6 +109,9 @@ export default function ToolClient({ reference }: Props) {
       market: stock.market,
       sector: stock.sector,
       tab,
+      accountType: tab === "holding" ? newHoldingAccountType || null : undefined,
+      accountLabel:
+        tab === "holding" && newHoldingAccountType ? nextAccountOption?.label ?? null : undefined,
       quantity: tab === "holding" ? null : undefined,
       acquisitionPrice: tab === "holding" ? null : undefined,
       memo: "",
@@ -90,6 +124,19 @@ export default function ToolClient({ reference }: Props) {
   }
 
   function updateItem(id: string, patch: Partial<MyStockItem>) {
+    const target = items.find((it) => it.id === id);
+    if (
+      target?.tab === "holding" &&
+      ("accountType" in patch || "accountLabel" in patch)
+    ) {
+      const nextItem = { ...target, ...patch };
+      const nextKey = accountMergeKey(nextItem);
+      const exists = items.some((it) => it.id !== id && accountMergeKey(it) === nextKey);
+      if (exists) {
+        flashNotice(`${target.name} は同じ口座区分ですでにあります`);
+        return;
+      }
+    }
     persist(
       items.map((it) => (it.id === id ? { ...it, ...patch, updatedAt: Date.now() } : it)),
     );
@@ -188,8 +235,11 @@ export default function ToolClient({ reference }: Props) {
         />
 
         <AddPanel
+          tab={tab}
           query={query}
           onQueryChange={setQuery}
+          holdingAccountType={newHoldingAccountType}
+          onHoldingAccountTypeChange={setNewHoldingAccountType}
           candidates={candidates}
           masterReady={master.ready}
           masterError={master.error}
@@ -370,8 +420,11 @@ export default function ToolClient({ reference }: Props) {
 }
 
 type AddPanelProps = {
+  tab: StockListTab;
   query: string;
   onQueryChange: (value: string) => void;
+  holdingAccountType: StockAccountType | "";
+  onHoldingAccountTypeChange: (value: StockAccountType | "") => void;
   candidates: StockMaster[];
   masterReady: boolean;
   masterError: boolean;
@@ -379,8 +432,11 @@ type AddPanelProps = {
 };
 
 function AddPanel({
+  tab,
   query,
   onQueryChange,
+  holdingAccountType,
+  onHoldingAccountTypeChange,
   candidates,
   masterReady,
   masterError,
@@ -388,6 +444,22 @@ function AddPanel({
 }: AddPanelProps) {
   return (
     <div style={{ position: "relative", display: "grid", gap: 6 }}>
+      {tab === "holding" && (
+        <label style={fieldLabelStyle}>
+          追加する口座
+          <select
+            value={holdingAccountType}
+            onChange={(e) => onHoldingAccountTypeChange(e.target.value as StockAccountType | "")}
+            style={selectInputStyle}
+          >
+            {ACCOUNT_OPTIONS.map((option) => (
+              <option key={option.type || "unset"} value={option.type}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <input
         type="text"
         value={query}
@@ -478,6 +550,7 @@ type StockRowProps = {
 function StockRow({ item, reference, onUpdate, onRemove }: StockRowProps) {
   const earnings = reference.nextEarningsByCode[item.code];
   const yutaiMonths = reference.yutaiMonthsByCode[item.code];
+  const holdingAccountLabel = accountLabel(item);
 
   return (
     <li
@@ -497,6 +570,11 @@ function StockRow({ item, reference, onUpdate, onRemove }: StockRowProps) {
         <span style={{ color: "var(--color-text)", fontSize: 14 }}>{item.name}</span>
         {item.market && (
           <span style={{ color: "var(--color-text-muted)", fontSize: 11 }}>{item.market}</span>
+        )}
+        {item.tab === "holding" && holdingAccountLabel && (
+          <span style={badgeStyle("var(--color-bg-input)", "var(--color-text-sub)")}>
+            {holdingAccountLabel}
+          </span>
         )}
         <button
           type="button"
@@ -534,6 +612,27 @@ function StockRow({ item, reference, onUpdate, onRemove }: StockRowProps) {
 
       {item.tab === "holding" && (
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <label style={fieldLabelStyle}>
+            口座
+            <select
+              value={item.accountType ?? ""}
+              onChange={(e) => {
+                const nextType = e.target.value as StockAccountType | "";
+                const nextOption = ACCOUNT_OPTIONS.find((option) => option.type === nextType);
+                onUpdate(item.id, {
+                  accountType: nextType || null,
+                  accountLabel: nextType ? nextOption?.label ?? null : null,
+                });
+              }}
+              style={selectInputStyle}
+            >
+              {ACCOUNT_OPTIONS.map((option) => (
+                <option key={option.type || "unset"} value={option.type}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <label style={fieldLabelStyle}>
             数量
             <input
@@ -608,6 +707,16 @@ const fieldLabelStyle: React.CSSProperties = {
 
 const numberInputStyle: React.CSSProperties = {
   width: 110,
+  padding: "6px 9px",
+  borderRadius: 7,
+  border: "1px solid var(--color-border)",
+  background: "var(--color-bg-input)",
+  color: "var(--color-text)",
+  fontSize: 13,
+};
+
+const selectInputStyle: React.CSSProperties = {
+  minWidth: 132,
   padding: "6px 9px",
   borderRadius: 7,
   border: "1px solid var(--color-border)",

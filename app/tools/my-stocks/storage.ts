@@ -1,10 +1,21 @@
 // app/tools/my-stocks/storage.ts
-import type { MyStockItem, StockListTab } from "./types";
+import type { MyStockItem, StockAccountType, StockListTab } from "./types";
 
 const ITEMS_KEY = "my_stocks_items_v1";
 
 function isStockTab(value: unknown): value is StockListTab {
   return value === "holding" || value === "watch";
+}
+
+function isAccountType(value: unknown): value is StockAccountType {
+  return (
+    value === "specific" ||
+    value === "nisa-growth" ||
+    value === "nisa-tsumitate" ||
+    value === "old-nisa" ||
+    value === "general" ||
+    value === "other"
+  );
 }
 
 /** 端末・テスト双方で動く ID 生成。 */
@@ -37,6 +48,11 @@ export function normalizeItems(parsed: unknown): MyStockItem[] {
         ...item,
         market: typeof item.market === "string" ? item.market : "",
         sector: typeof item.sector === "string" ? item.sector : null,
+        accountType: isAccountType(item.accountType) ? item.accountType : null,
+        accountLabel:
+          typeof item.accountLabel === "string" && item.accountLabel.trim()
+            ? item.accountLabel
+            : null,
         addedAt: typeof item.addedAt === "number" ? item.addedAt : Date.now(),
         updatedAt:
           typeof item.updatedAt === "number" ? item.updatedAt : item.addedAt ?? Date.now(),
