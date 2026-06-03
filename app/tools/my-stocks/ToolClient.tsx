@@ -119,6 +119,19 @@ export default function ToolClient({ reference }: Props) {
   }
 
   function updateItem(id: string, patch: Partial<MyStockItem>) {
+    const target = items.find((it) => it.id === id);
+    if (
+      target?.tab === "holding" &&
+      ("accountType" in patch || "accountLabel" in patch)
+    ) {
+      const nextItem = { ...target, ...patch };
+      const nextKey = accountMergeKey(nextItem);
+      const exists = items.some((it) => it.id !== id && accountMergeKey(it) === nextKey);
+      if (exists) {
+        flashNotice(`${target.name} は同じ口座区分ですでにあります`);
+        return;
+      }
+    }
     persist(
       items.map((it) => (it.id === id ? { ...it, ...patch, updatedAt: Date.now() } : it)),
     );
