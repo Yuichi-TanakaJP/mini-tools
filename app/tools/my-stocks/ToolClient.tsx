@@ -54,6 +54,7 @@ export default function ToolClient({ reference }: Props) {
   const [items, setItems] = useState<MyStockItem[]>(() => loadItems());
   const [tab, setTab] = useState<StockListTab>("holding");
   const [query, setQuery] = useState("");
+  const [newHoldingAccountType, setNewHoldingAccountType] = useState<StockAccountType | "">("");
   const [notice, setNotice] = useState<string | null>(null);
   const [pendingUndo, setPendingUndo] = useState<MyStockItem | null>(null);
   const [pasteImportOpen, setPasteImportOpen] = useState(false);
@@ -90,8 +91,11 @@ export default function ToolClient({ reference }: Props) {
   const candidates = useMemo(() => master.search(query, 20), [master, query]);
 
   function addStock(stock: StockMaster) {
+    const nextAccountOption = ACCOUNT_OPTIONS.find(
+      (option) => option.type === newHoldingAccountType,
+    );
     const nextKey =
-      tab === "holding" ? `holding:${stock.code}:` : `watch:${stock.code}`;
+      tab === "holding" ? `holding:${stock.code}:${newHoldingAccountType}` : `watch:${stock.code}`;
     const exists = items.some((it) => accountMergeKey(it) === nextKey);
     if (exists) {
       flashNotice(`${stock.name} はすでに「${TAB_LABELS[tab]}」にあります`);
@@ -105,8 +109,9 @@ export default function ToolClient({ reference }: Props) {
       market: stock.market,
       sector: stock.sector,
       tab,
-      accountType: tab === "holding" ? null : undefined,
-      accountLabel: tab === "holding" ? null : undefined,
+      accountType: tab === "holding" ? newHoldingAccountType || null : undefined,
+      accountLabel:
+        tab === "holding" && newHoldingAccountType ? nextAccountOption?.label ?? null : undefined,
       quantity: tab === "holding" ? null : undefined,
       acquisitionPrice: tab === "holding" ? null : undefined,
       memo: "",
@@ -230,8 +235,11 @@ export default function ToolClient({ reference }: Props) {
         />
 
         <AddPanel
+          tab={tab}
           query={query}
           onQueryChange={setQuery}
+          holdingAccountType={newHoldingAccountType}
+          onHoldingAccountTypeChange={setNewHoldingAccountType}
           candidates={candidates}
           masterReady={master.ready}
           masterError={master.error}
@@ -412,8 +420,11 @@ export default function ToolClient({ reference }: Props) {
 }
 
 type AddPanelProps = {
+  tab: StockListTab;
   query: string;
   onQueryChange: (value: string) => void;
+  holdingAccountType: StockAccountType | "";
+  onHoldingAccountTypeChange: (value: StockAccountType | "") => void;
   candidates: StockMaster[];
   masterReady: boolean;
   masterError: boolean;
@@ -421,8 +432,11 @@ type AddPanelProps = {
 };
 
 function AddPanel({
+  tab,
   query,
   onQueryChange,
+  holdingAccountType,
+  onHoldingAccountTypeChange,
   candidates,
   masterReady,
   masterError,
@@ -430,6 +444,22 @@ function AddPanel({
 }: AddPanelProps) {
   return (
     <div style={{ position: "relative", display: "grid", gap: 6 }}>
+      {tab === "holding" && (
+        <label style={fieldLabelStyle}>
+          追加する口座
+          <select
+            value={holdingAccountType}
+            onChange={(e) => onHoldingAccountTypeChange(e.target.value as StockAccountType | "")}
+            style={selectInputStyle}
+          >
+            {ACCOUNT_OPTIONS.map((option) => (
+              <option key={option.type || "unset"} value={option.type}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <input
         type="text"
         value={query}
