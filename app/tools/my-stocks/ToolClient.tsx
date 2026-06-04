@@ -17,11 +17,19 @@ type Props = {
   reference: MyStocksReference;
 };
 
+type HoldingViewMode = "list" | "account" | "ratio";
+type AccountGroupKey = "specific" | "nisa" | "other";
+
 const TAB_LABELS: Record<StockListTab, string> = {
   holding: "保有メモ",
   watch: "ウォッチ",
 };
 const TAB_OPTIONS = [TAB_LABELS.holding, TAB_LABELS.watch] as const;
+const HOLDING_VIEW_OPTIONS: Array<{ mode: HoldingViewMode; label: string }> = [
+  { mode: "list", label: "一覧" },
+  { mode: "account", label: "口座別" },
+  { mode: "ratio", label: "比率" },
+];
 const ACCOUNT_OPTIONS: Array<{ type: StockAccountType | ""; label: string }> = [
   { type: "", label: "口座未設定" },
   { type: "specific", label: "特定預り" },
@@ -32,6 +40,13 @@ const ACCOUNT_OPTIONS: Array<{ type: StockAccountType | ""; label: string }> = [
   { type: "other", label: "その他" },
 ];
 
+const ACCOUNT_GROUPS: Array<{ key: AccountGroupKey; label: string; color: string }> = [
+  { key: "specific", label: "特定", color: "#2563eb" },
+  { key: "nisa", label: "NISA", color: "#16a34a" },
+  { key: "other", label: "その他・未設定", color: "#d97706" },
+];
+
+const STOCK_CHART_COLORS = ["#2563eb", "#16a34a", "#dc2626", "#d97706", "#7c3aed", "#0891b2"];
 const UNDO_MS = 5000;
 
 function formatEarnings(iso: string): string {
@@ -50,11 +65,57 @@ function accountLabel(item: MyStockItem): string | null {
   return ACCOUNT_OPTIONS.find((option) => option.type === item.accountType)?.label ?? null;
 }
 
+function accountGroupKey(item: MyStockItem): AccountGroupKey {
+  if (item.accountType === "specific") return "specific";
+  if (
+    item.accountType === "nisa-growth" ||
+    item.accountType === "nisa-tsumitate" ||
+    item.accountType === "old-nisa"
+  ) {
+    return "nisa";
+  }
+  return "other";
+}
+
+function nextAccountForDuplicate(existing: MyStockItem[]): StockAccountType | null {
+  const used = new Set(existing.map((item) => item.accountType ?? null));
+  const preferred: StockAccountType[] = ["specific", "nisa-growth", "nisa-tsumitate", "old-nisa"];
+  return preferred.find((type) => !used.has(type)) ?? null;
+}
+
+function addableAccountOptions(existing: MyStockItem[]): Array<{ type: StockAccountType; label: string }> {
+  const used = new Set(existing.map((item) => item.accountType ?? null));
+  return ACCOUNT_OPTIONS.filter(
+    (option): option is { type: StockAccountType; label: string } =>
+      option.type !== "" && !used.has(option.type),
+  );
+}
+
+function acquisitionAmount(item: MyStockItem): number | null {
+  if (item.tab !== "holding") return null;
+  if (typeof item.quantity !== "number" || typeof item.acquisitionPrice !== "number") return null;
+  if (!Number.isFinite(item.quantity) || !Number.isFinite(item.acquisitionPrice)) return null;
+  if (item.quantity <= 0 || item.acquisitionPrice <= 0) return null;
+  return item.quantity * item.acquisitionPrice;
+}
+
+function formatYen(amount: number): string {
+  return new Intl.NumberFormat("ja-JP", {
+    style: "currency",
+    currency: "JPY",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
 export default function ToolClient({ reference }: Props) {
   const [items, setItems] = useState<MyStockItem[]>(() => loadItems());
   const [tab, setTab] = useState<StockListTab>("holding");
+  const [holdingViewMode, setHoldingViewMode] = useState<HoldingViewMode>("list");
   const [query, setQuery] = useState("");
   const [newHoldingAccountType, setNewHoldingAccountType] = useState<StockAccountType | "">("");
+  const [addAccountDrafts, setAddAccountDrafts] = useState<Record<string, StockAccountType | "">>(
+    {},
+  );
   const [notice, setNotice] = useState<string | null>(null);
   const [pendingUndo, setPendingUndo] = useState<MyStockItem | null>(null);
   const [pasteImportOpen, setPasteImportOpen] = useState(false);
@@ -149,6 +210,55 @@ export default function ToolClient({ reference }: Props) {
     setPendingUndo(target);
     if (undoTimer.current) clearTimeout(undoTimer.current);
     undoTimer.current = setTimeout(() => setPendingUndo(null), UNDO_MS);
+  }
+
+  function selectedAddAccountType(code: string, existing: MyStockItem[]): StockAccountType | "" {
+    const options = addableAccountOptions(existing);
+    const selected = addAccountDrafts[code];
+    if (selected && options.some((option) => option.type === selected)) return selected;
+    return options[0]?.type ?? "";
+  }
+
+  function selectAddAccountType(code: string, accountType: StockAccountType | "") {
+    setAddAccountDrafts((prev) => ({ ...prev, [code]: accountType }));
+  }
+
+  function addAccountCopy(source: MyStockItem, accountType: StockAccountType | "") {
+    if (source.tab !== "holding") return;
+    const sameStockHoldings = items.filter(
+      (item) => item.tab === "holding" && item.code === source.code,
+    );
+    if (!accountType) {
+      flashNotice("追加する口座を選んでください");
+      return;
+    }
+    const exists = sameStockHoldings.some((item) => item.accountType === accountType);
+    if (exists) {
+      flashNotice(`${source.name} は同じ口座区分ですでにあります`);
+      return;
+    }
+    const nextAccountOption = ACCOUNT_OPTIONS.find((option) => option.type === accountType);
+    const now = Date.now();
+    const nextItem: MyStockItem = {
+      ...source,
+      id: newId(),
+      accountType,
+      accountLabel: nextAccountOption?.label ?? null,
+      quantity: null,
+      acquisitionPrice: null,
+      memo: "",
+      addedAt: now,
+      updatedAt: now,
+    };
+    persist([nextItem, ...items]);
+    setTab("holding");
+    setHoldingViewMode("account");
+    const nextExisting = [nextItem, ...sameStockHoldings];
+    setAddAccountDrafts((prev) => ({
+      ...prev,
+      [source.code]: nextAccountForDuplicate(nextExisting) ?? "",
+    }));
+    flashNotice(`${source.name} に「${nextAccountOption?.label ?? "別口座"}」を追加しました`);
   }
 
   function undoRemove() {
@@ -263,22 +373,57 @@ export default function ToolClient({ reference }: Props) {
         )}
 
         <div style={{ display: "grid", gap: 4 }}>
-          <div style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 700 }}>
-            {TAB_LABELS[tab]}（{tabItems.length}件）
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 10,
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 700 }}>
+              {TAB_LABELS[tab]}（{tabItems.length}件）
+            </div>
+            {tab === "holding" && (
+              <SegmentedMode
+                value={holdingViewMode}
+                options={HOLDING_VIEW_OPTIONS}
+                onChange={setHoldingViewMode}
+              />
+            )}
           </div>
           {tabItems.length === 0 ? (
             <p style={{ fontSize: 13, color: "var(--color-text-muted)", padding: "16px 4px" }}>
               まだ登録がありません。上の検索から銘柄を追加してください。
             </p>
+          ) : tab === "holding" && holdingViewMode === "account" ? (
+            <AccountSplitView
+              items={tabItems}
+              reference={reference}
+              onUpdate={updateItem}
+              onRemove={removeItem}
+              onAddAccount={addAccountCopy}
+              selectedAddAccountType={selectedAddAccountType}
+              onSelectAddAccountType={selectAddAccountType}
+            />
+          ) : tab === "holding" && holdingViewMode === "ratio" ? (
+            <RatioView items={tabItems} />
           ) : (
             <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 10 }}>
               {tabItems.map((item) => (
                 <StockRow
                   key={item.id}
                   item={item}
+                  sameStockItems={tabItems.filter(
+                    (sameItem) => sameItem.tab === "holding" && sameItem.code === item.code,
+                  )}
                   reference={reference}
                   onUpdate={updateItem}
                   onRemove={removeItem}
+                  onAddAccount={addAccountCopy}
+                  selectedAddAccountType={selectedAddAccountType}
+                  onSelectAddAccountType={selectAddAccountType}
                 />
               ))}
             </ul>
@@ -419,6 +564,555 @@ export default function ToolClient({ reference }: Props) {
   );
 }
 
+type SegmentedModeProps = {
+  value: HoldingViewMode;
+  options: Array<{ mode: HoldingViewMode; label: string }>;
+  onChange: (value: HoldingViewMode) => void;
+};
+
+function SegmentedMode({ value, options, onChange }: SegmentedModeProps) {
+  return (
+    <div
+      role="tablist"
+      aria-label="保有メモの表示モード"
+      style={{
+        display: "inline-flex",
+        padding: 3,
+        border: "1px solid var(--color-border)",
+        borderRadius: 8,
+        background: "var(--color-bg-input)",
+      }}
+    >
+      {options.map((option) => {
+        const active = value === option.mode;
+        return (
+          <button
+            key={option.mode}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(option.mode)}
+            style={{
+              minWidth: 54,
+              padding: "5px 10px",
+              border: "none",
+              borderRadius: 6,
+              background: active ? "var(--color-bg-card)" : "transparent",
+              color: active ? "var(--color-text)" : "var(--color-text-sub)",
+              fontSize: 12,
+              fontWeight: 800,
+              cursor: "pointer",
+              boxShadow: active ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+            }}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+type HoldingViewProps = {
+  items: MyStockItem[];
+  reference: MyStocksReference;
+  onUpdate: (id: string, patch: Partial<MyStockItem>) => void;
+  onRemove: (id: string) => void;
+  onAddAccount: (item: MyStockItem, accountType: StockAccountType | "") => void;
+  selectedAddAccountType: (code: string, existing: MyStockItem[]) => StockAccountType | "";
+  onSelectAddAccountType: (code: string, accountType: StockAccountType | "") => void;
+};
+
+function AccountSplitView({
+  items,
+  reference,
+  onUpdate,
+  onRemove,
+  onAddAccount,
+  selectedAddAccountType,
+  onSelectAddAccountType,
+}: HoldingViewProps) {
+  const grouped = new Map<string, MyStockItem[]>();
+  for (const item of items) {
+    const current = grouped.get(item.code) ?? [];
+    current.push(item);
+    grouped.set(item.code, current);
+  }
+  const stockGroups = [...grouped.entries()]
+    .map(([code, groupItems]) => ({
+      code,
+      items: groupItems.sort((a, b) => b.addedAt - a.addedAt),
+      latestAddedAt: Math.max(...groupItems.map((item) => item.addedAt)),
+    }))
+    .sort((a, b) => b.latestAddedAt - a.latestAddedAt);
+
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      {stockGroups.map((group) => {
+        const base = group.items[0];
+        const earnings = reference.nextEarningsByCode[base.code];
+        const yutaiMonths = reference.yutaiMonthsByCode[base.code];
+
+        return (
+        <section
+          key={group.code}
+          style={{
+            border: "1px solid var(--color-border)",
+            borderRadius: 8,
+            background: "var(--color-bg-card)",
+            padding: "9px 12px",
+            display: "grid",
+            gap: 7,
+          }}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(0, 1fr) auto",
+              gap: 10,
+              alignItems: "start",
+            }}
+          >
+            <div style={{ display: "grid", gap: 5, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontWeight: 900, color: "var(--color-text)", fontSize: 15 }}>
+                  {base.code}
+                </span>
+                <span style={{ color: "var(--color-text)", fontSize: 14 }}>{base.name}</span>
+                {base.market && (
+                  <span style={{ color: "var(--color-text-muted)", fontSize: 11 }}>
+                    {base.market}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                {earnings && (
+                  <span style={badgeStyle("var(--color-accent-sub)", "var(--color-accent)")}>
+                    次決算 {formatEarnings(earnings)}
+                  </span>
+                )}
+                {yutaiMonths && yutaiMonths.length > 0 && (
+                  <span style={badgeStyle("var(--color-bg-input)", "var(--color-text-sub)")}>
+                    優待 {yutaiMonths.map((m) => `${m}月`).join("・")}
+                  </span>
+                )}
+                <span style={{ fontSize: 11, color: "var(--color-text-muted)", fontWeight: 800 }}>
+                  口座内訳 {group.items.length}件
+                </span>
+              </div>
+            </div>
+            <AddAccountControl
+              item={base}
+              existing={group.items}
+              value={selectedAddAccountType(group.code, group.items)}
+              onChange={(value) => onSelectAddAccountType(group.code, value)}
+              onAdd={(value) => onAddAccount(base, value)}
+            />
+          </div>
+
+          <div style={{ display: "grid", gap: 6 }}>
+            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 6 }}>
+              {group.items.map((item) => (
+                <HoldingAccountLine
+                  key={item.id}
+                  item={item}
+                  onUpdate={onUpdate}
+                  onRemove={onRemove}
+                />
+              ))}
+            </ul>
+          </div>
+        </section>
+      );
+      })}
+    </div>
+  );
+}
+
+function AddAccountControl({
+  item,
+  existing,
+  value,
+  onChange,
+  onAdd,
+}: {
+  item: MyStockItem;
+  existing: MyStockItem[];
+  value: StockAccountType | "";
+  onChange: (value: StockAccountType | "") => void;
+  onAdd: (value: StockAccountType | "") => void;
+}) {
+  const options = addableAccountOptions(existing);
+  if (item.tab !== "holding" || options.length === 0) return null;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        flexWrap: "wrap",
+      }}
+    >
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          color: "var(--color-text-muted)",
+          fontSize: 11,
+          fontWeight: 800,
+          whiteSpace: "nowrap",
+        }}
+      >
+        追加先
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value as StockAccountType | "")}
+          style={addAccountSelectStyle}
+        >
+          {options.map((option) => (
+            <option key={option.type} value={option.type}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button type="button" onClick={() => onAdd(value)} style={addAccountButtonStyle}>
+        追加
+      </button>
+    </div>
+  );
+}
+
+function HoldingAccountLine({
+  item,
+  onUpdate,
+  onRemove,
+}: {
+  item: MyStockItem;
+  onUpdate: (id: string, patch: Partial<MyStockItem>) => void;
+  onRemove: (id: string) => void;
+}) {
+  const group = ACCOUNT_GROUPS.find((accountGroup) => accountGroup.key === accountGroupKey(item));
+  const holdingAccountLabel = accountLabel(item) ?? "口座未設定";
+  const amount = acquisitionAmount(item);
+
+  return (
+    <li
+      style={{
+        border: "1px solid var(--color-border)",
+        borderRadius: 8,
+        background: "var(--color-bg-input)",
+        padding: "8px 9px",
+        display: "grid",
+        gap: 6,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+        <span
+          aria-hidden="true"
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: 999,
+            background: group?.color ?? "var(--color-text-muted)",
+            flex: "0 0 auto",
+          }}
+        />
+        <span style={{ color: "var(--color-text)", fontSize: 13, fontWeight: 900 }}>
+          {holdingAccountLabel}
+        </span>
+        {amount != null && (
+          <span style={{ color: "var(--color-text-muted)", fontSize: 11, fontWeight: 800 }}>
+            {formatYen(amount)}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => onRemove(item.id)}
+          aria-label={`${item.name} ${holdingAccountLabel} を削除`}
+          style={{
+            marginLeft: "auto",
+            background: "var(--color-bg-card)",
+            border: "1px solid var(--color-border-strong)",
+            borderRadius: 6,
+            color: "var(--color-text-sub)",
+            fontSize: 12,
+            padding: "2px 8px",
+            cursor: "pointer",
+          }}
+        >
+          削除
+        </button>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(112px, 1.2fr) minmax(70px, 0.75fr) minmax(82px, 0.9fr)",
+          gap: 6,
+          alignItems: "end",
+        }}
+      >
+        <label style={fieldLabelStyle}>
+          口座
+          <select
+            value={item.accountType ?? ""}
+            onChange={(e) => {
+              const nextType = e.target.value as StockAccountType | "";
+              const nextOption = ACCOUNT_OPTIONS.find((option) => option.type === nextType);
+              onUpdate(item.id, {
+                accountType: nextType || null,
+                accountLabel: nextType ? nextOption?.label ?? null : null,
+              });
+            }}
+            style={compactSelectInputStyle}
+          >
+            {ACCOUNT_OPTIONS.map((option) => (
+              <option key={option.type || "unset"} value={option.type}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label style={fieldLabelStyle}>
+          数量
+          <input
+            type="number"
+            inputMode="numeric"
+            value={item.quantity ?? ""}
+            onChange={(e) =>
+              onUpdate(item.id, {
+                quantity: e.target.value === "" ? null : Number(e.target.value),
+              })
+            }
+            placeholder="株数"
+            style={compactNumberInputStyle}
+          />
+        </label>
+        <label style={fieldLabelStyle}>
+          取得単価
+          <input
+            type="number"
+            inputMode="decimal"
+            value={item.acquisitionPrice ?? ""}
+            onChange={(e) =>
+              onUpdate(item.id, {
+                acquisitionPrice: e.target.value === "" ? null : Number(e.target.value),
+              })
+            }
+            placeholder="円"
+            style={compactNumberInputStyle}
+          />
+        </label>
+      </div>
+
+      <input
+        type="text"
+        value={item.memo ?? ""}
+        onChange={(e) => onUpdate(item.id, { memo: e.target.value })}
+        placeholder="メモ"
+        style={{
+          width: "100%",
+          boxSizing: "border-box",
+          padding: "6px 8px",
+          borderRadius: 7,
+          border: "1px solid var(--color-border)",
+          background: "var(--color-bg-card)",
+          color: "var(--color-text)",
+          fontSize: 13,
+        }}
+      />
+    </li>
+  );
+}
+
+function RatioView({ items }: { items: MyStockItem[] }) {
+  const rows = items
+    .map((item) => {
+      const amount = acquisitionAmount(item);
+      return amount == null ? null : { item, amount };
+    })
+    .filter((row): row is { item: MyStockItem; amount: number } => row !== null);
+  const total = rows.reduce((sum, row) => sum + row.amount, 0);
+  const missingCount = items.length - rows.length;
+
+  if (total <= 0) {
+    return (
+      <div style={ratioPanelStyle}>
+        <p style={{ margin: 0, color: "var(--color-text-sub)", fontSize: 13 }}>
+          比率を表示するには、保有銘柄に数量と取得単価を入力してください。
+        </p>
+      </div>
+    );
+  }
+
+  const accountRows = ACCOUNT_GROUPS.map((group) => {
+    const value = rows
+      .filter((row) => accountGroupKey(row.item) === group.key)
+      .reduce((sum, row) => sum + row.amount, 0);
+    return { ...group, value };
+  }).filter((row) => row.value > 0);
+
+  const stockMap = new Map<string, { code: string; name: string; value: number }>();
+  for (const row of rows) {
+    const key = row.item.code;
+    const current = stockMap.get(key);
+    if (current) {
+      current.value += row.amount;
+    } else {
+      stockMap.set(key, { code: row.item.code, name: row.item.name, value: row.amount });
+    }
+  }
+  const stockRows = [...stockMap.values()].sort((a, b) => b.value - a.value).slice(0, 8);
+
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      <div style={ratioPanelStyle}>
+        <div style={{ display: "grid", gap: 3 }}>
+          <div style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 800 }}>
+            取得額比率
+          </div>
+          <div style={{ fontSize: 20, color: "var(--color-text)", fontWeight: 900 }}>
+            {formatYen(total)}
+          </div>
+          {missingCount > 0 && (
+            <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
+              数量または取得単価が未入力の {missingCount} 件は除外しています
+            </div>
+          )}
+        </div>
+        <StackedShareBar rows={accountRows} total={total} />
+        <div style={{ display: "grid", gap: 8 }}>
+          {accountRows.map((row) => (
+            <ShareRow
+              key={row.key}
+              label={row.label}
+              value={row.value}
+              total={total}
+              color={row.color}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div style={ratioPanelStyle}>
+        <div style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 800 }}>
+          銘柄別
+        </div>
+        <div style={{ display: "grid", gap: 8 }}>
+          {stockRows.map((row, index) => (
+            <ShareRow
+              key={row.code}
+              label={`${row.code} ${row.name}`}
+              value={row.value}
+              total={total}
+              color={STOCK_CHART_COLORS[index % STOCK_CHART_COLORS.length]}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StackedShareBar({
+  rows,
+  total,
+}: {
+  rows: Array<{ key: AccountGroupKey; label: string; value: number; color: string }>;
+  total: number;
+}) {
+  return (
+    <div
+      aria-label="口座別取得額比率"
+      style={{
+        height: 18,
+        display: "flex",
+        overflow: "hidden",
+        borderRadius: 999,
+        background: "var(--color-bg-input)",
+        border: "1px solid var(--color-border)",
+      }}
+    >
+      {rows.map((row) => (
+        <span
+          key={row.key}
+          title={`${row.label} ${Math.round((row.value / total) * 100)}%`}
+          style={{
+            width: `${(row.value / total) * 100}%`,
+            minWidth: row.value > 0 ? 4 : 0,
+            background: row.color,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ShareRow({
+  label,
+  value,
+  total,
+  color,
+}: {
+  label: string;
+  value: number;
+  total: number;
+  color: string;
+}) {
+  const ratio = total > 0 ? (value / total) * 100 : 0;
+  return (
+    <div style={{ display: "grid", gap: 4 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr) auto",
+          gap: 8,
+          alignItems: "baseline",
+        }}
+      >
+        <span
+          style={{
+            color: "var(--color-text)",
+            fontSize: 12,
+            fontWeight: 800,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {label}
+        </span>
+        <span style={{ color: "var(--color-text-sub)", fontSize: 12, fontWeight: 800 }}>
+          {ratio.toFixed(1)}% / {formatYen(value)}
+        </span>
+      </div>
+      <div
+        style={{
+          height: 8,
+          borderRadius: 999,
+          background: "var(--color-bg-input)",
+          overflow: "hidden",
+        }}
+      >
+        <span
+          aria-hidden="true"
+          style={{
+            display: "block",
+            width: `${ratio}%`,
+            minWidth: ratio > 0 ? 3 : 0,
+            height: "100%",
+            borderRadius: 999,
+            background: color,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 type AddPanelProps = {
   tab: StockListTab;
   query: string;
@@ -542,12 +1236,25 @@ function AddPanel({
 
 type StockRowProps = {
   item: MyStockItem;
+  sameStockItems: MyStockItem[];
   reference: MyStocksReference;
   onUpdate: (id: string, patch: Partial<MyStockItem>) => void;
   onRemove: (id: string) => void;
+  onAddAccount: (item: MyStockItem, accountType: StockAccountType | "") => void;
+  selectedAddAccountType: (code: string, existing: MyStockItem[]) => StockAccountType | "";
+  onSelectAddAccountType: (code: string, accountType: StockAccountType | "") => void;
 };
 
-function StockRow({ item, reference, onUpdate, onRemove }: StockRowProps) {
+function StockRow({
+  item,
+  sameStockItems,
+  reference,
+  onUpdate,
+  onRemove,
+  onAddAccount,
+  selectedAddAccountType,
+  onSelectAddAccountType,
+}: StockRowProps) {
   const earnings = reference.nextEarningsByCode[item.code];
   const yutaiMonths = reference.yutaiMonthsByCode[item.code];
   const holdingAccountLabel = accountLabel(item);
@@ -575,6 +1282,15 @@ function StockRow({ item, reference, onUpdate, onRemove }: StockRowProps) {
           <span style={badgeStyle("var(--color-bg-input)", "var(--color-text-sub)")}>
             {holdingAccountLabel}
           </span>
+        )}
+        {item.tab === "holding" && (
+          <AddAccountControl
+            item={item}
+            existing={sameStockItems}
+            value={selectedAddAccountType(item.code, sameStockItems)}
+            onChange={(value) => onSelectAddAccountType(item.code, value)}
+            onAdd={(value) => onAddAccount(item, value)}
+          />
         )}
         <button
           type="button"
@@ -725,6 +1441,51 @@ const selectInputStyle: React.CSSProperties = {
   fontSize: 13,
 };
 
+const compactNumberInputStyle: React.CSSProperties = {
+  width: "100%",
+  minWidth: 0,
+  boxSizing: "border-box",
+  padding: "5px 7px",
+  borderRadius: 7,
+  border: "1px solid var(--color-border)",
+  background: "var(--color-bg-card)",
+  color: "var(--color-text)",
+  fontSize: 13,
+};
+
+const compactSelectInputStyle: React.CSSProperties = {
+  width: "100%",
+  minWidth: 0,
+  boxSizing: "border-box",
+  padding: "5px 7px",
+  borderRadius: 7,
+  border: "1px solid var(--color-border)",
+  background: "var(--color-bg-card)",
+  color: "var(--color-text)",
+  fontSize: 13,
+};
+
+const addAccountButtonStyle: React.CSSProperties = {
+  padding: "5px 10px",
+  borderRadius: 6,
+  border: "1px solid var(--color-border-strong)",
+  background: "var(--color-bg-input)",
+  color: "var(--color-text-sub)",
+  fontSize: 12,
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const addAccountSelectStyle: React.CSSProperties = {
+  minWidth: 118,
+  padding: "5px 7px",
+  borderRadius: 7,
+  border: "1px solid var(--color-border)",
+  background: "var(--color-bg-card)",
+  color: "var(--color-text)",
+  fontSize: 12,
+};
+
 const toolbarButtonStyle: React.CSSProperties = {
   padding: "8px 14px",
   borderRadius: 8,
@@ -734,4 +1495,13 @@ const toolbarButtonStyle: React.CSSProperties = {
   fontSize: 13,
   fontWeight: 700,
   cursor: "pointer",
+};
+
+const ratioPanelStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 12,
+  border: "1px solid var(--color-border)",
+  borderRadius: 8,
+  background: "var(--color-bg-card)",
+  padding: "12px 14px",
 };
