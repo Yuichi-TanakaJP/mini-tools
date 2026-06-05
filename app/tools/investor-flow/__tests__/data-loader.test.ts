@@ -204,6 +204,70 @@ describe("investor-flow data-loader", () => {
     );
   });
 
+  it("raw manifest が古い場合は analysis manifest の最新週を選ぶ", async () => {
+    process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
+    const freshAnalysisManifest: InvestorFlowAnalysisManifest = {
+      ...ANALYSIS_MANIFEST,
+      latest: {
+        start_date: "2026-05-25",
+        end_date: "2026-05-29",
+        path: "investor_flow_analysis_2026-05-25_to_2026-05-29.json",
+      },
+      weeks: [
+        {
+          start_date: "2026-05-25",
+          end_date: "2026-05-29",
+          path: "investor_flow_analysis_2026-05-25_to_2026-05-29.json",
+        },
+        ...ANALYSIS_MANIFEST.weeks,
+      ],
+    };
+    const freshPayload = { ...PAYLOAD, start_date: "2026-05-25", end_date: "2026-05-29" };
+    const freshAnalysis = { ...ANALYSIS, start_date: "2026-05-25", end_date: "2026-05-29" };
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(makeFetchOk(MANIFEST))
+      .mockResolvedValueOnce(makeFetchOk(freshAnalysisManifest))
+      .mockResolvedValueOnce(makeFetchOk(freshPayload))
+      .mockResolvedValueOnce(makeFetchOk(freshAnalysis));
+
+    const result = await loadInvestorFlowPageData();
+
+    expect(result.selectedWeek?.start_date).toBe("2026-05-25");
+    expect(result.manifest?.latest.start_date).toBe("2026-05-25");
+    expect(result.manifest?.weeks.map((week) => week.start_date)).toEqual([
+      "2026-05-25",
+      "2026-05-18",
+      "2026-05-11",
+    ]);
+    expect(result.payload?.start_date).toBe("2026-05-25");
+    expect(result.analysis?.start_date).toBe("2026-05-25");
+    expect(fetch).toHaveBeenNthCalledWith(
+      3,
+      "https://api.example.com/investor-flow/weeks/2026-05-25/2026-05-29",
+      expect.any(Object),
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      4,
+      "https://api.example.com/investor-flow/analysis/latest",
+      expect.any(Object),
+    );
+  });
+
+  it("raw manifest が失敗した場合は analysis manifest だけで接続済みにしない", async () => {
+    process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(makeFetch404())
+      .mockResolvedValueOnce(makeFetchOk(ANALYSIS_MANIFEST));
+
+    const result = await loadInvestorFlowPageData();
+
+    expect(result.manifest).toBeNull();
+    expect(result.selectedWeek).toBeNull();
+    expect(result.payload).toBeNull();
+    expect(result.analysis).toBeNull();
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
   it("page data は過去週なら weeks endpoint を使う", async () => {
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
     vi.mocked(fetch)
