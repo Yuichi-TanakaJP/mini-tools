@@ -8,20 +8,63 @@ import type {
   InvestorFlowWeekRef,
 } from "./types";
 
+const INVESTOR_FLOW_REVALIDATE_SECONDS = 0;
+
+function isAfterWeek(left: InvestorFlowWeekRef | null | undefined, right: InvestorFlowWeekRef | null | undefined) {
+  if (!left) return false;
+  if (!right) return true;
+  if (left.start_date !== right.start_date) return left.start_date > right.start_date;
+  return left.end_date > right.end_date;
+}
+
 function findWeek(
   manifest: InvestorFlowManifest | null,
+  analysisManifest: InvestorFlowAnalysisManifest | null,
   startDate?: string,
   endDate?: string,
 ): InvestorFlowWeekRef | null {
   if (!manifest) return null;
   if (startDate && endDate) {
     return (
-      manifest.weeks.find(
+      manifest?.weeks.find(
         (week) => week.start_date === startDate && week.end_date === endDate,
-      ) ?? manifest.latest
+      ) ??
+      analysisManifest?.weeks.find(
+        (week) => week.start_date === startDate && week.end_date === endDate,
+      ) ??
+      manifest?.latest ??
+      analysisManifest?.latest ??
+      null
     );
   }
-  return manifest.latest;
+  return isAfterWeek(analysisManifest?.latest, manifest?.latest)
+    ? (analysisManifest?.latest ?? null)
+    : (manifest?.latest ?? analysisManifest?.latest ?? null);
+}
+
+function mergeDisplayManifest(
+  manifest: InvestorFlowManifest | null,
+  analysisManifest: InvestorFlowAnalysisManifest | null,
+): InvestorFlowManifest | null {
+  if (!manifest) return null;
+  const latest = isAfterWeek(analysisManifest?.latest, manifest?.latest)
+    ? analysisManifest?.latest
+    : manifest?.latest;
+  if (!latest) return manifest;
+  const weekMap = new Map<string, InvestorFlowWeekRef>();
+  for (const week of [...(analysisManifest?.weeks ?? []), ...(manifest?.weeks ?? [])]) {
+    weekMap.set(`${week.start_date}:${week.end_date}`, week);
+  }
+  const weeks = [...weekMap.values()].sort((left, right) => {
+    if (left.start_date !== right.start_date) return right.start_date.localeCompare(left.start_date);
+    return right.end_date.localeCompare(left.end_date);
+  });
+  return {
+    data_source: manifest?.data_source ?? analysisManifest?.data_source ?? "JPX",
+    latest,
+    weeks,
+    generated_at_jst: manifest?.generated_at_jst ?? analysisManifest?.generated_at_jst ?? "",
+  };
 }
 
 function hasAnalysisWeek(
@@ -49,7 +92,10 @@ export async function loadInvestorFlowManifest(): Promise<InvestorFlowManifest |
   if (!apiBase) return null;
 
   try {
-    return await fetchJson<InvestorFlowManifest>(`${apiBase}/investor-flow/manifest`);
+    return await fetchJson<InvestorFlowManifest>(
+      `${apiBase}/investor-flow/manifest`,
+      INVESTOR_FLOW_REVALIDATE_SECONDS,
+    );
   } catch {
     return null;
   }
@@ -60,7 +106,10 @@ export async function loadInvestorFlowAnalysisManifest(): Promise<InvestorFlowAn
   if (!apiBase) return null;
 
   try {
-    return await fetchJson<InvestorFlowAnalysisManifest>(`${apiBase}/investor-flow/analysis/manifest`);
+    return await fetchJson<InvestorFlowAnalysisManifest>(
+      `${apiBase}/investor-flow/analysis/manifest`,
+      INVESTOR_FLOW_REVALIDATE_SECONDS,
+    );
   } catch {
     return null;
   }
@@ -71,7 +120,10 @@ export async function loadInvestorFlowLatest(): Promise<InvestorFlowPayload | nu
   if (!apiBase) return null;
 
   try {
-    return await fetchJson<InvestorFlowPayload>(`${apiBase}/investor-flow/latest`);
+    return await fetchJson<InvestorFlowPayload>(
+      `${apiBase}/investor-flow/latest`,
+      INVESTOR_FLOW_REVALIDATE_SECONDS,
+    );
   } catch {
     return null;
   }
@@ -82,7 +134,10 @@ export async function loadInvestorFlowAnalysisLatest(): Promise<InvestorFlowAnal
   if (!apiBase) return null;
 
   try {
-    return await fetchJson<InvestorFlowAnalysisPayload>(`${apiBase}/investor-flow/analysis/latest`);
+    return await fetchJson<InvestorFlowAnalysisPayload>(
+      `${apiBase}/investor-flow/analysis/latest`,
+      INVESTOR_FLOW_REVALIDATE_SECONDS,
+    );
   } catch {
     return null;
   }
@@ -98,6 +153,7 @@ export async function loadInvestorFlowWeek(
   try {
     return await fetchJson<InvestorFlowPayload>(
       `${apiBase}/investor-flow/weeks/${startDate}/${endDate}`,
+      INVESTOR_FLOW_REVALIDATE_SECONDS,
     );
   } catch {
     return null;
@@ -114,6 +170,7 @@ export async function loadInvestorFlowAnalysisWeek(
   try {
     return await fetchJson<InvestorFlowAnalysisPayload>(
       `${apiBase}/investor-flow/analysis/weeks/${startDate}/${endDate}`,
+      INVESTOR_FLOW_REVALIDATE_SECONDS,
     );
   } catch {
     return null;
@@ -128,7 +185,8 @@ export async function loadInvestorFlowPageData(
     loadInvestorFlowManifest(),
     loadInvestorFlowAnalysisManifest(),
   ]);
-  const selectedWeek = findWeek(manifest, startDate, endDate);
+  const selectedWeek = findWeek(manifest, analysisManifest, startDate, endDate);
+  const displayManifest = mergeDisplayManifest(manifest, analysisManifest);
   const isLatest =
     selectedWeek &&
     manifest?.latest.start_date === selectedWeek.start_date &&
@@ -153,7 +211,7 @@ export async function loadInvestorFlowPageData(
   const matchedAnalysis = isSameWeek(analysis, selectedWeek) ? analysis : null;
 
   return {
-    manifest,
+    manifest: displayManifest,
     payload,
     analysisManifest,
     analysis: matchedAnalysis,
