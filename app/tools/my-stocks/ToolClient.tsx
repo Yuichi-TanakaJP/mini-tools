@@ -17,6 +17,7 @@ type Props = {
   reference: MyStocksReference;
 };
 
+type ViewTab = StockListTab | "master";
 type HoldingViewMode = "list" | "account" | "ratio";
 type AccountGroupKey = "specific" | "nisa" | "other";
 
@@ -24,7 +25,15 @@ const TAB_LABELS: Record<StockListTab, string> = {
   holding: "保有メモ",
   watch: "ウォッチ",
 };
-const TAB_OPTIONS = [TAB_LABELS.holding, TAB_LABELS.watch] as const;
+const VIEW_TAB_LABELS: Record<ViewTab, string> = {
+  ...TAB_LABELS,
+  master: "銘柄一覧",
+};
+const VIEW_TAB_OPTIONS = [
+  VIEW_TAB_LABELS.holding,
+  VIEW_TAB_LABELS.watch,
+  VIEW_TAB_LABELS.master,
+] as const;
 const HOLDING_VIEW_OPTIONS: Array<{ mode: HoldingViewMode; label: string }> = [
   { mode: "list", label: "一覧" },
   { mode: "account", label: "口座別" },
@@ -48,11 +57,18 @@ const ACCOUNT_GROUPS: Array<{ key: AccountGroupKey; label: string; color: string
 
 const STOCK_CHART_COLORS = ["#2563eb", "#16a34a", "#dc2626", "#d97706", "#7c3aed", "#0891b2"];
 const UNDO_MS = 5000;
+const MASTER_PAGE_SIZE = 50;
 
 function formatEarnings(iso: string): string {
   const m = iso.match(/^\d{4}-(\d{2})-(\d{2})$/);
   if (!m) return iso;
   return `${Number(m[1])}/${Number(m[2])}`;
+}
+
+function formatDividend(dividend: MyStocksReference["dividendByCode"][string]): string {
+  const yieldText = `${dividend.yieldPct.toFixed(2)}%`;
+  if (dividend.perShare === null) return yieldText;
+  return `${yieldText} / ${dividend.perShare.toLocaleString("ja-JP")}円`;
 }
 
 function accountMergeKey(item: MyStockItem): string {
@@ -109,9 +125,10 @@ function formatYen(amount: number): string {
 
 export default function ToolClient({ reference }: Props) {
   const [items, setItems] = useState<MyStockItem[]>(() => loadItems());
-  const [tab, setTab] = useState<StockListTab>("holding");
+  const [tab, setTab] = useState<ViewTab>("holding");
   const [holdingViewMode, setHoldingViewMode] = useState<HoldingViewMode>("list");
   const [query, setQuery] = useState("");
+  const [masterPage, setMasterPage] = useState(0);
   const [newHoldingAccountType, setNewHoldingAccountType] = useState<StockAccountType | "">("");
   const [addAccountDrafts, setAddAccountDrafts] = useState<Record<string, StockAccountType | "">>(
     {},
@@ -124,7 +141,11 @@ export default function ToolClient({ reference }: Props) {
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
-  const master = useStockMaster();
+  const master = useStockMaster(reference.stockMaster);
+
+  useEffect(() => {
+    if (tab === "master") setMasterPage(0);
+  }, [query, tab]);
 
   useEffect(() => {
     return () => {
@@ -145,21 +166,43 @@ export default function ToolClient({ reference }: Props) {
   }
 
   const tabItems = useMemo(
-    () => items.filter((it) => it.tab === tab).sort((a, b) => b.addedAt - a.addedAt),
+    () =>
+      tab === "master"
+        ? []
+        : items.filter((it) => it.tab === tab).sort((a, b) => b.addedAt - a.addedAt),
     [items, tab],
   );
 
   const candidates = useMemo(() => master.search(query, 20), [master, query]);
+  const masterRows = useMemo(() => {
+    const trimmed = query.trim();
+    if (!trimmed) return master.all;
+    const lower = trimmed.toLowerCase();
+    const isCodeLike = /^[0-9a-zA-Z]+$/.test(trimmed);
+    return master.all.filter(
+      (stock) =>
+        (isCodeLike && stock.code.toLowerCase().startsWith(lower)) ||
+        stock.name.toLowerCase().includes(lower),
+    );
+  }, [master, query]);
+  const masterPageCount = Math.max(1, Math.ceil(masterRows.length / MASTER_PAGE_SIZE));
+  const boundedMasterPage = Math.min(masterPage, masterPageCount - 1);
+  const masterPageRows = masterRows.slice(
+    boundedMasterPage * MASTER_PAGE_SIZE,
+    boundedMasterPage * MASTER_PAGE_SIZE + MASTER_PAGE_SIZE,
+  );
 
-  function addStock(stock: StockMaster) {
+  function addStock(stock: StockMaster, targetTab: StockListTab = tab === "master" ? "watch" : tab) {
     const nextAccountOption = ACCOUNT_OPTIONS.find(
       (option) => option.type === newHoldingAccountType,
     );
     const nextKey =
-      tab === "holding" ? `holding:${stock.code}:${newHoldingAccountType}` : `watch:${stock.code}`;
+      targetTab === "holding"
+        ? `holding:${stock.code}:${newHoldingAccountType}`
+        : `watch:${stock.code}`;
     const exists = items.some((it) => accountMergeKey(it) === nextKey);
     if (exists) {
-      flashNotice(`${stock.name} はすでに「${TAB_LABELS[tab]}」にあります`);
+      flashNotice(`${stock.name} はすでに「${TAB_LABELS[targetTab]}」にあります`);
       return;
     }
     const now = Date.now();
@@ -169,19 +212,21 @@ export default function ToolClient({ reference }: Props) {
       name: stock.name,
       market: stock.market,
       sector: stock.sector,
-      tab,
-      accountType: tab === "holding" ? newHoldingAccountType || null : undefined,
+      tab: targetTab,
+      accountType: targetTab === "holding" ? newHoldingAccountType || null : undefined,
       accountLabel:
-        tab === "holding" && newHoldingAccountType ? nextAccountOption?.label ?? null : undefined,
-      quantity: tab === "holding" ? null : undefined,
-      acquisitionPrice: tab === "holding" ? null : undefined,
+        targetTab === "holding" && newHoldingAccountType
+          ? nextAccountOption?.label ?? null
+          : undefined,
+      quantity: targetTab === "holding" ? null : undefined,
+      acquisitionPrice: targetTab === "holding" ? null : undefined,
       memo: "",
       addedAt: now,
       updatedAt: now,
     };
     persist([item, ...items]);
-    setQuery("");
-    flashNotice(`${stock.name} を「${TAB_LABELS[tab]}」に追加しました`);
+    if (tab !== "master") setQuery("");
+    flashNotice(`${stock.name} を「${TAB_LABELS[targetTab]}」に追加しました`);
   }
 
   function updateItem(id: string, patch: Partial<MyStockItem>) {
@@ -339,22 +384,44 @@ export default function ToolClient({ reference }: Props) {
         </header>
 
         <TabBar
-          options={TAB_OPTIONS}
-          value={TAB_LABELS[tab]}
-          onChange={(label) => setTab(label === TAB_LABELS.holding ? "holding" : "watch")}
+          options={VIEW_TAB_OPTIONS}
+          value={VIEW_TAB_LABELS[tab]}
+          onChange={(label) => {
+            if (label === VIEW_TAB_LABELS.holding) setTab("holding");
+            else if (label === VIEW_TAB_LABELS.watch) setTab("watch");
+            else setTab("master");
+          }}
         />
 
-        <AddPanel
-          tab={tab}
-          query={query}
-          onQueryChange={setQuery}
-          holdingAccountType={newHoldingAccountType}
-          onHoldingAccountTypeChange={setNewHoldingAccountType}
-          candidates={candidates}
-          masterReady={master.ready}
-          masterError={master.error}
-          onPick={addStock}
-        />
+        {tab === "master" ? (
+          <MasterListPanel
+            query={query}
+            onQueryChange={setQuery}
+            rows={masterPageRows}
+            totalRows={masterRows.length}
+            page={boundedMasterPage}
+            pageCount={masterPageCount}
+            masterReady={master.ready}
+            masterError={master.error}
+            reference={reference}
+            onPrevPage={() => setMasterPage((page) => Math.max(0, page - 1))}
+            onNextPage={() => setMasterPage((page) => Math.min(masterPageCount - 1, page + 1))}
+            onAddHolding={(stock) => addStock(stock, "holding")}
+            onAddWatch={(stock) => addStock(stock, "watch")}
+          />
+        ) : (
+          <AddPanel
+            tab={tab}
+            query={query}
+            onQueryChange={setQuery}
+            holdingAccountType={newHoldingAccountType}
+            onHoldingAccountTypeChange={setNewHoldingAccountType}
+            candidates={candidates}
+            masterReady={master.ready}
+            masterError={master.error}
+            onPick={(stock) => addStock(stock)}
+          />
+        )}
 
         {notice && (
           <div
@@ -372,6 +439,7 @@ export default function ToolClient({ reference }: Props) {
           </div>
         )}
 
+        {tab !== "master" && (
         <div style={{ display: "grid", gap: 4 }}>
           <div
             style={{
@@ -429,6 +497,7 @@ export default function ToolClient({ reference }: Props) {
             </ul>
           )}
         </div>
+        )}
 
         <div
           style={{
@@ -652,6 +721,7 @@ function AccountSplitView({
         const base = group.items[0];
         const earnings = reference.nextEarningsByCode[base.code];
         const yutaiMonths = reference.yutaiMonthsByCode[base.code];
+        const dividend = reference.dividendByCode[base.code];
 
         return (
         <section
@@ -694,6 +764,11 @@ function AccountSplitView({
                 {yutaiMonths && yutaiMonths.length > 0 && (
                   <span style={badgeStyle("var(--color-bg-input)", "var(--color-text-sub)")}>
                     優待 {yutaiMonths.map((m) => `${m}月`).join("・")}
+                  </span>
+                )}
+                {dividend && (
+                  <span style={badgeStyle("var(--color-bg-input)", "var(--color-text-sub)")}>
+                    配当 {formatDividend(dividend)}
                   </span>
                 )}
                 <span style={{ fontSize: 11, color: "var(--color-text-muted)", fontWeight: 800 }}>
@@ -1125,6 +1200,200 @@ type AddPanelProps = {
   onPick: (stock: StockMaster) => void;
 };
 
+type MasterListPanelProps = {
+  query: string;
+  onQueryChange: (value: string) => void;
+  rows: StockMaster[];
+  totalRows: number;
+  page: number;
+  pageCount: number;
+  masterReady: boolean;
+  masterError: boolean;
+  reference: MyStocksReference;
+  onPrevPage: () => void;
+  onNextPage: () => void;
+  onAddHolding: (stock: StockMaster) => void;
+  onAddWatch: (stock: StockMaster) => void;
+};
+
+function MasterListPanel({
+  query,
+  onQueryChange,
+  rows,
+  totalRows,
+  page,
+  pageCount,
+  masterReady,
+  masterError,
+  reference,
+  onPrevPage,
+  onNextPage,
+  onAddHolding,
+  onAddWatch,
+}: MasterListPanelProps) {
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => onQueryChange(e.target.value)}
+        placeholder="銘柄コード または 銘柄名で検索"
+        aria-label="銘柄一覧を検索"
+        style={{
+          width: "100%",
+          boxSizing: "border-box",
+          padding: "10px 12px",
+          borderRadius: 8,
+          border: "1.5px solid var(--color-border-strong)",
+          background: "var(--color-bg-input)",
+          color: "var(--color-text)",
+          fontSize: 14,
+        }}
+      />
+
+      {masterReady && !masterError && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            flexWrap: "wrap",
+          }}
+        >
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 700 }}>
+            {totalRows.toLocaleString("ja-JP")}件 / {page + 1}ページ
+          </span>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button
+              type="button"
+              onClick={onPrevPage}
+              disabled={page <= 0}
+              style={pagerButtonStyle(page <= 0)}
+            >
+              前へ
+            </button>
+            <button
+              type="button"
+              onClick={onNextPage}
+              disabled={page >= pageCount - 1}
+              style={pagerButtonStyle(page >= pageCount - 1)}
+            >
+              次へ
+            </button>
+          </div>
+        </div>
+      )}
+
+      {masterError ? (
+        <span style={{ fontSize: 12, color: "var(--color-error)" }}>
+          銘柄データを読み込めませんでした。時間をおいて再度お試しください。
+        </span>
+      ) : !masterReady ? (
+        <p style={{ fontSize: 13, color: "var(--color-text-muted)", padding: "12px 4px" }}>
+          読み込み中…
+        </p>
+      ) : rows.length === 0 ? (
+        <p style={{ fontSize: 13, color: "var(--color-text-muted)", padding: "12px 4px" }}>
+          該当する銘柄がありません
+        </p>
+      ) : (
+        <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
+          {rows.map((stock) => {
+            const earnings = reference.nextEarningsByCode[stock.code];
+            const yutaiMonths = reference.yutaiMonthsByCode[stock.code];
+            const dividend = stock.dividend ?? reference.dividendByCode[stock.code];
+
+            return (
+              <li
+                key={stock.code}
+                style={{
+                  border: "1px solid var(--color-border)",
+                  borderRadius: 8,
+                  background: "var(--color-bg-card)",
+                  padding: "9px 12px",
+                  display: "grid",
+                  gap: 7,
+                }}
+              >
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "minmax(0, 1fr) auto",
+                    gap: 10,
+                    alignItems: "start",
+                  }}
+                >
+                  <div style={{ minWidth: 0, display: "grid", gap: 5 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "baseline",
+                        gap: 8,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <span style={{ fontWeight: 900, color: "var(--color-text)", fontSize: 14 }}>
+                        {stock.code}
+                      </span>
+                      <span style={{ color: "var(--color-text)", fontSize: 14 }}>
+                        {stock.name}
+                      </span>
+                      {stock.market && (
+                        <span style={{ color: "var(--color-text-muted)", fontSize: 11 }}>
+                          {stock.market}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      {earnings && (
+                        <span style={badgeStyle("var(--color-accent-sub)", "var(--color-accent)")}>
+                          次決算 {formatEarnings(earnings)}
+                        </span>
+                      )}
+                      {yutaiMonths && yutaiMonths.length > 0 && (
+                        <span style={badgeStyle("var(--color-bg-input)", "var(--color-text-sub)")}>
+                          優待 {yutaiMonths.map((m) => `${m}月`).join("・")}
+                        </span>
+                      )}
+                      {dividend && (
+                        <span style={badgeStyle("var(--color-bg-input)", "var(--color-text-sub)")}>
+                          配当利回り {dividend.yieldPct.toFixed(2)}%
+                        </span>
+                      )}
+                      {dividend?.perShare !== null && dividend?.perShare !== undefined && (
+                        <span style={badgeStyle("var(--color-bg-input)", "var(--color-text-sub)")}>
+                          配当額 {dividend.perShare.toLocaleString("ja-JP")}円
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "end" }}>
+                    <button
+                      type="button"
+                      onClick={() => onAddHolding(stock)}
+                      style={smallActionButtonStyle}
+                    >
+                      保有
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onAddWatch(stock)}
+                      style={smallActionButtonStyle}
+                    >
+                      ウォッチ
+                    </button>
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function AddPanel({
   tab,
   query,
@@ -1257,6 +1526,7 @@ function StockRow({
 }: StockRowProps) {
   const earnings = reference.nextEarningsByCode[item.code];
   const yutaiMonths = reference.yutaiMonthsByCode[item.code];
+  const dividend = reference.dividendByCode[item.code];
   const holdingAccountLabel = accountLabel(item);
 
   return (
@@ -1311,7 +1581,7 @@ function StockRow({
         </button>
       </div>
 
-      {(earnings || (yutaiMonths && yutaiMonths.length > 0)) && (
+      {(earnings || (yutaiMonths && yutaiMonths.length > 0) || dividend) && (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {earnings && (
             <span style={badgeStyle("var(--color-accent-sub)", "var(--color-accent)")}>
@@ -1321,6 +1591,11 @@ function StockRow({
           {yutaiMonths && yutaiMonths.length > 0 && (
             <span style={badgeStyle("var(--color-bg-input)", "var(--color-text-sub)")}>
               優待 {yutaiMonths.map((m) => `${m}月`).join("・")}
+            </span>
+          )}
+          {dividend && (
+            <span style={badgeStyle("var(--color-bg-input)", "var(--color-text-sub)")}>
+              配当 {formatDividend(dividend)}
             </span>
           )}
         </div>
@@ -1413,6 +1688,21 @@ function badgeStyle(bg: string, color: string): React.CSSProperties {
   };
 }
 
+function pagerButtonStyle(disabled: boolean): React.CSSProperties {
+  return {
+    minWidth: 58,
+    padding: "6px 10px",
+    borderRadius: 7,
+    border: "1.5px solid var(--color-border-strong)",
+    background: disabled ? "var(--color-bg-input)" : "var(--color-bg-card)",
+    color: disabled ? "var(--color-text-muted)" : "var(--color-text-sub)",
+    fontSize: 12,
+    fontWeight: 800,
+    cursor: disabled ? "default" : "pointer",
+    opacity: disabled ? 0.65 : 1,
+  };
+}
+
 const fieldLabelStyle: React.CSSProperties = {
   display: "grid",
   gap: 3,
@@ -1470,6 +1760,17 @@ const addAccountButtonStyle: React.CSSProperties = {
   borderRadius: 6,
   border: "1px solid var(--color-border-strong)",
   background: "var(--color-bg-input)",
+  color: "var(--color-text-sub)",
+  fontSize: 12,
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const smallActionButtonStyle: React.CSSProperties = {
+  padding: "5px 9px",
+  borderRadius: 6,
+  border: "1.5px solid var(--color-border-strong)",
+  background: "var(--color-bg-card)",
   color: "var(--color-text-sub)",
   fontSize: 12,
   fontWeight: 800,
