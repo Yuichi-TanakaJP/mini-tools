@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { StockMaster } from "./types";
 
 const MASTER_URL = "/data/jpx_listed_companies.json";
@@ -32,7 +32,7 @@ async function fetchMaster(): Promise<StockMaster[]> {
       if (typeof r.code === "string" && typeof r.name === "string") {
         list.push({
           code: r.code,
-          name: r.name,
+          name: normalizeAscii(r.name),
           market: typeof r.market === "string" ? r.market : "",
           sector: typeof r.sector === "string" ? r.sector : null,
         });
@@ -49,29 +49,37 @@ async function fetchMaster(): Promise<StockMaster[]> {
   }
 }
 
+function normalizeAscii(value: string): string {
+  return value.replace(/[０-９Ａ-Ｚａ-ｚ]/g, (ch) =>
+    String.fromCharCode(ch.charCodeAt(0) - 0xfee0),
+  );
+}
+
 export type StockMasterState = {
   ready: boolean;
   error: boolean;
+  all: StockMaster[];
   /** クエリにマッチする銘柄を最大 limit 件返す。 */
   search: (query: string, limit?: number) => StockMaster[];
 };
 
-export function useStockMaster(): StockMasterState {
-  const [ready, setReady] = useState(cachedMaster !== null);
+export function useStockMaster(initialMaster: StockMaster[] = []): StockMasterState {
+  const hasInitialMaster = initialMaster.length > 0;
+  const [ready, setReady] = useState(hasInitialMaster || cachedMaster !== null);
   const [error, setError] = useState(false);
-  const masterRef = useRef<StockMaster[]>(cachedMaster ?? []);
+  const [all, setAll] = useState<StockMaster[]>(
+    initialMaster.length > 0 ? initialMaster : cachedMaster ?? [],
+  );
 
   useEffect(() => {
-    if (cachedMaster) {
-      // 初期 state が既に ready=true を反映済みなので setState 不要
-      masterRef.current = cachedMaster;
+    if (hasInitialMaster || cachedMaster) {
       return;
     }
     let active = true;
     fetchMaster()
       .then((list) => {
         if (!active) return;
-        masterRef.current = list;
+        setAll(list);
         setReady(true);
       })
       .catch(() => {
@@ -81,7 +89,7 @@ export function useStockMaster(): StockMasterState {
     return () => {
       active = false;
     };
-  }, []);
+  }, [hasInitialMaster]);
 
   const search = useCallback((query: string, limit = 30): StockMaster[] => {
     const q = query.trim();
@@ -89,7 +97,7 @@ export function useStockMaster(): StockMasterState {
     const lower = q.toLowerCase();
     const isCodeLike = /^[0-9a-zA-Z]+$/.test(q);
     const results: StockMaster[] = [];
-    for (const m of masterRef.current) {
+    for (const m of all) {
       const codeHit = isCodeLike && m.code.toLowerCase().startsWith(lower);
       const nameHit = m.name.toLowerCase().includes(lower);
       if (codeHit || nameHit) {
@@ -98,7 +106,7 @@ export function useStockMaster(): StockMasterState {
       }
     }
     return results;
-  }, []);
+  }, [all]);
 
-  return { ready, error, search };
+  return { ready, error, all, search };
 }

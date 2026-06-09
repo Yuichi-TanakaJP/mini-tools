@@ -17,6 +17,11 @@ export type StockMaster = {
   name: string;
   market: string;
   sector: string | null;
+  dividend?: {
+    yieldPct: number;
+    perShare: number | null;
+    asOf: string | null;
+  };
 };
 
 /**
@@ -55,4 +60,15 @@ export type MyStocksReference = {
   nextEarningsByCode: Record<string, string>;
   /** code → 優待権利確定月（1-12、複数あり得る）。 */
   yutaiMonthsByCode: Record<string, number[]>;
+  /** code → 配当利回り・推定年間配当。 */
+  dividendByCode: Record<
+    string,
+    {
+      yieldPct: number;
+      perShare: number | null;
+      asOf: string | null;
+    }
+  >;
+  /** API から取得できた場合の配当等を含む銘柄一覧。未取得時は client local fallback を使う。 */
+  stockMaster: StockMaster[];
 };
