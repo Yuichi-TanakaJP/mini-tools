@@ -59,7 +59,14 @@ describe("my-stocks data-loader", () => {
 
     expect(fetch).toHaveBeenCalledWith(
       "https://api.example.com/stock-master/latest",
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        cache: "no-store",
+      }),
+    );
+    expect(fetch).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ next: expect.anything() }),
     );
     expect(result.asOf).toBe("2026-06-08");
     expect(result.nextEarningsByCode).toEqual({ "7203": "2026-06-10" });

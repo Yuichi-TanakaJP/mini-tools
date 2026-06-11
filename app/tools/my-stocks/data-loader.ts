@@ -65,7 +65,11 @@ async function loadStockMasterReference(): Promise<MyStocksReference | null> {
   if (!apiBase) return null;
 
   try {
-    const records = await fetchJson<StockMasterLatestRecord[]>(`${apiBase}/stock-master/latest`);
+    const records = await fetchJson<StockMasterLatestRecord[]>(
+      `${apiBase}/stock-master/latest`,
+      300,
+      { cache: "no-store" },
+    );
     const nextEarningsByCode: Record<string, string> = {};
     const yutaiMonthsByCode: Record<string, number[]> = {};
     const dividendByCode: MyStocksReference["dividendByCode"] = {};

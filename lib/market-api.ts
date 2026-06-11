@@ -22,14 +22,20 @@ export function canUseLocalMarketDataFallback(): boolean {
  * JSON を fetch して型付きで返す。5秒タイムアウト付き。
  * revalidate はデータの更新頻度に合わせて呼び出し側で指定する（デフォルト 300 秒）。
  */
-export async function fetchJson<T>(url: string, revalidate = 300): Promise<T> {
+export async function fetchJson<T>(
+  url: string,
+  revalidate = 300,
+  options: { cache?: RequestCache } = {},
+): Promise<T> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 5000);
 
   try {
     const res = await fetch(url, {
       signal: controller.signal,
-      next: { revalidate },
+      ...(options.cache === "no-store"
+        ? { cache: "no-store" as const }
+        : { next: { revalidate } }),
     });
 
     if (!res.ok) {
