@@ -1,0 +1,54 @@
+.nav {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .nav {
+    position: fixed;
+    z-index: 30;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    padding: 6px max(6px, env(safe-area-inset-right))
+      calc(6px + env(safe-area-inset-bottom))
+      max(6px, env(safe-area-inset-left));
+    border-top: 1px solid var(--color-border-strong);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.08);
+    backdrop-filter: blur(12px);
+  }
+
+  .link {
+    display: flex;
+    min-width: 0;
+    min-height: 46px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border-radius: 10px;
+    color: var(--color-text-muted);
+    font-size: 10px;
+    font-weight: 800;
+    text-decoration: none;
+  }
+
+  .active {
+    background: var(--color-accent-sub);
+    color: var(--color-accent);
+  }
+
+  .marker {
+    width: 18px;
+    height: 3px;
+    border-radius: 999px;
+    background: currentColor;
+    opacity: 0.55;
+  }
+
+  .active .marker {
+    opacity: 1;
+  }
+}

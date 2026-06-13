@@ -40,6 +40,12 @@ body {
   color: var(--color-text);
 }
 
+@media (max-width: 720px) {
+  body {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+}
+
 html {
   -webkit-tap-highlight-color: transparent;
   scrollbar-gutter: stable;

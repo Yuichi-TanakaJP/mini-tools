@@ -2,6 +2,7 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import Header from "@/components/Header";
+import MobileBottomNav from "@/components/MobileBottomNav";
 import "./globals.css";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
@@ -70,6 +71,7 @@ export default function RootLayout({
       <body>
         <Header />
         {children}
+        <MobileBottomNav />
       </body>
     </html>
   );
