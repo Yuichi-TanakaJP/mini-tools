@@ -55,7 +55,24 @@ const ACCOUNT_GROUPS: Array<{ key: AccountGroupKey; label: string; color: string
   { key: "other", label: "その他・未設定", color: "#d97706" },
 ];
 
-const STOCK_CHART_COLORS = ["#2563eb", "#16a34a", "#dc2626", "#d97706", "#7c3aed", "#0891b2"];
+const STOCK_CHART_COLORS = [
+  "#2563eb",
+  "#16a34a",
+  "#dc2626",
+  "#d97706",
+  "#7c3aed",
+  "#0891b2",
+  "#db2777",
+  "#65a30d",
+  "#ea580c",
+  "#4f46e5",
+  "#0d9488",
+  "#9333ea",
+  "#ca8a04",
+  "#0284c7",
+  "#e11d48",
+  "#15803d",
+];
 const UNDO_MS = 5000;
 const MASTER_PAGE_SIZE = 50;
 
@@ -476,7 +493,7 @@ export default function ToolClient({ reference }: Props) {
               onSelectAddAccountType={selectAddAccountType}
             />
           ) : tab === "holding" && holdingViewMode === "ratio" ? (
-            <RatioView items={tabItems} />
+            <RatioView items={tabItems} reference={reference} />
           ) : (
             <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 10 }}>
               {tabItems.map((item) => (
@@ -1004,6 +1021,7 @@ function HoldingAccountLine({
 }
 
 type RatioChartType = "bar" | "pie" | "heatmap";
+type RatioMetric = "amount" | "dividend";
 
 type ChartDatum = { key: string; label: string; value: number; color: string };
 
@@ -1013,23 +1031,77 @@ const RATIO_CHART_OPTIONS: Array<{ type: RatioChartType; label: string }> = [
   { type: "heatmap", label: "四角ヒートマップ" },
 ];
 
-function RatioView({ items }: { items: MyStockItem[] }) {
+const RATIO_METRIC_OPTIONS: Array<{ type: RatioMetric; label: string }> = [
+  { type: "amount", label: "取得額" },
+  { type: "dividend", label: "配当（年間・推定）" },
+];
+
+// 銘柄別で個別表示する最大件数。これを超えた分だけ「他N銘柄」へ集約する。
+const STOCK_ROW_LIMIT = STOCK_CHART_COLORS.length;
+
+// 取得額 = 数量 × 取得単価。配当 = 数量 × 推定年間配当（1株あたり）。
+function metricValue(
+  item: MyStockItem,
+  metric: RatioMetric,
+  reference: MyStocksReference,
+): number | null {
+  if (metric === "amount") return acquisitionAmount(item);
+  if (typeof item.quantity !== "number" || !Number.isFinite(item.quantity) || item.quantity <= 0) {
+    return null;
+  }
+  const perShare = reference.dividendByCode[item.code]?.perShare;
+  if (typeof perShare !== "number" || !Number.isFinite(perShare) || perShare <= 0) return null;
+  return item.quantity * perShare;
+}
+
+function RatioView({
+  items,
+  reference,
+}: {
+  items: MyStockItem[];
+  reference: MyStocksReference;
+}) {
   const [chartType, setChartType] = useState<RatioChartType>("bar");
+  const [metric, setMetric] = useState<RatioMetric>("amount");
+
   const rows = items
     .map((item) => {
-      const amount = acquisitionAmount(item);
-      return amount == null ? null : { item, amount };
+      const value = metricValue(item, metric, reference);
+      return value == null ? null : { item, value };
     })
-    .filter((row): row is { item: MyStockItem; amount: number } => row !== null);
-  const total = rows.reduce((sum, row) => sum + row.amount, 0);
+    .filter((row): row is { item: MyStockItem; value: number } => row !== null);
+  const total = rows.reduce((sum, row) => sum + row.value, 0);
   const missingCount = items.length - rows.length;
+  const isDividend = metric === "dividend";
+
+  const metricToggle = (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+      <SegmentedTabs<RatioMetric>
+        ariaLabel="比率の対象"
+        value={metric}
+        options={RATIO_METRIC_OPTIONS}
+        onChange={setMetric}
+      />
+      <SegmentedTabs<RatioChartType>
+        ariaLabel="グラフの種類"
+        value={chartType}
+        options={RATIO_CHART_OPTIONS}
+        onChange={setChartType}
+      />
+    </div>
+  );
 
   if (total <= 0) {
     return (
-      <div style={ratioPanelStyle}>
-        <p style={{ margin: 0, color: "var(--color-text-sub)", fontSize: 13 }}>
-          比率を表示するには、保有銘柄に数量と取得単価を入力してください。
-        </p>
+      <div style={{ display: "grid", gap: 12 }}>
+        {metricToggle}
+        <div style={ratioPanelStyle}>
+          <p style={{ margin: 0, color: "var(--color-text-sub)", fontSize: 13 }}>
+            {isDividend
+              ? "配当の割合を表示するには、数量を入力し、配当データのある銘柄を保有してください。"
+              : "比率を表示するには、保有銘柄に数量と取得単価を入力してください。"}
+          </p>
+        </div>
       </div>
     );
   }
@@ -1037,7 +1109,7 @@ function RatioView({ items }: { items: MyStockItem[] }) {
   const accountRows: ChartDatum[] = ACCOUNT_GROUPS.map((group) => {
     const value = rows
       .filter((row) => accountGroupKey(row.item) === group.key)
-      .reduce((sum, row) => sum + row.amount, 0);
+      .reduce((sum, row) => sum + row.value, 0);
     return { key: group.key, label: group.label, color: group.color, value };
   }).filter((row) => row.value > 0);
 
@@ -1046,53 +1118,71 @@ function RatioView({ items }: { items: MyStockItem[] }) {
     const key = row.item.code;
     const current = stockMap.get(key);
     if (current) {
-      current.value += row.amount;
+      current.value += row.value;
     } else {
-      stockMap.set(key, { code: row.item.code, name: row.item.name, value: row.amount });
+      stockMap.set(key, { code: row.item.code, name: row.item.name, value: row.value });
     }
   }
   const sortedStocks = [...stockMap.values()].sort((a, b) => b.value - a.value);
-  const TOP_STOCKS = 7;
-  const topStocks = sortedStocks.slice(0, TOP_STOCKS);
-  const restValue = sortedStocks
-    .slice(TOP_STOCKS)
-    .reduce((sum, stock) => sum + stock.value, 0);
+  const topStocks = sortedStocks.slice(0, STOCK_ROW_LIMIT);
+  const restStocks = sortedStocks.slice(STOCK_ROW_LIMIT);
   const stockRows: ChartDatum[] = topStocks.map((stock, index) => ({
     key: stock.code,
     label: `${stock.code} ${stock.name}`,
     color: STOCK_CHART_COLORS[index % STOCK_CHART_COLORS.length],
     value: stock.value,
   }));
-  if (restValue > 0) {
+  // 集約は色数を超えた末端のみ。1銘柄だけ残る場合はその銘柄をそのまま見せる。
+  if (restStocks.length === 1) {
+    const stock = restStocks[0];
+    stockRows.push({
+      key: stock.code,
+      label: `${stock.code} ${stock.name}`,
+      color: "var(--color-text-muted)",
+      value: stock.value,
+    });
+  } else if (restStocks.length > 1) {
     stockRows.push({
       key: "__rest__",
-      label: `他 ${sortedStocks.length - TOP_STOCKS} 銘柄`,
+      label: `他 ${restStocks.length} 銘柄`,
       color: "var(--color-text-muted)",
-      value: restValue,
+      value: restStocks.reduce((sum, stock) => sum + stock.value, 0),
     });
   }
 
+  const accountTitle = isDividend ? "配当比率（口座別・年間推定）" : "取得額比率（口座別）";
+  const missingNote = isDividend
+    ? `数量未入力または配当データなしの ${missingCount} 件は除外しています`
+    : `数量または取得単価が未入力の ${missingCount} 件は除外しています`;
+
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <ChartTypeToggle value={chartType} onChange={setChartType} />
-      </div>
+      {metricToggle}
 
       <div style={ratioPanelStyle}>
         <div style={{ display: "grid", gap: 3 }}>
           <div style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 800 }}>
-            取得額比率（口座別）
+            {accountTitle}
           </div>
           <div style={{ fontSize: 20, color: "var(--color-text)", fontWeight: 900 }}>
             {formatYen(total)}
+            {isDividend && (
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text-muted)" }}>
+                {" "}
+                / 年
+              </span>
+            )}
           </div>
           {missingCount > 0 && (
-            <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-              数量または取得単価が未入力の {missingCount} 件は除外しています
-            </div>
+            <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>{missingNote}</div>
           )}
         </div>
-        <RatioChart chartType={chartType} rows={accountRows} total={total} ariaLabel="口座別取得額比率" />
+        <RatioChart
+          chartType={chartType}
+          rows={accountRows}
+          total={total}
+          ariaLabel={`口座別${isDividend ? "配当" : "取得額"}比率`}
+        />
         <ShareLegend rows={accountRows} total={total} />
       </div>
 
@@ -1100,24 +1190,39 @@ function RatioView({ items }: { items: MyStockItem[] }) {
         <div style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 800 }}>
           銘柄別
         </div>
-        <RatioChart chartType={chartType} rows={stockRows} total={total} ariaLabel="銘柄別取得額比率" />
+        <RatioChart
+          chartType={chartType}
+          rows={stockRows}
+          total={total}
+          ariaLabel={`銘柄別${isDividend ? "配当" : "取得額"}比率`}
+        />
         <ShareLegend rows={stockRows} total={total} />
       </div>
+
+      {isDividend && (
+        <p style={{ margin: 0, fontSize: 11, color: "var(--color-text-muted)" }}>
+          配当は market_info の利回り・株価からの推定年間配当（1株あたり）に数量を掛けた概算です。確定配当ではありません。
+        </p>
+      )}
     </div>
   );
 }
 
-function ChartTypeToggle({
+function SegmentedTabs<T extends string>({
+  ariaLabel,
   value,
+  options,
   onChange,
 }: {
-  value: RatioChartType;
-  onChange: (value: RatioChartType) => void;
+  ariaLabel: string;
+  value: T;
+  options: ReadonlyArray<{ type: T; label: string }>;
+  onChange: (value: T) => void;
 }) {
   return (
     <div
       role="tablist"
-      aria-label="グラフの種類"
+      aria-label={ariaLabel}
       style={{
         display: "inline-flex",
         padding: 3,
@@ -1126,7 +1231,7 @@ function ChartTypeToggle({
         background: "var(--color-bg-input)",
       }}
     >
-      {RATIO_CHART_OPTIONS.map((option) => {
+      {options.map((option) => {
         const active = value === option.type;
         return (
           <button
