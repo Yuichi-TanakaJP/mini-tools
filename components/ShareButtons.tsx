@@ -1,11 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { track } from "@/lib/analytics";
 import { QRCodeCanvas } from "qrcode.react";
 import { createPortal } from "react-dom";
+import { resolveShareUrl } from "./share-url";
 import styles from "./ShareButtons.module.css";
+
+// origin はブラウザ依存値。useSyncExternalStore で
+// サーバー / ハイドレーション初回は null、マウント後に現在 origin を返す。
+// （関数参照を安定させるためモジュールスコープに置く）
+const subscribeOrigin = () => () => {};
+const getOriginSnapshot = () => window.location.origin;
+const getOriginServerSnapshot = (): string | null => null;
 
 type ShareMethod = "x" | "facebook" | "email" | "copy" | "premium" | "qr";
 
@@ -22,33 +30,6 @@ type Props = {
 
 const DEFAULT_METHODS: ShareMethod[] = ["x", "facebook", "email", "copy"];
 
-/**
- * pathname + searchParams から共有用の絶対 URL を生成する。
- * NEXT_PUBLIC_SITE_URL があればそれを base にし、なければ window.location.origin にフォールバックする。
- * url prop が渡された場合はそれをそのまま使う。
- */
-function resolveShareUrl(
-  urlProp: string | undefined,
-  pathname: string,
-  searchParams: URLSearchParams | null
-): string {
-  if (urlProp) return urlProp;
-
-  const qs = searchParams?.toString();
-  const pathWithQuery = `${pathname}${qs ? `?${qs}` : ""}`;
-  const base =
-    process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "") ||
-    (typeof window !== "undefined" ? window.location.origin : "");
-
-  try {
-    return new URL(pathWithQuery, base).href;
-  } catch {
-    // base が取得できない SSR 初期レンダリング時は相対パスにフォールバック。
-    // クライアント再レンダリング時には window.location.origin が base に入るため絶対 URL になる。
-    return pathWithQuery;
-  }
-}
-
 export default function ShareButtons({
   text,
   url,
@@ -64,9 +45,17 @@ export default function ShareButtons({
 
   const [qrOpen, setQrOpen] = useState(false);
 
+  // SSR とクライアント初回描画は origin=null で一致させ、マウント後に
+  // 現在 origin へ昇格させる（ハイドレーションミスマッチを防ぐ）。
+  const origin = useSyncExternalStore(
+    subscribeOrigin,
+    getOriginSnapshot,
+    getOriginServerSnapshot
+  );
+
   const shareUrl = useMemo(
-    () => resolveShareUrl(url, pathname, searchParams),
-    [url, pathname, searchParams]
+    () => resolveShareUrl(url, pathname, searchParams, origin),
+    [url, pathname, searchParams, origin]
   );
 
   const shareLinks = useMemo(() => {
