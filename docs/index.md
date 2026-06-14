@@ -26,6 +26,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 - [2026-05-16 TDNET適時開示一覧の初期実装方針](./decision-log/2026-05-16-tdnet-disclosures-page.md)
 - [2026-05-19 優待期限台帳 UI と入出力データ方針](./decision-log/2026-05-19-yutai-expiry-ui-and-data-policy.md)
 - [2026-05-20 優待期限台帳 消費モデル（枚数/金額・履歴）](./decision-log/2026-05-20-yutai-expiry-consumption-model.md)
+- [2026-06-14 優待期限台帳 アーカイブ機能](./decision-log/2026-06-14-yutai-expiry-archive.md)
 - [2026-05-09 ペンギンシューター豪華版・新技術トライアル方針](./decision-log/2026-05-09-penguin-shooter-rich-game-trial.md)
 - [2026-05-09 ペンギンシューター 100小ステージデータ構造](./decision-log/2026-05-09-penguin-shooter-stage-data-structure.md)
 - [2026-05-09 ペンギンシューター ボス設計とPR8凍結](./decision-log/2026-05-09-penguin-shooter-boss-design-and-pr8-freeze.md)
