@@ -15,7 +15,13 @@
 
 ## データ取得
 
-- Server Component が `latest` と `manifest` を取得し、直近30暦日内の日付別APIを読む。
+- Client Componentがmini-tools同一オリジンの開示イベントrouteからmanifestを取得する。
+- manifestの日付から表示期間に必要な日付別JSONだけを要求し、端末内で1日・7日・30日に集約する。
+- 日付別routeは`Cache-Control: public, max-age=31536000, immutable`を返す。
+- manifest routeは`Cache-Control: public, max-age=300`を返す。
+- ブラウザHTTPキャッシュが残っていれば過去日付を再通信せず、新しい日付だけを追加取得する。
+- ブラウザキャッシュは補助であり、削除・退避された場合はAPIから再取得して同じ表示を復元する。
+- IndexedDBやlocalStorageへイベント本文を複製保存しない。
 - API未設定または取得失敗時はエラー案内を表示する。
 - 開示本文は保持せず、APIが返す公開元URLへリンクする。
 
@@ -42,3 +48,4 @@
 
 - [UAT](../../uat/disclosure-radar.md)
 - [設計判断](../../decision-log/2026-06-13-disclosure-radar-and-mobile-nav.md)
+- [日付別JSONとブラウザHTTPキャッシュ](../../decision-log/2026-06-14-disclosure-radar-http-cache.md)
