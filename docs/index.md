@@ -12,6 +12,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 設計・方針・トレードオフの判断理由を記録します。
 
 - [2026-06-14 開示レーダーの日付別JSONとブラウザHTTPキャッシュ](./decision-log/2026-06-14-disclosure-radar-http-cache.md)
+- [2026-06-14 全ツール切り替え用ハンバーガー＋ドロワー](./decision-log/2026-06-14-global-nav-drawer.md)
 - [2026-06-14 開示レーダーの履歴表示と確認済み管理](./decision-log/2026-06-14-disclosure-radar-history-and-read-state.md)
 - [2026-06-13 開示イベントレーダーとモバイル下部ナビ](./decision-log/2026-06-13-disclosure-radar-and-mobile-nav.md)
 - [2026-05-31 日興一般「在庫0」判定を available_shares 基準に変更](./decision-log/2026-05-31-nikko-out-of-stock-shares-based.md)
