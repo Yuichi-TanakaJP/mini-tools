@@ -1036,8 +1036,9 @@ const RATIO_METRIC_OPTIONS: Array<{ type: RatioMetric; label: string }> = [
   { type: "dividend", label: "配当（年間・推定）" },
 ];
 
-// 銘柄別で個別表示する最大件数。これを超えた分だけ「他N銘柄」へ集約する。
-const STOCK_ROW_LIMIT = STOCK_CHART_COLORS.length;
+// 銘柄別はこの比率（%）未満の銘柄だけを「他N銘柄」へ集約する。
+// 件数ではなく構成比で区切るため、配色は循環し色がかぶることを許容する。
+const STOCK_MIN_SHARE_PCT = 2;
 
 // 取得額 = 数量 × 取得単価。配当 = 数量 × 推定年間配当（1株あたり）。
 function metricValue(
@@ -1124,29 +1125,30 @@ function RatioView({
     }
   }
   const sortedStocks = [...stockMap.values()].sort((a, b) => b.value - a.value);
-  const topStocks = sortedStocks.slice(0, STOCK_ROW_LIMIT);
-  const restStocks = sortedStocks.slice(STOCK_ROW_LIMIT);
-  const stockRows: ChartDatum[] = topStocks.map((stock, index) => ({
+  const minShareValue = total * (STOCK_MIN_SHARE_PCT / 100);
+  const majorStocks = sortedStocks.filter((stock) => stock.value >= minShareValue);
+  const minorStocks = sortedStocks.filter((stock) => stock.value < minShareValue);
+  const stockRows: ChartDatum[] = majorStocks.map((stock, index) => ({
     key: stock.code,
     label: `${stock.code} ${stock.name}`,
     color: STOCK_CHART_COLORS[index % STOCK_CHART_COLORS.length],
     value: stock.value,
   }));
-  // 集約は色数を超えた末端のみ。1銘柄だけ残る場合はその銘柄をそのまま見せる。
-  if (restStocks.length === 1) {
-    const stock = restStocks[0];
+  // しきい値未満の末端のみ集約。1銘柄だけ残る場合はその銘柄をそのまま見せる。
+  if (minorStocks.length === 1) {
+    const stock = minorStocks[0];
     stockRows.push({
       key: stock.code,
       label: `${stock.code} ${stock.name}`,
       color: "var(--color-text-muted)",
       value: stock.value,
     });
-  } else if (restStocks.length > 1) {
+  } else if (minorStocks.length > 1) {
     stockRows.push({
       key: "__rest__",
-      label: `他 ${restStocks.length} 銘柄`,
+      label: `他 ${minorStocks.length} 銘柄（各 ${STOCK_MIN_SHARE_PCT}% 未満）`,
       color: "var(--color-text-muted)",
-      value: restStocks.reduce((sum, stock) => sum + stock.value, 0),
+      value: minorStocks.reduce((sum, stock) => sum + stock.value, 0),
     });
   }
 
