@@ -1,4 +1,4 @@
-import type { DisclosureEventItem } from "./types";
+import type { DisclosureEventItem, DisclosureEventsManifest } from "./types";
 
 export type RadarView = "yutai" | "my-stocks";
 export type RangeDays = 1 | 7 | 30;
@@ -23,6 +23,19 @@ export function normalizeSecurityCode(code: string): string {
   return /^[0-9A-Z]{5}$/.test(normalized) && normalized.endsWith("0")
     ? normalized.slice(0, 4)
     : normalized;
+}
+
+export function selectDisclosureDates(
+  manifest: DisclosureEventsManifest,
+  rangeDays: RangeDays,
+): string[] {
+  if (rangeDays === 1) return manifest.latest ? [manifest.latest] : [];
+  const referenceDate = manifest.dates.at(-1) ?? manifest.latest;
+  if (!referenceDate) return [];
+  const cutoff = addDays(referenceDate, -(rangeDays - 1));
+  return manifest.dates.filter(
+    (date) => date >= cutoff && date <= referenceDate,
+  );
 }
 
 export function filterDisclosureEvents(

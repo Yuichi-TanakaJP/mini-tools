@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { loadItems } from "@/app/tools/my-stocks/storage";
 import {
   filterDisclosureEvents,
   normalizeSecurityCode,
+  selectDisclosureDates,
   type RadarView,
   type RangeDays,
   type TopicFilter,
@@ -13,7 +14,9 @@ import {
 import type {
   DisclosureEventItem,
   DisclosureEventType,
+  DisclosureEventsManifest,
   DisclosureEventsPageData,
+  DisclosureEventsResponse,
 } from "./types";
 import styles from "./ToolClient.module.css";
 
@@ -139,23 +142,28 @@ function EventCard({
 }
 
 export default function ToolClient({
-  data,
   initialView,
   initialRange,
   initialEventId,
 }: {
-  data: DisclosureEventsPageData | null;
   initialView: RadarView;
   initialRange: RangeDays;
   initialEventId?: string;
 }) {
+  const [data, setData] = useState<DisclosureEventsPageData | null>(null);
+  const [manifest, setManifest] = useState<DisclosureEventsManifest | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [view, setView] = useState<RadarView>(initialView);
   const [rangeDays, setRangeDays] = useState<RangeDays>(initialRange);
   const [topic, setTopic] = useState<TopicFilter>("all");
   const [query, setQuery] = useState("");
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [readEventIds, setReadEventIds] = useState<Set<string>>(loadReadEventIds);
-  const [myStockCodes] = useState<Set<string>>(
+  const responsesRef = useRef(new Map<string, DisclosureEventsResponse>());
+  const requestIdRef = useRef(0);
+  const deepLinkExpandedRef = useRef(false);
+  const myStockCodes = useMemo(
     () => {
       const codes = new Set(
         loadItems().map((item) => normalizeSecurityCode(item.code)),
@@ -166,14 +174,99 @@ export default function ToolClient({
       }
       return codes;
     },
+    [data, initialEventId],
   );
 
   useEffect(() => {
-    if (!initialEventId) return;
-    document
-      .getElementById(`event-${initialEventId}`)
-      ?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [initialEventId]);
+    let active = true;
+    fetch("/api/disclosure-events/manifest")
+      .then((response) => {
+        if (!response.ok) throw new Error(`manifest: ${response.status}`);
+        return response.json() as Promise<DisclosureEventsManifest>;
+      })
+      .then((value) => {
+        if (active) setManifest(value);
+      })
+      .catch(() => {
+        if (active) {
+          setLoadFailed(true);
+          setLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!manifest) return;
+    const requestId = ++requestIdRef.current;
+    const dates = selectDisclosureDates(manifest, rangeDays);
+    const missingDates = dates.filter((date) => !responsesRef.current.has(date));
+    setLoading(true);
+    setLoadFailed(false);
+
+    Promise.all(
+      missingDates.map(async (date) => {
+        const response = await fetch(`/api/disclosure-events/${date}`);
+        if (!response.ok) throw new Error(`${date}: ${response.status}`);
+        return await response.json() as DisclosureEventsResponse;
+      }),
+    )
+      .then((responses) => {
+        if (requestId !== requestIdRef.current) return;
+        for (const response of responses) {
+          responsesRef.current.set(response.target_date, response);
+        }
+        const selectedResponses = dates
+          .map((date) => responsesRef.current.get(date))
+          .filter((item): item is DisclosureEventsResponse => item !== undefined);
+        const items = selectedResponses
+          .flatMap((response) => response.items)
+          .filter(
+            (item, index, all) =>
+              all.findIndex((candidate) => candidate.event_id === item.event_id) ===
+              index,
+          )
+          .sort((a, b) =>
+            `${b.disclosure_date} ${b.disclosure_time}`.localeCompare(
+              `${a.disclosure_date} ${a.disclosure_time}`,
+            ),
+          );
+        setData({
+          latestDate: manifest.latest,
+          referenceDate: manifest.dates.at(-1) ?? manifest.latest,
+          loadedDates: selectedResponses
+            .map((response) => response.target_date)
+            .sort(),
+          items,
+        });
+        setLoading(false);
+      })
+      .catch(() => {
+        if (requestId === requestIdRef.current) {
+          setLoadFailed(true);
+          setLoading(false);
+        }
+      });
+  }, [manifest, rangeDays]);
+
+  useEffect(() => {
+    if (!initialEventId || !data || loading) return;
+    const target = data.items.find((item) => item.event_id === initialEventId);
+    if (!target && rangeDays < 30 && !deepLinkExpandedRef.current) {
+      deepLinkExpandedRef.current = true;
+      setRangeDays(30);
+      return;
+    }
+    if (!target) return;
+    setView(target.audience === "all" ? "yutai" : "my-stocks");
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`event-${initialEventId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [data, initialEventId, loading, rangeDays]);
 
   const filterItems = (
     targetView: RadarView,
@@ -298,7 +391,9 @@ export default function ToolClient({
         aria-label="イベント検索"
       />
 
-      {!data ? (
+      {loading && !data ? (
+        <section className={styles.empty}>開示イベントを読み込んでいます。</section>
+      ) : loadFailed ? (
         <section className={styles.empty}>
           開示イベントを取得できませんでした。API設定または通信状況を確認してください。
         </section>
