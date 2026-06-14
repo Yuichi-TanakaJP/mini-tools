@@ -1171,9 +1171,10 @@
 
 @media (min-width: 880px) {
   .actionsRow {
-    /* 右側コントロール列は fr で幅を確定させ、収まらなければ折り返す。
-       auto + nowrap だと内容幅で枠を超えてはみ出すため fr + wrap にする。 */
-    grid-template-columns: minmax(240px, 0.9fr) minmax(0, 1.1fr);
+    /* 検索を上段フル幅、コントロール群を下段に右寄せで1グループにまとめる。
+       2カラム(検索|コントロール)だと、コントロールが折り返したとき
+       検索1段とコントロール2段で段が食い違って見えるため単一カラムにする。 */
+    grid-template-columns: minmax(0, 1fr);
     align-items: center;
     column-gap: 12px;
   }
