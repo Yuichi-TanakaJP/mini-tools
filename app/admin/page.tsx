@@ -53,6 +53,7 @@ async function fetchManifestLatest(
   endpoint: string,
   pick: (json: unknown) => string | null,
   pickHistory?: (json: unknown) => string[],
+  options: { cache?: RequestCache } = {},
 ): Promise<{ latest: string | null; fetchedAt: string; history: string[] }> {
   const apiBase = getApiBaseUrl();
   const fetchedAt = new Date().toISOString();
@@ -60,7 +61,9 @@ async function fetchManifestLatest(
   try {
     // 管理画面なので fresh 性より通信量を優先: 10 分 (600s) キャッシュ。
     // 1 ユーザー (= ほぼ自分のみ) が連続でタブを切替えても、各 manifest は 10 分に 1 回しか実 API を叩かない。
-    const json = await fetchJson<unknown>(`${apiBase}${endpoint}`, 600);
+    // 例外: 2MB を超えるレスポンス (例: /stock-master/latest) は Data Cache に載らず
+    // 「Failed to set Next.js data cache」を毎回吐くため、呼び出し側で cache:"no-store" を指定する。
+    const json = await fetchJson<unknown>(`${apiBase}${endpoint}`, 600, options);
     return { latest: pick(json), fetchedAt, history: pickHistory ? pickHistory(json) : [] };
   } catch {
     return { latest: null, fetchedAt, history: [] };
@@ -181,7 +184,7 @@ async function loadRows(): Promise<ToolRow[]> {
     fetchManifestLatest("/tdnet/disclosures/latest", (j) => pickString(j, "target_date")),
     fetchManifestLatest("/market-calendar/jpx-closed", (j) => pickString(j, "as_of_date")),
     fetchManifestLatest("/disclosure-events/manifest", (j) => pickString(j, "latest") ?? pickLatestDate(j), (j) => pickDatesArray(j, "dates")),
-    fetchManifestLatest("/stock-master/latest", (j) => pickArrayMaxField(j, "as_of_date")),
+    fetchManifestLatest("/stock-master/latest", (j) => pickArrayMaxField(j, "as_of_date"), undefined, { cache: "no-store" }),
   ]);
 
   return [
