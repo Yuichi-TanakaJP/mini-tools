@@ -85,6 +85,20 @@ function pickString(obj: unknown, key: string): string | null {
   return null;
 }
 
+/** 配列レスポンス (例: /stock-master/latest) の各要素から key を集め最大値を返す */
+function pickArrayMaxField(obj: unknown, key: string): string | null {
+  if (!Array.isArray(obj)) return null;
+  const values = obj
+    .map((record) =>
+      record && typeof record === "object" && key in record
+        ? (record as Record<string, unknown>)[key]
+        : null,
+    )
+    .filter((v): v is string => typeof v === "string" && v.length > 0);
+  if (values.length === 0) return null;
+  return values.reduce((max, current) => (current > max ? current : max));
+}
+
 function pickLatestDate(obj: unknown): string | null {
   if (obj && typeof obj === "object" && "dates" in obj) {
     const dates = (obj as Record<string, unknown>).dates;
@@ -161,11 +175,13 @@ async function loadRows(): Promise<ToolRow[]> {
     fetchManifestLatest("/market-rankings/dividend-yield/manifest", (j) => pickString(j, "generatedAt") ?? pickString(j, "latest")),
     fetchManifestLatest("/investor-flow/manifest", pickInvestorFlowLatestStart, pickInvestorFlowWeeks),
   ]);
-  const [nikkoCredit, sbiCredit, tdnet, jpxClosed] = await Promise.all([
+  const [nikkoCredit, sbiCredit, tdnet, jpxClosed, disclosureEvents, stockMaster] = await Promise.all([
     fetchManifestLatest("/nikko/credit", (j) => pickString(j, "date") ?? pickString(j, "generated_at")),
     fetchManifestLatest("/sbi/credit/latest", (j) => pickString(j, "date") ?? pickString(j, "generated_at")),
     fetchManifestLatest("/tdnet/disclosures/latest", (j) => pickString(j, "target_date")),
     fetchManifestLatest("/market-calendar/jpx-closed", (j) => pickString(j, "as_of_date")),
+    fetchManifestLatest("/disclosure-events/manifest", (j) => pickString(j, "latest") ?? pickLatestDate(j), (j) => pickDatesArray(j, "dates")),
+    fetchManifestLatest("/stock-master/latest", (j) => pickArrayMaxField(j, "as_of_date")),
   ]);
 
   return [
@@ -183,6 +199,7 @@ async function loadRows(): Promise<ToolRow[]> {
 
     { category: "disclosures", name: "EDINET書類一覧", href: "/tools/edinet-documents", source: "/edinet/document-list/manifest", rule: "運用要確認 (自動日次と断定しない)。", schedule: SCHED_AD_HOC, latest: edinet.latest, fetchedAt: edinet.fetchedAt, history: edinet.history },
     { category: "disclosures", name: "TDNET適時開示", href: "/tools/tdnet-disclosures", source: "/tdnet/disclosures/latest", rule: "運用要確認 (自動日次と断定しない)。", schedule: SCHED_AD_HOC, latest: tdnet.latest, fetchedAt: tdnet.fetchedAt },
+    { category: "disclosures", name: "開示レーダー", href: "/tools/disclosure-radar", source: "/disclosure-events/manifest", rule: "運用要確認 (自動日次と断定しない)。", schedule: SCHED_AD_HOC, latest: disclosureEvents.latest, fetchedAt: disclosureEvents.fetchedAt, history: disclosureEvents.history },
 
     { category: "yutai", name: "優待カレンダー", href: "/tools/yutai-candidates", source: "/yutai/manifest", rule: "月次。運用詳細は market_info docs 参照。", schedule: SCHED_MONTHLY, latest: yutai.latest, fetchedAt: yutai.fetchedAt },
 
@@ -190,11 +207,13 @@ async function loadRows(): Promise<ToolRow[]> {
     { category: "credit", name: "SBI一般信用在庫", href: "/tools/yutai-candidates", source: "/sbi/credit/latest", rule: SCHED_SUN.description, schedule: SCHED_SUN, latest: sbiCredit.latest, fetchedAt: sbiCredit.fetchedAt },
 
     { category: "reference", name: "JPX 祝日カレンダー", href: "/tools/earnings-calendar", source: "/market-calendar/jpx-closed", rule: SCHED_REF.description, schedule: SCHED_REF, latest: jpxClosed.latest, fetchedAt: jpxClosed.fetchedAt },
+    { category: "reference", name: "銘柄マスタ (my-stocks)", href: "/tools/my-stocks", source: "/stock-master/latest", rule: "銘柄マスタ (決算予定/優待月/配当)。更新運用は要確認。", schedule: SCHED_AD_HOC, latest: stockMaster.latest, fetchedAt: stockMaster.fetchedAt },
 
     { category: "local", name: "合計計算", href: "/tools/total", source: "ブラウザ localStorage", rule: SCHED_USER.description, schedule: SCHED_USER },
     { category: "local", name: "文字数カウント", href: "/tools/charcount", source: "ブラウザ localStorage", rule: SCHED_USER.description, schedule: SCHED_USER },
     { category: "local", name: "株主優待期限帳", href: "/tools/yutai-expiry", source: "localStorage + scan (premium)", rule: SCHED_USER.description, schedule: SCHED_USER },
     { category: "local", name: "優待銘柄メモ帳", href: "/tools/yutai-memo", source: "ブラウザ localStorage", rule: SCHED_USER.description, schedule: SCHED_USER },
+    { category: "local", name: "マイ株", href: "/tools/my-stocks", source: "localStorage + /stock-master/latest", rule: SCHED_USER.description, schedule: SCHED_USER },
   ];
 }
 
@@ -310,6 +329,8 @@ const TOOL_SOURCE_MAP: { tool: string; href: string; sources: string[] }[] = [
   { tool: "TOPIX33業種", href: "/tools/topix33", sources: ["/topix33/manifest", "/market-calendar/jpx-closed"] },
   { tool: "EDINET", href: "/tools/edinet-documents", sources: ["/edinet/document-list/manifest"] },
   { tool: "TDNet", href: "/tools/tdnet-disclosures", sources: ["/tdnet/disclosures/latest"] },
+  { tool: "開示レーダー", href: "/tools/disclosure-radar", sources: ["/disclosure-events/manifest"] },
+  { tool: "マイ株", href: "/tools/my-stocks", sources: ["/stock-master/latest", "/yutai/manifest", "/earnings-calendar/domestic/manifest"] },
 ];
 
 // ============== Small UI atoms ==============

@@ -21,7 +21,7 @@
 1. `NEXT_PUBLIC_SITE_URL`（設定時は SSR・クライアントとも常にこれを使用）
 2. **env 未設定時はマウント後に現在の `origin`（`window.location.origin`）を使用する**
 
-`origin` はブラウザ依存値のため、**レンダー中には読まない**。`ShareButtons` はマウント後に `useEffect` で `origin` を state へ注入し、再レンダリングで絶対 URL へ昇格させる。これにより **SSR とクライアント初回描画の出力が一致**し、ハイドレーションミスマッチを防ぐ。
+`origin` はブラウザ依存値のため、**レンダー中には読まない**。`ShareButtons` は `useSyncExternalStore`（server snapshot = `null`、client snapshot = `window.location.origin`）で `origin` を取得し、SSR / ハイドレーション初回は `null`、マウント後に現在 `origin` を返して絶対 URL へ昇格させる。これにより **SSR とクライアント初回描画の出力が一致**し、ハイドレーションミスマッチを防ぐ。`useEffect` 内の同期 `setState` を禁じる lint ルール（`react-hooks/set-state-in-effect`）にも抵触しない。
 
 - env 未設定 かつ マウント前（SSR / 初回 CSR）: 相対 URL（例 `/tools/x`）を返す
 - env 未設定 かつ マウント後: `origin` を base にした絶対 URL を返す
