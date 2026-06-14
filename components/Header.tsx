@@ -1,8 +1,10 @@
 // components/Header.tsx
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import ShareButtons from "@/components/ShareButtonsSuspended";
+import NavDrawer from "@/components/NavDrawer";
 
 type HeaderProps = {
   title?: string;
@@ -10,7 +12,10 @@ type HeaderProps = {
 };
 
 export default function Header({ title, subtitle }: HeaderProps) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   return (
+    <>
     <header
       style={{
         position: "sticky",
@@ -37,6 +42,45 @@ export default function Header({ title, subtitle }: HeaderProps) {
             gap: 12,
           }}
         >
+          {/* 左: ハンバーガー + ロゴ */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          {/* ハンバーガー（全ツール切り替え） */}
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="メニューを開く"
+            aria-expanded={drawerOpen}
+            style={{
+              display: "grid",
+              placeItems: "center",
+              width: 34,
+              height: 34,
+              marginLeft: -6,
+              flexShrink: 0,
+              border: "1px solid rgba(255,255,255,0.14)",
+              borderRadius: 9,
+              background: "rgba(255,255,255,0.04)",
+              color: "rgba(255,255,255,0.90)",
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+
           {/* ロゴ */}
           <Link
             href="/"
@@ -68,6 +112,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
               tools
             </span>
           </Link>
+          </div>
 
           {/* ページタイトル（ツールページ用） */}
           {(title || subtitle) && (
@@ -109,5 +154,8 @@ export default function Header({ title, subtitle }: HeaderProps) {
         />
       </div>
     </header>
+
+    <NavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+    </>
   );
 }
