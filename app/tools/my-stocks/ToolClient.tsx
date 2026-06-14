@@ -1227,7 +1227,7 @@ function DonutChart({
   total: number;
   ariaLabel: string;
 }) {
-  const radius = 15.915; // 円周が 100 になる半径（パーセントをそのまま長さに使える）
+  const radius = 15.915; // pathLength=100 と合わせ、パーセントをそのまま弧長に使える
   let acc = 0;
 
   return (
@@ -1237,6 +1237,7 @@ function DonutChart({
           cx={21}
           cy={21}
           r={radius}
+          pathLength={100}
           fill="transparent"
           stroke="var(--color-bg-input)"
           strokeWidth={5}
@@ -1249,6 +1250,7 @@ function DonutChart({
               cx={21}
               cy={21}
               r={radius}
+              pathLength={100}
               fill="transparent"
               stroke={row.color}
               strokeWidth={5}
