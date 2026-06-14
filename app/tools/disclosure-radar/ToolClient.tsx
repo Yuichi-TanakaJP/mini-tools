@@ -208,14 +208,19 @@ export default function ToolClient({
 
     Promise.all(
       missingDates.map(async (date) => {
-        const response = await fetch(`/api/disclosure-events/${date}`);
-        if (!response.ok) throw new Error(`${date}: ${response.status}`);
-        return await response.json() as DisclosureEventsResponse;
+        try {
+          const response = await fetch(`/api/disclosure-events/${date}`);
+          if (!response.ok) return null;
+          return await response.json() as DisclosureEventsResponse;
+        } catch {
+          return null;
+        }
       }),
     )
       .then((responses) => {
         if (requestId !== requestIdRef.current) return;
         for (const response of responses) {
+          if (!response) continue;
           responsesRef.current.set(response.target_date, response);
         }
         const selectedResponses = dates
@@ -233,14 +238,16 @@ export default function ToolClient({
               `${a.disclosure_date} ${a.disclosure_time}`,
             ),
           );
-        setData({
+        const nextData = {
           latestDate: manifest.latest,
           referenceDate: manifest.dates.at(-1) ?? manifest.latest,
           loadedDates: selectedResponses
             .map((response) => response.target_date)
             .sort(),
           items,
-        });
+        };
+        setData(nextData);
+        setLoadFailed(dates.length > 0 && selectedResponses.length === 0);
         setLoading(false);
       })
       .catch(() => {
