@@ -1003,7 +1003,18 @@ function HoldingAccountLine({
   );
 }
 
+type RatioChartType = "bar" | "pie" | "heatmap";
+
+type ChartDatum = { key: string; label: string; value: number; color: string };
+
+const RATIO_CHART_OPTIONS: Array<{ type: RatioChartType; label: string }> = [
+  { type: "bar", label: "帯グラフ" },
+  { type: "pie", label: "円グラフ" },
+  { type: "heatmap", label: "四角ヒートマップ" },
+];
+
 function RatioView({ items }: { items: MyStockItem[] }) {
+  const [chartType, setChartType] = useState<RatioChartType>("bar");
   const rows = items
     .map((item) => {
       const amount = acquisitionAmount(item);
@@ -1023,11 +1034,11 @@ function RatioView({ items }: { items: MyStockItem[] }) {
     );
   }
 
-  const accountRows = ACCOUNT_GROUPS.map((group) => {
+  const accountRows: ChartDatum[] = ACCOUNT_GROUPS.map((group) => {
     const value = rows
       .filter((row) => accountGroupKey(row.item) === group.key)
       .reduce((sum, row) => sum + row.amount, 0);
-    return { ...group, value };
+    return { key: group.key, label: group.label, color: group.color, value };
   }).filter((row) => row.value > 0);
 
   const stockMap = new Map<string, { code: string; name: string; value: number }>();
@@ -1040,14 +1051,37 @@ function RatioView({ items }: { items: MyStockItem[] }) {
       stockMap.set(key, { code: row.item.code, name: row.item.name, value: row.amount });
     }
   }
-  const stockRows = [...stockMap.values()].sort((a, b) => b.value - a.value).slice(0, 8);
+  const sortedStocks = [...stockMap.values()].sort((a, b) => b.value - a.value);
+  const TOP_STOCKS = 7;
+  const topStocks = sortedStocks.slice(0, TOP_STOCKS);
+  const restValue = sortedStocks
+    .slice(TOP_STOCKS)
+    .reduce((sum, stock) => sum + stock.value, 0);
+  const stockRows: ChartDatum[] = topStocks.map((stock, index) => ({
+    key: stock.code,
+    label: `${stock.code} ${stock.name}`,
+    color: STOCK_CHART_COLORS[index % STOCK_CHART_COLORS.length],
+    value: stock.value,
+  }));
+  if (restValue > 0) {
+    stockRows.push({
+      key: "__rest__",
+      label: `他 ${sortedStocks.length - TOP_STOCKS} 銘柄`,
+      color: "var(--color-text-muted)",
+      value: restValue,
+    });
+  }
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <ChartTypeToggle value={chartType} onChange={setChartType} />
+      </div>
+
       <div style={ratioPanelStyle}>
         <div style={{ display: "grid", gap: 3 }}>
           <div style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 800 }}>
-            取得額比率
+            取得額比率（口座別）
           </div>
           <div style={{ fontSize: 20, color: "var(--color-text)", fontWeight: 900 }}>
             {formatYen(total)}
@@ -1058,36 +1092,92 @@ function RatioView({ items }: { items: MyStockItem[] }) {
             </div>
           )}
         </div>
-        <StackedShareBar rows={accountRows} total={total} />
-        <div style={{ display: "grid", gap: 8 }}>
-          {accountRows.map((row) => (
-            <ShareRow
-              key={row.key}
-              label={row.label}
-              value={row.value}
-              total={total}
-              color={row.color}
-            />
-          ))}
-        </div>
+        <RatioChart chartType={chartType} rows={accountRows} total={total} ariaLabel="口座別取得額比率" />
+        <ShareLegend rows={accountRows} total={total} />
       </div>
 
       <div style={ratioPanelStyle}>
         <div style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 800 }}>
           銘柄別
         </div>
-        <div style={{ display: "grid", gap: 8 }}>
-          {stockRows.map((row, index) => (
-            <ShareRow
-              key={row.code}
-              label={`${row.code} ${row.name}`}
-              value={row.value}
-              total={total}
-              color={STOCK_CHART_COLORS[index % STOCK_CHART_COLORS.length]}
-            />
-          ))}
-        </div>
+        <RatioChart chartType={chartType} rows={stockRows} total={total} ariaLabel="銘柄別取得額比率" />
+        <ShareLegend rows={stockRows} total={total} />
       </div>
+    </div>
+  );
+}
+
+function ChartTypeToggle({
+  value,
+  onChange,
+}: {
+  value: RatioChartType;
+  onChange: (value: RatioChartType) => void;
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label="グラフの種類"
+      style={{
+        display: "inline-flex",
+        padding: 3,
+        border: "1px solid var(--color-border)",
+        borderRadius: 8,
+        background: "var(--color-bg-input)",
+      }}
+    >
+      {RATIO_CHART_OPTIONS.map((option) => {
+        const active = value === option.type;
+        return (
+          <button
+            key={option.type}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(option.type)}
+            style={{
+              padding: "5px 10px",
+              border: "none",
+              borderRadius: 6,
+              background: active ? "var(--color-bg-card)" : "transparent",
+              color: active ? "var(--color-text)" : "var(--color-text-sub)",
+              fontSize: 12,
+              fontWeight: 800,
+              cursor: "pointer",
+              boxShadow: active ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+            }}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function RatioChart({
+  chartType,
+  rows,
+  total,
+  ariaLabel,
+}: {
+  chartType: RatioChartType;
+  rows: ChartDatum[];
+  total: number;
+  ariaLabel: string;
+}) {
+  if (chartType === "pie") return <DonutChart rows={rows} total={total} ariaLabel={ariaLabel} />;
+  if (chartType === "heatmap")
+    return <TreemapChart rows={rows} total={total} ariaLabel={ariaLabel} />;
+  return <StackedShareBar rows={rows} total={total} ariaLabel={ariaLabel} />;
+}
+
+function ShareLegend({ rows, total }: { rows: ChartDatum[]; total: number }) {
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      {rows.map((row) => (
+        <ShareRow key={row.key} label={row.label} value={row.value} total={total} color={row.color} />
+      ))}
     </div>
   );
 }
@@ -1095,13 +1185,15 @@ function RatioView({ items }: { items: MyStockItem[] }) {
 function StackedShareBar({
   rows,
   total,
+  ariaLabel,
 }: {
-  rows: Array<{ key: AccountGroupKey; label: string; value: number; color: string }>;
+  rows: ChartDatum[];
   total: number;
+  ariaLabel: string;
 }) {
   return (
     <div
-      aria-label="口座別取得額比率"
+      aria-label={ariaLabel}
       style={{
         height: 18,
         display: "flex",
@@ -1122,6 +1214,222 @@ function StackedShareBar({
           }}
         />
       ))}
+    </div>
+  );
+}
+
+function DonutChart({
+  rows,
+  total,
+  ariaLabel,
+}: {
+  rows: ChartDatum[];
+  total: number;
+  ariaLabel: string;
+}) {
+  const radius = 15.915; // 円周が 100 になる半径（パーセントをそのまま長さに使える）
+  let acc = 0;
+
+  return (
+    <div style={{ display: "flex", justifyContent: "center", padding: "4px 0" }}>
+      <svg viewBox="0 0 42 42" width={160} height={160} role="img" aria-label={ariaLabel}>
+        <circle
+          cx={21}
+          cy={21}
+          r={radius}
+          fill="transparent"
+          stroke="var(--color-bg-input)"
+          strokeWidth={5}
+        />
+        {rows.map((row) => {
+          const pct = (row.value / total) * 100;
+          const segment = (
+            <circle
+              key={row.key}
+              cx={21}
+              cy={21}
+              r={radius}
+              fill="transparent"
+              stroke={row.color}
+              strokeWidth={5}
+              strokeDasharray={`${pct} ${100 - pct}`}
+              strokeDashoffset={25 - acc}
+            >
+              <title>{`${row.label} ${pct.toFixed(1)}%`}</title>
+            </circle>
+          );
+          acc += pct;
+          return segment;
+        })}
+        <text
+          x={21}
+          y={20.4}
+          textAnchor="middle"
+          fontSize={3.4}
+          fontWeight={800}
+          fill="var(--color-text-muted)"
+        >
+          {rows.length}区分
+        </text>
+        <text
+          x={21}
+          y={24.2}
+          textAnchor="middle"
+          fontSize={2.6}
+          fill="var(--color-text-muted)"
+        >
+          取得額比率
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+type TreemapRect = ChartDatum & { x: number; y: number; w: number; h: number };
+
+// squarified treemap: 各四角形のアスペクト比が 1 に近づくよう領域を分割する
+function squarifyTreemap(data: ChartDatum[], width: number, height: number): TreemapRect[] {
+  const total = data.reduce((sum, d) => sum + d.value, 0);
+  if (total <= 0) return [];
+  const scaled = data.map((d) => ({ datum: d, area: (d.value / total) * width * height }));
+  const rects: TreemapRect[] = [];
+  let x = 0;
+  let y = 0;
+  let w = width;
+  let h = height;
+  let remaining = scaled.slice();
+  let row: typeof scaled = [];
+
+  const worst = (current: typeof scaled, length: number): number => {
+    if (current.length === 0) return Infinity;
+    const sum = current.reduce((s, r) => s + r.area, 0);
+    const max = Math.max(...current.map((r) => r.area));
+    const min = Math.min(...current.map((r) => r.area));
+    return Math.max((length * length * max) / (sum * sum), (sum * sum) / (length * length * min));
+  };
+
+  const layoutRow = (current: typeof scaled, vertical: boolean) => {
+    const sum = current.reduce((s, r) => s + r.area, 0);
+    const length = vertical ? h : w;
+    const thickness = sum / length;
+    let offset = vertical ? y : x;
+    for (const r of current) {
+      const side = r.area / thickness;
+      if (vertical) {
+        rects.push({ ...r.datum, x, y: offset, w: thickness, h: side });
+        offset += side;
+      } else {
+        rects.push({ ...r.datum, x: offset, y, w: side, h: thickness });
+        offset += side;
+      }
+    }
+    if (vertical) {
+      x += thickness;
+      w -= thickness;
+    } else {
+      y += thickness;
+      h -= thickness;
+    }
+  };
+
+  while (remaining.length > 0) {
+    const vertical = w >= h;
+    const length = Math.min(w, h);
+    const next = remaining[0];
+    if (row.length === 0 || worst([...row, next], length) <= worst(row, length)) {
+      row.push(next);
+      remaining = remaining.slice(1);
+    } else {
+      layoutRow(row, vertical);
+      row = [];
+    }
+  }
+  if (row.length > 0) layoutRow(row, w >= h);
+
+  return rects;
+}
+
+function TreemapChart({
+  rows,
+  total,
+  ariaLabel,
+}: {
+  rows: ChartDatum[];
+  total: number;
+  ariaLabel: string;
+}) {
+  const WIDTH = 100;
+  const HEIGHT = 62;
+  const rects = squarifyTreemap(rows, WIDTH, HEIGHT);
+
+  return (
+    <div
+      role="img"
+      aria-label={ariaLabel}
+      style={{
+        position: "relative",
+        width: "100%",
+        aspectRatio: `${WIDTH} / ${HEIGHT}`,
+        borderRadius: 8,
+        overflow: "hidden",
+        border: "1px solid var(--color-border)",
+        background: "var(--color-bg-input)",
+      }}
+    >
+      {rects.map((rect) => {
+        const pct = (rect.value / total) * 100;
+        const showLabel = rect.w >= 16 && rect.h >= 12;
+        return (
+          <div
+            key={rect.key}
+            title={`${rect.label} ${pct.toFixed(1)}%`}
+            style={{
+              position: "absolute",
+              left: `${(rect.x / WIDTH) * 100}%`,
+              top: `${(rect.y / HEIGHT) * 100}%`,
+              width: `${(rect.w / WIDTH) * 100}%`,
+              height: `${(rect.h / HEIGHT) * 100}%`,
+              background: rect.color,
+              border: "1px solid var(--color-bg-card)",
+              boxSizing: "border-box",
+              padding: "3px 5px",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "flex-start",
+            }}
+          >
+            {showLabel && (
+              <>
+                <span
+                  style={{
+                    color: "#fff",
+                    fontSize: 11,
+                    fontWeight: 800,
+                    lineHeight: 1.25,
+                    textShadow: "0 1px 2px rgba(0,0,0,0.35)",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {rect.label}
+                </span>
+                <span
+                  style={{
+                    color: "#fff",
+                    fontSize: 11,
+                    fontWeight: 800,
+                    textShadow: "0 1px 2px rgba(0,0,0,0.35)",
+                  }}
+                >
+                  {pct.toFixed(1)}%
+                </span>
+              </>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
