@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { filterDisclosureEvents, normalizeSecurityCode } from "../logic";
-import type { DisclosureEventItem } from "../types";
+import {
+  filterDisclosureEvents,
+  normalizeSecurityCode,
+  selectDisclosureDates,
+} from "../logic";
+import type { DisclosureEventItem, DisclosureEventsManifest } from "../types";
 
 function event(overrides: Partial<DisclosureEventItem>): DisclosureEventItem {
   return {
@@ -116,5 +120,31 @@ describe("filterDisclosureEvents", () => {
         new Set(["reviewed"]),
       ),
     ).toEqual([recent]);
+  });
+});
+
+describe("selectDisclosureDates", () => {
+  const manifest: DisclosureEventsManifest = {
+    schema_version: "disclosure-events-manifest-v1",
+    generated_at: "2026-06-14T00:00:00Z",
+    latest: "2026-06-12",
+    dates: ["2026-05-01", "2026-06-08", "2026-06-12", "2026-06-13"],
+  };
+
+  it("1日は直近の非0件日だけを選ぶ", () => {
+    expect(selectDisclosureDates(manifest, 1)).toEqual(["2026-06-12"]);
+  });
+
+  it("7日と30日はmanifestの基準日から暦日で選ぶ", () => {
+    expect(selectDisclosureDates(manifest, 7)).toEqual([
+      "2026-06-08",
+      "2026-06-12",
+      "2026-06-13",
+    ]);
+    expect(selectDisclosureDates(manifest, 30)).toEqual([
+      "2026-06-08",
+      "2026-06-12",
+      "2026-06-13",
+    ]);
   });
 });
