@@ -1335,7 +1335,14 @@ function DonutChart({
   ariaLabel: string;
 }) {
   const radius = 15.915; // pathLength=100 と合わせ、パーセントをそのまま弧長に使える
-  let acc = 0;
+  // 各セグメントの開始位置（手前の合計%）を事前計算し、描画中の再代入を避ける。
+  const segments = rows.map((row, index) => {
+    const pct = (row.value / total) * 100;
+    const offset = rows
+      .slice(0, index)
+      .reduce((sum, prev) => sum + (prev.value / total) * 100, 0);
+    return { row, pct, offset };
+  });
 
   return (
     <div style={{ display: "flex", justifyContent: "center", padding: "4px 0" }}>
@@ -1349,27 +1356,22 @@ function DonutChart({
           stroke="var(--color-bg-input)"
           strokeWidth={5}
         />
-        {rows.map((row) => {
-          const pct = (row.value / total) * 100;
-          const segment = (
-            <circle
-              key={row.key}
-              cx={21}
-              cy={21}
-              r={radius}
-              pathLength={100}
-              fill="transparent"
-              stroke={row.color}
-              strokeWidth={5}
-              strokeDasharray={`${pct} ${100 - pct}`}
-              strokeDashoffset={25 - acc}
-            >
-              <title>{`${row.label} ${pct.toFixed(1)}%`}</title>
-            </circle>
-          );
-          acc += pct;
-          return segment;
-        })}
+        {segments.map(({ row, pct, offset }) => (
+          <circle
+            key={row.key}
+            cx={21}
+            cy={21}
+            r={radius}
+            pathLength={100}
+            fill="transparent"
+            stroke={row.color}
+            strokeWidth={5}
+            strokeDasharray={`${pct} ${100 - pct}`}
+            strokeDashoffset={25 - offset}
+          >
+            <title>{`${row.label} ${pct.toFixed(1)}%`}</title>
+          </circle>
+        ))}
         <text
           x={21}
           y={20.4}
