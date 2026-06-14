@@ -30,6 +30,12 @@
   transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* パネルはプログラム的にフォーカスを当てるだけ（Tab では到達しない）ので
+   コンテナのフォーカスリングは抑制する */
+.panel:focus {
+  outline: none;
+}
+
 .panelOpen {
   transform: translateX(0);
 }

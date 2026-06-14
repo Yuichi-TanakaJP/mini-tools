@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -12,6 +12,9 @@ import {
 import { track } from "@/lib/analytics";
 import styles from "./NavDrawer.module.css";
 
+// TOOLS は実行時に変化しないため、グループ化はモジュール初期化時に一度だけ行う
+const GROUPS = groupToolsByCategory();
+
 type NavDrawerProps = {
   open: boolean;
   onClose: () => void;
@@ -20,6 +23,8 @@ type NavDrawerProps = {
 export default function NavDrawer({ open, onClose }: NavDrawerProps) {
   const pathname = usePathname();
   const [query, setQuery] = useState("");
+  const panelRef = useRef<HTMLElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
 
   const handleClose = useCallback(() => {
     setQuery("");
@@ -41,24 +46,39 @@ export default function NavDrawer({ open, onClose }: NavDrawerProps) {
     };
   }, [open, handleClose]);
 
-  const normalizedQuery = query.trim().toLowerCase();
+  // 開いたらパネルへフォーカスを移し、閉じたら呼び出し元（ハンバーガー）へ戻す。
+  // 検索 input ではなくパネル自体へ当てることで、モバイルで即ソフトキーボードが
+  // 立ち上がるのを避ける。完全なフォーカストラップは未実装（decision-log 残課題）。
+  useEffect(() => {
+    if (open) {
+      triggerRef.current = document.activeElement as HTMLElement | null;
+      panelRef.current?.focus();
+    } else {
+      triggerRef.current?.focus?.();
+      triggerRef.current = null;
+    }
+  }, [open]);
 
   const filtered = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) return null;
     return TOOLS.filter((tool) =>
       `${tool.title} ${tool.short} ${tool.detail}`
         .toLowerCase()
         .includes(normalizedQuery)
     );
-  }, [normalizedQuery]);
-
-  const groups = useMemo(() => groupToolsByCategory(), []);
+  }, [query]);
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   const handleNavigate = (href: string) => {
-    track("nav_drawer_opened_tool", { href });
+    // ホームはツールではないため tool_opened に混ぜない。
+    // ツールは ToolGridClient と同じ tool_opened に source を付けて揃える。
+    track(href === "/" ? "nav_home_clicked" : "tool_opened", {
+      href,
+      source: "nav_drawer",
+    });
     handleClose();
   };
 
@@ -88,6 +108,8 @@ export default function NavDrawer({ open, onClose }: NavDrawerProps) {
         aria-hidden="true"
       />
       <aside
+        ref={panelRef}
+        tabIndex={-1}
         className={`${styles.panel} ${open ? styles.panelOpen : ""}`}
         role="dialog"
         aria-modal="true"
@@ -147,7 +169,7 @@ export default function NavDrawer({ open, onClose }: NavDrawerProps) {
                 <span className={styles.itemLabel}>ホーム</span>
               </Link>
 
-              {groups.map((group) => (
+              {GROUPS.map((group) => (
                 <div key={group.category}>
                   <div className={styles.groupLabel}>
                     {CATEGORY_LABELS[group.category]}

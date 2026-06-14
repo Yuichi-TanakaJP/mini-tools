@@ -1,7 +1,7 @@
 // components/Header.tsx
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import ShareButtons from "@/components/ShareButtonsSuspended";
 import NavDrawer from "@/components/NavDrawer";
@@ -13,6 +13,7 @@ type HeaderProps = {
 
 export default function Header({ title, subtitle }: HeaderProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
   return (
     <>
@@ -155,7 +156,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
       </div>
     </header>
 
-    <NavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+    <NavDrawer open={drawerOpen} onClose={closeDrawer} />
     </>
   );
 }
