@@ -39,3 +39,17 @@ export type DisclosureEventsResponse = {
   total_count: number;
   items: DisclosureEventItem[];
 };
+
+export type DisclosureEventsManifest = {
+  schema_version: "disclosure-events-manifest-v1";
+  generated_at: string;
+  latest: string;
+  dates: string[];
+};
+
+export type DisclosureEventsPageData = {
+  latestDate: string;
+  referenceDate: string;
+  loadedDates: string[];
+  items: DisclosureEventItem[];
+};

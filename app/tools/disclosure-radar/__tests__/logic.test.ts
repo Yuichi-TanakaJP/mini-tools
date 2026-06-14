@@ -43,7 +43,19 @@ describe("filterDisclosureEvents", () => {
       }),
     ];
 
-    expect(filterDisclosureEvents(items, "yutai", new Set(), "")).toEqual([items[0]]);
+    expect(
+      filterDisclosureEvents(
+        items,
+        "yutai",
+        new Set(),
+        "",
+        7,
+        "2026-06-13",
+        "all",
+        false,
+        new Set(),
+      ),
+    ).toEqual([items[0]]);
   });
 
   it("マイ銘柄ビューは端末内コードに一致する personal イベントだけ表示する", () => {
@@ -60,7 +72,49 @@ describe("filterDisclosureEvents", () => {
     });
 
     expect(
-      filterDisclosureEvents([matching, other], "my-stocks", new Set(["1234"]), ""),
+      filterDisclosureEvents(
+        [matching, other],
+        "my-stocks",
+        new Set(["1234"]),
+        "",
+        7,
+        "2026-06-13",
+        "all",
+        false,
+        new Set(),
+      ),
     ).toEqual([matching]);
+  });
+
+  it("表示期間と分類、未確認だけを組み合わせて絞り込む", () => {
+    const recent = event({
+      event_id: "recent",
+      disclosure_date: "2026-06-12",
+      event_type: "yutai_new",
+    });
+    const old = event({
+      event_id: "old",
+      disclosure_date: "2026-05-01",
+      event_type: "yutai_new",
+    });
+    const reviewed = event({
+      event_id: "reviewed",
+      disclosure_date: "2026-06-11",
+      event_type: "yutai_expand",
+    });
+
+    expect(
+      filterDisclosureEvents(
+        [recent, old, reviewed],
+        "yutai",
+        new Set(),
+        "",
+        7,
+        "2026-06-13",
+        "new-expand",
+        true,
+        new Set(["reviewed"]),
+      ),
+    ).toEqual([recent]);
   });
 });
