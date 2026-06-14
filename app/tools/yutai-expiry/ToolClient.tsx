@@ -25,6 +25,7 @@ import {
   consume,
   restock,
   setUsedAll,
+  setArchived,
   removeHistoryEntry,
   itemValueYen,
   itemUsedYen,
@@ -120,6 +121,10 @@ function fmtYen(n: number): string {
 
 function isExpired(it: BenefitItemV2, today: string): boolean {
   return !!it.expiresOn && it.expiresOn < today;
+}
+
+function isArchived(it: BenefitItemV2): boolean {
+  return !!it.archivedAt;
 }
 
 function StatTile({
@@ -475,6 +480,8 @@ export default function ToolClient({ scanEnabled = false }: Props) {
   };
 
   const [showUsed, setShowUsed] = useState(true);
+  // アーカイブ済みは既定で非表示。トグルで一覧に含められる。
+  const [showArchived, setShowArchived] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("expiryAsc");
   const [query, setQuery] = useState("");
 
@@ -537,6 +544,8 @@ export default function ToolClient({ scanEnabled = false }: Props) {
     const today = todayISODate();
 
     const base = items.filter((it) => {
+      // アーカイブ済みは既定で隠す（「アーカイブを含む」ON のときだけ出す）
+      if (!showArchived && isArchived(it)) return false;
       if (!showUsed && it.isUsed) return false;
 
       // 検索
@@ -586,10 +595,20 @@ export default function ToolClient({ scanEnabled = false }: Props) {
     });
 
     return sorted;
-  }, [items, showUsed, query, tab, sortKey, thisMonthKey, nextMonthStart]);
+  }, [
+    items,
+    showUsed,
+    showArchived,
+    query,
+    tab,
+    sortKey,
+    thisMonthKey,
+    nextMonthStart,
+  ]);
 
   const thisMonthCount = useMemo(() => {
     return items.filter((it) => {
+      if (isArchived(it)) return false;
       if (it.isUsed) return false; // “基本表示：未使用だけ” の数字に寄せる
       if (!it.expiresOn) return false;
       return isSameMonth(parseLocalDate(it.expiresOn), now);
@@ -598,6 +617,7 @@ export default function ToolClient({ scanEnabled = false }: Props) {
 
   const laterCount = useMemo(() => {
     return items.filter((it) => {
+      if (isArchived(it)) return false;
       if (it.isUsed) return false;
       if (!it.expiresOn) return false;
       return parseLocalDate(it.expiresOn).getTime() >= nextMonthStart.getTime();
@@ -605,29 +625,37 @@ export default function ToolClient({ scanEnabled = false }: Props) {
   }, [items, nextMonthStart]);
 
   const allCount = useMemo(() => {
-    return items.filter((it) => !it.isUsed).length;
+    return items.filter((it) => !isArchived(it) && !it.isUsed).length;
   }, [items]);
 
   const overdueCount = useMemo(() => {
     const today = todayISODate();
-    return items.filter((it) => !it.isUsed && isExpired(it, today)).length;
+    return items.filter(
+      (it) => !isArchived(it) && !it.isUsed && isExpired(it, today)
+    ).length;
   }, [items]);
 
   const noExpiryCount = useMemo(() => {
-    return items.filter((it) => !it.isUsed && !it.expiresOn).length;
+    return items.filter((it) => !isArchived(it) && !it.isUsed && !it.expiresOn)
+      .length;
+  }, [items]);
+
+  // アーカイブ済み件数（トグルの横に出して存在を可視化する）
+  const archivedCount = useMemo(() => {
+    return items.filter((it) => isArchived(it)).length;
   }, [items]);
 
   const unusedTotalYen = useMemo(() => {
     const today = todayISODate();
     return items.reduce((sum, it) => {
-      if (it.isUsed || isExpired(it, today)) return sum;
+      if (isArchived(it) || it.isUsed || isExpired(it, today)) return sum;
       return sum + itemValueYen(it);
     }, 0);
   }, [items]);
 
   const expiringThisMonthYen = useMemo(() => {
     return items.reduce((sum, it) => {
-      if (it.isUsed || !it.expiresOn) return sum;
+      if (isArchived(it) || it.isUsed || !it.expiresOn) return sum;
       if (!isSameMonth(parseLocalDate(it.expiresOn), now)) return sum;
       return sum + itemValueYen(it);
     }, 0);
@@ -636,29 +664,43 @@ export default function ToolClient({ scanEnabled = false }: Props) {
   const expiredTotalYen = useMemo(() => {
     const today = todayISODate();
     return items.reduce((sum, it) => {
-      if (it.isUsed || !isExpired(it, today)) return sum;
+      if (isArchived(it) || it.isUsed || !isExpired(it, today)) return sum;
       return sum + itemValueYen(it);
     }, 0);
   }, [items]);
 
   const usedTotalYen = useMemo(() => {
-    return items.reduce((sum, it) => sum + itemUsedYen(it), 0);
+    return items.reduce(
+      (sum, it) => (isArchived(it) ? sum : sum + itemUsedYen(it)),
+      0
+    );
   }, [items]);
 
   const grantedTotalYen = useMemo(() => {
-    return items.reduce((sum, it) => sum + itemGrantedYen(it), 0);
+    return items.reduce(
+      (sum, it) => (isArchived(it) ? sum : sum + itemGrantedYen(it)),
+      0
+    );
   }, [items]);
 
   // 額面未設定の count アイテム数（金額集計に反映されない既存データの救済導線）
   const missingUnitYenCount = useMemo(() => {
     return items.filter(
-      (it) => it.trackMode === "count" && it.unitYen == null && (it.initial ?? 0) > 0
+      (it) =>
+        !isArchived(it) &&
+        it.trackMode === "count" &&
+        it.unitYen == null &&
+        (it.initial ?? 0) > 0
     ).length;
   }, [items]);
 
   function openFirstMissingUnitYen() {
     const target = items.find(
-      (it) => it.trackMode === "count" && it.unitYen == null && (it.initial ?? 0) > 0
+      (it) =>
+        !isArchived(it) &&
+        it.trackMode === "count" &&
+        it.unitYen == null &&
+        (it.initial ?? 0) > 0
     );
     if (target) openEdit(target);
   }
@@ -794,6 +836,20 @@ export default function ToolClient({ scanEnabled = false }: Props) {
       prev.map((p) => (p.id === id ? setUsedAll(p, !p.isUsed) : p))
     );
     const message = snapshot.isUsed ? "未使用に戻しました" : "全部使ったとして記録しました";
+    showUndoableToast(message, snapshot);
+  }
+
+  function toggleArchived(id: string) {
+    const snapshot = items.find((p) => p.id === id);
+    if (!snapshot) return;
+    const willArchive = !isArchived(snapshot);
+    setItems((prev) =>
+      prev.map((p) => (p.id === id ? setArchived(p, willArchive) : p))
+    );
+    // アーカイブ直後は既定で一覧から消えるので、Undo を出して誤操作を可逆にする。
+    const message = willArchive
+      ? "アーカイブしました"
+      : "アーカイブを解除しました";
     showUndoableToast(message, snapshot);
   }
 
@@ -1134,6 +1190,31 @@ export default function ToolClient({ scanEnabled = false }: Props) {
               <span>使用済含む</span>
             </label>
 
+            <label
+              className={`${styles.controlShell} ${styles.toggle}`}
+            >
+              <input
+                type="checkbox"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+                className={styles.toggleInput}
+              />
+              <span
+                className={`${styles.toggleCheck} ${
+                  showArchived ? styles.toggleCheckOn : ""
+                }`}
+                aria-hidden="true"
+              />
+              <span>
+                アーカイブを含む
+                {archivedCount > 0 && (
+                  <span className={styles.countPill} suppressHydrationWarning>
+                    {archivedCount}
+                  </span>
+                )}
+              </span>
+            </label>
+
             <div
               className={`${styles.controlShell} ${styles.selectWrap}`}
             >
@@ -1263,6 +1344,31 @@ export default function ToolClient({ scanEnabled = false }: Props) {
               <span>使用済含む</span>
             </label>
 
+            <label
+              className={`${styles.controlShell} ${styles.toggle} ${styles.mobileToggle}`}
+            >
+              <input
+                type="checkbox"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+                className={styles.toggleInput}
+              />
+              <span
+                className={`${styles.toggleCheck} ${
+                  showArchived ? styles.toggleCheckOn : ""
+                }`}
+                aria-hidden="true"
+              />
+              <span>
+                アーカイブ
+                {archivedCount > 0 && (
+                  <span className={styles.countPill} suppressHydrationWarning>
+                    {archivedCount}
+                  </span>
+                )}
+              </span>
+            </label>
+
             {scanEnabled && (
               <>
                 <CameraScanButton
@@ -1321,11 +1427,18 @@ export default function ToolClient({ scanEnabled = false }: Props) {
             return (
               <div
                 key={it.id}
-                className={`${styles.card} ${it.isUsed ? styles.cardUsed : ""}`}
+                className={`${styles.card} ${
+                  it.isUsed || isArchived(it) ? styles.cardUsed : ""
+                }`}
               >
                 <div className={styles.cardTop}>
                   <div className={styles.cardTitleRow}>
                     <div className={styles.cardTitle}>{it.title}</div>
+                    {isArchived(it) && (
+                      <span className={`${styles.badge} ${styles.badgeMuted}`}>
+                        アーカイブ済
+                      </span>
+                    )}
                     {badge ? (
                       <span
                         className={`${styles.badge} ${
@@ -1470,6 +1583,13 @@ export default function ToolClient({ scanEnabled = false }: Props) {
                   </button>
                   <button
                     type="button"
+                    className={styles.smallBtn}
+                    onClick={() => toggleArchived(it.id)}
+                  >
+                    {isArchived(it) ? "アーカイブ解除" : "アーカイブ"}
+                  </button>
+                  <button
+                    type="button"
                     className={`${styles.smallBtn} ${styles.dangerBtn}`}
                     onClick={() => removeItem(it.id)}
                   >
@@ -1495,7 +1615,12 @@ export default function ToolClient({ scanEnabled = false }: Props) {
             </thead>
             <tbody>
               {filtered.map((it) => (
-                <tr key={it.id} className={it.isUsed ? styles.rowUsed : ""}>
+                <tr
+                  key={it.id}
+                  className={
+                    it.isUsed || isArchived(it) ? styles.rowUsed : ""
+                  }
+                >
                   <td className={styles.mono}>
                     {it.expiresOn ? fmtJPDate(it.expiresOn) : "—"}
                   </td>
@@ -1566,7 +1691,12 @@ export default function ToolClient({ scanEnabled = false }: Props) {
                     )}
                   </td>
                   <td>{it.company}</td>
-                  <td>{it.isUsed ? "使用済み" : "未使用"}</td>
+                  <td>
+                    {it.isUsed ? "使用済み" : "未使用"}
+                    {isArchived(it) && (
+                      <span className={styles.rowSub}>アーカイブ済</span>
+                    )}
+                  </td>
                   <td className={styles.rowMemo}>{it.memo ?? ""}</td>
                   <td>
                     <div className={styles.rowActions}>
@@ -1608,6 +1738,13 @@ export default function ToolClient({ scanEnabled = false }: Props) {
                         onClick={() => openEdit(it)}
                       >
                         編集
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.smallBtn}
+                        onClick={() => toggleArchived(it.id)}
+                      >
+                        {isArchived(it) ? "アーカイブ解除" : "アーカイブ"}
                       </button>
                       <button
                         type="button"

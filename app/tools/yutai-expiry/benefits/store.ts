@@ -25,6 +25,9 @@ export type BenefitItemV2 = {
   remaining: number | null; // count: 残枚数 / amount: 残円
   history: UsageEntry[];
 
+  // アーカイブ（期限切れ / 使用済みなどを一覧から退避する。null=未アーカイブ）
+  archivedAt: string | null; // ISO or null
+
   // 旧フィールド（legacy 入力としてのみ読む。今後は書かない）
   quantity?: number | null;
   amountYen?: number | null;
@@ -157,6 +160,11 @@ export function coerceItem(x: unknown): BenefitItemV2 | null {
       ? obj.url
       : "";
 
+  const archivedAt =
+    typeof obj.archivedAt === "string" && obj.archivedAt.trim()
+      ? obj.archivedAt
+      : null;
+
   const createdAt =
     typeof obj.createdAt === "string" && obj.createdAt
       ? obj.createdAt
@@ -177,6 +185,7 @@ export function coerceItem(x: unknown): BenefitItemV2 | null {
     initial,
     remaining,
     history: normalizeHistory(obj.history),
+    archivedAt,
     memo: memo?.toString() ?? "",
     link: link.trim() ? link.trim() : undefined,
     createdAt,
@@ -333,6 +342,21 @@ export function setUsedAll(it: BenefitItemV2, used: boolean): BenefitItemV2 {
       ? { at: "", deltaYen: back - (it.remaining ?? 0), note: RESTORE_NOTE }
       : { at: "", deltaQty: back - (it.remaining ?? 0), note: RESTORE_NOTE }
   );
+}
+
+// アーカイブ切り替え。残量や履歴は変えず archivedAt のみ更新する（純操作）。
+export function setArchived(
+  it: BenefitItemV2,
+  archived: boolean
+): BenefitItemV2 {
+  const isArchived = !!it.archivedAt;
+  if (isArchived === archived) return it;
+  const nowIso = new Date().toISOString();
+  return {
+    ...it,
+    archivedAt: archived ? nowIso : null,
+    updatedAt: nowIso,
+  };
 }
 
 // 5) load/save (任意：今は未使用でもOK)
