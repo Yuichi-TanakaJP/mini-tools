@@ -256,7 +256,10 @@ const FRESHNESS_META: Record<Freshness, { label: string; bg: string; fg: string;
 };
 
 function classifyFreshness(row: ToolRow): Freshness {
-  return classifyFreshnessDate(row.freshnessDate ?? row.latest);
+  return classifyFreshnessDate(
+    row.freshnessDate ?? row.latest,
+    row.schedule.expectedMaxDays,
+  );
 }
 
 function getAgeDays(row: ToolRow): number | null {
