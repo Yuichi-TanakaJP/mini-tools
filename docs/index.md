@@ -20,6 +20,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 - [2026-05-31 日興一般「在庫0」判定を available_shares 基準に変更](./decision-log/2026-05-31-nikko-out-of-stock-shares-based.md)
 - [2026-06-01 投資主体別売買動向の分析API優先表示](./decision-log/2026-06-01-investor-flow-analysis-api-view.md)
 - [2026-06-15 投資主体別売買動向のダッシュボード鮮度基準](./decision-log/2026-06-15-investor-flow-dashboard-freshness.md)
+- [2026-06-15 管理ダッシュボードのスケジュール連動鮮度判定](./decision-log/2026-06-15-schedule-aware-dashboard-freshness.md)
 - [2026-05-30 日興信用バッジの記号化と「売可だが在庫0」追加](./decision-log/2026-05-30-nikko-general-out-of-stock-badge.md)
 - [2026-05-30 ルーター遷移の押下フィードバック共通化（useRouterTransition + pendingKey）](./decision-log/2026-05-30-router-transition-pending-feedback.md)
 - [2026-05-28 yutai-candidates の「パス」アクションとカードレイアウト見直し](./decision-log/2026-05-28-yutai-candidates-pass-action.md)

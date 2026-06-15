@@ -19,12 +19,16 @@ export function getAgeDaysFromDate(value: string, todayJst: string = jstDateStri
   return Math.max(0, Math.round((t2 - t1) / 86_400_000));
 }
 
-export function classifyFreshnessDate(value: string | null | undefined, todayJst?: string): Freshness {
+export function classifyFreshnessDate(
+  value: string | null | undefined,
+  expectedMaxDays: number | null,
+  todayJst?: string,
+): Freshness {
   if (value === undefined) return "none";
   if (value === null) return "failed";
   const ageDays = getAgeDaysFromDate(value, todayJst);
   if (ageDays === null) return "recent";
   if (ageDays <= 2) return "fresh";
-  if (ageDays <= 7) return "recent";
+  if (ageDays <= (expectedMaxDays ?? 7)) return "recent";
   return "stale";
 }
