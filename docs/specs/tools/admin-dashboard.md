@@ -108,6 +108,12 @@ latest が null (取得失敗)        → "breach"
 
 age は `(today_JST - row.latest)` を YYYY-MM-DD ベースで日数換算する。判定基準は **JST (Asia/Tokyo)** で固定 (週末・祝日オフセットなし)。UTC 基準で計算すると 00:00-08:59 JST の間に age が 1 日少なく出てしまうため、`Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" })` で今日の JST 日付を取得して差分を取る。
 
+投資主体別売買動向は、対象週の `latest.start_date` ではなく manifest の
+`generated_at_jst` を freshness / SLA の基準日に使う。JPX の週次データは対象週の翌週に
+公表されるため、対象週の開始日を基準にすると正常公開直後でも `STALE` になるため。
+画面に表示する最終更新週と履歴は従来どおり `latest.start_date` / `weeks[].start_date` を使う。
+SLA 一覧では対象週を `Latest week`、鮮度計算に使った公開日時を `Published` として分けて表示する。
+
 ### Freshness 分類 (heatmap / pill 用)
 
 | ラベル | 条件 |
