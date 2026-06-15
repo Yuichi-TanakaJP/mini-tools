@@ -5,6 +5,12 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
 import { fetchJson, getApiBaseUrl } from "@/lib/market-api";
+import {
+  classifyFreshnessDate,
+  getAgeDaysFromDate,
+  jstDateString,
+  type Freshness,
+} from "./freshness";
 
 export const metadata: Metadata = {
   title: "Admin Dashboard | mini-tools",
@@ -40,12 +46,11 @@ type ToolRow = {
   schedule: Schedule;
   note?: string;
   latest?: string | null;
+  freshnessDate?: string | null;
   fetchedAt?: string;
   /** manifest が dates[]/weeks[] を持つ場合の実履歴 (YYYY-MM-DD)。空配列 = 履歴なし */
   history?: string[];
 };
-
-type Freshness = "fresh" | "recent" | "stale" | "failed" | "none";
 
 // ============== Data Fetch Helpers ==============
 
@@ -53,20 +58,25 @@ async function fetchManifestLatest(
   endpoint: string,
   pick: (json: unknown) => string | null,
   pickHistory?: (json: unknown) => string[],
-  options: { cache?: RequestCache } = {},
-): Promise<{ latest: string | null; fetchedAt: string; history: string[] }> {
+  options: { cache?: RequestCache; pickFreshnessDate?: (json: unknown) => string | null } = {},
+): Promise<{ latest: string | null; freshnessDate: string | null; fetchedAt: string; history: string[] }> {
   const apiBase = getApiBaseUrl();
   const fetchedAt = new Date().toISOString();
-  if (!apiBase) return { latest: null, fetchedAt, history: [] };
+  if (!apiBase) return { latest: null, freshnessDate: null, fetchedAt, history: [] };
   try {
     // 管理画面なので fresh 性より通信量を優先: 10 分 (600s) キャッシュ。
     // 1 ユーザー (= ほぼ自分のみ) が連続でタブを切替えても、各 manifest は 10 分に 1 回しか実 API を叩かない。
     // 例外: 2MB を超えるレスポンス (例: /stock-master/latest) は Data Cache に載らず
     // 「Failed to set Next.js data cache」を毎回吐くため、呼び出し側で cache:"no-store" を指定する。
-    const json = await fetchJson<unknown>(`${apiBase}${endpoint}`, 600, options);
-    return { latest: pick(json), fetchedAt, history: pickHistory ? pickHistory(json) : [] };
+    const json = await fetchJson<unknown>(`${apiBase}${endpoint}`, 600, { cache: options.cache });
+    return {
+      latest: pick(json),
+      freshnessDate: options.pickFreshnessDate?.(json) ?? null,
+      fetchedAt,
+      history: pickHistory ? pickHistory(json) : [],
+    };
   } catch {
-    return { latest: null, fetchedAt, history: [] };
+    return { latest: null, freshnessDate: null, fetchedAt, history: [] };
   }
 }
 
@@ -176,7 +186,12 @@ async function loadRows(): Promise<ToolRow[]> {
     fetchManifestLatest("/yutai/manifest", (j) => pickString(j, "generated_at")),
     fetchManifestLatest("/market-rankings/market-cap/manifest", (j) => pickString(j, "generatedAt") ?? pickString(j, "latest")),
     fetchManifestLatest("/market-rankings/dividend-yield/manifest", (j) => pickString(j, "generatedAt") ?? pickString(j, "latest")),
-    fetchManifestLatest("/investor-flow/manifest", pickInvestorFlowLatestStart, pickInvestorFlowWeeks),
+    fetchManifestLatest(
+      "/investor-flow/manifest",
+      pickInvestorFlowLatestStart,
+      pickInvestorFlowWeeks,
+      { pickFreshnessDate: (j) => pickString(j, "generated_at_jst") },
+    ),
   ]);
   const [nikkoCredit, sbiCredit, tdnet, jpxClosed, disclosureEvents, stockMaster] = await Promise.all([
     fetchManifestLatest("/nikko/credit", (j) => pickString(j, "date") ?? pickString(j, "generated_at")),
@@ -194,7 +209,7 @@ async function loadRows(): Promise<ToolRow[]> {
     { category: "stocks", name: "米国株ランキング", href: "/tools/us-stock-ranking", source: "/us-ranking/manifest", rule: "生成は --with-us-ranking。publish 運用は要確認。", schedule: SCHED_AD_HOC, latest: usRanking.latest, fetchedAt: usRanking.fetchedAt, history: usRanking.history },
     { category: "stocks", name: "市場ランキング (時価総額)", href: "/tools/market-rankings", source: "/market-rankings/market-cap/manifest", rule: SCHED_MONTHLY.description, schedule: SCHED_MONTHLY, latest: marketCap.latest, fetchedAt: marketCap.fetchedAt },
     { category: "stocks", name: "市場ランキング (配当利回り)", href: "/tools/market-rankings", source: "/market-rankings/dividend-yield/manifest", rule: SCHED_MONTHLY.description, schedule: SCHED_MONTHLY, latest: dividendYield.latest, fetchedAt: dividendYield.fetchedAt },
-    { category: "stocks", name: "投資主体別売買動向", href: "/tools/investor-flow", source: "/investor-flow/manifest", rule: SCHED_WEEKLY.description, schedule: SCHED_WEEKLY, latest: investorFlow.latest, fetchedAt: investorFlow.fetchedAt, history: investorFlow.history },
+    { category: "stocks", name: "投資主体別売買動向", href: "/tools/investor-flow", source: "/investor-flow/manifest", rule: SCHED_WEEKLY.description, schedule: SCHED_WEEKLY, latest: investorFlow.latest, freshnessDate: investorFlow.freshnessDate, fetchedAt: investorFlow.fetchedAt, history: investorFlow.history },
 
     { category: "calendars", name: "決算カレンダー (国内)", href: "/tools/earnings-calendar", source: "/earnings-calendar/domestic/manifest", rule: SCHED_WEEKLY.description, schedule: SCHED_WEEKLY, latest: earningsDom.latest, fetchedAt: earningsDom.fetchedAt },
     { category: "calendars", name: "決算カレンダー (海外)", href: "/tools/earnings-calendar", source: "/earnings-calendar/overseas/manifest", rule: SCHED_WEEKLY.description, schedule: SCHED_WEEKLY, latest: earningsOv.latest, fetchedAt: earningsOv.fetchedAt },
@@ -241,33 +256,13 @@ const FRESHNESS_META: Record<Freshness, { label: string; bg: string; fg: string;
 };
 
 function classifyFreshness(row: ToolRow): Freshness {
-  if (row.latest === undefined) return "none";
-  if (row.latest === null) return "failed";
-  const ageDays = getAgeDays(row);
-  if (ageDays === null) return "recent";
-  if (ageDays <= 2) return "fresh";
-  if (ageDays <= 7) return "recent";
-  return "stale";
-}
-
-/** JST (Asia/Tokyo) 基準で YYYY-MM-DD を返す */
-function jstDateString(date: Date = new Date()): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Tokyo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
+  return classifyFreshnessDate(row.freshnessDate ?? row.latest);
 }
 
 function getAgeDays(row: ToolRow): number | null {
-  if (!row.latest) return null;
-  const latestDate = row.latest.slice(0, 10);
-  const todayJst = jstDateString();
-  const t1 = Date.parse(`${latestDate}T00:00:00Z`);
-  const t2 = Date.parse(`${todayJst}T00:00:00Z`);
-  if (Number.isNaN(t1) || Number.isNaN(t2)) return null;
-  return Math.max(0, Math.round((t2 - t1) / 86_400_000));
+  const freshnessDate = row.freshnessDate ?? row.latest;
+  if (!freshnessDate) return null;
+  return getAgeDaysFromDate(freshnessDate);
 }
 
 function formatAge(days: number | null): string {
@@ -451,8 +446,15 @@ function SlaView({ rows }: { rows: ToolRow[] }) {
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 11 }}>
                     <span style={{ color: "#94a3b8" }}>
-                      Last: <span style={{ color: "#f1f5f9", fontWeight: 700, fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>{formatLatest(row.latest)}</span>
-                      <span style={{ color: "#64748b", marginLeft: 6 }}>({formatAge(age)} ago)</span>
+                      {row.freshnessDate ? "Latest week: " : "Last: "}
+                      <span style={{ color: "#f1f5f9", fontWeight: 700, fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>{formatLatest(row.latest)}</span>
+                      {row.freshnessDate ? (
+                        <span style={{ color: "#64748b", marginLeft: 8 }}>
+                          Published: {formatLatest(row.freshnessDate)} ({formatAge(age)} ago)
+                        </span>
+                      ) : (
+                        <span style={{ color: "#64748b", marginLeft: 6 }}>({formatAge(age)} ago)</span>
+                      )}
                     </span>
                     {sla.status === "no-sla" ? (
                       <span style={{ color: "#64748b", fontSize: 10, fontWeight: 800 }}>NO SLA</span>
