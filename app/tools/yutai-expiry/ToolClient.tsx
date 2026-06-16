@@ -1083,10 +1083,16 @@ export default function ToolClient({ scanEnabled = false }: Props) {
 
           <div className={styles.statDashDivider} />
 
-          <div className={styles.statDashRow}>
+          <div className={`${styles.statDashRow} ${styles.statDashRowWide}`}>
             <StatTile label="今月の未使用" value={thisMonthCount} variant="num" />
             <StatTile label="期限切れ" value={overdueCount} variant="num" />
             <StatTile label="期限未設定" value={noExpiryCount} variant="num" />
+            <StatTile
+              label="アーカイブ"
+              value={archivedCount}
+              variant="num"
+              hint="アーカイブ済みの件数（「アーカイブを含む」で一覧に表示）"
+            />
           </div>
         </div>
 
