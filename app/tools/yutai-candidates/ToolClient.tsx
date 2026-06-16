@@ -562,7 +562,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                           aria-pressed={picked}
                           style={picked ? styles.pickButtonActive : styles.pickButton}
                         >
-                          {picked ? "★ ピック済み" : "☆ ピック"}
+                          {picked ? "★ ピック" : "☆ ピック"}
                         </button>
                         <button
                           type="button"
