@@ -49,6 +49,7 @@ export function filterDisclosureEvents(
   unreadOnly: boolean,
   readEventIds: Set<string>,
 ): DisclosureEventItem[] {
+  if (!referenceDate) return [];
   const normalizedQuery = query.trim().toLowerCase();
   const cutoff = addDays(referenceDate, -(rangeDays - 1));
 
