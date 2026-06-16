@@ -132,11 +132,13 @@ function StatTile({
   value,
   variant = "yen",
   positive = false,
+  hint,
 }: {
   label: string;
   value: React.ReactNode;
   variant?: "yen" | "num";
   positive?: boolean;
+  hint?: string;
 }) {
   const valueClass = [
     variant === "num" ? styles.statTileValueNum : styles.statTileValue,
@@ -145,7 +147,7 @@ function StatTile({
     .filter(Boolean)
     .join(" ");
   return (
-    <div className={styles.statTile}>
+    <div className={styles.statTile} title={hint}>
       <span className={styles.statTileLabel}>{label}</span>
       <strong className={valueClass} suppressHydrationWarning>
         {value}
@@ -661,26 +663,22 @@ export default function ToolClient({ scanEnabled = false }: Props) {
     }, 0);
   }, [items, now]);
 
+  // 累計（生涯記録）はアーカイブ済みも含める。一度確定した「もらった/使った/失効」は
+  // 退避しても記録として残し、`もらった − 使った − 失効 = 未使用` の関係を保つ。
   const expiredTotalYen = useMemo(() => {
     const today = todayISODate();
     return items.reduce((sum, it) => {
-      if (isArchived(it) || it.isUsed || !isExpired(it, today)) return sum;
+      if (it.isUsed || !isExpired(it, today)) return sum;
       return sum + itemValueYen(it);
     }, 0);
   }, [items]);
 
   const usedTotalYen = useMemo(() => {
-    return items.reduce(
-      (sum, it) => (isArchived(it) ? sum : sum + itemUsedYen(it)),
-      0
-    );
+    return items.reduce((sum, it) => sum + itemUsedYen(it), 0);
   }, [items]);
 
   const grantedTotalYen = useMemo(() => {
-    return items.reduce(
-      (sum, it) => (isArchived(it) ? sum : sum + itemGrantedYen(it)),
-      0
-    );
+    return items.reduce((sum, it) => sum + itemGrantedYen(it), 0);
   }, [items]);
 
   // 額面未設定の count アイテム数（金額集計に反映されない既存データの救済導線）
@@ -1064,18 +1062,37 @@ export default function ToolClient({ scanEnabled = false }: Props) {
           </div>
 
           <div className={`${styles.statDashRow} ${styles.statDashRowWide}`}>
-            <StatTile label="もらった" value={fmtYen(grantedTotalYen)} />
-            <StatTile label="使った" value={fmtYen(usedTotalYen)} positive />
-            <StatTile label="失効" value={fmtYen(expiredTotalYen)} />
+            <StatTile
+              label="もらった"
+              value={fmtYen(grantedTotalYen)}
+              hint="累計（アーカイブ済みも含む）"
+            />
+            <StatTile
+              label="使った"
+              value={fmtYen(usedTotalYen)}
+              positive
+              hint="累計（アーカイブ済みも含む）"
+            />
+            <StatTile
+              label="失効"
+              value={fmtYen(expiredTotalYen)}
+              hint="累計（アーカイブ済みも含む）"
+            />
             <StatTile label="今月失効" value={fmtYen(expiringThisMonthYen)} />
           </div>
 
           <div className={styles.statDashDivider} />
 
-          <div className={styles.statDashRow}>
+          <div className={`${styles.statDashRow} ${styles.statDashRowWide}`}>
             <StatTile label="今月の未使用" value={thisMonthCount} variant="num" />
             <StatTile label="期限切れ" value={overdueCount} variant="num" />
             <StatTile label="期限未設定" value={noExpiryCount} variant="num" />
+            <StatTile
+              label="アーカイブ"
+              value={archivedCount}
+              variant="num"
+              hint="アーカイブ済みの件数（「アーカイブを含む」で一覧に表示）"
+            />
           </div>
         </div>
 
