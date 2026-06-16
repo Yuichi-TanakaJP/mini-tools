@@ -1078,7 +1078,7 @@ export default function ToolClient({ scanEnabled = false }: Props) {
               value={fmtYen(expiredTotalYen)}
               hint="累計（アーカイブ済みも含む）"
             />
-            <StatTile label="今月失効" value={fmtYen(expiringThisMonthYen)} />
+            <StatTile label="今月期限" value={fmtYen(expiringThisMonthYen)} />
           </div>
 
           <div className={styles.statDashDivider} />
