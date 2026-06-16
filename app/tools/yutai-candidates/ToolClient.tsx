@@ -511,13 +511,13 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                             <span style={styles.codeChip}>{item.code}</span>
                             <button
                               type="button"
-                              onClick={() => togglePick(item.code)}
-                              aria-pressed={picked}
-                              aria-label={picked ? "ピックを解除" : "ピックに追加"}
-                              title={picked ? "ピックを解除" : "ピックに追加"}
-                              style={picked ? styles.pickStarActive : styles.pickStar}
+                              onClick={() => togglePass(item.code)}
+                              aria-pressed={passed}
+                              aria-label={passed ? "パスを解除" : "パスする"}
+                              title={passed ? "パスを解除" : "パスする"}
+                              style={passed ? styles.passDismissActive : styles.passDismiss}
                             >
-                              {picked ? "★" : "☆"}
+                              ✕
                             </button>
                           </div>
                           <div style={styles.metaRow}>
@@ -558,10 +558,11 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                         )}
                         <button
                           type="button"
-                          onClick={() => togglePass(item.code)}
-                          style={passed ? styles.secondaryButtonActive : styles.secondaryButton}
+                          onClick={() => togglePick(item.code)}
+                          aria-pressed={picked}
+                          style={picked ? styles.pickButtonActive : styles.pickButton}
                         >
-                          {passed ? "パス解除" : "パス"}
+                          {picked ? "★ ピック済み" : "☆ ピック"}
                         </button>
                         <button
                           type="button"
@@ -905,7 +906,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderLeft: "3px solid #cbd5e1",
     opacity: 0.62,
   },
-  pickStar: {
+  passDismiss: {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
@@ -915,24 +916,24 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid rgba(15,23,42,0.10)",
     background: "#ffffff",
     color: "#94a3b8",
-    fontSize: 15,
+    fontSize: 13,
     lineHeight: 1,
     cursor: "pointer",
     padding: 0,
     marginLeft: "auto",
     flexShrink: 0,
   },
-  pickStarActive: {
+  passDismissActive: {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
     width: 26,
     height: 26,
     borderRadius: 999,
-    border: "1px solid rgba(245,158,11,0.35)",
-    background: "#fef3c7",
-    color: "#d97706",
-    fontSize: 15,
+    border: "1px solid rgba(100,116,139,0.35)",
+    background: "#e2e8f0",
+    color: "#475569",
+    fontSize: 13,
     lineHeight: 1,
     cursor: "pointer",
     padding: 0,
@@ -1158,7 +1159,7 @@ const styles: Record<string, React.CSSProperties> = {
     minWidth: 0,
     whiteSpace: "nowrap",
   },
-  secondaryButton: {
+  pickButton: {
     ...baseSecondaryButton,
     border: "1px solid rgba(15,23,42,0.10)",
     background: "#ffffff",
@@ -1166,10 +1167,10 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
     width: "100%",
   },
-  secondaryButtonActive: {
+  pickButtonActive: {
     ...baseSecondaryButton,
-    border: "1px solid rgba(245,158,11,0.25)",
-    background: "#fffbeb",
+    border: "1px solid rgba(245,158,11,0.35)",
+    background: "#fef3c7",
     color: "#92400e",
     width: "100%",
   },
