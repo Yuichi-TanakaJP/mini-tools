@@ -27,20 +27,12 @@ export const CATEGORY_ORDER: ToolCategory[] = ["input", "yutai", "market", "fun"
 
 export const TOOLS: ToolItem[] = [
   {
-    title: "合計計算",
-    short: "数字を貼るだけ",
-    detail: "1行ごとに入力 → 合計。カンマ・円記号・マイナスもOK。入力は端末内保存。",
-    href: "/tools/total",
-    icon: "🧮",
-    category: "input",
-  },
-  {
-    title: "文字数カウント",
-    short: "文章を貼るだけ",
-    detail: "X投稿の下書きを貼って文字数を確認。URL・絵文字も正確に推定。140字残りも表示。",
-    href: "/tools/charcount",
-    icon: "🔤",
-    category: "input",
+    title: "マイ銘柄リスト",
+    short: "保有・ウォッチを端末内に保存",
+    detail: "保有銘柄と気になる銘柄を端末内に保存。決算予定日・優待権利月のバッジ付き。サーバー送信なし。",
+    href: "/tools/my-stocks",
+    icon: "⭐",
+    category: "yutai",
   },
   {
     title: "株主優待期限帳",
@@ -56,14 +48,6 @@ export const TOOLS: ToolItem[] = [
     detail: "早取り・長期1株・任期注意・失敗ログを銘柄ごとに保存。端末内に保存。",
     href: "/tools/yutai-memo",
     icon: "📝",
-    category: "yutai",
-  },
-  {
-    title: "マイ銘柄リスト",
-    short: "保有・ウォッチを端末内に保存",
-    detail: "保有銘柄と気になる銘柄を端末内に保存。決算予定日・優待権利月のバッジ付き。サーバー送信なし。",
-    href: "/tools/my-stocks",
-    icon: "⭐",
     category: "yutai",
   },
   {
@@ -177,6 +161,22 @@ export const TOOLS: ToolItem[] = [
     href: "/tools/penguin-shooter",
     icon: "🚀",
     category: "fun",
+  },
+  {
+    title: "合計計算",
+    short: "数字を貼るだけ",
+    detail: "1行ごとに入力 → 合計。カンマ・円記号・マイナスもOK。入力は端末内保存。",
+    href: "/tools/total",
+    icon: "🧮",
+    category: "input",
+  },
+  {
+    title: "文字数カウント",
+    short: "文章を貼るだけ",
+    detail: "X投稿の下書きを貼って文字数を確認。URL・絵文字も正確に推定。140字残りも表示。",
+    href: "/tools/charcount",
+    icon: "🔤",
+    category: "input",
   },
 ];
 
