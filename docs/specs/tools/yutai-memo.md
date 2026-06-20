@@ -22,6 +22,7 @@
 - タグ / 状態による絞り込み
 - 取得済み銘柄の月別アコーディオン
 - 優待カレンダーからの取り込み項目表示
+- 優待カレンダー上での追加済みメモ簡易編集
 
 ### 入力
 
@@ -51,6 +52,8 @@
 - タグや取得状態に応じた表示切替
 - 取得済み銘柄の年月別一覧
 - 関連 URL へのリンク
+- 優待カレンダー側から追加済みメモの本文・任期条件・早打ち目安・取得済み状態などを更新できる
+- 優待カレンダー側から誤追加を解除できる。単月メモは削除し、複数月メモは対象月だけを外す
 
 ## データ仕様
 
@@ -91,6 +94,7 @@
 - [app/tools/yutai-memo/ToolClient.tsx](/c:/Users/yutaz/dev/mini-tools/app/tools/yutai-memo/ToolClient.tsx)
 - [app/tools/yutai-memo/storage.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/yutai-memo/storage.ts)
 - [app/tools/yutai-memo/types.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/yutai-memo/types.ts)
+- [app/tools/yutai-candidates/ToolClient.tsx](/c:/Users/yutaz/dev/mini-tools/app/tools/yutai-candidates/ToolClient.tsx)
 
 ## 関連 docs
 

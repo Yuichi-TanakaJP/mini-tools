@@ -3,18 +3,40 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { addMemoItemFromCandidate, isImportedMonthlyYutaiCandidate } from "@/app/tools/yutai-memo/candidate-import";
-import { loadItems } from "@/app/tools/yutai-memo/storage";
+import { loadItems, saveItems } from "@/app/tools/yutai-memo/storage";
+import { CROSS_TYPES, type CrossType, type MemoItem } from "@/app/tools/yutai-memo/types";
 import { useRouterTransition } from "@/app/tools/_shared/use-router-transition";
 import type { MonthlyYutaiCandidate, MonthlyYutaiPageData } from "./types";
 
 const PICKED_KEY = "monthly_yutai_picks_v1";
 const PASSED_KEY = "monthly_yutai_passes_v1";
+const CARD_MEMOS_KEY = "monthly_yutai_card_memos_v1";
 
 type StatusFilter = "all" | "picked" | "passed" | "added" | "unselected";
 type LinkFilter = "all" | "with" | "without";
 type CrossFilter = "all" | "general" | "general_watch" | "institutional" | "any";
 type SbiFilter = "all" | "sbi_any";
 type SortKey = "company" | "code" | "investment" | "available_shares";
+type MemoEditDraft = {
+  name: string;
+  crossType: CrossType;
+  entryTiming: string;
+  relatedUrl: string;
+  tenureRule: string;
+  acquired: boolean;
+  priority: 1 | 2 | 3;
+  memo: string;
+};
+type EditingMemoContext = {
+  code: string;
+  companyName: string;
+  month: number;
+};
+type CalendarCardMemo = {
+  longTermRequired: boolean;
+  longTermBenefit: boolean;
+  updatedAt: string;
+};
 
 function normalizeText(value: string) {
   return value.normalize("NFKC").toLowerCase();
@@ -60,6 +82,45 @@ function loadCodeSet(storageKey: string) {
 function saveCodeSet(storageKey: string, codes: Set<string>) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(storageKey, JSON.stringify([...codes]));
+}
+
+function getCardMemoKey(item: Pick<MonthlyYutaiCandidate, "code" | "month">) {
+  return `${item.code}:${item.month}`;
+}
+
+function loadCardMemos(): Record<string, CalendarCardMemo> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(CARD_MEMOS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, Partial<CalendarCardMemo>>;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed)
+        .filter(([key, value]) => typeof key === "string" && value && typeof value === "object")
+        .map(([key, value]) => [
+          key,
+          {
+            longTermRequired: Boolean(value.longTermRequired),
+            longTermBenefit: Boolean(value.longTermBenefit),
+            updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : "",
+          },
+        ]),
+    );
+  } catch {
+    return {};
+  }
+}
+
+function saveCardMemos(memos: Record<string, CalendarCardMemo>) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(CARD_MEMOS_KEY, JSON.stringify(memos));
+}
+
+function getAddedKeysFromMemoItems(items: MemoItem[]) {
+  return new Set(
+    items.flatMap((item) => (item.months ?? []).map((month) => `${item.code ?? ""}:${month}`)),
+  );
 }
 
 type NikkoCreditRecord = NonNullable<MonthlyYutaiPageData["nikkoCredit"]>["by_code"][string];
@@ -160,18 +221,21 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const [pickedCodes, setPickedCodes] = useState<Set<string>>(new Set());
   const [passedCodes, setPassedCodes] = useState<Set<string>>(new Set());
   const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
+  const [cardMemos, setCardMemos] = useState<Record<string, CalendarCardMemo>>({});
   const [hydrated, setHydrated] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [editingMemo, setEditingMemo] = useState<MemoItem | null>(null);
+  const [editingMemoContext, setEditingMemoContext] = useState<EditingMemoContext | null>(null);
+  const [memoDraft, setMemoDraft] = useState<MemoEditDraft | null>(null);
 
   useEffect(() => {
     // localStorage はサーバーで読めないため、マウント後に初期化する（hydration mismatch 回避）
     /* eslint-disable react-hooks/set-state-in-effect */
     setPickedCodes(loadCodeSet(PICKED_KEY));
     setPassedCodes(loadCodeSet(PASSED_KEY));
+    setCardMemos(loadCardMemos());
     const items = loadItems();
-    setAddedKeys(new Set(
-      items.flatMap((item) => (item.months ?? []).map((month) => `${item.code ?? ""}:${month}`)),
-    ));
+    setAddedKeys(getAddedKeysFromMemoItems(items));
     setHydrated(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
@@ -237,6 +301,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
         }
 
         if (!normalizedQuery) return true;
+        const cardMemo = cardMemos[getCardMemoKey(item)];
         return normalizeText(
           [
             item.company_name,
@@ -244,6 +309,8 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
             item.benefit_summary,
             item.minimum_investment_text,
             item.benefit_category_tags.join(" "),
+            cardMemo?.longTermRequired ? "長期保有が要" : "",
+            cardMemo?.longTermBenefit ? "長期優待あり" : "",
           ].join(" "),
         ).includes(normalizedQuery);
       })
@@ -262,7 +329,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
         if (byName !== 0) return byName;
         return (a.minimum_investment_yen ?? Number.POSITIVE_INFINITY) - (b.minimum_investment_yen ?? Number.POSITIVE_INFINITY);
       });
-  }, [addedKeys, crossFilter, sbiFilter, data.items, data.nikkoCredit, data.sbiCredit, linkFilter, passedCodes, pickedCodes, query, sortKey, statusFilter, tagFilter]);
+  }, [addedKeys, cardMemos, crossFilter, sbiFilter, data.items, data.nikkoCredit, data.sbiCredit, linkFilter, passedCodes, pickedCodes, query, sortKey, statusFilter, tagFilter]);
 
   function togglePick(code: string) {
     setPickedCodes((prev) => {
@@ -323,6 +390,141 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
 
     setAddedKeys((prev) => new Set(prev).add(`${item.code}:${item.month}`));
     setNotice(`${item.company_name} を優待メモへ追加しました。`);
+  }
+
+  function updateCardMemo(key: string, patch: Partial<Omit<CalendarCardMemo, "updatedAt">>) {
+    setCardMemos((prev) => {
+      const current = prev[key] ?? {
+        longTermRequired: false,
+        longTermBenefit: false,
+        updatedAt: "",
+      };
+      const nextMemo = {
+        ...current,
+        ...patch,
+        updatedAt: new Date().toISOString(),
+      };
+      const next = { ...prev, [key]: nextMemo };
+      saveCardMemos(next);
+      return next;
+    });
+  }
+
+  function openMemoEdit(item: MonthlyYutaiCandidate) {
+    const items = loadItems();
+    const target = items.find(
+      (memoItem) => memoItem.code === item.code && Array.isArray(memoItem.months) && memoItem.months.includes(item.month),
+    );
+
+    if (!target) {
+      setAddedKeys(getAddedKeysFromMemoItems(items));
+      setNotice(`${item.company_name} の優待メモが見つかりませんでした。`);
+      return;
+    }
+
+    setEditingMemo(target);
+    setEditingMemoContext({
+      code: item.code,
+      companyName: item.company_name,
+      month: item.month,
+    });
+    setMemoDraft({
+      name: target.name,
+      crossType: target.crossType,
+      entryTiming: target.entryTiming ?? "",
+      relatedUrl: target.relatedUrl ?? "",
+      tenureRule: target.tenureRule ?? "",
+      acquired: target.acquired,
+      priority: target.priority,
+      memo: target.memo,
+    });
+    setNotice(null);
+  }
+
+  function closeMemoEdit() {
+    setEditingMemo(null);
+    setEditingMemoContext(null);
+    setMemoDraft(null);
+  }
+
+  function saveMemoEdit() {
+    if (!editingMemo || !memoDraft) return;
+
+    const items = loadItems();
+    let saved = false;
+    const now = new Date().toISOString();
+    const next = items.map((item) => {
+      if (item.id !== editingMemo.id) return item;
+      saved = true;
+      return {
+        ...item,
+        name: memoDraft.name.trim() || item.name,
+        crossType: memoDraft.crossType,
+        entryTiming: memoDraft.entryTiming.trim() || undefined,
+        relatedUrl: memoDraft.relatedUrl.trim() || undefined,
+        tenureRule: memoDraft.tenureRule.trim() || undefined,
+        acquired: memoDraft.acquired,
+        priority: memoDraft.priority,
+        memo: memoDraft.memo.trim(),
+        updatedAt: now,
+      };
+    });
+
+    if (!saved) {
+      setAddedKeys(getAddedKeysFromMemoItems(items));
+      setNotice("保存対象の優待メモが見つかりませんでした。");
+      closeMemoEdit();
+      return;
+    }
+
+    saveItems(next);
+    setAddedKeys(getAddedKeysFromMemoItems(next));
+    setNotice(`${memoDraft.name.trim() || editingMemo.name} の優待メモを保存しました。`);
+    closeMemoEdit();
+  }
+
+  function removeMemoAddition() {
+    if (!editingMemo || !editingMemoContext) return;
+
+    const message = editingMemo.months.length <= 1
+      ? `${editingMemoContext.companyName} の優待メモを削除して、未追加の状態に戻します。よろしいですか？`
+      : `${editingMemoContext.companyName} の ${editingMemoContext.month}月権利だけを優待メモから外します。よろしいですか？`;
+
+    if (!window.confirm(message)) return;
+
+    const items = loadItems();
+    let removed = false;
+    let deletedMemo = false;
+    const now = new Date().toISOString();
+    const next = items.flatMap((item) => {
+      if (item.id !== editingMemo.id) return [item];
+      if (!item.months.includes(editingMemoContext.month)) return [item];
+
+      removed = true;
+      const nextMonths = item.months.filter((month) => month !== editingMemoContext.month);
+      if (nextMonths.length === 0) {
+        deletedMemo = true;
+        return [];
+      }
+
+      return [{ ...item, months: nextMonths, updatedAt: now }];
+    });
+
+    if (!removed) {
+      setAddedKeys(getAddedKeysFromMemoItems(items));
+      setNotice("解除対象の優待メモが見つかりませんでした。");
+      closeMemoEdit();
+      return;
+    }
+
+    saveItems(next);
+    setAddedKeys(getAddedKeysFromMemoItems(next));
+    setNotice(
+      deletedMemo
+        ? `${editingMemoContext.companyName} の優待メモを削除しました。`
+        : `${editingMemoContext.companyName} の ${editingMemoContext.month}月権利を優待メモから外しました。`,
+    );
+    closeMemoEdit();
   }
 
   function handleMonthChange(nextMonthId: string) {
@@ -492,6 +694,12 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
               </div>
               <div style={styles.list}>
                 {filteredItems.map((item) => {
+                  const cardMemoKey = getCardMemoKey(item);
+                  const cardMemo = cardMemos[cardMemoKey] ?? {
+                    longTermRequired: false,
+                    longTermBenefit: false,
+                    updatedAt: "",
+                  };
                   const added = addedKeys.has(`${item.code}:${item.month}`);
                   const picked = pickedCodes.has(item.code);
                   const passed = passedCodes.has(item.code);
@@ -509,6 +717,24 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                           <div style={styles.cardNameRow}>
                             <span style={styles.companyName}>{item.company_name}</span>
                             <span style={styles.codeChip}>{item.code}</span>
+                            <button
+                              type="button"
+                              aria-pressed={cardMemo.longTermRequired}
+                              onClick={() => updateCardMemo(cardMemoKey, { longTermRequired: !cardMemo.longTermRequired })}
+                              title="長期保有が要"
+                              style={cardMemo.longTermRequired ? styles.inlineMemoChipActive : styles.inlineMemoChip}
+                            >
+                              長期要
+                            </button>
+                            <button
+                              type="button"
+                              aria-pressed={cardMemo.longTermBenefit}
+                              onClick={() => updateCardMemo(cardMemoKey, { longTermBenefit: !cardMemo.longTermBenefit })}
+                              title="長期優待あり"
+                              style={cardMemo.longTermBenefit ? styles.inlineMemoChipActive : styles.inlineMemoChip}
+                            >
+                              長期優待
+                            </button>
                             <button
                               type="button"
                               onClick={() => togglePass(item.code)}
@@ -566,11 +792,10 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleAdd(item)}
-                          style={added ? styles.disabledButton : styles.primaryButton}
-                          disabled={added}
+                          onClick={() => (added ? openMemoEdit(item) : handleAdd(item))}
+                          style={added ? styles.editButton : styles.primaryButton}
                         >
-                          {added ? "✓ 追加済み" : "優待メモ追加"}
+                          {added ? "メモ編集" : "優待メモ追加"}
                         </button>
                       </div>
                     </article>
@@ -587,6 +812,135 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
             <button type="button" onClick={() => setNotice(null)} style={styles.noticeButton}>
               閉じる
             </button>
+          </div>
+        )}
+        {editingMemo && editingMemoContext && memoDraft && (
+          <div style={styles.dialogBackdrop} role="presentation" onMouseDown={closeMemoEdit}>
+            <section
+              style={styles.dialog}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="memo-edit-title"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <div style={styles.dialogHeader}>
+                <div>
+                  <div id="memo-edit-title" style={styles.dialogTitle}>優待メモ編集</div>
+                  <div style={styles.dialogSubTitle}>
+                    {editingMemoContext.code} {editingMemoContext.companyName}
+                    <br />
+                    {editingMemoContext.month}月権利
+                  </div>
+                </div>
+                <button type="button" onClick={closeMemoEdit} style={styles.iconButton} aria-label="閉じる">
+                  ×
+                </button>
+              </div>
+
+              <label style={styles.fieldLabel}>
+                銘柄名
+                <input
+                  type="text"
+                  value={memoDraft.name}
+                  onChange={(event) => setMemoDraft((draft) => draft ? { ...draft, name: event.target.value } : draft)}
+                  style={styles.dialogInput}
+                />
+              </label>
+
+              <div style={styles.dialogGrid}>
+                <label style={styles.fieldLabel}>
+                  戦略タイプ
+                  <select
+                    value={memoDraft.crossType}
+                    onChange={(event) => setMemoDraft((draft) => draft ? { ...draft, crossType: event.target.value as CrossType } : draft)}
+                    style={styles.dialogInput}
+                  >
+                    {CROSS_TYPES.map((type) => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </label>
+                <label style={styles.fieldLabel}>
+                  優先度
+                  <select
+                    value={memoDraft.priority}
+                    onChange={(event) => setMemoDraft((draft) => draft ? { ...draft, priority: Number(event.target.value) as 1 | 2 | 3 } : draft)}
+                    style={styles.dialogInput}
+                  >
+                    <option value={1}>高</option>
+                    <option value={2}>中</option>
+                    <option value={3}>低</option>
+                  </select>
+                </label>
+              </div>
+
+              <label style={styles.fieldLabel}>
+                早取り目安
+                <input
+                  type="text"
+                  value={memoDraft.entryTiming}
+                  onChange={(event) => setMemoDraft((draft) => draft ? { ...draft, entryTiming: event.target.value } : draft)}
+                  placeholder="例: 権利月の2ヶ月前 / 8月中旬"
+                  style={styles.dialogInput}
+                />
+              </label>
+
+              <label style={styles.fieldLabel}>
+                任期条件
+                <input
+                  type="text"
+                  value={memoDraft.tenureRule}
+                  onChange={(event) => setMemoDraft((draft) => draft ? { ...draft, tenureRule: event.target.value } : draft)}
+                  placeholder="例: 1年以上 / 3月・9月連続"
+                  style={styles.dialogInput}
+                />
+              </label>
+
+              <label style={styles.fieldLabel}>
+                関連リンク
+                <input
+                  type="url"
+                  value={memoDraft.relatedUrl}
+                  onChange={(event) => setMemoDraft((draft) => draft ? { ...draft, relatedUrl: event.target.value } : draft)}
+                  placeholder="公式優待ページ / IR"
+                  style={styles.dialogInput}
+                />
+              </label>
+
+              <label style={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={memoDraft.acquired}
+                  onChange={(event) => setMemoDraft((draft) => draft ? { ...draft, acquired: event.target.checked } : draft)}
+                />
+                取得済み
+              </label>
+
+              <label style={styles.fieldLabel}>
+                メモ
+                <textarea
+                  value={memoDraft.memo}
+                  onChange={(event) => setMemoDraft((draft) => draft ? { ...draft, memo: event.target.value } : draft)}
+                  placeholder="失敗ログ / 早取り理由 / 去年の反省など"
+                  rows={6}
+                  style={styles.dialogTextarea}
+                />
+              </label>
+
+              <div style={styles.dialogActions}>
+                <button type="button" onClick={removeMemoAddition} style={styles.dialogDangerButton}>
+                  追加を解除
+                </button>
+                <div style={styles.dialogActionGroup}>
+                  <button type="button" onClick={closeMemoEdit} style={styles.dialogSecondaryButton}>
+                    キャンセル
+                  </button>
+                  <button type="button" onClick={saveMemoEdit} style={styles.dialogPrimaryButton}>
+                    保存
+                  </button>
+                </div>
+              </div>
+            </section>
           </div>
         )}
       </div>
@@ -980,6 +1334,36 @@ const styles: Record<string, React.CSSProperties> = {
     letterSpacing: 0.3,
     flexShrink: 0,
   },
+  inlineMemoChip: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    border: "1px solid rgba(15,23,42,0.10)",
+    background: "#ffffff",
+    color: "#94a3b8",
+    padding: "2px 7px",
+    borderRadius: 6,
+    fontSize: 11,
+    fontWeight: 800,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+    flexShrink: 0,
+  },
+  inlineMemoChipActive: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    border: "1px solid rgba(14,165,233,0.28)",
+    background: "#e0f2fe",
+    color: "#0369a1",
+    padding: "2px 7px",
+    borderRadius: 6,
+    fontSize: 11,
+    fontWeight: 900,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+    flexShrink: 0,
+  },
   metaRow: {
     display: "flex",
     flexWrap: "wrap",
@@ -1204,6 +1588,21 @@ const styles: Record<string, React.CSSProperties> = {
     whiteSpace: "nowrap",
     textAlign: "center",
   },
+  editButton: {
+    border: "1px solid rgba(34,197,94,0.30)",
+    background: "#ffffff",
+    color: "#15803d",
+    padding: "6px 16px",
+    borderRadius: 10,
+    fontSize: 12,
+    fontWeight: 800,
+    cursor: "pointer",
+    minWidth: 0,
+    width: "100%",
+    whiteSpace: "nowrap",
+    textAlign: "center",
+    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+  },
   notice: {
     position: "sticky",
     bottom: 20,
@@ -1230,5 +1629,151 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12,
     fontWeight: 700,
     whiteSpace: "nowrap",
+  },
+  dialogBackdrop: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 50,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+    background: "rgba(15,23,42,0.42)",
+  },
+  dialog: {
+    width: "min(100%, 560px)",
+    maxHeight: "calc(100vh - 32px)",
+    overflowY: "auto",
+    borderRadius: 18,
+    background: "#ffffff",
+    border: "1px solid rgba(15,23,42,0.10)",
+    boxShadow: "0 24px 64px rgba(15,23,42,0.28)",
+    padding: 18,
+  },
+  dialogHeader: {
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 14,
+  },
+  dialogTitle: {
+    fontSize: 18,
+    fontWeight: 900,
+    color: "#0f172a",
+    lineHeight: 1.3,
+  },
+  dialogSubTitle: {
+    marginTop: 3,
+    fontSize: 12,
+    fontWeight: 700,
+    color: "#64748b",
+  },
+  iconButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 32,
+    height: 32,
+    borderRadius: 999,
+    border: "1px solid rgba(15,23,42,0.10)",
+    background: "#f8fafc",
+    color: "#64748b",
+    cursor: "pointer",
+    fontSize: 18,
+    lineHeight: 1,
+    padding: 0,
+    flexShrink: 0,
+  },
+  fieldLabel: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    marginTop: 10,
+    fontSize: 12,
+    fontWeight: 800,
+    color: "#475569",
+  },
+  dialogGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: 10,
+  },
+  dialogInput: {
+    width: "100%",
+    borderRadius: 10,
+    border: "1px solid rgba(15,23,42,0.12)",
+    background: "#ffffff",
+    padding: "10px 11px",
+    fontSize: 14,
+    color: "#0f172a",
+    boxSizing: "border-box",
+  },
+  dialogTextarea: {
+    width: "100%",
+    minHeight: 128,
+    borderRadius: 10,
+    border: "1px solid rgba(15,23,42,0.12)",
+    background: "#ffffff",
+    padding: "10px 11px",
+    fontSize: 14,
+    lineHeight: 1.6,
+    color: "#0f172a",
+    boxSizing: "border-box",
+    resize: "vertical",
+  },
+  checkboxLabel: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 12,
+    fontSize: 13,
+    fontWeight: 800,
+    color: "#334155",
+  },
+  dialogActions: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 16,
+    flexWrap: "wrap",
+  },
+  dialogActionGroup: {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  dialogSecondaryButton: {
+    border: "1px solid rgba(15,23,42,0.10)",
+    background: "#ffffff",
+    color: "#475569",
+    padding: "9px 14px",
+    borderRadius: 10,
+    fontSize: 13,
+    fontWeight: 800,
+    cursor: "pointer",
+  },
+  dialogPrimaryButton: {
+    border: "none",
+    background: `linear-gradient(135deg, ${INDIGO} 0%, ${INDIGO_MID} 100%)`,
+    color: "#ffffff",
+    padding: "9px 16px",
+    borderRadius: 10,
+    fontSize: 13,
+    fontWeight: 900,
+    cursor: "pointer",
+    boxShadow: "0 2px 8px rgba(79,70,229,0.30)",
+  },
+  dialogDangerButton: {
+    border: "1px solid rgba(239,68,68,0.22)",
+    background: "#fff1f2",
+    color: "#be123c",
+    padding: "9px 14px",
+    borderRadius: 10,
+    fontSize: 13,
+    fontWeight: 800,
+    cursor: "pointer",
   },
 };
