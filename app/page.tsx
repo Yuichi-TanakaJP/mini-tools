@@ -1,8 +1,10 @@
 // app/page.tsx
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import ShareButtons from "@/components/ShareButtonsSuspended";
 import ToolGridClient from "./ToolGridClient";
-import { TOOLS } from "@/lib/tools-catalog";
+import { PREMIUM_EXTERNAL_TOOLS, TOOLS } from "@/lib/tools-catalog";
+import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
 
 export const metadata: Metadata = {
   title: "mini-tools | 個人投資家向けミニツール集",
@@ -13,7 +15,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  // premium ログイン済みのときだけ、ホームに外部ツール（TODO アプリ）カードを足す。
+  // サーバー側 cookie で判定するので、未ログインのクライアントには HTML 自体に出さない。
+  const cookieStore = await cookies();
+  const isPremium = verifyPremiumSession(cookieStore.get(PREMIUM_COOKIE_NAME)?.value);
+  const tools = isPremium ? [...TOOLS, ...PREMIUM_EXTERNAL_TOOLS] : TOOLS;
+
   return (
     <>
       <main style={{ maxWidth: 1040, margin: "0 auto", padding: "0 16px 64px" }}>
@@ -110,11 +118,11 @@ export default function HomePage() {
               fontSize: 11,
               fontWeight: 800,
             }}>
-              {TOOLS.length}
+              {tools.length}
             </span>
           </div>
 
-          <ToolGridClient tools={TOOLS} />
+          <ToolGridClient tools={tools} />
         </section>
 
         {/* フッター */}

@@ -13,6 +13,8 @@ export type ToolItem = {
   category: ToolCategory;
   disabled?: boolean;
   statusLabel?: string;
+  // 外部サイトへのリンク。true のときは別タブで開く（内部 routing は使わない）。
+  external?: boolean;
 };
 
 export const CATEGORY_LABELS: Record<ToolCategory, string> = {
@@ -177,6 +179,21 @@ export const TOOLS: ToolItem[] = [
     href: "/tools/charcount",
     icon: "🔤",
     category: "input",
+  },
+];
+
+// premium ログイン済みのときだけホームに表示する外部ツール。
+// 共有カタログ TOOLS には含めない（ナビのドロワーには出さず、ホーム限定にするため）。
+// DB はこのアプリと別管理なので、ここからは外部 URL へ飛ばすだけでデータは混ざらない。
+export const PREMIUM_EXTERNAL_TOOLS: ToolItem[] = [
+  {
+    title: "TODO アプリ",
+    short: "やることリスト（要ログイン）",
+    detail: "別アプリの TODO リストを開きます。premium ログイン中のみ表示。データはこのアプリとは別管理です。",
+    href: "https://todo-app-ten-rose-62.vercel.app/",
+    icon: "✅",
+    category: "input",
+    external: true,
   },
 ];
 

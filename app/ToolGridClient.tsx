@@ -13,6 +13,7 @@ type ToolItem = {
   icon: string;
   disabled?: boolean;
   statusLabel?: string;
+  external?: boolean;
 };
 
 type Props = {
@@ -226,27 +227,47 @@ export default function ToolGridClient({ tools }: Props) {
               />
             </div>
           ) : (
-            <Link
-              key={t.href}
-              href={t.href}
-              onClick={(event) => onOpen(event, t.href)}
-              onPointerDown={(event) => startLongPress(event, t.disabled)}
-              onPointerMove={cancelLongPressOnMove}
-              onPointerUp={clearLongPressTimer}
-              onPointerCancel={clearLongPressTimer}
-              onPointerLeave={clearLongPressTimer}
-              onContextMenu={(event) => {
-                if (isEditing || suppressNextClickRef.current) event.preventDefault();
-              }}
-              className="tool-card tool-card--link"
-            >
-              <div className="tool-card__icon">{t.icon}</div>
-              <div className="tool-card__body">
-                <div className="tool-card__title">{t.title}</div>
-                <div className="tool-card__desc">{t.detail}</div>
-              </div>
-              <div className="tool-card__arrow" aria-hidden>→</div>
-            </Link>
+            (() => {
+              const sharedProps = {
+                onClick: (event: MouseEvent) => onOpen(event, t.href),
+                onPointerDown: (event: PointerEvent) => startLongPress(event, t.disabled),
+                onPointerMove: cancelLongPressOnMove,
+                onPointerUp: clearLongPressTimer,
+                onPointerCancel: clearLongPressTimer,
+                onPointerLeave: clearLongPressTimer,
+                onContextMenu: (event: MouseEvent) => {
+                  if (isEditing || suppressNextClickRef.current) event.preventDefault();
+                },
+                className: "tool-card tool-card--link",
+              };
+              const inner = (
+                <>
+                  <div className="tool-card__icon">{t.icon}</div>
+                  <div className="tool-card__body">
+                    <div className="tool-card__title">{t.title}</div>
+                    <div className="tool-card__desc">{t.detail}</div>
+                  </div>
+                  <div className="tool-card__arrow" aria-hidden>
+                    {t.external ? "↗" : "→"}
+                  </div>
+                </>
+              );
+              return t.external ? (
+                <a
+                  key={t.href}
+                  href={t.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  {...sharedProps}
+                >
+                  {inner}
+                </a>
+              ) : (
+                <Link key={t.href} href={t.href} {...sharedProps}>
+                  {inner}
+                </Link>
+              );
+            })()
           )
         )}
       </div>
