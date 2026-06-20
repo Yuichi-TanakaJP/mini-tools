@@ -11,6 +11,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 
 設計・方針・トレードオフの判断理由を記録します。
 
+- [2026-06-21 ローカルデータの任意ログイン同期方針（オプトイン・クロスデバイス）](./decision-log/2026-06-21-localstorage-optional-login-sync-policy.md)
 - [2026-06-14 ShareButtons 共有URLのハイドレーション対応（origin はマウント後注入）](./decision-log/2026-06-14-sharebuttons-hydration-origin.md)
 - [2026-06-18 ホーム画面のツール配置カスタマイズ](./decision-log/2026-06-18-home-tool-order-customization.md)
 - [2026-06-14 マイ銘柄リスト 比率グラフの種別切り替え（帯/円/四角ヒートマップ）](./decision-log/2026-06-14-my-stocks-ratio-chart-types.md)
