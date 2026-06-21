@@ -157,9 +157,27 @@ export default function ToolClient() {
               </>
             )}
           </p>
-          <button onClick={handleExport} style={primaryButton} disabled={currentCount === 0}>
-            JSON をダウンロード
-          </button>
+          {currentCount === 0 ? (
+            <div
+              style={{
+                background: "var(--color-bg-input)",
+                border: "1px solid var(--color-border)",
+                borderRadius: 12,
+                padding: "12px 14px",
+                fontSize: 13,
+                color: "var(--color-text-muted)",
+                lineHeight: 1.7,
+              }}
+            >
+              この端末（ブラウザ）には保存データがまだありません。先に各ツールでデータを入力してから書き出してください。
+              <br />
+              保存先はブラウザ・端末ごとに分かれているため、別の端末／ブラウザ（やシークレットウィンドウ）で入力したデータはここには表示されません。
+            </div>
+          ) : (
+            <button onClick={handleExport} style={primaryButton}>
+              JSON をダウンロード
+            </button>
+          )}
         </section>
 
         {/* インポート */}
