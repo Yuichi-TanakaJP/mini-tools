@@ -58,6 +58,7 @@ export default function AccountClient() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (!supabase) {
@@ -268,13 +269,36 @@ export default function AccountClient() {
             </label>
             <label style={{ fontSize: 13, fontWeight: 700 }}>
               パスワード
-              <input
-                type="password"
-                value={inputPassword}
-                onChange={(e) => setInputPassword(e.target.value)}
-                autoComplete="current-password"
-                style={{ ...inputStyle, marginTop: 6 }}
-              />
+              <div style={{ position: "relative", marginTop: 6 }}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={inputPassword}
+                  onChange={(e) => setInputPassword(e.target.value)}
+                  autoComplete="current-password"
+                  style={{ ...inputStyle, paddingRight: 64 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-pressed={showPassword}
+                  aria-label={showPassword ? "パスワードを隠す" : "パスワードを表示"}
+                  style={{
+                    position: "absolute",
+                    right: 8,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    border: "none",
+                    background: "transparent",
+                    color: "var(--color-text-muted)",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    padding: "4px 6px",
+                  }}
+                >
+                  {showPassword ? "隠す" : "表示"}
+                </button>
+              </div>
             </label>
             <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
               <button onClick={handleLogin} style={primaryBtn} disabled={busy || !inputEmail || !inputPassword}>
