@@ -180,6 +180,14 @@ export const TOOLS: ToolItem[] = [
     icon: "🔤",
     category: "input",
   },
+  {
+    title: "データ引っ越し",
+    short: "端末内データをJSONで保存/復元",
+    detail: "各ツールの端末内データ（LocalStorage）をJSONファイルに書き出し・読み込み。機種変更やブラウザ移行時のバックアップに。サーバー送信なし。",
+    href: "/tools/data-transfer",
+    icon: "🔄",
+    category: "input",
+  },
 ];
 
 // premium ログイン済みのときだけホームに表示する外部ツール。
