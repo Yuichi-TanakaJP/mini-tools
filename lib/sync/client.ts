@@ -10,6 +10,7 @@ const EPOCH = "1970-01-01T00:00:00.000Z";
 
 type SyncItem = { key: string; value: unknown; updatedAt: string };
 type Meta = Record<string, { updatedAt: string }>;
+type PullUnknownLocalPolicy = "preserve" | "restore";
 
 function readMeta(): Meta {
   if (typeof window === "undefined") return {};
@@ -42,38 +43,76 @@ export function markChanged(key: string) {
   setMetaUpdatedAt(key, new Date().toISOString());
 }
 
-// 比較用のローカル updatedAt。
-// - meta があればそれ
-// - meta が無く、ローカルに値があれば「今」（＝初回ログイン時にローカルを優先＝サーバーへ吸い上げ）
-// - meta が無く、値も無ければ epoch（＝サーバーがあれば復元される）
-function effectiveLocalUpdatedAt(key: string, meta: Meta): string {
-  if (meta[key]?.updatedAt) return meta[key].updatedAt;
+function readLocalValue(key: string): { value: unknown } | null {
+  let raw: string | null = null;
   try {
-    return window.localStorage.getItem(key) != null ? new Date().toISOString() : EPOCH;
+    raw = window.localStorage.getItem(key);
   } catch {
-    return EPOCH;
+    raw = null;
   }
+  if (raw == null) return null;
+
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    // JSON でない値はそのまま文字列として送る
+    value = raw;
+  }
+  return { value };
+}
+
+function writeLocalValue(key: string, value: unknown) {
+  const serialized = typeof value === "string" ? value : JSON.stringify(value);
+  window.localStorage.setItem(key, serialized);
+}
+
+function isEmptyLocalValue(value: unknown): boolean {
+  if (value == null) return true;
+  if (typeof value === "string") return value.trim() === "";
+  if (Array.isArray(value)) return value.length === 0;
+  if (typeof value === "object") return Object.keys(value).length === 0;
+  return false;
+}
+
+function localUpdatedAtForPush(key: string, meta: Meta, value: unknown): string | null {
+  if (meta[key]?.updatedAt) return meta[key].updatedAt;
+
+  // メタ無しの空値は、新しい端末が作った初期値の可能性が高い。
+  // これを「今」として送ると、別端末の実データを空で上書きしてしまうため送らない。
+  if (isEmptyLocalValue(value)) return null;
+
+  // メタ導入前から存在する実データは、初回ログイン時にサーバーへ吸い上げる。
+  return new Date().toISOString();
+}
+
+function localUpdatedAtForPull(
+  key: string,
+  meta: Meta,
+  unknownLocalPolicy: PullUnknownLocalPolicy,
+): string {
+  if (meta[key]?.updatedAt) return meta[key].updatedAt;
+
+  if (unknownLocalPolicy === "preserve") {
+    const local = readLocalValue(key);
+    if (local && !isEmptyLocalValue(local.value)) {
+      return new Date().toISOString();
+    }
+  }
+
+  // メタ無しのローカル値は更新時刻が不明。手動復元ではサーバー側を優先できるよう epoch とみなす。
+  return EPOCH;
 }
 
 function collectLocalItems(): SyncItem[] {
   const meta = readMeta();
   const items: SyncItem[] = [];
   for (const key of SYNCED_KEYS) {
-    let raw: string | null = null;
-    try {
-      raw = window.localStorage.getItem(key);
-    } catch {
-      raw = null;
-    }
-    if (raw == null) continue;
-    let value: unknown;
-    try {
-      value = JSON.parse(raw);
-    } catch {
-      // JSON でない値はそのまま文字列として送る
-      value = raw;
-    }
-    items.push({ key, value, updatedAt: effectiveLocalUpdatedAt(key, meta) });
+    const local = readLocalValue(key);
+    if (!local) continue;
+    const updatedAt = localUpdatedAtForPush(key, meta, local.value);
+    if (!updatedAt) continue;
+    items.push({ key, value: local.value, updatedAt });
   }
   return items;
 }
@@ -92,9 +131,18 @@ export async function pushAll(): Promise<{ ok: boolean; error?: string }> {
       return { ok: false, error: body.error ?? `HTTP ${res.status}` };
     }
     const data = (await res.json()) as { items?: SyncItem[] };
-    // サーバー確定の updatedAt で meta を更新しておく。
+    const sentKeys = new Set(items.map((it) => it.key));
     for (const it of data.items ?? []) {
-      setMetaUpdatedAt(it.key, it.updatedAt);
+      const local = readLocalValue(it.key);
+      const shouldApplyServerValue =
+        sentKeys.has(it.key) || !local || isEmptyLocalValue(local.value);
+      if (!shouldApplyServerValue) continue;
+      try {
+        writeLocalValue(it.key, it.value);
+        setMetaUpdatedAt(it.key, it.updatedAt);
+      } catch {
+        // ignore individual hydration failures
+      }
     }
     return { ok: true };
   } catch (e) {
@@ -103,7 +151,10 @@ export async function pushAll(): Promise<{ ok: boolean; error?: string }> {
 }
 
 /** サーバーから取得し、より新しいものだけ LocalStorage に反映する。変わったキー名を返す。 */
-export async function pullAll(): Promise<{ ok: boolean; changed: string[]; error?: string }> {
+export async function pullAll(
+  options: { unknownLocalPolicy?: PullUnknownLocalPolicy } = {},
+): Promise<{ ok: boolean; changed: string[]; error?: string }> {
+  const unknownLocalPolicy = options.unknownLocalPolicy ?? "restore";
   try {
     const res = await fetch("/api/sync", { method: "GET" });
     if (!res.ok) {
@@ -114,7 +165,7 @@ export async function pullAll(): Promise<{ ok: boolean; changed: string[]; error
     const meta = readMeta();
     const changed: string[] = [];
     for (const it of data.items ?? []) {
-      const localAt = effectiveLocalUpdatedAt(it.key, meta);
+      const localAt = localUpdatedAtForPull(it.key, meta, unknownLocalPolicy);
       if (new Date(it.updatedAt).getTime() > new Date(localAt).getTime()) {
         try {
           const serialized =

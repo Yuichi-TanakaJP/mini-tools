@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { addMemoItemFromCandidate, isImportedMonthlyYutaiCandidate } from "@/app/tools/yutai-memo/candidate-import";
 import { loadItems, saveItems } from "@/app/tools/yutai-memo/storage";
 import { CROSS_TYPES, type CrossType, type MemoItem } from "@/app/tools/yutai-memo/types";
 import { useRouterTransition } from "@/app/tools/_shared/use-router-transition";
+import { markChanged } from "@/lib/sync/client";
 import type { MonthlyYutaiCandidate, MonthlyYutaiPageData } from "./types";
 
 const PICKED_KEY = "monthly_yutai_picks_v1";
@@ -79,9 +80,10 @@ function loadCodeSet(storageKey: string) {
   }
 }
 
-function saveCodeSet(storageKey: string, codes: Set<string>) {
+function saveCodeSet(storageKey: string, codes: Set<string>, options: { markChanged?: boolean } = {}) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(storageKey, JSON.stringify([...codes]));
+  if (options.markChanged ?? true) markChanged(storageKey);
 }
 
 function getCardMemoKey(item: Pick<MonthlyYutaiCandidate, "code" | "month">) {
@@ -115,6 +117,7 @@ function loadCardMemos(): Record<string, CalendarCardMemo> {
 function saveCardMemos(memos: Record<string, CalendarCardMemo>) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(CARD_MEMOS_KEY, JSON.stringify(memos));
+  markChanged(CARD_MEMOS_KEY);
 }
 
 function getAddedKeysFromMemoItems(items: MemoItem[]) {
@@ -227,6 +230,8 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const [editingMemo, setEditingMemo] = useState<MemoItem | null>(null);
   const [editingMemoContext, setEditingMemoContext] = useState<EditingMemoContext | null>(null);
   const [memoDraft, setMemoDraft] = useState<MemoEditDraft | null>(null);
+  const didPersistPicked = useRef(false);
+  const didPersistPassed = useRef(false);
 
   useEffect(() => {
     // localStorage はサーバーで読めないため、マウント後に初期化する（hydration mismatch 回避）
@@ -243,12 +248,14 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   useEffect(() => {
     // hydrated 前は空 Set を保存しない
     if (!hydrated) return;
-    saveCodeSet(PICKED_KEY, pickedCodes);
+    saveCodeSet(PICKED_KEY, pickedCodes, { markChanged: didPersistPicked.current });
+    didPersistPicked.current = true;
   }, [hydrated, pickedCodes]);
 
   useEffect(() => {
     if (!hydrated) return;
-    saveCodeSet(PASSED_KEY, passedCodes);
+    saveCodeSet(PASSED_KEY, passedCodes, { markChanged: didPersistPassed.current });
+    didPersistPassed.current = true;
   }, [hydrated, passedCodes]);
 
   const availableTags = useMemo(() => {

@@ -1,4 +1,5 @@
 // app/tools/yutai-expiry/benefits/store.ts
+import { markChanged } from "@/lib/sync/client";
 
 // 1) types
 export type TrackMode = "count" | "amount";
@@ -447,6 +448,7 @@ export function writeBenefits(next: BenefitItemV2[]) {
   if (typeof window === "undefined") return;
   // 保存（あなたの既存関数でもOK）
   window.localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(next));
+  markChanged(STORAGE_KEY_V2);
 
   // キャッシュも更新して参照を安定させる
   cacheRaw = JSON.stringify(next);

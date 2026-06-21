@@ -1,4 +1,5 @@
 // app/tools/yutai-memo/storage.ts
+import { markChanged } from "@/lib/sync/client";
 import type { ArchivedMemoItem, MemoItem, Tag } from "./types";
 import { CROSS_TYPES, DEFAULT_TAGS } from "./types";
 import { resolveEntitlementMonthKey } from "./date-utils";
@@ -86,9 +87,12 @@ export function loadTags(): Tag[] {
   }
 }
 
-export function saveTags(tags: Tag[]) {
+type SaveOptions = { markChanged?: boolean };
+
+export function saveTags(tags: Tag[], options: SaveOptions = {}) {
   if (typeof window === "undefined") return;
   localStorage.setItem(TAGS_KEY, JSON.stringify(tags));
+  if (options.markChanged ?? true) markChanged(TAGS_KEY);
 }
 
 export function loadItems(): MemoItem[] {
@@ -122,9 +126,10 @@ export function loadItems(): MemoItem[] {
   }
 }
 
-export function saveItems(items: MemoItem[]) {
+export function saveItems(items: MemoItem[], options: SaveOptions = {}) {
   if (typeof window === "undefined") return;
   localStorage.setItem(ITEMS_KEY, JSON.stringify(items));
+  if (options.markChanged ?? true) markChanged(ITEMS_KEY);
 }
 
 export function loadArchivedItems(): ArchivedMemoItem[] {
@@ -162,9 +167,10 @@ export function loadArchivedItems(): ArchivedMemoItem[] {
   }
 }
 
-export function saveArchivedItems(items: ArchivedMemoItem[]) {
+export function saveArchivedItems(items: ArchivedMemoItem[], options: SaveOptions = {}) {
   if (typeof window === "undefined") return;
   localStorage.setItem(ARCHIVES_KEY, JSON.stringify(items));
+  if (options.markChanged ?? true) markChanged(ARCHIVES_KEY);
 }
 
 function migrateIfNeeded() {
@@ -173,8 +179,12 @@ function migrateIfNeeded() {
 
   // tags がまだ無ければ初期タグを投入
   const existingTags = loadTags();
-  if (existingTags.length === 0)
-    saveTags(DEFAULT_TAGS.map((t) => ({ ...t, createdAt: Date.now() })));
+  if (existingTags.length === 0) {
+    localStorage.setItem(
+      TAGS_KEY,
+      JSON.stringify(DEFAULT_TAGS.map((t) => ({ ...t, createdAt: Date.now() }))),
+    );
+  }
 
   // 旧 items を見て、tags フィールドなら変換して保存し直す
   const raw = localStorage.getItem(ITEMS_KEY);
