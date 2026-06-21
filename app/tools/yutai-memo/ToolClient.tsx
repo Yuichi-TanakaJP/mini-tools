@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./ToolClient.module.css";
 import type {
   ArchivedMemoItem,
@@ -237,6 +237,9 @@ export default function ToolClient({
   const [shortBalanceMessage, setShortBalanceMessage] = useState<string | null>(null);
   const [tickerMaster, setTickerMaster] = useState<TickerMasterItem[]>([]);
   const [tickerMasterError, setTickerMasterError] = useState<string | null>(null);
+  const didPersistItems = useRef(false);
+  const didPersistArchives = useRef(false);
+  const didPersistTags = useRef(false);
 
   // load
   useEffect(() => {
@@ -263,15 +266,18 @@ export default function ToolClient({
 
   // persist
   useEffect(() => {
-    saveItems(items);
+    saveItems(items, { markChanged: didPersistItems.current });
+    didPersistItems.current = true;
   }, [items]);
 
   useEffect(() => {
-    saveArchivedItems(archives);
+    saveArchivedItems(archives, { markChanged: didPersistArchives.current });
+    didPersistArchives.current = true;
   }, [archives]);
 
   useEffect(() => {
-    saveTags(tags);
+    saveTags(tags, { markChanged: didPersistTags.current });
+    didPersistTags.current = true;
   }, [tags]);
   useEffect(() => {
     saveSortState(sortState);

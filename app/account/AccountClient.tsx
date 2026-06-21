@@ -80,10 +80,10 @@ export default function AccountClient() {
     };
   }, [supabase]);
 
-  // ログイン直後の同期: まずサーバーから復元（新しい方）、次にローカルを送信。
+  // ログイン直後の同期: 既存ローカルデータを守りながら復元し、次にローカルを送信。
   // 復元で変化があればページを再読み込みして各ツールに反映する。
   async function syncOnLogin() {
-    const pulled = await pullAll();
+    const pulled = await pullAll({ unknownLocalPolicy: "preserve" });
     await pushAll();
     if (pulled.ok && pulled.changed.length > 0) {
       window.location.reload();
