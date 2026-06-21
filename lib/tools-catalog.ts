@@ -188,6 +188,14 @@ export const TOOLS: ToolItem[] = [
     icon: "🔄",
     category: "input",
   },
+  {
+    title: "アカウント・同期",
+    short: "ログインして端末間でデータ同期",
+    detail: "メールでログインすると、対応ツール（まずは優待メモ帳）のデータを端末間で同期できます。任意機能で、未ログインなら従来どおり端末内のみ。",
+    href: "/account",
+    icon: "🔐",
+    category: "input",
+  },
 ];
 
 // premium ログイン済みのときだけホームに表示する外部ツール。
