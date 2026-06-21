@@ -12,6 +12,8 @@
     "test:ui": "playwright test --config=playwright.ui-smoke.config.ts"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.0",
+    "@supabase/supabase-js": "^2.108.2",
     "next": "^16.0.10",
     "next-pwa": "^5.6.0",
     "qrcode.react": "^4.2.0",
