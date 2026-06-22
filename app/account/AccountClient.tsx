@@ -80,16 +80,6 @@ export default function AccountClient() {
     };
   }, [supabase]);
 
-  // ログイン直後の同期: 既存ローカルデータを守りながら復元し、次にローカルを送信。
-  // 復元で変化があればページを再読み込みして各ツールに反映する。
-  async function syncOnLogin() {
-    const pulled = await pullAll({ unknownLocalPolicy: "preserve" });
-    await pushAll();
-    if (pulled.ok && pulled.changed.length > 0) {
-      window.location.reload();
-    }
-  }
-
   async function handleLogin() {
     if (!supabase) return;
     setBusy(true);
@@ -106,8 +96,7 @@ export default function AccountClient() {
       }
       track("action_clicked", { action: "auth_login" });
       setInputPassword("");
-      await syncOnLogin();
-      setMessage("ログインしました。データを同期しました。");
+      setMessage("ログインしました。データ同期は必要なときに手動で保存または復元してください。");
     } finally {
       setBusy(false);
     }
@@ -131,8 +120,7 @@ export default function AccountClient() {
       setInputPassword("");
       if (data.session) {
         // メール確認 OFF の場合はそのままログイン状態になる。
-        await syncOnLogin();
-        setMessage("登録してログインしました。データを同期しました。");
+        setMessage("登録してログインしました。データ同期は必要なときに手動で保存または復元してください。");
       } else {
         setMessage("確認メールを送信しました。メール内のリンクで認証してください。");
       }
@@ -154,7 +142,7 @@ export default function AccountClient() {
     setMessage(null);
     try {
       const res = await pushAll();
-      if (res.ok) setMessage("このデバイスのデータをサーバーへ保存しました（空データは上書き防止のため送信しません）。");
+      if (res.ok) setMessage("この端末のデータをクラウドへ保存しました（空データは上書き防止のため送信しません）。");
       else setError(res.error ?? "アップロードに失敗しました。");
     } finally {
       setBusy(false);
@@ -172,10 +160,10 @@ export default function AccountClient() {
         return;
       }
       if (res.changed.length > 0) {
-        setMessage("サーバーから復元しました。上書き前のローカルデータは安全バックアップとしてこのブラウザ内に残しています。ページを再読み込みします…");
+        setMessage("クラウドから復元しました。上書き前のローカルデータは安全バックアップとしてこのブラウザ内に残しています。ページを再読み込みします…");
         setTimeout(() => window.location.reload(), 800);
       } else {
-        setMessage("サーバー側に新しいデータはありませんでした。");
+        setMessage("クラウド側に新しいデータはありませんでした。");
       }
     } finally {
       setBusy(false);
@@ -242,14 +230,14 @@ export default function AccountClient() {
                 lineHeight: 1.6,
               }}
             >
-              ログイン時に自動で同期されます。手動で実行することもできます。
+              ログイン直後に自動同期はしません。必要な操作を選んで実行してください。
             </p>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button onClick={handleUpload} style={primaryBtn} disabled={busy}>
-                このデバイスを保存（アップロード）
+                この端末を保存
               </button>
               <button onClick={handleRestore} style={subBtn} disabled={busy}>
-                サーバーから復元
+                クラウドから復元
               </button>
             </div>
           </div>
@@ -322,7 +310,7 @@ export default function AccountClient() {
       )}
 
       <p style={{ fontSize: 11, color: "var(--color-text-muted)", lineHeight: 1.7, marginTop: 24 }}>
-        ※ 同期は任意です。ログインしたデータはサーバー（Supabase）に保存され、あなたのアカウントだけが読み書きできます。
+        ※ 同期は任意です。ログインしただけでは端末データをサーバーへ送信しません。保存または復元を選んだときだけ、サーバー（Supabase）と通信します。
         未ログインなら一切サーバーへ送信されません。
       </p>
     </main>
