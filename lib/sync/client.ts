@@ -6,6 +6,8 @@
 import { SYNCED_KEYS } from "./registry";
 
 const META_KEY = "mini_tools_sync_meta_v1";
+const SAFETY_BACKUP_PREFIX = "mini_tools_sync_safety_backup_v1:";
+const MAX_SAFETY_BACKUPS = 3;
 const EPOCH = "1970-01-01T00:00:00.000Z";
 
 type SyncItem = { key: string; value: unknown; updatedAt: string };
@@ -26,6 +28,7 @@ function readMeta(): Meta {
 
 function writeMeta(meta: Meta) {
   try {
+    pruneSafetyBackups();
     window.localStorage.setItem(META_KEY, JSON.stringify(meta));
   } catch {
     // ignore
@@ -75,12 +78,63 @@ function isEmptyLocalValue(value: unknown): boolean {
   return false;
 }
 
-function localUpdatedAtForPush(key: string, meta: Meta, value: unknown): string | null {
-  if (meta[key]?.updatedAt) return meta[key].updatedAt;
+function pruneSafetyBackups() {
+  if (typeof window === "undefined") return;
+  try {
+    const backupKeys: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const key = window.localStorage.key(i);
+      if (key?.startsWith(SAFETY_BACKUP_PREFIX)) backupKeys.push(key);
+    }
+    backupKeys.sort().reverse();
+    for (const key of backupKeys.slice(MAX_SAFETY_BACKUPS)) {
+      window.localStorage.removeItem(key);
+    }
+  } catch {
+    // ignore
+  }
+}
+function saveSafetyBackup(reason: "push" | "pull") {
+  if (typeof window === "undefined") return;
+  try {
+    const values: Record<string, string> = {};
+    for (const key of SYNCED_KEYS) {
+      const raw = window.localStorage.getItem(key);
+      if (raw != null) values[key] = raw;
+    }
+    if (Object.keys(values).length === 0) return;
+    const payload = {
+      schema: "mini-tools-sync-safety-backup",
+      version: 1,
+      reason,
+      exportedAt: new Date().toISOString(),
+      values,
+    };
+    window.localStorage.setItem(
+      `${SAFETY_BACKUP_PREFIX}${Date.now()}`,
+      JSON.stringify(payload),
+    );
+    pruneSafetyBackups();
+  } catch {
+    // backup failure must not block the user action
+  }
+}
 
-  // メタ無しの空値は、新しい端末が作った初期値の可能性が高い。
-  // これを「今」として送ると、別端末の実データを空で上書きしてしまうため送らない。
+function nextIsoAfter(updatedAt: string): string {
+  const serverTime = new Date(updatedAt).getTime();
+  const nextTime = Number.isFinite(serverTime)
+    ? Math.max(Date.now(), serverTime + 1)
+    : Date.now();
+  return new Date(nextTime).toISOString();
+}
+
+function localUpdatedAtForPush(key: string, meta: Meta, value: unknown): string | null {
+  // Empty arrays/objects are not uploaded by the sync layer. This deliberately
+  // disables cross-device "delete all" for now because an accidental empty value
+  // can otherwise erase the only good copy on the server.
   if (isEmptyLocalValue(value)) return null;
+
+  if (meta[key]?.updatedAt) return meta[key].updatedAt;
 
   // メタ導入前から存在する実データは、初回ログイン時にサーバーへ吸い上げる。
   return new Date().toISOString();
@@ -117,8 +171,10 @@ function collectLocalItems(): SyncItem[] {
   return items;
 }
 
-/** サーバーへローカルの同期対象キーを送る（より新しい方をサーバーが採用）。 */
-export async function pushAll(): Promise<{ ok: boolean; error?: string }> {
+async function pushAllInternal(
+  retryEmptyServerRepair: boolean,
+): Promise<{ ok: boolean; error?: string }> {
+  saveSafetyBackup("push");
   const items = collectLocalItems();
   try {
     const res = await fetch("/api/sync", {
@@ -132,7 +188,16 @@ export async function pushAll(): Promise<{ ok: boolean; error?: string }> {
     }
     const data = (await res.json()) as { items?: SyncItem[] };
     const sentKeys = new Set(items.map((it) => it.key));
+    let shouldRetry = false;
     for (const it of data.items ?? []) {
+      if (isEmptyLocalValue(it.value)) {
+        const local = readLocalValue(it.key);
+        if (local && !isEmptyLocalValue(local.value)) {
+          setMetaUpdatedAt(it.key, nextIsoAfter(it.updatedAt));
+          shouldRetry = true;
+        }
+        continue;
+      }
       const local = readLocalValue(it.key);
       const shouldApplyServerValue =
         sentKeys.has(it.key) || !local || isEmptyLocalValue(local.value);
@@ -144,16 +209,25 @@ export async function pushAll(): Promise<{ ok: boolean; error?: string }> {
         // ignore individual hydration failures
       }
     }
+    if (shouldRetry && retryEmptyServerRepair) {
+      return pushAllInternal(false);
+    }
     return { ok: true };
   } catch (e) {
     return { ok: false, error: String(e) };
   }
 }
 
+/** サーバーへローカルの同期対象キーを送る（より新しい方をサーバーが採用）。 */
+export async function pushAll(): Promise<{ ok: boolean; error?: string }> {
+  return pushAllInternal(true);
+}
+
 /** サーバーから取得し、より新しいものだけ LocalStorage に反映する。変わったキー名を返す。 */
 export async function pullAll(
   options: { unknownLocalPolicy?: PullUnknownLocalPolicy } = {},
 ): Promise<{ ok: boolean; changed: string[]; error?: string }> {
+  saveSafetyBackup("pull");
   const unknownLocalPolicy = options.unknownLocalPolicy ?? "restore";
   try {
     const res = await fetch("/api/sync", { method: "GET" });
@@ -165,12 +239,11 @@ export async function pullAll(
     const meta = readMeta();
     const changed: string[] = [];
     for (const it of data.items ?? []) {
+      if (isEmptyLocalValue(it.value)) continue;
       const localAt = localUpdatedAtForPull(it.key, meta, unknownLocalPolicy);
       if (new Date(it.updatedAt).getTime() > new Date(localAt).getTime()) {
         try {
-          const serialized =
-            typeof it.value === "string" ? it.value : JSON.stringify(it.value);
-          window.localStorage.setItem(it.key, serialized);
+          writeLocalValue(it.key, it.value);
           setMetaUpdatedAt(it.key, it.updatedAt);
           changed.push(it.key);
         } catch {

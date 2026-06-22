@@ -154,7 +154,7 @@ export default function AccountClient() {
     setMessage(null);
     try {
       const res = await pushAll();
-      if (res.ok) setMessage("このデバイスのデータをサーバーへ保存しました。");
+      if (res.ok) setMessage("このデバイスのデータをサーバーへ保存しました（空データは上書き防止のため送信しません）。");
       else setError(res.error ?? "アップロードに失敗しました。");
     } finally {
       setBusy(false);
@@ -172,7 +172,7 @@ export default function AccountClient() {
         return;
       }
       if (res.changed.length > 0) {
-        setMessage("サーバーから復元しました。ページを再読み込みします…");
+        setMessage("サーバーから復元しました。上書き前のローカルデータは安全バックアップとしてこのブラウザ内に残しています。ページを再読み込みします…");
         setTimeout(() => window.location.reload(), 800);
       } else {
         setMessage("サーバー側に新しいデータはありませんでした。");
