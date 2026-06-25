@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import ShareButtons from "@/components/ShareButtonsSuspended";
 import ToolGridClient from "./ToolGridClient";
+import HomeNotifications from "./HomeNotifications";
 import { PREMIUM_EXTERNAL_TOOLS, TOOLS } from "@/lib/tools-catalog";
 import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
 
@@ -91,6 +92,8 @@ export default async function HomePage() {
             </p>
           </div>
         </section>
+
+        <HomeNotifications />
 
         {/* ツール一覧 */}
         <section>

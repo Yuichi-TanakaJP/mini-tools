@@ -11,6 +11,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 
 設計・方針・トレードオフの判断理由を記録します。
 
+- [2026-06-26 ホーム通知の初期対象を開示イベント新着にする](./decision-log/2026-06-26-home-disclosure-notifications.md)
 - [2026-06-22 ログイン直後の自動同期を止める判断](./decision-log/2026-06-22-manual-sync-after-login.md)
 - [2026-06-21 ローカルデータの任意ログイン同期方針（オプトイン・クロスデバイス）](./decision-log/2026-06-21-localstorage-optional-login-sync-policy.md)
 - [2026-06-14 ShareButtons 共有URLのハイドレーション対応（origin はマウント後注入）](./decision-log/2026-06-14-sharebuttons-hydration-origin.md)
