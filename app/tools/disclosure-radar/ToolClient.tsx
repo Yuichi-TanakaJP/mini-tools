@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadItems } from "@/app/tools/my-stocks/storage";
+import { loadReadEventIds, saveReadEventIds } from "./read-state";
 import {
   filterDisclosureEvents,
   normalizeSecurityCode,
@@ -19,8 +20,6 @@ import type {
   DisclosureEventsResponse,
 } from "./types";
 import styles from "./ToolClient.module.css";
-
-const READ_KEY = "disclosure_radar_read_event_ids_v1";
 
 const EVENT_LABELS: Record<DisclosureEventType, string> = {
   yutai_new: "優待新設",
@@ -59,26 +58,6 @@ const PERSONAL_TOPICS: { value: TopicFilter; label: string }[] = [
   { value: "capital", label: "資本施策" },
   { value: "other", label: "その他" },
 ];
-
-function loadReadEventIds(): Set<string> {
-  try {
-    const raw = localStorage.getItem(READ_KEY);
-    if (!raw) return new Set();
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return new Set();
-    return new Set(parsed.filter((value): value is string => typeof value === "string"));
-  } catch {
-    return new Set();
-  }
-}
-
-function saveReadEventIds(ids: Set<string>): void {
-  try {
-    localStorage.setItem(READ_KEY, JSON.stringify(Array.from(ids).slice(-2000)));
-  } catch {
-    // The in-memory state remains usable when storage is unavailable.
-  }
-}
 
 function EventCard({
   item,
