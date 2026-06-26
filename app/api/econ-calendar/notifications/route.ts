@@ -63,15 +63,21 @@ export async function GET() {
 
   try {
     const weeklyResponses = await Promise.all(
-      weekStarts.map((weekStart) =>
-        fetchJson<EconCalendarWeeklyResponse>(
-          `${apiBase}/econ-calendar/weekly/${weekStart}`,
-          3600,
-        ),
-      ),
+      weekStarts.map(async (weekStart) => {
+        try {
+          return await fetchJson<EconCalendarWeeklyResponse>(
+            `${apiBase}/econ-calendar/weekly/${weekStart}`,
+            3600,
+          );
+        } catch {
+          return null;
+        }
+      }),
     );
     const dayMap = new Map(
-      weeklyResponses.flatMap((weekly) => weekly.calendar.map((day) => [day.date, day])),
+      weeklyResponses.flatMap((weekly) =>
+        weekly ? weekly.calendar.map((day) => [day.date, day]) : [],
+      ),
     );
     const days: EconNotificationDay[] = dates.map((date) => {
       const events = (dayMap.get(date)?.events ?? [])
