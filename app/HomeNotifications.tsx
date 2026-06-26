@@ -12,21 +12,70 @@ import type {
   DisclosureEventsManifest,
   DisclosureEventsResponse,
 } from "@/app/tools/disclosure-radar/types";
+import type { EarningsCalendarItem } from "@/app/tools/earnings-calendar/types";
+import type { EconCalendarEvent } from "@/app/tools/econ-calendar/types";
 import { loadItems } from "@/app/tools/my-stocks/storage";
 
-const NOTIFICATION_RANGE_DAYS = 7;
+const DISCLOSURE_NOTIFICATION_RANGE_DAYS = 7;
 const PREVIEW_ITEM_COUNT = 3;
 
+type DisclosureNotificationData = {
+  latestDate: string;
+  myStockUnreadItems: DisclosureEventItem[];
+  yutaiUnreadItems: DisclosureEventItem[];
+};
+
+type EarningsNotificationMarket = {
+  count: number;
+  items: EarningsCalendarItem[];
+};
+
+type EarningsNotificationDay = {
+  date: string;
+  domestic: EarningsNotificationMarket;
+  overseas: EarningsNotificationMarket;
+};
+
+type EarningsNotificationResponse = {
+  schema_version: "earnings-calendar-home-notifications-v1";
+  generated_at: string;
+  days: EarningsNotificationDay[];
+};
+
+type EarningsNotificationData = {
+  days: EarningsNotificationDay[];
+  myStockItems: Array<{ date: string; item: EarningsCalendarItem }>;
+};
+
+type EconNotificationEvent = EconCalendarEvent & { date: string };
+
+type EconNotificationDay = {
+  date: string;
+  events: EconNotificationEvent[];
+};
+
+type EconNotificationResponse = {
+  schema_version: "econ-calendar-home-notifications-v1";
+  generated_at: string;
+  min_impact: number;
+  days: EconNotificationDay[];
+};
+
+type EconNotificationData = {
+  days: EconNotificationDay[];
+  events: EconNotificationEvent[];
+};
+
 type NotificationState =
-  | { status: "loading" | "empty" | "error" }
+  | { status: "loading" | "empty" }
   | {
       status: "ready";
-      latestDate: string;
-      myStockUnreadItems: DisclosureEventItem[];
-      yutaiUnreadItems: DisclosureEventItem[];
+      disclosure: DisclosureNotificationData | null;
+      earnings: EarningsNotificationData | null;
+      econ: EconNotificationData | null;
     };
 
-function uniqueAndSort(items: DisclosureEventItem[]): DisclosureEventItem[] {
+function uniqueAndSortDisclosureItems(items: DisclosureEventItem[]): DisclosureEventItem[] {
   const byId = new Map<string, DisclosureEventItem>();
   for (const item of items) {
     if (!byId.has(item.event_id)) {
@@ -41,7 +90,50 @@ function uniqueAndSort(items: DisclosureEventItem[]): DisclosureEventItem[] {
   );
 }
 
-function EventPreviewList({
+function uniqueEarningsItems(
+  items: Array<{ date: string; item: EarningsCalendarItem }>,
+): Array<{ date: string; item: EarningsCalendarItem }> {
+  const byKey = new Map<string, { date: string; item: EarningsCalendarItem }>();
+  for (const entry of items) {
+    const key =
+      entry.item.event_id ??
+      `${entry.date}-${entry.item.code}-${entry.item.name}-${entry.item.time}`;
+    if (!byKey.has(key)) {
+      byKey.set(key, entry);
+    }
+  }
+  return Array.from(byKey.values()).sort((a, b) =>
+    `${a.date} ${a.item.time}`.localeCompare(`${b.date} ${b.item.time}`),
+  );
+}
+
+function hasDisclosureNotifications(data: DisclosureNotificationData | null) {
+  return Boolean(
+    data && (data.myStockUnreadItems.length > 0 || data.yutaiUnreadItems.length > 0),
+  );
+}
+
+function hasEarningsNotifications(data: EarningsNotificationData | null) {
+  return Boolean(
+    data &&
+      (data.myStockItems.length > 0 ||
+        data.days.some((day) => day.domestic.count > 0 || day.overseas.count > 0)),
+  );
+}
+
+function hasEconNotifications(data: EconNotificationData | null) {
+  return Boolean(data && data.events.length > 0);
+}
+
+function formatDateLabel(date: string) {
+  const value = new Date(`${date}T00:00:00Z`);
+  const month = value.getUTCMonth() + 1;
+  const day = value.getUTCDate();
+  const weekday = ["日", "月", "火", "水", "木", "金", "土"][value.getUTCDay()];
+  return `${month}/${day}（${weekday}）`;
+}
+
+function DisclosurePreviewList({
   items,
   label,
 }: {
@@ -69,6 +161,149 @@ function EventPreviewList({
   );
 }
 
+function EarningsPreviewList({
+  items,
+}: {
+  items: Array<{ date: string; item: EarningsCalendarItem }>;
+}) {
+  const previewItems = items.slice(0, PREVIEW_ITEM_COUNT);
+
+  if (previewItems.length === 0) return null;
+
+  return (
+    <div className="home-notifications__group">
+      <div className="home-notifications__group-title">
+        <span>決算: マイ銘柄</span>
+        <strong>{items.length}件</strong>
+      </div>
+      <div className="home-notifications__items" aria-label="マイ銘柄の決算予定の一部">
+        {previewItems.map(({ date, item }) => (
+          <span key={item.event_id ?? `${date}-${item.code}-${item.name}`}>
+            {formatDateLabel(date)} {item.code} {item.name}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EarningsDaySummary({ day }: { day: EarningsNotificationDay }) {
+  if (day.domestic.count === 0 && day.overseas.count === 0) return null;
+
+  return (
+    <div className="home-notifications__day-row">
+      <span>{formatDateLabel(day.date)}</span>
+      <strong>
+        国内 {day.domestic.count}件 / 海外 {day.overseas.count}件
+      </strong>
+    </div>
+  );
+}
+
+function EconPreviewList({ events }: { events: EconNotificationEvent[] }) {
+  const previewEvents = events.slice(0, PREVIEW_ITEM_COUNT);
+
+  if (previewEvents.length === 0) return null;
+
+  return (
+    <div className="home-notifications__group">
+      <div className="home-notifications__group-title">
+        <span>重要経済指標</span>
+        <strong>{events.length}件</strong>
+      </div>
+      <div className="home-notifications__items" aria-label="重要経済指標の一部">
+        {previewEvents.map((event) => (
+          <span key={`${event.date}-${event.country_tag ?? event.country ?? ""}-${event.time ?? ""}-${event.indicator_key ?? event.indicator}`}>
+            {formatDateLabel(event.date)} {event.time ?? "時刻未定"} {event.country_tag ?? event.country ?? ""} {event.indicator}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+async function loadDisclosureNotifications(
+  myStockCodes: Set<string>,
+): Promise<DisclosureNotificationData | null> {
+  try {
+    const manifestResponse = await fetch("/api/disclosure-events/manifest");
+    if (!manifestResponse.ok) return null;
+    const manifest = (await manifestResponse.json()) as DisclosureEventsManifest;
+    const dates = selectDisclosureDates(manifest, DISCLOSURE_NOTIFICATION_RANGE_DAYS);
+    if (dates.length === 0) return null;
+
+    const responses = await Promise.all(
+      dates.map(async (date) => {
+        try {
+          const response = await fetch(`/api/disclosure-events/${date}`);
+          if (!response.ok) return null;
+          return (await response.json()) as DisclosureEventsResponse;
+        } catch {
+          return null;
+        }
+      }),
+    );
+    const readEventIds = loadReadEventIds();
+    const unreadItems = responses
+      .flatMap((response) => response?.items ?? [])
+      .filter((item) => !readEventIds.has(item.event_id));
+
+    return {
+      latestDate: manifest.latest,
+      yutaiUnreadItems: uniqueAndSortDisclosureItems(
+        unreadItems.filter((item) => item.audience === "all"),
+      ),
+      myStockUnreadItems: uniqueAndSortDisclosureItems(
+        unreadItems.filter(
+          (item) =>
+            item.audience === "personal" &&
+            myStockCodes.has(normalizeSecurityCode(item.security_code)),
+        ),
+      ),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function loadEarningsNotifications(
+  myStockCodes: Set<string>,
+): Promise<EarningsNotificationData | null> {
+  try {
+    const response = await fetch("/api/earnings-calendar/notifications");
+    if (!response.ok) return null;
+    const payload = (await response.json()) as EarningsNotificationResponse;
+    const myStockItems = uniqueEarningsItems(
+      payload.days.flatMap((day) =>
+        [...day.domestic.items, ...day.overseas.items]
+          .filter((item) => myStockCodes.has(normalizeSecurityCode(item.code)))
+          .map((item) => ({ date: day.date, item })),
+      ),
+    );
+
+    return {
+      days: payload.days,
+      myStockItems,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function loadEconNotifications(): Promise<EconNotificationData | null> {
+  try {
+    const response = await fetch("/api/econ-calendar/notifications");
+    if (!response.ok) return null;
+    const payload = (await response.json()) as EconNotificationResponse;
+    return {
+      days: payload.days,
+      events: payload.days.flatMap((day) => day.events),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function HomeNotifications() {
   const [state, setState] = useState<NotificationState>({ status: "loading" });
 
@@ -76,59 +311,23 @@ export default function HomeNotifications() {
     let active = true;
 
     async function loadNotifications() {
-      try {
-        const manifestResponse = await fetch("/api/disclosure-events/manifest");
-        if (!manifestResponse.ok) throw new Error(`manifest: ${manifestResponse.status}`);
-        const manifest = (await manifestResponse.json()) as DisclosureEventsManifest;
-        const dates = selectDisclosureDates(manifest, NOTIFICATION_RANGE_DAYS);
-        if (dates.length === 0) {
-          if (active) setState({ status: "empty" });
-          return;
-        }
+      const myStockCodes = new Set(
+        loadItems().map((item) => normalizeSecurityCode(item.code)),
+      );
+      const [disclosure, earnings, econ] = await Promise.all([
+        loadDisclosureNotifications(myStockCodes),
+        loadEarningsNotifications(myStockCodes),
+        loadEconNotifications(),
+      ]);
 
-        const responses = await Promise.all(
-          dates.map(async (date) => {
-            try {
-              const response = await fetch(`/api/disclosure-events/${date}`);
-              if (!response.ok) return null;
-              return (await response.json()) as DisclosureEventsResponse;
-            } catch {
-              return null;
-            }
-          }),
-        );
-        const readEventIds = loadReadEventIds();
-        const myStockCodes = new Set(
-          loadItems().map((item) => normalizeSecurityCode(item.code)),
-        );
-        const unreadItems = responses
-          .flatMap((response) => response?.items ?? [])
-          .filter((item) => !readEventIds.has(item.event_id));
-        const yutaiUnreadItems = uniqueAndSort(
-          unreadItems.filter((item) => item.audience === "all"),
-        );
-        const myStockUnreadItems = uniqueAndSort(
-          unreadItems.filter(
-            (item) =>
-              item.audience === "personal" &&
-              myStockCodes.has(normalizeSecurityCode(item.security_code)),
-          ),
-        );
-
-        if (!active) return;
-        setState(
-          yutaiUnreadItems.length > 0 || myStockUnreadItems.length > 0
-            ? {
-                status: "ready",
-                latestDate: manifest.latest,
-                myStockUnreadItems,
-                yutaiUnreadItems,
-              }
-            : { status: "empty" },
-        );
-      } catch {
-        if (active) setState({ status: "error" });
-      }
+      if (!active) return;
+      setState(
+        hasDisclosureNotifications(disclosure) ||
+          hasEarningsNotifications(earnings) ||
+          hasEconNotifications(econ)
+          ? { status: "ready", disclosure, earnings, econ }
+          : { status: "empty" },
+      );
     }
 
     void loadNotifications();
@@ -138,46 +337,87 @@ export default function HomeNotifications() {
     };
   }, []);
 
-  const totalUnreadCount = useMemo(
-    () =>
-      state.status === "ready"
-        ? state.yutaiUnreadItems.length + state.myStockUnreadItems.length
-        : 0,
-    [state],
-  );
+  const notificationCount = useMemo(() => {
+    if (state.status !== "ready") return 0;
+    const disclosureCount = state.disclosure
+      ? state.disclosure.myStockUnreadItems.length + state.disclosure.yutaiUnreadItems.length
+      : 0;
+    const earningsEventCount = state.earnings
+      ? state.earnings.days.reduce(
+          (sum, day) => sum + day.domestic.count + day.overseas.count,
+          0,
+        )
+      : 0;
+    const econEventCount = state.econ?.events.length ?? 0;
+    return disclosureCount + earningsEventCount + econEventCount;
+  }, [state]);
 
   if (state.status !== "ready") return null;
+
+  const { disclosure, earnings, econ } = state;
 
   return (
     <section className="home-notifications" aria-label="通知" aria-live="polite">
       <div className="home-notifications__header">
         <div>
           <p className="home-notifications__eyebrow">NOTIFICATIONS</p>
-          <h2>開示イベントの新着があります</h2>
+          <h2>開示・決算の注目イベント</h2>
         </div>
-        <span className="home-notifications__count">未確認 {totalUnreadCount}件</span>
+        <span className="home-notifications__count">注目 {notificationCount}件</span>
       </div>
 
       <p className="home-notifications__summary">
-        直近{NOTIFICATION_RANGE_DAYS}日間の優待変更とマイ銘柄関連の開示を確認できます。
-        最新データ: {state.latestDate}
+        開示イベントの未確認と、今日・明日の決算予定・重要経済指標をホームでまとめて確認できます。
+        {disclosure ? ` 開示データ: ${disclosure.latestDate}` : ""}
       </p>
 
       <div className="home-notifications__groups">
-        <EventPreviewList items={state.myStockUnreadItems} label="マイ銘柄" />
-        <EventPreviewList items={state.yutaiUnreadItems} label="優待変更" />
+        {earnings && hasEarningsNotifications(earnings) ? (
+          <div className="home-notifications__group home-notifications__group--earnings">
+            <div className="home-notifications__group-title">
+              <span>今日・明日の決算予定</span>
+              <strong>2日分</strong>
+            </div>
+            <div className="home-notifications__day-list">
+              {earnings.days.map((day) => (
+                <EarningsDaySummary key={day.date} day={day} />
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {earnings ? <EarningsPreviewList items={earnings.myStockItems} /> : null}
+        {econ ? <EconPreviewList events={econ.events} /> : null}
+        {disclosure ? (
+          <>
+            <DisclosurePreviewList items={disclosure.myStockUnreadItems} label="開示: マイ銘柄" />
+            <DisclosurePreviewList items={disclosure.yutaiUnreadItems} label="開示: 優待変更" />
+          </>
+        ) : null}
       </div>
 
       <div className="home-notifications__links">
-        {state.myStockUnreadItems.length > 0 ? (
+        {earnings && hasEarningsNotifications(earnings) ? (
+          <Link className="home-notifications__link" href="/tools/earnings-calendar">
+            決算カレンダーで確認する
+          </Link>
+        ) : null}
+        {econ && hasEconNotifications(econ) ? (
           <Link
-            className="home-notifications__link"
+            className="home-notifications__link home-notifications__link--secondary"
+            href="/tools/econ-calendar"
+          >
+            経済指標を見る
+          </Link>
+        ) : null}
+        {disclosure?.myStockUnreadItems.length ? (
+          <Link
+            className="home-notifications__link home-notifications__link--secondary"
             href="/tools/disclosure-radar?view=my-stocks&range=7"
           >
             マイ銘柄の開示を見る
           </Link>
         ) : null}
-        {state.yutaiUnreadItems.length > 0 ? (
+        {disclosure?.yutaiUnreadItems.length ? (
           <Link
             className="home-notifications__link home-notifications__link--secondary"
             href="/tools/disclosure-radar?view=yutai&range=7"
@@ -246,6 +486,17 @@ export default function HomeNotifications() {
           margin-bottom: 14px;
         }
 
+        .home-notifications__group {
+          min-width: 0;
+        }
+
+        .home-notifications__group--earnings {
+          border: 1px solid var(--color-border);
+          border-radius: 12px;
+          background: var(--color-bg-card);
+          padding: 10px 12px;
+        }
+
         .home-notifications__group-title {
           display: flex;
           align-items: center;
@@ -260,6 +511,27 @@ export default function HomeNotifications() {
         .home-notifications__group-title strong {
           color: var(--color-accent);
           font-size: 12px;
+        }
+
+        .home-notifications__day-list {
+          display: grid;
+          gap: 6px;
+        }
+
+        .home-notifications__day-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          color: var(--color-text-sub);
+          font-size: 12px;
+          line-height: 1.5;
+        }
+
+        .home-notifications__day-row strong {
+          color: var(--color-text);
+          font-size: 12px;
+          text-align: right;
         }
 
         .home-notifications__items {
@@ -309,9 +581,15 @@ export default function HomeNotifications() {
             padding: 16px;
           }
 
-          .home-notifications__header {
+          .home-notifications__header,
+          .home-notifications__day-row {
             flex-direction: column;
+            align-items: stretch;
             gap: 10px;
+          }
+
+          .home-notifications__day-row strong {
+            text-align: left;
           }
 
           .home-notifications__count,
