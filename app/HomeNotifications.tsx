@@ -39,12 +39,17 @@ type EarningsNotificationDay = {
 type EarningsNotificationResponse = {
   schema_version: "earnings-calendar-home-notifications-v1";
   generated_at: string;
+  nikkei225?: {
+    as_of_date: string | null;
+    codes: string[];
+  };
   days: EarningsNotificationDay[];
 };
 
 type EarningsNotificationData = {
   days: EarningsNotificationDay[];
-  myStockItems: Array<{ date: string; item: EarningsCalendarItem }>;
+  personalItems: Array<{ date: string; item: EarningsCalendarItem }>;
+  nikkei225Items: Array<{ date: string; item: EarningsCalendarItem }>;
 };
 
 type EconNotificationEvent = EconCalendarEvent & { date: string };
@@ -116,7 +121,8 @@ function hasDisclosureNotifications(data: DisclosureNotificationData | null) {
 function hasEarningsNotifications(data: EarningsNotificationData | null) {
   return Boolean(
     data &&
-      (data.myStockItems.length > 0 ||
+      (data.personalItems.length > 0 ||
+        data.nikkei225Items.length > 0 ||
         data.days.some((day) => day.domestic.count > 0 || day.overseas.count > 0)),
   );
 }
@@ -163,8 +169,10 @@ function DisclosurePreviewList({
 
 function EarningsPreviewList({
   items,
+  label,
 }: {
   items: Array<{ date: string; item: EarningsCalendarItem }>;
+  label: string;
 }) {
   const previewItems = items.slice(0, PREVIEW_ITEM_COUNT);
 
@@ -173,10 +181,10 @@ function EarningsPreviewList({
   return (
     <div className="home-notifications__group">
       <div className="home-notifications__group-title">
-        <span>決算: マイ銘柄</span>
+        <span>{label}</span>
         <strong>{items.length}件</strong>
       </div>
-      <div className="home-notifications__items" aria-label="マイ銘柄の決算予定の一部">
+      <div className="home-notifications__items" aria-label={`${label}の決算予定の一部`}>
         {previewItems.map(({ date, item }) => (
           <span key={item.event_id ?? `${date}-${item.code}-${item.name}`}>
             {formatDateLabel(date)} {item.code} {item.name}
@@ -267,23 +275,35 @@ async function loadDisclosureNotifications(
 }
 
 async function loadEarningsNotifications(
-  myStockCodes: Set<string>,
+  personalCodes: Set<string>,
 ): Promise<EarningsNotificationData | null> {
   try {
     const response = await fetch("/api/earnings-calendar/notifications");
     if (!response.ok) return null;
     const payload = (await response.json()) as EarningsNotificationResponse;
-    const myStockItems = uniqueEarningsItems(
-      payload.days.flatMap((day) =>
-        [...day.domestic.items, ...day.overseas.items]
-          .filter((item) => myStockCodes.has(normalizeSecurityCode(item.code)))
-          .map((item) => ({ date: day.date, item })),
-      ),
+    const allItems = payload.days.flatMap((day) =>
+      [...day.domestic.items, ...day.overseas.items].map((item) => ({
+        date: day.date,
+        item,
+      })),
+    );
+    const personalItems = uniqueEarningsItems(
+      allItems.filter(({ item }) => personalCodes.has(normalizeSecurityCode(item.code))),
+    );
+    const nikkei225Codes = new Set(
+      (payload.nikkei225?.codes ?? []).map((code) => normalizeSecurityCode(code)),
+    );
+    const nikkei225Items = uniqueEarningsItems(
+      allItems.filter(({ item }) => {
+        const code = normalizeSecurityCode(item.code);
+        return nikkei225Codes.has(code) && !personalCodes.has(code);
+      }),
     );
 
     return {
       days: payload.days,
-      myStockItems,
+      personalItems,
+      nikkei225Items,
     };
   } catch {
     return null;
@@ -367,7 +387,7 @@ export default function HomeNotifications() {
       </div>
 
       <p className="home-notifications__summary">
-        開示イベントの未確認と、今日・明日の決算予定・重要経済指標をホームでまとめて確認できます。
+        開示イベントの未確認と、保有/ウォッチ・日経225を含む今日・明日の決算予定、重要経済指標をホームでまとめて確認できます。
         {disclosure ? ` 開示データ: ${disclosure.latestDate}` : ""}
       </p>
 
@@ -385,7 +405,12 @@ export default function HomeNotifications() {
             </div>
           </div>
         ) : null}
-        {earnings ? <EarningsPreviewList items={earnings.myStockItems} /> : null}
+        {earnings ? (
+          <>
+            <EarningsPreviewList items={earnings.personalItems} label="決算: 保有/ウォッチ" />
+            <EarningsPreviewList items={earnings.nikkei225Items} label="決算: 日経225" />
+          </>
+        ) : null}
         {econ ? <EconPreviewList events={econ.events} /> : null}
         {disclosure ? (
           <>
