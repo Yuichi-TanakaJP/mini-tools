@@ -6,6 +6,10 @@ import {
   fetchJson,
   getApiBaseUrl,
 } from "@/lib/market-api";
+import {
+  loadContributionDayData,
+  loadContributionManifest,
+} from "@/app/tools/nikkei-contribution/data-loader";
 import type {
   EarningsCalendarItem,
   EarningsCalendarManifest,
@@ -26,6 +30,11 @@ type EarningsNotificationDay = {
   date: string;
   domestic: EarningsNotificationMarket;
   overseas: EarningsNotificationMarket;
+};
+
+type Nikkei225Universe = {
+  as_of_date: string | null;
+  codes: string[];
 };
 
 function getDataDir() {
@@ -153,17 +162,40 @@ function buildMarket(
   };
 }
 
+async function loadNikkei225Universe(): Promise<Nikkei225Universe> {
+  try {
+    const manifest = await loadContributionManifest();
+    const latestDate = manifest.latest_date ?? manifest.dates.at(-1) ?? null;
+    if (!latestDate) return { as_of_date: null, codes: [] };
+
+    const dayData = await loadContributionDayData(latestDate);
+    if (!dayData) return { as_of_date: latestDate, codes: [] };
+
+    const codes = Array.from(
+      new Set(
+        dayData.records
+          .map((record) => record.code.trim())
+          .filter((code) => code.length > 0),
+      ),
+    ).sort();
+    return { as_of_date: latestDate, codes };
+  } catch {
+    return { as_of_date: null, codes: [] };
+  }
+}
+
 export async function GET() {
   const today = todayJstKey();
   const dates = Array.from({ length: TARGET_DAYS }, (_, index) => addDays(today, index));
   const monthIds = Array.from(new Set(dates.map((date) => date.slice(0, 7))));
-  const [domesticEntries, overseasEntries] = await Promise.all([
+  const [domesticEntries, overseasEntries, nikkei225] = await Promise.all([
     Promise.all(
       monthIds.map(async (monthId) => [monthId, await loadDomesticMonthData(monthId)] as const),
     ),
     Promise.all(
       monthIds.map(async (monthId) => [monthId, await loadApiOverseasMonthData(monthId)] as const),
     ),
+    loadNikkei225Universe(),
   ]);
   const domesticMonthData = Object.fromEntries(domesticEntries);
   const overseasMonthData = Object.fromEntries(overseasEntries);
@@ -177,6 +209,7 @@ export async function GET() {
     {
       schema_version: "earnings-calendar-home-notifications-v1",
       generated_at: new Date().toISOString(),
+      nikkei225,
       days,
     },
     { headers: { "Cache-Control": CACHE_CONTROL } },
