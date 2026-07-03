@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { addMemoItemFromCandidate, isImportedMonthlyYutaiCandidate } from "@/app/tools/yutai-memo/candidate-import";
 import { loadItems, saveItems } from "@/app/tools/yutai-memo/storage";
 import { CROSS_TYPES, type CrossType, type MemoItem } from "@/app/tools/yutai-memo/types";
+import { isPreparationMonth } from "@/app/tools/yutai-memo/date-utils";
 import { useRouterTransition } from "@/app/tools/_shared/use-router-transition";
 import { markChanged } from "@/lib/sync/client";
 import type { MonthlyYutaiCandidate, MonthlyYutaiPageData } from "./types";
@@ -18,10 +19,12 @@ type LinkFilter = "all" | "with" | "without";
 type CrossFilter = "all" | "general" | "general_watch" | "institutional" | "any";
 type SbiFilter = "all" | "sbi_any";
 type SortKey = "company" | "code" | "investment" | "available_shares";
+type CalendarAxis = "entitlement" | "preparation";
 type MemoEditDraft = {
   name: string;
   crossType: CrossType;
   entryTiming: string;
+  preparationMonthsBefore: number | "";
   relatedUrl: string;
   tenureRule: string;
   acquired: boolean;
@@ -224,6 +227,8 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const [pickedCodes, setPickedCodes] = useState<Set<string>>(new Set());
   const [passedCodes, setPassedCodes] = useState<Set<string>>(new Set());
   const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
+  const [memoItems, setMemoItems] = useState<MemoItem[]>([]);
+  const [calendarAxis, setCalendarAxis] = useState<CalendarAxis>("entitlement");
   const [cardMemos, setCardMemos] = useState<Record<string, CalendarCardMemo>>({});
   const [hydrated, setHydrated] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -241,6 +246,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     setCardMemos(loadCardMemos());
     const items = loadItems();
     setAddedKeys(getAddedKeysFromMemoItems(items));
+    setMemoItems(items);
     setHydrated(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
@@ -338,6 +344,17 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
       });
   }, [addedKeys, cardMemos, crossFilter, sbiFilter, data.items, data.nikkoCredit, data.sbiCredit, linkFilter, passedCodes, pickedCodes, query, sortKey, statusFilter, tagFilter]);
 
+  const preparationItems = useMemo(() => {
+    const selectedMonth = Number(data.selectedMonthId.slice(5, 7));
+    const normalizedQuery = normalizeText(query.trim());
+    return memoItems.filter((item) => {
+      if (!isPreparationMonth(item.months, item.preparationMonthsBefore, selectedMonth)) return false;
+      if (!normalizedQuery) return true;
+      return normalizeText([item.name, item.code ?? "", item.memo, item.entryTiming ?? ""].join(" "))
+        .includes(normalizedQuery);
+    });
+  }, [data.selectedMonthId, memoItems, query]);
+
   function togglePick(code: string) {
     setPickedCodes((prev) => {
       const next = new Set(prev);
@@ -396,6 +413,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     }
 
     setAddedKeys((prev) => new Set(prev).add(`${item.code}:${item.month}`));
+    setMemoItems(loadItems());
     setNotice(`${item.company_name} を優待メモへ追加しました。`);
   }
 
@@ -439,6 +457,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
       name: target.name,
       crossType: target.crossType,
       entryTiming: target.entryTiming ?? "",
+      preparationMonthsBefore: target.preparationMonthsBefore ?? "",
       relatedUrl: target.relatedUrl ?? "",
       tenureRule: target.tenureRule ?? "",
       acquired: target.acquired,
@@ -468,6 +487,9 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
         name: memoDraft.name.trim() || item.name,
         crossType: memoDraft.crossType,
         entryTiming: memoDraft.entryTiming.trim() || undefined,
+        preparationMonthsBefore: memoDraft.preparationMonthsBefore === ""
+          ? undefined
+          : memoDraft.preparationMonthsBefore,
         relatedUrl: memoDraft.relatedUrl.trim() || undefined,
         tenureRule: memoDraft.tenureRule.trim() || undefined,
         acquired: memoDraft.acquired,
@@ -486,6 +508,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
 
     saveItems(next);
     setAddedKeys(getAddedKeysFromMemoItems(next));
+    setMemoItems(next);
     setNotice(`${memoDraft.name.trim() || editingMemo.name} の優待メモを保存しました。`);
     closeMemoEdit();
   }
@@ -526,6 +549,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
 
     saveItems(next);
     setAddedKeys(getAddedKeysFromMemoItems(next));
+    setMemoItems(next);
     setNotice(
       deletedMemo
         ? `${editingMemoContext.companyName} の優待メモを削除しました。`
@@ -579,13 +603,31 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
         </section>
 
         <section style={styles.panel}>
+          <div style={styles.filterSelectRow}>
+            <button
+              type="button"
+              style={calendarAxis === "entitlement" ? styles.monthChipActive : styles.monthChip}
+              onClick={() => setCalendarAxis("entitlement")}
+            >
+              権利月で探す
+            </button>
+            <button
+              type="button"
+              style={calendarAxis === "preparation" ? styles.monthChipActive : styles.monthChip}
+              onClick={() => setCalendarAxis("preparation")}
+            >
+              仕込み月で探す
+            </button>
+          </div>
           {availableMonths.length > 0 && (
             <div style={styles.monthSection}>
               <div style={styles.monthSectionTop}>
                 <div>
                   <div style={styles.sectionLabel}>表示月</div>
                   <div style={styles.monthSectionNote}>
-                    {formatKenriLastDate(data.selectedMonthKenriLastDate)}
+                    {calendarAxis === "entitlement"
+                      ? formatKenriLastDate(data.selectedMonthKenriLastDate)
+                      : "優待メモに仕込み時期を設定した銘柄を表示"}
                   </div>
                 </div>
               </div>
@@ -605,7 +647,15 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                       style={chipStyle}
                     >
                       <span>{month.shortLabel}</span>
-                      <span style={active ? styles.monthChipCountActive : styles.monthChipCount}>{month.count}</span>
+                      <span style={active ? styles.monthChipCountActive : styles.monthChipCount}>
+                        {calendarAxis === "entitlement"
+                          ? month.count
+                          : memoItems.filter((item) => isPreparationMonth(
+                              item.months,
+                              item.preparationMonthsBefore,
+                              Number(month.id.slice(5, 7)),
+                            )).length}
+                      </span>
                     </button>
                   );
                 })}
@@ -627,7 +677,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                 style={styles.search}
               />
             </div>
-            <div style={styles.filterSelectRow}>
+            {calendarAxis === "entitlement" ? <div style={styles.filterSelectRow}>
               <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} style={styles.select}>
                 <option value="all">カテゴリ: すべて</option>
                 {availableTags.map((tag) => (
@@ -669,10 +719,45 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                   <option value="available_shares">並び順: 一般売建可能数量</option>
                 )}
               </select>
-            </div>
+            </div> : null}
           </div>
 
-          {!data.manifest ? (
+          {calendarAxis === "preparation" ? (
+            preparationItems.length === 0 ? (
+              <article style={styles.emptyCard}>
+                <div style={styles.emptyTitle}>この月に仕込む登録銘柄はありません</div>
+                <div style={styles.emptyNote}>優待メモ帳で「権利月の何か月前」を設定すると表示されます。</div>
+              </article>
+            ) : (
+              <>
+                <div style={styles.resultsMeta}>
+                  <span style={styles.resultsCount}>{preparationItems.length}</span>
+                  <span style={styles.resultsLabel}>件の仕込み候補</span>
+                </div>
+                <div style={styles.list}>
+                  {preparationItems.map((item) => (
+                    <article key={item.id} style={styles.card}>
+                      <div style={styles.cardTop}>
+                        <div>
+                          <div style={styles.companyName}>{item.name}</div>
+                          <div style={styles.codeChip}>{item.code || "コード未設定"}</div>
+                        </div>
+                        <span style={styles.monthChipActive}>
+                          {item.preparationMonthsBefore === 0
+                            ? "当月仕込み"
+                            : `${item.preparationMonthsBefore}か月前から`}
+                        </span>
+                      </div>
+                      <div style={styles.metaRow}>
+                        権利月: {item.months.map((month) => `${month}月`).join("・")}
+                      </div>
+                      {item.entryTiming ? <div style={styles.summaryText}>{item.entryTiming}</div> : null}
+                    </article>
+                  ))}
+                </div>
+              </>
+            )
+          ) : !data.manifest ? (
             <article style={styles.emptyCard}>
               <svg style={styles.emptyIcon} viewBox="0 0 24 24" fill="none" width={28} height={28}>
                 <circle cx="12" cy="12" r="9" stroke="#94a3b8" strokeWidth="1.5" />
@@ -880,6 +965,25 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                   </select>
                 </label>
               </div>
+
+              <label style={styles.fieldLabel}>
+                仕込み開始
+                <select
+                  value={memoDraft.preparationMonthsBefore}
+                  onChange={(event) => setMemoDraft((draft) => draft ? {
+                    ...draft,
+                    preparationMonthsBefore: event.target.value === "" ? "" : Number(event.target.value),
+                  } : draft)}
+                  style={styles.dialogInput}
+                >
+                  <option value="">未設定</option>
+                  {Array.from({ length: 12 }, (_, index) => (
+                    <option key={index} value={index}>
+                      {index === 0 ? "権利月の当月" : `権利月の${index}か月前`}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
               <label style={styles.fieldLabel}>
                 早取り目安

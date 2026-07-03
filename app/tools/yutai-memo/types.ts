@@ -24,6 +24,7 @@ export type MemoItem = {
   tagIds: string[]; // ★ tags -> tagIds
   crossType: CrossType;
   entryTiming?: string; // 早打ち目安
+  preparationMonthsBefore?: number; // 権利月の何か月前から仕込むか（0-11）
   relatedUrl?: string; // 関連リンク
   tenureRule?: string; // 任期条件
   acquired: boolean; // 取得済みか
