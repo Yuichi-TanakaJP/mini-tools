@@ -342,6 +342,9 @@ export default function ToolClient({
 
     return items
       .filter((it) => {
+        if (monthView === "preparation" && it.preparationMonthsBefore === undefined) {
+          return false;
+        }
         if (monthFilter !== "all") {
           const matchesMonth = monthView === "entitlement"
             ? it.months.includes(monthFilter)
