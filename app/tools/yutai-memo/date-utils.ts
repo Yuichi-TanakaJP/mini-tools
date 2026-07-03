@@ -36,3 +36,25 @@ export function resolveEntitlementMonthKey(
   const targetYear = targetMonth <= ym.month ? ym.year : ym.year - 1;
   return `${targetYear}-${`${targetMonth}`.padStart(2, "0")}`;
 }
+
+export function getPreparationMonth(
+  entitlementMonth: number,
+  monthsBefore: number,
+): number | null {
+  if (
+    !Number.isInteger(entitlementMonth) || entitlementMonth < 1 || entitlementMonth > 12 ||
+    !Number.isInteger(monthsBefore) || monthsBefore < 0 || monthsBefore > 11
+  ) return null;
+  return ((entitlementMonth - 1 - monthsBefore + 12) % 12) + 1;
+}
+
+export function isPreparationMonth(
+  entitlementMonths: number[],
+  monthsBefore: number | undefined,
+  targetMonth: number,
+): boolean {
+  if (monthsBefore === undefined) return false;
+  return entitlementMonths.some(
+    (month) => getPreparationMonth(month, monthsBefore) === targetMonth,
+  );
+}

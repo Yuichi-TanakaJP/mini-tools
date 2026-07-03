@@ -18,7 +18,7 @@ import {
   saveItems,
   saveTags,
 } from "./storage";
-import { resolveEntitlementMonthKey, toJstYearMonth, toMonthKeyFromIso } from "./date-utils";
+import { isPreparationMonth, resolveEntitlementMonthKey, toJstYearMonth, toMonthKeyFromIso } from "./date-utils";
 
 function uid() {
   // 十分実用（uuid不要ならこれでOK）
@@ -28,6 +28,7 @@ function uid() {
 type SortKey = "createdAt" | "code" | "name";
 type SortOrder = "asc" | "desc";
 type SortState = { key: SortKey; order: SortOrder };
+type MonthView = "entitlement" | "preparation";
 const SORT_KEY = "yutai_memo_sort_v1";
 const LAST_SEEN_MONTH_KEY = "yutai_memo_last_seen_month_v1";
 
@@ -40,6 +41,7 @@ type Draft = {
   tagIds: string[];
   crossType: CrossType;
   entryTiming: string;
+  preparationMonthsBefore: number | "";
   relatedUrl: string;
   tenureRule: string;
   acquired: boolean;
@@ -73,6 +75,7 @@ const emptyDraft = (): Draft => ({
   tagIds: [],
   crossType: "長期優遇なし",
   entryTiming: "",
+  preparationMonthsBefore: "",
   relatedUrl: "",
   tenureRule: "",
   acquired: false,
@@ -206,6 +209,7 @@ export default function ToolClient({
   const [monthFilter, setMonthFilter] = useState<number | "all">(
     () => toJstYearMonth(new Date()).month
   );
+  const [monthView, setMonthView] = useState<MonthView>("entitlement");
   const [tagFilter, setTagFilter] = useState<string>("all");
   const [sortState, setSortState] = useState<SortState>(() => loadSortState());
   const [sortControlsOpen, setSortControlsOpen] = useState(false);
@@ -338,8 +342,15 @@ export default function ToolClient({
 
     return items
       .filter((it) => {
-        if (monthFilter !== "all" && !it.months.includes(monthFilter))
+        if (monthView === "preparation" && it.preparationMonthsBefore === undefined) {
           return false;
+        }
+        if (monthFilter !== "all") {
+          const matchesMonth = monthView === "entitlement"
+            ? it.months.includes(monthFilter)
+            : isPreparationMonth(it.months, it.preparationMonthsBefore, monthFilter);
+          if (!matchesMonth) return false;
+        }
         if (tagFilter !== "all" && !it.tagIds.includes(tagFilter)) return false;
 
         if (!qq) return true;
@@ -361,7 +372,7 @@ export default function ToolClient({
       })
       .slice()
       .sort(compare);
-  }, [items, q, monthFilter, tagFilter, tagNameById, sortState]);
+  }, [items, q, monthFilter, monthView, tagFilter, tagNameById, sortState]);
 
   // 日興の信用売り残高: code（大文字）→ 株数。公開 JSON を自分の銘柄で filter する。
   const sellBalanceByCode = useMemo(() => {
@@ -463,6 +474,7 @@ export default function ToolClient({
       tagIds: it.tagIds ?? [],
       crossType: it.crossType ?? "長期優遇なし",
       entryTiming: it.entryTiming ?? "",
+      preparationMonthsBefore: it.preparationMonthsBefore ?? "",
       relatedUrl: it.relatedUrl ?? "",
       tenureRule: it.tenureRule ?? "",
       acquired: it.acquired,
@@ -510,7 +522,9 @@ export default function ToolClient({
     }
     const now = new Date().toISOString();
     setItems((prev) => {
+      const existing = draft.id ? prev.find((item) => item.id === draft.id) : undefined;
       const base: MemoItem = {
+        ...existing,
         id: draft.id ?? uid(),
         name: draft.name.trim(),
         code: draft.code.trim() || undefined,
@@ -519,6 +533,9 @@ export default function ToolClient({
         tagIds: draft.tagIds,
         crossType: draft.crossType,
         entryTiming: draft.entryTiming.trim() || undefined,
+        preparationMonthsBefore: draft.preparationMonthsBefore === ""
+          ? undefined
+          : draft.preparationMonthsBefore,
         relatedUrl: draft.relatedUrl.trim() || undefined,
         tenureRule: draft.tenureRule.trim() || undefined,
         acquired: draft.acquired,
@@ -1054,6 +1071,24 @@ export default function ToolClient({
           </div>
 
           <div className={styles.searchGroup}>
+            <button
+              className={monthView === "preparation" ? styles.btnPrimary : styles.btn}
+              type="button"
+              onClick={() => {
+                setMonthView("preparation");
+                setMonthFilter(toJstYearMonth(new Date()).month);
+                clearSelection();
+              }}
+            >
+              今月の仕込み
+            </button>
+            <button
+              className={monthView === "entitlement" ? styles.btnPrimary : styles.btn}
+              type="button"
+              onClick={() => { setMonthView("entitlement"); clearSelection(); }}
+            >
+              権利月から探す
+            </button>
             <div className={styles.searchInputWrap}>
               <input
                 className={`${styles.input} ${styles.searchInput}`}
@@ -1084,7 +1119,7 @@ export default function ToolClient({
                 setMonthFilter(v === "all" ? "all" : Number(v));
               }}
             >
-              <option value="all">権利月: すべて</option>
+              <option value="all">{monthView === "preparation" ? "仕込み月" : "権利月"}: すべて</option>
               {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                 <option key={m} value={m}>
                   {m}月
@@ -1348,6 +1383,13 @@ export default function ToolClient({
                               {month}月
                             </span>
                           ))}
+                          {monthView === "preparation" && it.preparationMonthsBefore !== undefined ? (
+                            <span className={styles.monthPriorityBadgeCurrent}>
+                              {it.preparationMonthsBefore === 0
+                                ? "当月仕込み"
+                                : `${it.preparationMonthsBefore}か月前から仕込み`}
+                            </span>
+                          ) : null}
                         </div>
                       </div>
                       <div className={styles.cardSide}>
@@ -1695,6 +1737,21 @@ export default function ToolClient({
         <>
           <div className={styles.card}>
             <div className={styles.row}>
+              <select
+                className={styles.select}
+                value={draft.preparationMonthsBefore}
+                onChange={(e) => setDraft((d) => ({
+                  ...d,
+                  preparationMonthsBefore: e.target.value === "" ? "" : Number(e.target.value),
+                }))}
+              >
+                <option value="">仕込み月: 未設定</option>
+                {Array.from({ length: 12 }, (_, index) => (
+                  <option key={index} value={index}>
+                    {index === 0 ? "権利月の当月" : `権利月の${index}か月前`}
+                  </option>
+                ))}
+              </select>
               <input
                 className={styles.input}
                 placeholder="銘柄名（必須）"
