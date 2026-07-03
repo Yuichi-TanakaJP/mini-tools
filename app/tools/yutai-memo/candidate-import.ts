@@ -8,6 +8,7 @@ export type MonthlyYutaiCandidateImport = {
   code: string;
   companyName: string;
   month: number;
+  preparationMonthsBefore?: number;
   minimumInvestmentText?: string;
   benefitCategoryTags?: string[];
   minkabuYutaiUrl: string;
@@ -57,6 +58,7 @@ export function createMemoItemFromCandidate(
     months: [candidate.month],
     tagIds: [],
     crossType: "長期優遇なし",
+    preparationMonthsBefore: candidate.preparationMonthsBefore,
     acquired: false,
     priority: 2,
     memo: memoLines.join("\n"),

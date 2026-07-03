@@ -186,6 +186,32 @@
 }
 
 /* ===== Search / Filter row ===== */
+.monthViewToggle {
+  display: inline-flex;
+  margin-top: 10px;
+  padding: 3px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.monthViewButton {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.monthViewButtonActive {
+  background: var(--clr-primary);
+  color: #fff;
+}
+
 /* search | month-select | tag-select (grid on mobile) */
 .searchGroup {
   display: flex;
@@ -1221,6 +1247,12 @@
 
   .headerActions {
     width: auto;
+  }
+
+  .monthViewToggle {
+    display: flex;
+    width: fit-content;
+    max-width: 100%;
   }
 
   /* search | month-select (88px) | tag-select (112px) */

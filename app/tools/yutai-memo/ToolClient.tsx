@@ -1070,9 +1070,9 @@ export default function ToolClient({
             株主優待の銘柄メモや長期条件をスマホやPCに残せます。
           </div>
 
-          <div className={styles.searchGroup}>
+          <div className={styles.monthViewToggle} aria-label="月の表示軸">
             <button
-              className={monthView === "preparation" ? styles.btnPrimary : styles.btn}
+              className={`${styles.monthViewButton} ${monthView === "preparation" ? styles.monthViewButtonActive : ""}`}
               type="button"
               onClick={() => {
                 setMonthView("preparation");
@@ -1083,12 +1083,14 @@ export default function ToolClient({
               今月の仕込み
             </button>
             <button
-              className={monthView === "entitlement" ? styles.btnPrimary : styles.btn}
+              className={`${styles.monthViewButton} ${monthView === "entitlement" ? styles.monthViewButtonActive : ""}`}
               type="button"
               onClick={() => { setMonthView("entitlement"); clearSelection(); }}
             >
               権利月から探す
             </button>
+          </div>
+          <div className={styles.searchGroup}>
             <div className={styles.searchInputWrap}>
               <input
                 className={`${styles.input} ${styles.searchInput}`}
