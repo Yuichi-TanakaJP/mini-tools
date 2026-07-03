@@ -39,6 +39,7 @@ type EditingMemoContext = {
 type CalendarCardMemo = {
   longTermRequired: boolean;
   longTermBenefit: boolean;
+  preparationMonthsBefore?: number;
   updatedAt: string;
 };
 
@@ -108,6 +109,13 @@ function loadCardMemos(): Record<string, CalendarCardMemo> {
           {
             longTermRequired: Boolean(value.longTermRequired),
             longTermBenefit: Boolean(value.longTermBenefit),
+            preparationMonthsBefore:
+              typeof value.preparationMonthsBefore === "number" &&
+              Number.isInteger(value.preparationMonthsBefore) &&
+              value.preparationMonthsBefore >= 0 &&
+              value.preparationMonthsBefore <= 11
+                ? value.preparationMonthsBefore
+                : undefined,
             updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : "",
           },
         ]),
@@ -398,6 +406,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
       code: item.code,
       companyName: item.company_name,
       month: item.month,
+      preparationMonthsBefore: cardMemos[getCardMemoKey(item)]?.preparationMonthsBefore,
       minimumInvestmentText: item.minimum_investment_text,
       benefitCategoryTags: item.benefit_category_tags,
       minkabuYutaiUrl: item.minkabu_yutai_url,
@@ -847,6 +856,28 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                               </>
                             )}
                           </div>
+                          {!added ? (
+                            <label style={styles.preparationControl}>
+                              <span>仕込み</span>
+                              <select
+                                value={cardMemo.preparationMonthsBefore ?? ""}
+                                onChange={(event) => updateCardMemo(cardMemoKey, {
+                                  preparationMonthsBefore: event.target.value === ""
+                                    ? undefined
+                                    : Number(event.target.value),
+                                })}
+                                style={styles.preparationSelect}
+                                aria-label={`${item.company_name}の仕込み開始`}
+                              >
+                                <option value="">未設定</option>
+                                {Array.from({ length: 12 }, (_, index) => (
+                                  <option key={index} value={index}>
+                                    {index === 0 ? "当月" : `${index}か月前`}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          ) : null}
                           <div style={styles.creditRow}>
                             {renderCreditBadges(data.nikkoCredit, item.code, styles)}
                             {renderSbiCreditBadge(data.sbiCredit, item.code, styles)}
@@ -1489,6 +1520,23 @@ const styles: Record<string, React.CSSProperties> = {
   },
   metaDivider: {
     color: "#cbd5e1",
+    fontSize: 12,
+  },
+  preparationControl: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+    color: "#64748b",
+    fontSize: 12,
+    fontWeight: 700,
+  },
+  preparationSelect: {
+    padding: "5px 8px",
+    border: "1px solid rgba(15,23,42,0.14)",
+    borderRadius: 7,
+    background: "#fff",
+    color: "#334155",
     fontSize: 12,
   },
   investChip: {
