@@ -33,6 +33,9 @@ type StrategyFilter = "all" | CrossType;
 type SortKey = "code" | "company" | "investment" | "available_shares";
 type CalendarAxis = "entitlement" | "preparation";
 
+// data-loader の ALL_MONTHS_ID と同じ値。data-loader は node:fs を使うため client からは import しない。
+const ALL_MONTHS_ID = "all";
+
 type DashboardRow = {
   key: string;
   code: string;
@@ -119,7 +122,8 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const didPersistPicked = useRef(false);
   const didPersistPassed = useRef(false);
 
-  const selectedMonth = Number(data.selectedMonthId.slice(5, 7));
+  const isAllMonths = data.selectedMonthId === ALL_MONTHS_ID;
+  const selectedMonth = isAllMonths ? null : Number(data.selectedMonthId.slice(5, 7));
 
   useEffect(() => {
     // localStorage はサーバーで読めないため、マウント後に初期化する（hydration mismatch 回避）
@@ -177,9 +181,14 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const rows = useMemo<DashboardRow[]>(() => {
     if (axis === "preparation") {
       // 仕込み月軸はメモ登録済み＋仕込み時期設定済みに限定する（2026-07-03 決定）
+      // 全月表示では「仕込み時期を設定した銘柄すべて」を対象にする
       const candidateByCode = new Map(data.items.map((item) => [item.code, item]));
       return memoItems
-        .filter((item) => isPreparationMonth(item.months, item.preparationMonthsBefore, selectedMonth))
+        .filter((item) => (
+          selectedMonth === null
+            ? item.preparationMonthsBefore !== undefined
+            : isPreparationMonth(item.months, item.preparationMonthsBefore, selectedMonth)
+        ))
         .map((item) => {
           const code = item.code ?? "";
           return {
@@ -466,6 +475,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                 style={styles.select}
                 disabled={isPendingFor(`month:${data.selectedMonthId}`)}
               >
+                <option value={ALL_MONTHS_ID}>全月</option>
                 {availableMonths.map((month) => (
                   <option key={month.id} value={month.id}>{month.label}</option>
                 ))}
@@ -563,7 +573,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                 <thead>
                   <tr>
                     <th style={{ ...styles.th, width: 64 }}>コード</th>
-                    <th style={{ ...styles.th, minWidth: 160 }}>銘柄</th>
+                    <th style={{ ...styles.th, minWidth: 110 }}>銘柄</th>
                     <th style={{ ...styles.th, width: 84 }}>権利月</th>
                     <th style={{ ...styles.th, width: 120 }}>日興</th>
                     <th style={{ ...styles.th, width: 76 }}>SBI</th>
@@ -1026,7 +1036,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottom: "1px solid rgba(15,23,42,0.06)",
     color: "#0f172a",
     fontWeight: 700,
-    maxWidth: 240,
+    maxWidth: 150,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",

@@ -222,6 +222,48 @@ async function loadSbiCreditData(selectedMonthId: string): Promise<SbiCreditData
   }
 }
 
+// 優待ダッシュボードの「全月」表示用。manifest の全月データを結合して返す。
+// yutai-candidates 側の月別表示（loadMonthlyYutaiPageData）は従来どおりで変更しない。
+export const ALL_MONTHS_ID = "all";
+
+export async function loadMonthlyYutaiAllMonthsPageData(): Promise<MonthlyYutaiPageData> {
+  const { year, month } = getJstToday();
+  const currentMonthId = `${year}-${String(month).padStart(2, "0")}`;
+
+  const [manifest, nikkoCredit, sbiCredit] = await Promise.all([
+    loadMonthlyYutaiManifest(),
+    loadNikkoCreditData(),
+    // 全月表示では SBI は当月在庫（latest 相当）を使う
+    loadSbiCreditData(currentMonthId),
+  ]);
+
+  // アーカイブが複数年に跨ると同じ権利月が年違いで並ぶため、各権利月は最新年のデータだけを使う。
+  // record は month しか持たず、code:month キーが年違いで衝突するのを防ぐ（全月=12ヶ月カレンダー想定）。
+  const latestByMonth = new Map<number, { year: number; month: number }>();
+  for (const entry of manifest?.months ?? []) {
+    const current = latestByMonth.get(entry.month);
+    if (!current || entry.year > current.year) {
+      latestByMonth.set(entry.month, { year: entry.year, month: entry.month });
+    }
+  }
+  const monthIds = [...latestByMonth.values()]
+    .sort((a, b) => a.month - b.month)
+    .map((m) => `${m.year}-${String(m.month).padStart(2, "0")}`);
+  const monthDataList = await Promise.all(monthIds.map((id) => loadMonthlyYutaiMonthData(id)));
+  const items = monthDataList.flatMap((data) => data?.records ?? []);
+
+  return {
+    manifest,
+    selectedMonthId: ALL_MONTHS_ID,
+    selectedMonthKenriLastDate: null,
+    generatedAt: manifest?.generated_at ?? null,
+    source: manifest?.source ?? null,
+    items,
+    nikkoCredit,
+    sbiCredit,
+  };
+}
+
 export async function loadMonthlyYutaiPageData(requestedMonthId?: string): Promise<MonthlyYutaiPageData> {
   const [manifest, nikkoCredit] = await Promise.all([
     loadMonthlyYutaiManifest(),
