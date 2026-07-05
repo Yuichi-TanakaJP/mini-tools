@@ -7,12 +7,25 @@ import { loadItems, saveItems } from "@/app/tools/yutai-memo/storage";
 import { CROSS_TYPES, type CrossType, type MemoItem } from "@/app/tools/yutai-memo/types";
 import { isPreparationMonth } from "@/app/tools/yutai-memo/date-utils";
 import { useRouterTransition } from "@/app/tools/_shared/use-router-transition";
-import { markChanged } from "@/lib/sync/client";
+import {
+  canNikkoGeneralCrossNow,
+  getNikkoCreditBadges,
+  isHandledBySbiShort,
+  shouldWatchNikkoGeneral,
+  type NikkoCreditBadgeKind,
+} from "@/app/tools/_shared/yutai-credit";
+import {
+  MONTHLY_YUTAI_PICKED_KEY as PICKED_KEY,
+  MONTHLY_YUTAI_PASSED_KEY as PASSED_KEY,
+  getAddedKeysFromMemoItems,
+  getCardMemoKey,
+  loadCardMemos,
+  loadCodeSet,
+  saveCardMemos,
+  saveCodeSet,
+  type CalendarCardMemo,
+} from "@/app/tools/_shared/yutai-selection";
 import type { MonthlyYutaiCandidate, MonthlyYutaiPageData } from "./types";
-
-const PICKED_KEY = "monthly_yutai_picks_v1";
-const PASSED_KEY = "monthly_yutai_passes_v1";
-const CARD_MEMOS_KEY = "monthly_yutai_card_memos_v1";
 
 type StatusFilter = "all" | "picked" | "passed" | "added" | "unselected";
 type LinkFilter = "all" | "with" | "without";
@@ -36,13 +49,6 @@ type EditingMemoContext = {
   companyName: string;
   month: number;
 };
-type CalendarCardMemo = {
-  longTermRequired: boolean;
-  longTermBenefit: boolean;
-  preparationMonthsBefore?: number;
-  updatedAt: string;
-};
-
 function normalizeText(value: string) {
   return value.normalize("NFKC").toLowerCase();
 }
@@ -72,103 +78,13 @@ function formatKenriLastDate(value: string | null) {
   }).format(new Date(time))}`;
 }
 
-function loadCodeSet(storageKey: string) {
-  if (typeof window === "undefined") return new Set<string>();
-  try {
-    const raw = window.localStorage.getItem(storageKey);
-    if (!raw) return new Set<string>();
-    const parsed = JSON.parse(raw) as string[];
-    return new Set(Array.isArray(parsed) ? parsed.filter((value) => typeof value === "string") : []);
-  } catch {
-    return new Set<string>();
-  }
-}
-
-function saveCodeSet(storageKey: string, codes: Set<string>, options: { markChanged?: boolean } = {}) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(storageKey, JSON.stringify([...codes]));
-  if (options.markChanged ?? true) markChanged(storageKey);
-}
-
-function getCardMemoKey(item: Pick<MonthlyYutaiCandidate, "code" | "month">) {
-  return `${item.code}:${item.month}`;
-}
-
-function loadCardMemos(): Record<string, CalendarCardMemo> {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(CARD_MEMOS_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as Record<string, Partial<CalendarCardMemo>>;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-    return Object.fromEntries(
-      Object.entries(parsed)
-        .filter(([key, value]) => typeof key === "string" && value && typeof value === "object")
-        .map(([key, value]) => [
-          key,
-          {
-            longTermRequired: Boolean(value.longTermRequired),
-            longTermBenefit: Boolean(value.longTermBenefit),
-            preparationMonthsBefore:
-              typeof value.preparationMonthsBefore === "number" &&
-              Number.isInteger(value.preparationMonthsBefore) &&
-              value.preparationMonthsBefore >= 0 &&
-              value.preparationMonthsBefore <= 11
-                ? value.preparationMonthsBefore
-                : undefined,
-            updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : "",
-          },
-        ]),
-    );
-  } catch {
-    return {};
-  }
-}
-
-function saveCardMemos(memos: Record<string, CalendarCardMemo>) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(CARD_MEMOS_KEY, JSON.stringify(memos));
-  markChanged(CARD_MEMOS_KEY);
-}
-
-function getAddedKeysFromMemoItems(items: MemoItem[]) {
-  return new Set(
-    items.flatMap((item) => (item.months ?? []).map((month) => `${item.code ?? ""}:${month}`)),
-  );
-}
-
-type NikkoCreditRecord = NonNullable<MonthlyYutaiPageData["nikkoCredit"]>["by_code"][string];
-
-function hasNikkoSellStop(credit: NikkoCreditRecord | undefined) {
-  return Boolean(credit?.regulation_details?.some((detail) => (
-    detail.includes("新規売建規制") && detail.includes("取引停止")
-  )));
-}
-
-function hasNikkoLendingCaution(credit: NikkoCreditRecord | undefined) {
-  return Boolean(credit?.regulation_details?.some((detail) => detail.includes("貸株注意喚起")));
-}
-
-function canNikkoGeneralCrossNow(credit: NikkoCreditRecord | undefined) {
-  return Boolean(credit?.general_short && (credit.available_shares ?? 0) > 0 && !hasNikkoSellStop(credit));
-}
-
-// 一般信用売建の対象だが在庫が尽きている（＝今はクロス約定できない）状態。
-// available_shares が明示的に 0 = 在庫枠を管理している銘柄で残数 0。
-// general_short は在庫連動で false に倒れるため条件に含めない（在庫0なら false でも対象扱い）。
-// available_shares が null（在庫データを持たない非対象）は対象外で、従来どおり表示しない。
-function isNikkoGeneralOutOfStock(credit: NikkoCreditRecord | undefined) {
-  return Boolean(credit && credit.available_shares === 0 && !hasNikkoSellStop(credit));
-}
-
-function shouldWatchNikkoGeneral(credit: NikkoCreditRecord | undefined) {
-  if (!credit) return false;
-  return hasNikkoSellStop(credit) || canNikkoGeneralCrossNow(credit) || (
-    !credit.general_short &&
-    (credit.available_shares ?? 0) > 0 &&
-    !hasNikkoSellStop(credit)
-  );
-}
+const creditChipStyleByKind: Record<NikkoCreditBadgeKind, string> = {
+  generalStop: "creditChipGeneralRegulation",
+  generalCaution: "creditChipGeneralCaution",
+  generalOk: "creditChipGeneral",
+  generalOutOfStock: "creditChipNoCross",
+  institutional: "creditChipInstitutional",
+};
 
 function renderCreditBadges(
   nikkoCredit: import("./types").NikkoCreditData | null,
@@ -176,22 +92,13 @@ function renderCreditBadges(
   styles: Record<string, React.CSSProperties>,
 ): React.ReactNode {
   if (!nikkoCredit) return null;
-  const credit = nikkoCredit.by_code[code];
-  if (!credit) return null;
-  const badges: React.ReactNode[] = [];
-  if (hasNikkoSellStop(credit)) {
-    badges.push(<span key="gen-regulated" style={styles.creditChipGeneralRegulation} title="一般信用 売建規制（取引停止）">一般停止</span>);
-  } else if (canNikkoGeneralCrossNow(credit) && hasNikkoLendingCaution(credit)) {
-    badges.push(<span key="gen-caution" style={styles.creditChipGeneralCaution} title="一般信用 売建可（貸株注意喚起）">一般注意</span>);
-  } else if (canNikkoGeneralCrossNow(credit)) {
-    badges.push(<span key="gen" style={styles.creditChipGeneral} title="一般信用 売建可（在庫あり）">一般可</span>);
-  } else if (isNikkoGeneralOutOfStock(credit)) {
-    badges.push(<span key="gen-oos" style={styles.creditChipNoCross} title="一般信用売建の対象だが在庫0（今クロス不可）">一般×</span>);
-  }
-  if (credit.institutional_short) {
-    badges.push(<span key="inst" style={styles.creditChipInstitutional} title="制度信用 売建可">制度可</span>);
-  }
-  return badges;
+  const badges = getNikkoCreditBadges(nikkoCredit.by_code[code]);
+  if (badges.length === 0) return null;
+  return badges.map((badge) => (
+    <span key={badge.kind} style={styles[creditChipStyleByKind[badge.kind]]} title={badge.title}>
+      {badge.label}
+    </span>
+  ));
 }
 
 function renderSbiCreditBadge(
@@ -203,12 +110,6 @@ function renderSbiCreditBadge(
   const record = sbiCredit.by_code[code];
   if (!isHandledBySbiShort(record)) return null;
   return <span style={styles.sbiCreditChipAvailable}>SBI売可</span>;
-}
-
-function isHandledBySbiShort(
-  record: import("./types").SbiCreditData["by_code"][string] | undefined,
-) {
-  return Boolean(record?.is_short);
 }
 
 function hasOfficialLink(item: MonthlyYutaiCandidate) {
