@@ -222,6 +222,38 @@ async function loadSbiCreditData(selectedMonthId: string): Promise<SbiCreditData
   }
 }
 
+// 優待ダッシュボードの「全月」表示用。manifest の全月データを結合して返す。
+// yutai-candidates 側の月別表示（loadMonthlyYutaiPageData）は従来どおりで変更しない。
+export const ALL_MONTHS_ID = "all";
+
+export async function loadMonthlyYutaiAllMonthsPageData(): Promise<MonthlyYutaiPageData> {
+  const { year, month } = getJstToday();
+  const currentMonthId = `${year}-${String(month).padStart(2, "0")}`;
+
+  const [manifest, nikkoCredit, sbiCredit] = await Promise.all([
+    loadMonthlyYutaiManifest(),
+    loadNikkoCreditData(),
+    // 全月表示では SBI は当月在庫（latest 相当）を使う
+    loadSbiCreditData(currentMonthId),
+  ]);
+
+  const monthIds =
+    manifest?.months?.map((m) => `${m.year}-${String(m.month).padStart(2, "0")}`) ?? [];
+  const monthDataList = await Promise.all(monthIds.map((id) => loadMonthlyYutaiMonthData(id)));
+  const items = monthDataList.flatMap((data) => data?.records ?? []);
+
+  return {
+    manifest,
+    selectedMonthId: ALL_MONTHS_ID,
+    selectedMonthKenriLastDate: null,
+    generatedAt: manifest?.generated_at ?? null,
+    source: manifest?.source ?? null,
+    items,
+    nikkoCredit,
+    sbiCredit,
+  };
+}
+
 export async function loadMonthlyYutaiPageData(requestedMonthId?: string): Promise<MonthlyYutaiPageData> {
   const [manifest, nikkoCredit] = await Promise.all([
     loadMonthlyYutaiManifest(),
