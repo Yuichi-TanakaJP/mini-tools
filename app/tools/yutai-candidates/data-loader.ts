@@ -237,8 +237,18 @@ export async function loadMonthlyYutaiAllMonthsPageData(): Promise<MonthlyYutaiP
     loadSbiCreditData(currentMonthId),
   ]);
 
-  const monthIds =
-    manifest?.months?.map((m) => `${m.year}-${String(m.month).padStart(2, "0")}`) ?? [];
+  // アーカイブが複数年に跨ると同じ権利月が年違いで並ぶため、各権利月は最新年のデータだけを使う。
+  // record は month しか持たず、code:month キーが年違いで衝突するのを防ぐ（全月=12ヶ月カレンダー想定）。
+  const latestByMonth = new Map<number, { year: number; month: number }>();
+  for (const entry of manifest?.months ?? []) {
+    const current = latestByMonth.get(entry.month);
+    if (!current || entry.year > current.year) {
+      latestByMonth.set(entry.month, { year: entry.year, month: entry.month });
+    }
+  }
+  const monthIds = [...latestByMonth.values()]
+    .sort((a, b) => a.month - b.month)
+    .map((m) => `${m.year}-${String(m.month).padStart(2, "0")}`);
   const monthDataList = await Promise.all(monthIds.map((id) => loadMonthlyYutaiMonthData(id)));
   const items = monthDataList.flatMap((data) => data?.records ?? []);
 
