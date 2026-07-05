@@ -12,6 +12,7 @@
 | [株価ランキング外部データ移行計画](./stock-ranking-external-data-migration-plan.md) | stock-ranking の外部データ公開移行計画 |
 | [yutai-expiry カメラ画像認識計画](./yutai-expiry-image-capture-plan.md) | 優待券をカメラ撮影し Gemini で自動入力する段階実装計画 |
 | [Phase 1 クロスデバイス同期 実装計画](./phase1-cross-device-sync-plan.md) | 任意ログイン + Supabase でツールデータをデバイス間同期する段階実装計画 |
+| [優待統合ダッシュボード（PC）実装計画](./yutai-dashboard-plan.md) | 優待候補の発掘と運用管理を PC 向けテーブルで統合する段階実装計画 |
 
 ## 更新ルール
 
