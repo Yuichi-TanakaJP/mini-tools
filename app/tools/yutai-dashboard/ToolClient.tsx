@@ -226,16 +226,17 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
         if (statusFilter === "passed" && !row.passed) return false;
         if (statusFilter === "unselected" && (row.added || row.picked || row.passed)) return false;
 
-        if (crossFilter !== "all" && byCode) {
-          const credit = byCode[row.code];
+        // データ未取得時に絞り込みが素通しにならないよう、byCode なしでも判定して除外に倒す
+        if (crossFilter !== "all") {
+          const credit = byCode?.[row.code];
           if (crossFilter === "general" && !canNikkoGeneralCrossNow(credit)) return false;
           if (crossFilter === "general_watch" && !shouldWatchNikkoGeneral(credit)) return false;
           if (crossFilter === "institutional" && !credit?.institutional_short) return false;
           if (crossFilter === "any" && !canNikkoGeneralCrossNow(credit) && !credit?.institutional_short) return false;
         }
 
-        if (sbiFilter === "sbi_any" && data.sbiCredit) {
-          if (!isHandledBySbiShort(data.sbiCredit.by_code[row.code])) return false;
+        if (sbiFilter === "sbi_any") {
+          if (!isHandledBySbiShort(data.sbiCredit?.by_code[row.code])) return false;
         }
 
         if (strategyFilter !== "all" && row.memo?.crossType !== strategyFilter) return false;
@@ -488,8 +489,14 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
               </select>
             </label>
             <label style={styles.filterItem}>
-              <span style={styles.filterLabel}>日興クロス</span>
-              <select value={crossFilter} onChange={(event) => setCrossFilter(event.target.value as CrossFilter)} style={styles.select}>
+              <span style={styles.filterLabel}>日興クロス{data.nikkoCredit ? "" : "（データなし）"}</span>
+              <select
+                value={crossFilter}
+                onChange={(event) => setCrossFilter(event.target.value as CrossFilter)}
+                style={styles.select}
+                disabled={!data.nikkoCredit}
+                title={data.nikkoCredit ? undefined : "日興信用データが未取得のため利用できません"}
+              >
                 <option value="all">指定なし</option>
                 <option value="general">一般: 今クロス可</option>
                 <option value="general_watch">一般: 監視対象</option>
@@ -498,8 +505,14 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
               </select>
             </label>
             <label style={styles.filterItem}>
-              <span style={styles.filterLabel}>SBI</span>
-              <select value={sbiFilter} onChange={(event) => setSbiFilter(event.target.value as SbiFilter)} style={styles.select}>
+              <span style={styles.filterLabel}>SBI{data.sbiCredit ? "" : "（データなし）"}</span>
+              <select
+                value={sbiFilter}
+                onChange={(event) => setSbiFilter(event.target.value as SbiFilter)}
+                style={styles.select}
+                disabled={!data.sbiCredit}
+                title={data.sbiCredit ? undefined : "SBI信用データが未取得のため利用できません"}
+              >
                 <option value="all">指定なし</option>
                 <option value="sbi_any">売可あり</option>
               </select>
