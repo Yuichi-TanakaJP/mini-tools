@@ -69,6 +69,14 @@ export const TOOLS: ToolItem[] = [
     category: "yutai",
   },
   {
+    title: "優待ダッシュボード",
+    short: "PC向けの一覧テーブルで管理",
+    detail: "月次候補のピック・パス・メモ追加と、日興/SBI・仕込み時期・クロス戦略・取得実績の確認を1つのテーブルで。",
+    href: "/tools/yutai-dashboard",
+    icon: "📊",
+    category: "yutai",
+  },
+  {
     title: "決算カレンダー",
     short: "国内 / 海外の決算予定を確認",
     detail: "国内株と海外株の決算予定をカレンダーで確認。日付ごとに銘柄と決算種別を一覧表示。",
