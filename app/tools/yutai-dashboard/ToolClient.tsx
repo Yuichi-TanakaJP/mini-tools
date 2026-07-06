@@ -3,9 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { addMemoItemFromCandidate, isImportedMonthlyYutaiCandidate } from "@/app/tools/yutai-memo/candidate-import";
-import { loadArchivedItems, loadItems } from "@/app/tools/yutai-memo/storage";
+import { loadArchivedItems, loadItems, saveItems } from "@/app/tools/yutai-memo/storage";
 import { CROSS_TYPES, type ArchivedMemoItem, type CrossType, type MemoItem } from "@/app/tools/yutai-memo/types";
 import { isPreparationMonth } from "@/app/tools/yutai-memo/date-utils";
+import {
+  applyMemoEdit,
+  buildMemoEditDraft,
+  type MemoEditDraft,
+} from "@/app/tools/_shared/yutai-memo-edit";
 import { useRouterTransition } from "@/app/tools/_shared/use-router-transition";
 import {
   canNikkoGeneralCrossNow,
@@ -119,6 +124,8 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const [hydrated, setHydrated] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedRowKey, setSelectedRowKey] = useState<string | null>(null);
+  const [editingMemoId, setEditingMemoId] = useState<string | null>(null);
+  const [memoDraft, setMemoDraft] = useState<MemoEditDraft | null>(null);
   const didPersistPicked = useRef(false);
   const didPersistPassed = useRef(false);
 
@@ -348,6 +355,48 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     setNotice(`${item.company_name} を優待メモへ追加しました。`);
   }
 
+  function openMemoEdit(memo: MemoItem) {
+    // 保存直前に最新を読み直すため id だけ保持し、draft は現在値から作る
+    const items = loadItems();
+    const target = items.find((item) => item.id === memo.id);
+    if (!target) {
+      setMemoItems(items);
+      setAddedKeys(getAddedKeysFromMemoItems(items));
+      setNotice("編集対象の優待メモが見つかりませんでした。");
+      return;
+    }
+    setEditingMemoId(target.id);
+    setMemoDraft(buildMemoEditDraft(target));
+    setNotice(null);
+  }
+
+  function closeMemoEdit() {
+    setEditingMemoId(null);
+    setMemoDraft(null);
+  }
+
+  function saveMemoEdit() {
+    if (!editingMemoId || !memoDraft) return;
+    const items = loadItems();
+    const { items: next, updated } = applyMemoEdit(items, editingMemoId, memoDraft, new Date().toISOString());
+    if (!updated) {
+      setMemoItems(items);
+      setAddedKeys(getAddedKeysFromMemoItems(items));
+      setNotice("保存対象の優待メモが見つかりませんでした。");
+      closeMemoEdit();
+      return;
+    }
+    saveItems(next);
+    setMemoItems(next);
+    setAddedKeys(getAddedKeysFromMemoItems(next));
+    setNotice(`${memoDraft.name.trim() || "優待メモ"} を保存しました。`);
+    closeMemoEdit();
+  }
+
+  function updateDraft<K extends keyof MemoEditDraft>(key: K, value: MemoEditDraft[K]) {
+    setMemoDraft((prev) => (prev ? { ...prev, [key]: value } : prev));
+  }
+
   function handleMonthChange(nextMonthId: string) {
     const params = new URLSearchParams(searchParams.toString());
     if (!nextMonthId) {
@@ -357,6 +406,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     }
     const nextQuery = params.toString();
     setSelectedRowKey(null);
+    closeMemoEdit();
     navigate(
       nextQuery ? `/tools/yutai-dashboard?${nextQuery}` : "/tools/yutai-dashboard",
       { key: `month:${nextMonthId}`, method: "replace" },
@@ -433,6 +483,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     ? data.nikkoCredit?.by_code[selectedRow.code]
     : undefined;
   const acquiredForSelected = selectedRow ? acquiredByCode.get(selectedRow.code) : undefined;
+  const isEditingSelectedMemo = Boolean(selectedRow?.memo && editingMemoId === selectedRow.memo.id);
 
   return (
     <main style={styles.page}>
@@ -614,7 +665,10 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                         <tr
                           key={row.key}
                           style={rowStyle}
-                          onClick={() => setSelectedRowKey(isSelected ? null : row.key)}
+                          onClick={() => {
+                            setSelectedRowKey(isSelected ? null : row.key);
+                            closeMemoEdit();
+                          }}
                         >
                           <td style={styles.tdCode}>{row.code || "-"}</td>
                           <td style={styles.tdName} title={row.candidate?.benefit_summary ?? row.memo?.memo ?? ""}>
@@ -660,7 +714,17 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                     <h2 style={styles.detailTitle}>{selectedRow.name}</h2>
                     <div style={styles.detailMonths}>権利月: {formatMonths(selectedRow.months)}</div>
                   </div>
-                  <button type="button" onClick={() => setSelectedRowKey(null)} style={styles.detailClose} aria-label="詳細を閉じる">✕</button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedRowKey(null);
+                      closeMemoEdit();
+                    }}
+                    style={styles.detailClose}
+                    aria-label="詳細を閉じる"
+                  >
+                    ✕
+                  </button>
                 </div>
 
                 <div style={styles.detailActions}>{renderRowActions(selectedRow)}</div>
@@ -709,29 +773,160 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
 
                 {selectedRow.memo ? (
                   <section style={styles.detailSection}>
-                    <h3 style={styles.detailSectionTitle}>優待メモ</h3>
-                    <dl style={styles.detailDl}>
-                      <dt style={styles.detailDt}>クロス戦略</dt>
-                      <dd style={styles.detailDd}>{selectedRow.memo.crossType}</dd>
-                      <dt style={styles.detailDt}>仕込み開始</dt>
-                      <dd style={styles.detailDd}>
-                        {selectedRow.memo.preparationMonthsBefore !== undefined
-                          ? `権利月の${selectedRow.memo.preparationMonthsBefore}ヶ月前`
-                          : "未設定"}
-                      </dd>
-                      <dt style={styles.detailDt}>早打ち目安</dt>
-                      <dd style={styles.detailDd}>{selectedRow.memo.entryTiming || "未設定"}</dd>
-                      <dt style={styles.detailDt}>1株保有開始</dt>
-                      <dd style={styles.detailDd}>{selectedRow.memo.oneShareStartedAt || "未設定"}</dd>
-                      <dt style={styles.detailDt}>任期条件</dt>
-                      <dd style={styles.detailDd}>{selectedRow.memo.tenureRule || "未設定"}</dd>
-                      <dt style={styles.detailDt}>優先度</dt>
-                      <dd style={styles.detailDd}>{"★".repeat(selectedRow.memo.priority)}</dd>
-                    </dl>
-                    {selectedRow.memo.memo ? (
-                      <p style={styles.detailMemoText}>{selectedRow.memo.memo}</p>
-                    ) : null}
-                    <a href="/tools/yutai-memo" style={styles.detailLink}>優待メモ帳で編集する</a>
+                    <div style={styles.detailSectionHead}>
+                      <h3 style={styles.detailSectionTitle}>優待メモ</h3>
+                      {isEditingSelectedMemo ? null : (
+                        <button
+                          type="button"
+                          onClick={() => openMemoEdit(selectedRow.memo as MemoItem)}
+                          style={styles.detailEditButton}
+                        >
+                          編集
+                        </button>
+                      )}
+                    </div>
+
+                    {isEditingSelectedMemo && memoDraft ? (
+                      <div style={styles.editForm}>
+                        <label style={styles.editField}>
+                          <span style={styles.editLabel}>銘柄名</span>
+                          <input
+                            type="text"
+                            value={memoDraft.name}
+                            onChange={(event) => updateDraft("name", event.target.value)}
+                            style={styles.editInput}
+                          />
+                        </label>
+                        <label style={styles.editField}>
+                          <span style={styles.editLabel}>クロス戦略</span>
+                          <select
+                            value={memoDraft.crossType}
+                            onChange={(event) => updateDraft("crossType", event.target.value as CrossType)}
+                            style={styles.editInput}
+                          >
+                            {CROSS_TYPES.map((type) => (
+                              <option key={type} value={type}>{type}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label style={styles.editField}>
+                          <span style={styles.editLabel}>仕込み開始（権利月の◯ヶ月前）</span>
+                          <select
+                            value={memoDraft.preparationMonthsBefore === "" ? "" : String(memoDraft.preparationMonthsBefore)}
+                            onChange={(event) =>
+                              updateDraft(
+                                "preparationMonthsBefore",
+                                event.target.value === "" ? "" : (Number(event.target.value) as MemoEditDraft["preparationMonthsBefore"]),
+                              )
+                            }
+                            style={styles.editInput}
+                          >
+                            <option value="">未設定</option>
+                            {Array.from({ length: 12 }, (_, i) => i).map((n) => (
+                              <option key={n} value={n}>{n}ヶ月前</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label style={styles.editField}>
+                          <span style={styles.editLabel}>早打ち目安</span>
+                          <input
+                            type="text"
+                            value={memoDraft.entryTiming}
+                            onChange={(event) => updateDraft("entryTiming", event.target.value)}
+                            placeholder="例: 8月中旬まで"
+                            style={styles.editInput}
+                          />
+                        </label>
+                        <label style={styles.editField}>
+                          <span style={styles.editLabel}>1株保有開始</span>
+                          <input
+                            type="text"
+                            value={memoDraft.oneShareStartedAt}
+                            onChange={(event) => updateDraft("oneShareStartedAt", event.target.value)}
+                            placeholder="例: 2025-06"
+                            style={styles.editInput}
+                          />
+                        </label>
+                        <label style={styles.editField}>
+                          <span style={styles.editLabel}>任期条件</span>
+                          <input
+                            type="text"
+                            value={memoDraft.tenureRule}
+                            onChange={(event) => updateDraft("tenureRule", event.target.value)}
+                            style={styles.editInput}
+                          />
+                        </label>
+                        <label style={styles.editField}>
+                          <span style={styles.editLabel}>関連リンク</span>
+                          <input
+                            type="url"
+                            value={memoDraft.relatedUrl}
+                            onChange={(event) => updateDraft("relatedUrl", event.target.value)}
+                            style={styles.editInput}
+                          />
+                        </label>
+                        <label style={styles.editField}>
+                          <span style={styles.editLabel}>優先度</span>
+                          <select
+                            value={String(memoDraft.priority)}
+                            onChange={(event) => updateDraft("priority", Number(event.target.value) as 1 | 2 | 3)}
+                            style={styles.editInput}
+                          >
+                            <option value="1">★（高）</option>
+                            <option value="2">★★（中）</option>
+                            <option value="3">★★★（低）</option>
+                          </select>
+                        </label>
+                        <label style={styles.editCheckboxRow}>
+                          <input
+                            type="checkbox"
+                            checked={memoDraft.acquired}
+                            onChange={(event) => updateDraft("acquired", event.target.checked)}
+                          />
+                          <span style={styles.editLabel}>取得済み</span>
+                        </label>
+                        <label style={styles.editField}>
+                          <span style={styles.editLabel}>メモ</span>
+                          <textarea
+                            value={memoDraft.memo}
+                            onChange={(event) => updateDraft("memo", event.target.value)}
+                            rows={4}
+                            style={{ ...styles.editInput, resize: "vertical" }}
+                          />
+                        </label>
+                        <div style={styles.editButtonRow}>
+                          <button type="button" onClick={saveMemoEdit} style={styles.editSave}>保存</button>
+                          <button type="button" onClick={closeMemoEdit} style={styles.editCancel}>キャンセル</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <dl style={styles.detailDl}>
+                          <dt style={styles.detailDt}>クロス戦略</dt>
+                          <dd style={styles.detailDd}>{selectedRow.memo.crossType}</dd>
+                          <dt style={styles.detailDt}>仕込み開始</dt>
+                          <dd style={styles.detailDd}>
+                            {selectedRow.memo.preparationMonthsBefore !== undefined
+                              ? `権利月の${selectedRow.memo.preparationMonthsBefore}ヶ月前`
+                              : "未設定"}
+                          </dd>
+                          <dt style={styles.detailDt}>早打ち目安</dt>
+                          <dd style={styles.detailDd}>{selectedRow.memo.entryTiming || "未設定"}</dd>
+                          <dt style={styles.detailDt}>1株保有開始</dt>
+                          <dd style={styles.detailDd}>{selectedRow.memo.oneShareStartedAt || "未設定"}</dd>
+                          <dt style={styles.detailDt}>任期条件</dt>
+                          <dd style={styles.detailDd}>{selectedRow.memo.tenureRule || "未設定"}</dd>
+                          <dt style={styles.detailDt}>取得済み</dt>
+                          <dd style={styles.detailDd}>{selectedRow.memo.acquired ? "はい" : "いいえ"}</dd>
+                          <dt style={styles.detailDt}>優先度</dt>
+                          <dd style={styles.detailDd}>{"★".repeat(selectedRow.memo.priority)}</dd>
+                        </dl>
+                        {selectedRow.memo.memo ? (
+                          <p style={styles.detailMemoText}>{selectedRow.memo.memo}</p>
+                        ) : null}
+                        <a href="/tools/yutai-memo" style={styles.detailLink}>優待メモ帳で開く</a>
+                      </>
+                    )}
                   </section>
                 ) : (
                   <section style={styles.detailSection}>
@@ -1282,5 +1477,78 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.7,
     color: "#334155",
     whiteSpace: "pre-wrap",
+  },
+  detailSectionHead: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  detailEditButton: {
+    border: "1px solid rgba(79,70,229,0.25)",
+    background: "#eef2ff",
+    color: "#4338ca",
+    borderRadius: 8,
+    padding: "3px 12px",
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  editForm: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+  },
+  editField: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+  },
+  editLabel: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#64748b",
+  },
+  editInput: {
+    width: "100%",
+    borderRadius: 8,
+    border: "1px solid rgba(15,23,42,0.12)",
+    background: "#ffffff",
+    padding: "7px 9px",
+    fontSize: 13,
+    color: "#0f172a",
+    boxSizing: "border-box",
+  },
+  editCheckboxRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  },
+  editButtonRow: {
+    display: "flex",
+    gap: 8,
+    marginTop: 4,
+  },
+  editSave: {
+    flex: 1,
+    border: "1px solid rgba(79,70,229,0.30)",
+    background: INDIGO,
+    color: "#ffffff",
+    borderRadius: 8,
+    padding: "9px 12px",
+    fontSize: 13,
+    fontWeight: 800,
+    cursor: "pointer",
+  },
+  editCancel: {
+    flex: 1,
+    border: "1px solid rgba(15,23,42,0.12)",
+    background: "#ffffff",
+    color: "#475569",
+    borderRadius: 8,
+    padding: "9px 12px",
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: "pointer",
   },
 };

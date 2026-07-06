@@ -37,6 +37,7 @@
 
 - ピック / パス の切替（排他）
 - 優待メモへの追加（`yutai-candidates` と同じ `candidate-import` を使用）
+- 詳細パネルからの優待メモ編集（銘柄名・クロス戦略・仕込み開始・早打ち目安・1株保有開始・任期条件・関連リンク・優先度・取得済み・メモ本文）
 - 各種フィルタ・検索・並び順・対象月
 
 ### 出力
@@ -44,7 +45,7 @@
 - 候補と登録メモを結合した一覧テーブル
 - 日興バッジ（一般可 / 一般注意 / 一般停止 / 一般× / 制度可）と SBI バッジ（SBI売可）
 - 詳細パネルでの規制明細・実績履歴（年月別）・関連リンク表示
-- メモ編集は Phase 1 では行わず、優待メモ帳へのリンクで誘導する
+- 詳細パネルの「編集」で優待メモをその場で更新できる（保存は `_shared/yutai-memo-edit` の純関数経由で LocalStorage へ）。優待メモ帳・優待カレンダーと同じ `yutai_memo_items_v1` を更新するため他画面にも反映される
 
 ## データ仕様
 
@@ -84,6 +85,7 @@
 - [app/tools/yutai-dashboard/ToolClient.tsx](/c:/Users/yutaz/dev/mini-tools/app/tools/yutai-dashboard/ToolClient.tsx)
 - [app/tools/_shared/yutai-credit.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/_shared/yutai-credit.ts)
 - [app/tools/_shared/yutai-selection.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/_shared/yutai-selection.ts)
+- [app/tools/_shared/yutai-memo-edit.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/_shared/yutai-memo-edit.ts)
 - [app/tools/yutai-candidates/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/yutai-candidates/data-loader.ts)
 
 ## 関連 docs
