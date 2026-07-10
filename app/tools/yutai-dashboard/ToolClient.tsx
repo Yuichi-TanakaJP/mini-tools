@@ -41,6 +41,9 @@ type CalendarAxis = "entitlement" | "preparation";
 // data-loader の ALL_MONTHS_ID と同じ値。data-loader は node:fs を使うため client からは import しない。
 const ALL_MONTHS_ID = "all";
 
+// 表のセルからその場で編集できる項目
+type InlineField = "crossType" | "preparationMonthsBefore" | "oneShareStartedAt";
+
 type DashboardRow = {
   key: string;
   code: string;
@@ -126,6 +129,8 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const [selectedRowKey, setSelectedRowKey] = useState<string | null>(null);
   const [editingMemoId, setEditingMemoId] = useState<string | null>(null);
   const [memoDraft, setMemoDraft] = useState<MemoEditDraft | null>(null);
+  const [editingCell, setEditingCell] = useState<{ memoId: string; field: InlineField } | null>(null);
+  const [oneShareCellDraft, setOneShareCellDraft] = useState("");
   const didPersistPicked = useRef(false);
   const didPersistPassed = useRef(false);
 
@@ -397,6 +402,32 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     setMemoDraft((prev) => (prev ? { ...prev, [key]: value } : prev));
   }
 
+  // 表のセルを直接編集して 1 項目だけ保存する。共有の applyMemoEdit を再利用する。
+  function commitInlineEdit(memoId: string, patch: Partial<MemoEditDraft>) {
+    const items = loadItems();
+    const target = items.find((item) => item.id === memoId);
+    if (!target) {
+      setMemoItems(items);
+      setAddedKeys(getAddedKeysFromMemoItems(items));
+      setNotice("編集対象の優待メモが見つかりませんでした。");
+      setEditingCell(null);
+      return;
+    }
+    const draft = { ...buildMemoEditDraft(target), ...patch };
+    const { items: next, updated } = applyMemoEdit(items, memoId, draft, new Date().toISOString());
+    if (updated) {
+      saveItems(next);
+      setMemoItems(next);
+      setAddedKeys(getAddedKeysFromMemoItems(next));
+    }
+    setEditingCell(null);
+  }
+
+  function openCellEdit(memo: MemoItem, field: InlineField) {
+    if (field === "oneShareStartedAt") setOneShareCellDraft(memo.oneShareStartedAt ?? "");
+    setEditingCell({ memoId: memo.id, field });
+  }
+
   function handleMonthChange(nextMonthId: string) {
     const params = new URLSearchParams(searchParams.toString());
     if (!nextMonthId) {
@@ -432,6 +463,101 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     if (!data.sbiCredit) return <span style={styles.cellMuted}>-</span>;
     if (!isHandledBySbiShort(data.sbiCredit.by_code[code])) return <span style={styles.cellMuted}>-</span>;
     return <span style={styles.chipSbi}>SBI売可</span>;
+  }
+
+  // クリックで開く編集ボタン用のラッパー。未登録行（memo なし）は編集できないため素の表示にする。
+  function renderEditableCell(row: DashboardRow, field: InlineField, display: React.ReactNode) {
+    if (!row.memo) return display;
+    const memo = row.memo;
+    return (
+      <button
+        type="button"
+        style={styles.cellEditTrigger}
+        title="クリックで編集"
+        onClick={(event) => {
+          event.stopPropagation();
+          openCellEdit(memo, field);
+        }}
+      >
+        {display}
+      </button>
+    );
+  }
+
+  function renderPreparationCell(row: DashboardRow) {
+    const display = row.memo?.preparationMonthsBefore !== undefined
+      ? `${row.memo.preparationMonthsBefore}ヶ月前`
+      : <span style={styles.cellMuted}>-</span>;
+    if (row.memo && editingCell?.memoId === row.memo.id && editingCell.field === "preparationMonthsBefore") {
+      const memoId = row.memo.id;
+      return (
+        <select
+          autoFocus
+          value={row.memo.preparationMonthsBefore ?? ""}
+          style={styles.cellSelect}
+          onClick={(event) => event.stopPropagation()}
+          onChange={(event) => {
+            const value = event.target.value === "" ? "" : Number(event.target.value);
+            commitInlineEdit(memoId, { preparationMonthsBefore: value as MemoEditDraft["preparationMonthsBefore"] });
+          }}
+          onBlur={() => setEditingCell(null)}
+        >
+          <option value="">未設定</option>
+          {Array.from({ length: 12 }, (_, i) => i).map((n) => (
+            <option key={n} value={n}>{n}ヶ月前</option>
+          ))}
+        </select>
+      );
+    }
+    return renderEditableCell(row, "preparationMonthsBefore", display);
+  }
+
+  function renderOneShareCell(row: DashboardRow) {
+    const display = row.memo?.oneShareStartedAt
+      ? row.memo.oneShareStartedAt
+      : <span style={styles.cellMuted}>-</span>;
+    if (row.memo && editingCell?.memoId === row.memo.id && editingCell.field === "oneShareStartedAt") {
+      const memoId = row.memo.id;
+      return (
+        <input
+          autoFocus
+          type="text"
+          value={oneShareCellDraft}
+          placeholder="例: 2025-06"
+          style={styles.cellInput}
+          onClick={(event) => event.stopPropagation()}
+          onChange={(event) => setOneShareCellDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") commitInlineEdit(memoId, { oneShareStartedAt: oneShareCellDraft });
+            if (event.key === "Escape") setEditingCell(null);
+          }}
+          onBlur={() => commitInlineEdit(memoId, { oneShareStartedAt: oneShareCellDraft })}
+        />
+      );
+    }
+    return renderEditableCell(row, "oneShareStartedAt", display);
+  }
+
+  function renderCrossTypeCell(row: DashboardRow) {
+    if (!row.memo) return <span style={styles.cellMuted}>-</span>;
+    const memo = row.memo;
+    if (editingCell?.memoId === memo.id && editingCell.field === "crossType") {
+      return (
+        <select
+          autoFocus
+          value={memo.crossType}
+          style={styles.cellSelect}
+          onClick={(event) => event.stopPropagation()}
+          onChange={(event) => commitInlineEdit(memo.id, { crossType: event.target.value as CrossType })}
+          onBlur={() => setEditingCell(null)}
+        >
+          {CROSS_TYPES.map((type) => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </select>
+      );
+    }
+    return renderEditableCell(row, "crossType", <span style={styles.chipStrategy}>{memo.crossType}</span>);
   }
 
   function renderRowActions(row: DashboardRow) {
@@ -677,21 +803,9 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                           <td style={styles.td}>{formatMonths(row.months)}</td>
                           <td style={styles.td}>{renderNikkoCell(row.code)}</td>
                           <td style={styles.td}>{renderSbiCell(row.code)}</td>
-                          <td style={styles.td}>
-                            {row.memo?.preparationMonthsBefore !== undefined
-                              ? `${row.memo.preparationMonthsBefore}ヶ月前`
-                              : <span style={styles.cellMuted}>-</span>}
-                          </td>
-                          <td style={styles.td}>
-                            {row.memo?.oneShareStartedAt
-                              ? row.memo.oneShareStartedAt
-                              : <span style={styles.cellMuted}>-</span>}
-                          </td>
-                          <td style={styles.td}>
-                            {row.memo
-                              ? <span style={styles.chipStrategy}>{row.memo.crossType}</span>
-                              : <span style={styles.cellMuted}>-</span>}
-                          </td>
+                          <td style={styles.td}>{renderPreparationCell(row)}</td>
+                          <td style={styles.td}>{renderOneShareCell(row)}</td>
+                          <td style={styles.td}>{renderCrossTypeCell(row)}</td>
                           <td style={styles.td}>
                             {acquired
                               ? <span style={styles.chipAcquired} title={acquired.latestKey ? `直近: ${acquired.latestKey}` : undefined}>✓{acquired.count}</span>
@@ -1245,6 +1359,42 @@ const styles: Record<string, React.CSSProperties> = {
   },
   cellMuted: {
     color: "#cbd5e1",
+  },
+  cellEditTrigger: {
+    display: "inline-flex",
+    alignItems: "center",
+    maxWidth: "100%",
+    border: "1px dashed rgba(79,70,229,0.28)",
+    background: "transparent",
+    borderRadius: 6,
+    padding: "2px 6px",
+    margin: "-2px -2px",
+    font: "inherit",
+    color: "inherit",
+    textAlign: "left",
+    cursor: "pointer",
+  },
+  cellSelect: {
+    width: "100%",
+    minWidth: 88,
+    borderRadius: 6,
+    border: "1px solid rgba(79,70,229,0.35)",
+    background: "#ffffff",
+    padding: "4px 6px",
+    fontSize: 12,
+    color: "#0f172a",
+    cursor: "pointer",
+  },
+  cellInput: {
+    width: "100%",
+    minWidth: 80,
+    borderRadius: 6,
+    border: "1px solid rgba(79,70,229,0.35)",
+    background: "#ffffff",
+    padding: "4px 6px",
+    fontSize: 12,
+    color: "#0f172a",
+    boxSizing: "border-box",
   },
   chipRow: {
     display: "inline-flex",
