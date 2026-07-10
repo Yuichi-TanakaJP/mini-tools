@@ -133,6 +133,8 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const [oneShareCellDraft, setOneShareCellDraft] = useState("");
   const didPersistPicked = useRef(false);
   const didPersistPassed = useRef(false);
+  // インライン編集で Escape キャンセル後に onBlur が保存してしまうのを防ぐフラグ
+  const cancelInlineRef = useRef(false);
 
   const isAllMonths = data.selectedMonthId === ALL_MONTHS_ID;
   const selectedMonth = isAllMonths ? null : Number(data.selectedMonthId.slice(5, 7));
@@ -424,6 +426,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   }
 
   function openCellEdit(memo: MemoItem, field: InlineField) {
+    cancelInlineRef.current = false;
     if (field === "oneShareStartedAt") setOneShareCellDraft(memo.oneShareStartedAt ?? "");
     setEditingCell({ memoId: memo.id, field });
   }
@@ -465,9 +468,10 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     return <span style={styles.chipSbi}>SBI売可</span>;
   }
 
-  // クリックで開く編集ボタン用のラッパー。未登録行（memo なし）は編集できないため素の表示にする。
+  // クリックで開く編集ボタン用のラッパー。当月登録済みの行だけ編集できる。
+  // 同じ銘柄が別権利月で登録済みでも、当月未登録（row.added=false）の行は編集させない。
   function renderEditableCell(row: DashboardRow, field: InlineField, display: React.ReactNode) {
-    if (!row.memo) return display;
+    if (!row.added || !row.memo) return display;
     const memo = row.memo;
     return (
       <button
@@ -488,7 +492,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     const display = row.memo?.preparationMonthsBefore !== undefined
       ? `${row.memo.preparationMonthsBefore}ヶ月前`
       : <span style={styles.cellMuted}>-</span>;
-    if (row.memo && editingCell?.memoId === row.memo.id && editingCell.field === "preparationMonthsBefore") {
+    if (row.added && row.memo && editingCell?.memoId === row.memo.id && editingCell.field === "preparationMonthsBefore") {
       const memoId = row.memo.id;
       return (
         <select
@@ -516,7 +520,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     const display = row.memo?.oneShareStartedAt
       ? row.memo.oneShareStartedAt
       : <span style={styles.cellMuted}>-</span>;
-    if (row.memo && editingCell?.memoId === row.memo.id && editingCell.field === "oneShareStartedAt") {
+    if (row.added && row.memo && editingCell?.memoId === row.memo.id && editingCell.field === "oneShareStartedAt") {
       const memoId = row.memo.id;
       return (
         <input
@@ -529,9 +533,19 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
           onChange={(event) => setOneShareCellDraft(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter") commitInlineEdit(memoId, { oneShareStartedAt: oneShareCellDraft });
-            if (event.key === "Escape") setEditingCell(null);
+            if (event.key === "Escape") {
+              // blur が保存に走らないようフラグを立ててからキャンセル
+              cancelInlineRef.current = true;
+              setEditingCell(null);
+            }
           }}
-          onBlur={() => commitInlineEdit(memoId, { oneShareStartedAt: oneShareCellDraft })}
+          onBlur={() => {
+            if (cancelInlineRef.current) {
+              cancelInlineRef.current = false;
+              return;
+            }
+            commitInlineEdit(memoId, { oneShareStartedAt: oneShareCellDraft });
+          }}
         />
       );
     }
@@ -541,7 +555,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   function renderCrossTypeCell(row: DashboardRow) {
     if (!row.memo) return <span style={styles.cellMuted}>-</span>;
     const memo = row.memo;
-    if (editingCell?.memoId === memo.id && editingCell.field === "crossType") {
+    if (row.added && editingCell?.memoId === memo.id && editingCell.field === "crossType") {
       return (
         <select
           autoFocus
