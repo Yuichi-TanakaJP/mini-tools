@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { addMemoItemFromCandidate, isImportedMonthlyYutaiCandidate } from "@/app/tools/yutai-memo/candidate-import";
 import { loadArchivedItems, loadItems, saveItems } from "@/app/tools/yutai-memo/storage";
 import { CROSS_TYPES, type ArchivedMemoItem, type CrossType, type MemoItem } from "@/app/tools/yutai-memo/types";
-import { getPreparationMonth, isPreparationMonth } from "@/app/tools/yutai-memo/date-utils";
+import { getPreparationMonth, isPreparationMonth, toJstYearMonth } from "@/app/tools/yutai-memo/date-utils";
 import {
   applyMemoEdit,
   buildMemoEditDraft,
@@ -89,45 +89,65 @@ type CalendarMonthCell = {
   entitlement: boolean; // 権利月
   prepStart: boolean; // 仕込み開始月
   band: boolean; // 仕込み開始〜権利月の帯
-  acquired: boolean; // その権利月を取得済み
-  oneShareHeld: boolean; // 1株を保有中（開始後は通年継続とみなす）
-  oneShareStart: boolean; // 1株保有を開始した月
+  acquiredThisYear: boolean; // 選択年度にその権利月を取得済み
+  acquiredPast: boolean; // 選択年度以外に取得実績がある
+  acquiredYears: number[]; // その権利月を取得した年（ツールチップ用）
+  oneShareHeld: boolean; // 選択年度にその月 1 株を保有中
+  oneShareStart: boolean; // 選択年度に 1 株保有を開始した月
 };
 
-// 銘柄ごとの取得済み権利月（月番号）の集合
-function acquiredMonthsForCode(summary: AcquiredSummary | undefined): Set<number> {
-  const months = new Set<number>();
-  if (!summary) return months;
+// 銘柄ごとに「権利月 → 取得した年の集合」を作る。取得は年度別データなので年を保持する。
+function acquiredYearsByMonth(summary: AcquiredSummary | undefined): Map<number, Set<number>> {
+  const byMonth = new Map<number, Set<number>>();
+  if (!summary) return byMonth;
   for (const entry of summary.entries) {
-    const key = entry.entitlementMonthKey;
-    const matched = key ? /^\d{4}-(\d{2})$/.exec(key) : null;
-    if (matched) months.add(Number(matched[1]));
+    const matched = entry.entitlementMonthKey ? /^(\d{4})-(\d{2})$/.exec(entry.entitlementMonthKey) : null;
+    if (!matched) continue;
+    const year = Number(matched[1]);
+    const month = Number(matched[2]);
+    const set = byMonth.get(month) ?? new Set<number>();
+    set.add(year);
+    byMonth.set(month, set);
   }
-  return months;
+  return byMonth;
 }
 
-// oneShareStartedAt（YYYY-MM 想定）から開始月を取り出す。フリーテキストは null。
-function parseOneShareStartMonth(value: string | undefined): number | null {
-  const matched = value ? /^\d{4}-(\d{2})$/.exec(value) : null;
+// oneShareStartedAt（YYYY-MM 想定）から開始の年・月を取り出す。フリーテキストは null。
+function parseOneShareStart(value: string | undefined): { year: number; month: number } | null {
+  const matched = value ? /^(\d{4})-(\d{2})$/.exec(value) : null;
   if (!matched) return null;
-  const month = Number(matched[1]);
-  return month >= 1 && month <= 12 ? month : null;
+  const year = Number(matched[1]);
+  const month = Number(matched[2]);
+  return month >= 1 && month <= 12 ? { year, month } : null;
 }
 
-// 1 銘柄メモの 12ヶ月セルを組み立てる。仕込み開始〜権利月の帯は年をまたいで循環する。
-function buildCalendarCells(memo: MemoItem, acquiredMonths: Set<number>): CalendarMonthCell[] {
+// 1 銘柄メモの、選択年度における 12ヶ月セルを組み立てる。
+// 権利月・仕込みは年度非依存（毎年サイクル）。取得・1株保有は選択年度で解釈する。
+function buildCalendarCells(
+  memo: MemoItem,
+  yearsByMonth: Map<number, Set<number>>,
+  selectedYear: number,
+): CalendarMonthCell[] {
   const cells: CalendarMonthCell[] = Array.from({ length: 12 }, () => ({
     entitlement: false,
     prepStart: false,
     band: false,
-    acquired: false,
+    acquiredThisYear: false,
+    acquiredPast: false,
+    acquiredYears: [],
     oneShareHeld: false,
     oneShareStart: false,
   }));
   const months = (memo.months ?? []).filter((m) => Number.isInteger(m) && m >= 1 && m <= 12);
   for (const entitlement of months) {
-    cells[entitlement - 1].entitlement = true;
-    if (acquiredMonths.has(entitlement)) cells[entitlement - 1].acquired = true;
+    const cell = cells[entitlement - 1];
+    cell.entitlement = true;
+    const years = yearsByMonth.get(entitlement);
+    if (years) {
+      cell.acquiredYears = [...years].sort((a, b) => a - b);
+      cell.acquiredThisYear = years.has(selectedYear);
+      cell.acquiredPast = cell.acquiredYears.some((year) => year !== selectedYear);
+    }
     if (memo.preparationMonthsBefore === undefined) continue;
     const prepStart = getPreparationMonth(entitlement, memo.preparationMonthsBefore);
     if (!prepStart) continue;
@@ -140,15 +160,17 @@ function buildCalendarCells(memo: MemoItem, acquiredMonths: Set<number>): Calend
       month = (month % 12) + 1;
     }
   }
-  // 1株保有: 開始月が分かる場合は「開始月〜12月」に保有ストリップを引く（開始前は塗らない）。
-  // 開始月が不明（フリーテキスト）の場合のみ通年保有とみなす。
+  // 1株保有: 選択年度で解釈する。開始年より後=通年、開始年=開始月〜12月、開始前=非保有。
+  // 開始が YYYY-MM で分からない（フリーテキスト）場合のみ年不明として通年保有扱い。
   if (memo.oneShareStartedAt) {
-    const startMonth = parseOneShareStartMonth(memo.oneShareStartedAt);
-    if (startMonth) {
-      for (let month = startMonth; month <= 12; month += 1) cells[month - 1].oneShareHeld = true;
-      cells[startMonth - 1].oneShareStart = true;
-    } else {
+    const start = parseOneShareStart(memo.oneShareStartedAt);
+    if (!start) {
       for (const cell of cells) cell.oneShareHeld = true;
+    } else if (selectedYear > start.year) {
+      for (const cell of cells) cell.oneShareHeld = true;
+    } else if (selectedYear === start.year) {
+      for (let month = start.month; month <= 12; month += 1) cells[month - 1].oneShareHeld = true;
+      cells[start.month - 1].oneShareStart = true;
     }
   }
   return cells;
@@ -181,8 +203,10 @@ const creditChipStyleByKind: Record<NikkoCreditBadgeKind, string> = {
 export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const { navigate, isPendingFor } = useRouterTransition();
   const searchParams = useSearchParams();
+  const jstNow = useMemo(() => toJstYearMonth(new Date()), []);
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
+  const [calendarYear, setCalendarYear] = useState(jstNow.year);
   const [axis, setAxis] = useState<CalendarAxis>("entitlement");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [crossFilter, setCrossFilter] = useState<CrossFilter>("all");
@@ -300,9 +324,13 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
       })
       .map((memo) => {
         const acquired = memo.code ? acquiredByCode.get(memo.code) : undefined;
+        const start = parseOneShareStart(memo.oneShareStartedAt);
+        // 選択年度での 1 株保有経過年数（開始年を 1 年目とする）。未保有なら null。
+        const holdYear = start && calendarYear >= start.year ? calendarYear - start.year + 1 : null;
         return {
           memo,
-          cells: buildCalendarCells(memo, acquiredMonthsForCode(acquired)),
+          cells: buildCalendarCells(memo, acquiredYearsByMonth(acquired), calendarYear),
+          holdYear,
         };
       })
       .sort((a, b) => {
@@ -311,7 +339,20 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
         if (firstA !== firstB) return firstA - firstB;
         return collator.compare(a.memo.name, b.memo.name);
       });
-  }, [acquiredByCode, memoItems, query, strategyFilter]);
+  }, [acquiredByCode, calendarYear, memoItems, query, strategyFilter]);
+
+  // 年度セレクタの選択肢。取得実績の最古年〜今年+1 を降順で並べる。
+  const availableCalendarYears = useMemo(() => {
+    let minYear = jstNow.year - 1;
+    for (const archive of archivedItems) {
+      const matched = archive.entitlementMonthKey ? /^(\d{4})-\d{2}$/.exec(archive.entitlementMonthKey) : null;
+      if (matched) minYear = Math.min(minYear, Number(matched[1]));
+    }
+    const maxYear = jstNow.year + 1;
+    const years: number[] = [];
+    for (let year = maxYear; year >= minYear; year -= 1) years.push(year);
+    return years;
+  }, [archivedItems, jstNow.year]);
 
   const rows = useMemo<DashboardRow[]>(() => {
     if (axis === "preparation") {
@@ -1000,7 +1041,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
             <span style={styles.resultsLabel}>件</span>
             {viewMode === "calendar" ? (
               <span style={styles.resultsNote}>
-                12ヶ月ビューは、優待メモに登録済みの銘柄を対象に、仕込み開始〜権利月の帯と取得実績を表示します。
+                12ヶ月ビューは登録済み銘柄が対象。権利月・仕込みは毎年共通、取得と1株保有は選択年度で表示します。
               </span>
             ) : axis === "preparation" ? (
               <span style={styles.resultsNote}>
@@ -1011,32 +1052,53 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
 
           {viewMode === "calendar" ? (
             <div style={styles.calendarScroll}>
-              <div style={styles.calendarLegend}>
-                <span style={styles.legendItem}><span style={{ ...styles.legendSwatch, ...styles.calCellEntitlement }}>権</span>権利月</span>
-                <span style={styles.legendItem}><span style={{ ...styles.legendSwatch, ...styles.calCellPrep }}>仕</span>仕込み開始</span>
-                <span style={styles.legendItem}><span style={{ ...styles.legendSwatch, ...styles.calCellBand }} />仕込み期間</span>
-                <span style={styles.legendItem}>
-                  <span style={{ ...styles.legendSwatch, ...styles.calCellEntitlement }}>
-                    権<span style={styles.calAcquiredMark}>✓</span>
+              <div style={styles.calendarControls}>
+                <label style={styles.calYearField}>
+                  <span style={styles.filterLabel}>年度</span>
+                  <select
+                    value={calendarYear}
+                    onChange={(event) => setCalendarYear(Number(event.target.value))}
+                    style={styles.select}
+                  >
+                    {availableCalendarYears.map((year) => (
+                      <option key={year} value={year}>{year}年{year === jstNow.year ? "（今年）" : ""}</option>
+                    ))}
+                  </select>
+                </label>
+                <div style={styles.calendarLegend}>
+                  <span style={styles.legendItem}><span style={{ ...styles.legendSwatch, ...styles.calCellEntitlement }}>権</span>権利月</span>
+                  <span style={styles.legendItem}><span style={{ ...styles.legendSwatch, ...styles.calCellPrep }}>仕</span>仕込み開始</span>
+                  <span style={styles.legendItem}><span style={{ ...styles.legendSwatch, ...styles.calCellBand }} />仕込み期間</span>
+                  <span style={styles.legendItem}>
+                    <span style={styles.legendSwatchPlain}><span style={styles.calOverlapDot} /></span>
+                    仕込みと権利が同月
                   </span>
-                  取得済み
-                </span>
-                <span style={styles.legendItem}>
-                  <span style={styles.legendSwatchPlain}>
-                    <span style={styles.calOverlapDot} />
+                  <span style={styles.legendDivider} />
+                  <span style={styles.legendItem}>
+                    <span style={{ ...styles.legendSwatch, ...styles.calCellEntitlement }}>権<span style={styles.calAcquiredMark}>✓</span></span>
+                    今年度に取得
                   </span>
-                  仕込みと権利が同月
-                </span>
-                <span style={styles.legendItem}><span style={{ ...styles.legendStrip, ...styles.calHold }} />1株保有中</span>
-                <span style={styles.legendItem}><span style={{ ...styles.legendStrip, ...styles.calHoldStart }} />1株開始</span>
+                  <span style={styles.legendItem}>
+                    <span style={{ ...styles.legendSwatch, ...styles.calCellEntitlement }}>権<span style={styles.calAcquiredPastMark}>✓</span></span>
+                    他年度に取得
+                  </span>
+                  <span style={styles.legendDivider} />
+                  <span style={styles.legendItem}><span style={{ ...styles.legendStrip, ...styles.calHold }} />1株保有</span>
+                  <span style={styles.legendItem}><span style={{ ...styles.legendStrip, ...styles.calHoldStart }} />1株開始</span>
+                </div>
               </div>
               <table style={styles.calendarTable}>
                 <thead>
                   <tr>
                     <th style={{ ...styles.calTh, ...styles.calNameTh }}>銘柄</th>
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                      <th key={month} style={styles.calTh}>{month}月</th>
-                    ))}
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => {
+                      const isCurrent = calendarYear === jstNow.year && month === jstNow.month;
+                      return (
+                        <th key={month} style={isCurrent ? { ...styles.calTh, ...styles.calThCurrent } : styles.calTh}>
+                          {month}月
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody>
@@ -1045,7 +1107,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                   ) : calendarRows.length === 0 ? (
                     <tr><td colSpan={13} style={styles.emptyCell}>登録済みの銘柄がありません。テーブルで「＋メモ」やセル編集を行うと登録されます。</td></tr>
                   ) : (
-                    calendarRows.map(({ memo, cells }) => (
+                    calendarRows.map(({ memo, cells, holdYear }) => (
                       <tr key={memo.id}>
                         <td style={styles.calNameCell} title={memo.name}>
                           <span style={styles.calName}>{memo.name}</span>
@@ -1053,13 +1115,13 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                             {memo.code ? <span style={styles.calCode}>{memo.code}</span> : null}
                             {memo.oneShareStartedAt ? (
                               <span style={styles.calHoldNote} title={`1株保有開始: ${memo.oneShareStartedAt}`}>
-                                1株 {memo.oneShareStartedAt}〜
+                                1株 {memo.oneShareStartedAt}〜{holdYear ? `（${holdYear}年目）` : ""}
                               </span>
                             ) : null}
                           </span>
                         </td>
                         {cells.map((cell, index) => {
-                          // 権利月は取得の有無に関わらず常に「権」。取得済みは緑✓、仕込み重なりは橙ドットで重ねて示す。
+                          const isCurrent = calendarYear === jstNow.year && index + 1 === jstNow.month;
                           const badgeStyle = cell.entitlement
                             ? styles.calCellEntitlement
                             : cell.prepStart
@@ -1072,18 +1134,25 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                           const holdStyle = cell.oneShareHeld
                             ? (cell.oneShareStart ? styles.calHoldStart : styles.calHold)
                             : styles.calHoldEmpty;
+                          const acquiredTitle = cell.acquiredYears.length
+                            ? `取得: ${cell.acquiredYears.map((year) => `${year}年`).join("・")}`
+                            : null;
                           const title = [
                             cell.entitlement ? "権利月" : cell.prepStart ? "仕込み開始" : cell.band ? "仕込み期間" : null,
-                            cell.acquired ? "取得済み" : null,
+                            acquiredTitle,
                             overlapPrep ? "仕込み開始も同月" : null,
                             cell.oneShareStart ? "1株保有開始" : cell.oneShareHeld ? "1株保有中" : null,
                           ].filter(Boolean).join(" / ");
                           return (
-                            <td key={index} style={styles.calTd}>
+                            <td key={index} style={isCurrent ? { ...styles.calTd, ...styles.calTdCurrent } : styles.calTd}>
                               <div style={styles.calCellStack} title={title || undefined}>
                                 <span style={badgeStyle}>
                                   {label}
-                                  {cell.acquired ? <span style={styles.calAcquiredMark}>✓</span> : null}
+                                  {cell.acquiredThisYear ? (
+                                    <span style={styles.calAcquiredMark}>✓</span>
+                                  ) : cell.acquiredPast ? (
+                                    <span style={styles.calAcquiredPastMark}>✓</span>
+                                  ) : null}
                                   {overlapPrep ? <span style={styles.calOverlapDot} /> : null}
                                 </span>
                                 <span style={holdStyle} />
@@ -1724,13 +1793,31 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 14,
     border: "1px solid rgba(15,23,42,0.08)",
   },
-  calendarLegend: {
+  calendarControls: {
     display: "flex",
     flexWrap: "wrap",
+    alignItems: "center",
     gap: 16,
     padding: "10px 12px",
     borderBottom: "1px solid rgba(15,23,42,0.06)",
     background: "#f8fafc",
+  },
+  calYearField: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+    flexShrink: 0,
+  },
+  calendarLegend: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 14,
+  },
+  legendDivider: {
+    width: 1,
+    height: 16,
+    background: "rgba(15,23,42,0.12)",
   },
   legendItem: {
     display: "inline-flex",
@@ -1767,6 +1854,11 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottom: "1px solid rgba(15,23,42,0.10)",
     width: 48,
     whiteSpace: "nowrap",
+  },
+  calThCurrent: {
+    background: "#eef2ff",
+    color: "#4338ca",
+    boxShadow: "inset 0 -2px 0 #6366f1",
   },
   calNameTh: {
     textAlign: "left",
@@ -1814,6 +1906,9 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 3,
     borderBottom: "1px solid rgba(15,23,42,0.06)",
     textAlign: "center",
+  },
+  calTdCurrent: {
+    background: "rgba(99,102,241,0.08)",
   },
   calCellStack: {
     display: "flex",
@@ -1871,6 +1966,22 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 999,
     background: "#16a34a",
     color: "#ffffff",
+    fontSize: 9,
+    fontWeight: 900,
+    border: "1px solid #ffffff",
+  },
+  calAcquiredPastMark: {
+    position: "absolute",
+    top: 1,
+    right: 1,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 12,
+    height: 12,
+    borderRadius: 999,
+    background: "#cbd5e1",
+    color: "#475569",
     fontSize: 9,
     fontWeight: 900,
     border: "1px solid #ffffff",
