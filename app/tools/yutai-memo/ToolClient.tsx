@@ -731,7 +731,7 @@ export default function ToolClient({
       acquiredAt,
       entitlementMonthKey:
         entitlementMonthKey ??
-        resolveEntitlementMonthKey(target.months, acquiredAt) ??
+        resolveEntitlementMonthKey(target.months, acquiredAt, target.preparationMonthsBefore) ??
         undefined,
       note: target.memo?.trim() || undefined,
     };
@@ -759,7 +759,7 @@ export default function ToolClient({
     for (const t of targets) {
       const resolvedYm =
         entitlementByMemoId?.get(t.id) ??
-        resolveEntitlementMonthKey(t.months, acquiredAt);
+        resolveEntitlementMonthKey(t.months, acquiredAt, t.preparationMonthsBefore);
       if (!resolvedYm) {
         skippedCount += 1;
         continue;
@@ -793,7 +793,7 @@ export default function ToolClient({
     const target = items.find((it) => it.id === id);
     if (!target) return;
     const now = new Date().toISOString();
-    const targetYm = resolveEntitlementMonthKey(target.months, now);
+    const targetYm = resolveEntitlementMonthKey(target.months, now, target.preparationMonthsBefore);
     if (
       targetYm &&
       archives.some(
@@ -865,7 +865,7 @@ export default function ToolClient({
     const nowIso = now.toISOString();
     const candidates = items.filter((it) => {
       if (!it.acquired) return false;
-      const monthKey = resolveEntitlementMonthKey(it.months, nowIso);
+      const monthKey = resolveEntitlementMonthKey(it.months, nowIso, it.preparationMonthsBefore);
       if (!monthKey) return false;
       return !archives.some(
         (a) => a.memoId === it.id && getArchiveGroupKey(a) === monthKey
@@ -873,7 +873,7 @@ export default function ToolClient({
     });
     const nextDrafts: BulkArchiveDraft[] = candidates.map((it) => ({
       memoId: it.id,
-      targetYM: resolveEntitlementMonthKey(it.months, nowIso) ?? toMonthKeyFromDate(now),
+      targetYM: resolveEntitlementMonthKey(it.months, nowIso, it.preparationMonthsBefore) ?? toMonthKeyFromDate(now),
     }));
     const acquiredCount = items.filter((it) => it.acquired).length;
     const timer = window.setTimeout(() => {

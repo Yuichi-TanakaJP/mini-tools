@@ -17,9 +17,17 @@ export function toMonthKeyFromIso(iso: string): string | null {
   return `${ym.year}-${`${ym.month}`.padStart(2, "0")}`;
 }
 
+/**
+ * 取得日（acquiredAt）を、どの権利月（YYYY-MM）に紐づけるかを決める。
+ *
+ * - `preparationMonthsBefore` を渡すと、仕込み開始〜権利月のリード期間中に取得した場合は
+ *   「これから来る当年の権利月」に寄せる（権利確定前に取得済みにしても前年扱いにならない）。
+ * - 未指定（= 0 扱い）のときは従来どおり「取得日以前の直近の権利月」に紐づける（後方互換）。
+ */
 export function resolveEntitlementMonthKey(
   months: number[],
   acquiredAt: string,
+  preparationMonthsBefore?: number,
 ): string | null {
   if (!Array.isArray(months) || months.length === 0) return toMonthKeyFromIso(acquiredAt);
   const t = Date.parse(acquiredAt);
@@ -31,9 +39,34 @@ export function resolveEntitlementMonthKey(
 
   if (normalized.length === 0) return toMonthKeyFromIso(acquiredAt);
 
-  const candidate = [...normalized].reverse().find((m) => m <= ym.month);
-  const targetMonth = candidate ?? normalized[normalized.length - 1];
-  const targetYear = targetMonth <= ym.month ? ym.year : ym.year - 1;
+  const prep =
+    typeof preparationMonthsBefore === "number" &&
+    Number.isInteger(preparationMonthsBefore) &&
+    preparationMonthsBefore >= 0 &&
+    preparationMonthsBefore <= 11
+      ? preparationMonthsBefore
+      : 0;
+  // 月を 0 起点の絶対インデックス（year*12 + (month-1)）に直して年跨ぎを扱う。
+  const acquiredIdx = ym.year * 12 + (ym.month - 1);
+
+  let bestUpcoming: number | null = null; // 仕込み開始〜権利月のリード窓に入る権利月（最も早いもの）
+  let bestPast: number | null = null; // 取得日以前で直近の権利月（従来動作）
+  for (const month of normalized) {
+    for (const yearOffset of [-1, 0, 1, 2]) {
+      const entitlementIdx = (ym.year + yearOffset) * 12 + (month - 1);
+      // リード窓（権利月を含む prep か月手前まで）に取得日が入るなら、これから来る権利に寄せる
+      if (acquiredIdx >= entitlementIdx - prep && acquiredIdx <= entitlementIdx) {
+        if (bestUpcoming === null || entitlementIdx < bestUpcoming) bestUpcoming = entitlementIdx;
+      }
+      if (entitlementIdx <= acquiredIdx && (bestPast === null || entitlementIdx > bestPast)) {
+        bestPast = entitlementIdx;
+      }
+    }
+  }
+
+  const chosen = bestUpcoming ?? bestPast ?? ym.year * 12 + (normalized[normalized.length - 1] - 1);
+  const targetYear = Math.floor(chosen / 12);
+  const targetMonth = (chosen % 12) + 1;
   return `${targetYear}-${`${targetMonth}`.padStart(2, "0")}`;
 }
 

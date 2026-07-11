@@ -11,6 +11,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 
 設計・方針・トレードオフの判断理由を記録します。
 
+- [2026-07-12 取得実績の権利月ひもづけ（リード期間の当年寄せ）](./decision-log/2026-07-12-yutai-entitlement-attribution-lead-time.md)
 - [2026-07-12 優待ダッシュボード 12ヶ月ビューの年度軸](./decision-log/2026-07-12-yutai-dashboard-calendar-year-axis.md)
 - [2026-07-05 優待統合ダッシュボードの位置づけ](./decision-log/2026-07-05-yutai-dashboard-positioning.md)
 - [2026-06-26 ホーム通知に今日・明日の市場イベントを追加](./decision-log/2026-06-26-home-earnings-notifications.md)
