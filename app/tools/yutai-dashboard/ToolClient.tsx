@@ -130,6 +130,9 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const [editingMemoId, setEditingMemoId] = useState<string | null>(null);
   const [memoDraft, setMemoDraft] = useState<MemoEditDraft | null>(null);
   const [editingCell, setEditingCell] = useState<{ rowKey: string; field: InlineField } | null>(null);
+  // 1株保有開始の月ピッカー。セルを押し広げないよう、クリック位置に fixed で浮かせる。
+  const [monthPicker, setMonthPicker] = useState<{ rowKey: string; year: number; left: number; top: number } | null>(null);
+  const monthPickerRef = useRef<HTMLDivElement | null>(null);
   const didPersistPicked = useRef(false);
   const didPersistPassed = useRef(false);
 
@@ -162,6 +165,30 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     saveCodeSet(PASSED_KEY, passedCodes, { markChanged: didPersistPassed.current });
     didPersistPassed.current = true;
   }, [hydrated, passedCodes]);
+
+  useEffect(() => {
+    if (!monthPicker) return;
+    function onDocMouseDown(event: MouseEvent) {
+      if (monthPickerRef.current && !monthPickerRef.current.contains(event.target as Node)) {
+        setMonthPicker(null);
+      }
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setMonthPicker(null);
+    }
+    // fixed 配置なのでスクロールしたら位置がずれる。閉じて開き直してもらう。
+    function onScroll() {
+      setMonthPicker(null);
+    }
+    document.addEventListener("mousedown", onDocMouseDown);
+    document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", onDocMouseDown);
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  }, [monthPicker]);
 
   const availableMonths = useMemo(() => {
     if (!data.manifest?.months?.length) return [];
@@ -475,6 +502,24 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     setEditingCell({ rowKey: row.key, field });
   }
 
+  function openMonthPicker(row: DashboardRow, event: React.MouseEvent<HTMLElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const current = row.memo?.oneShareStartedAt ?? "";
+    const matched = /^(\d{4})-\d{2}$/.exec(current);
+    setEditingCell(null);
+    setMonthPicker({
+      rowKey: row.key,
+      year: matched ? Number(matched[1]) : new Date().getFullYear(),
+      left: rect.left,
+      top: rect.bottom + 4,
+    });
+  }
+
+  function pickMonth(row: DashboardRow, value: string) {
+    commitRowInlineEdit(row, { oneShareStartedAt: value });
+    setMonthPicker(null);
+  }
+
   function handleMonthChange(nextMonthId: string) {
     const params = new URLSearchParams(searchParams.toString());
     if (!nextMonthId) {
@@ -486,6 +531,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     setSelectedRowKey(null);
     closeMemoEdit();
     setEditingCell(null);
+    setMonthPicker(null);
     navigate(
       nextQuery ? `/tools/yutai-dashboard?${nextQuery}` : "/tools/yutai-dashboard",
       { key: `month:${nextMonthId}`, method: "replace" },
@@ -566,26 +612,24 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
 
   function renderOneShareCell(row: DashboardRow) {
     const memo = row.memo;
-    if (isEditingCell(row, "oneShareStartedAt")) {
-      const current = memo?.oneShareStartedAt ?? "";
-      // 月ピッカーは YYYY-MM のみ扱う。旧フリーテキストは空表示にして選び直せるようにする。
-      const monthValue = /^\d{4}-\d{2}$/.test(current) ? current : "";
-      return (
-        <input
-          autoFocus
-          type="month"
-          value={monthValue}
-          style={styles.cellInput}
-          onClick={(event) => event.stopPropagation()}
-          onChange={(event) => commitRowInlineEdit(row, { oneShareStartedAt: event.target.value })}
-          onBlur={() => setEditingCell(null)}
-        />
-      );
-    }
     const display = memo?.oneShareStartedAt
       ? memo.oneShareStartedAt
       : <span style={styles.cellMuted}>未購入</span>;
-    return renderEditableCell(row, "oneShareStartedAt", display);
+    const isOpen = monthPicker?.rowKey === row.key;
+    return (
+      <button
+        type="button"
+        style={isOpen ? { ...styles.cellEditTrigger, ...styles.cellEditTriggerActive } : styles.cellEditTrigger}
+        title="クリックで月を選ぶ"
+        onClick={(event) => {
+          event.stopPropagation();
+          if (isOpen) setMonthPicker(null);
+          else openMonthPicker(row, event);
+        }}
+      >
+        {display}
+      </button>
+    );
   }
 
   function renderCrossTypeCell(row: DashboardRow) {
@@ -1123,6 +1167,58 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
           </div>
         </section>
       </div>
+
+      {monthPicker ? (() => {
+        const row = filteredRows.find((item) => item.key === monthPicker.rowKey);
+        if (!row) return null;
+        const current = row.memo?.oneShareStartedAt ?? "";
+        return (
+          <div
+            ref={monthPickerRef}
+            style={{ ...styles.monthPopover, left: monthPicker.left, top: monthPicker.top }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={styles.monthPopoverHead}>
+              <button
+                type="button"
+                style={styles.monthNavButton}
+                aria-label="前の年"
+                onClick={() => setMonthPicker((prev) => (prev ? { ...prev, year: prev.year - 1 } : prev))}
+              >
+                ‹
+              </button>
+              <span style={styles.monthPopoverYear}>{monthPicker.year}年</span>
+              <button
+                type="button"
+                style={styles.monthNavButton}
+                aria-label="次の年"
+                onClick={() => setMonthPicker((prev) => (prev ? { ...prev, year: prev.year + 1 } : prev))}
+              >
+                ›
+              </button>
+            </div>
+            <div style={styles.monthGrid}>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => {
+                const value = `${monthPicker.year}-${String(month).padStart(2, "0")}`;
+                const selected = current === value;
+                return (
+                  <button
+                    key={month}
+                    type="button"
+                    style={selected ? styles.monthCellActive : styles.monthCell}
+                    onClick={() => pickMonth(row, value)}
+                  >
+                    {month}月
+                  </button>
+                );
+              })}
+            </div>
+            <button type="button" style={styles.monthClear} onClick={() => pickMonth(row, "")}>
+              未購入に戻す
+            </button>
+          </div>
+        );
+      })() : null}
     </main>
   );
 }
@@ -1437,16 +1533,80 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#0f172a",
     cursor: "pointer",
   },
-  cellInput: {
-    width: "100%",
-    minWidth: 80,
-    borderRadius: 6,
-    border: "1px solid rgba(79,70,229,0.35)",
+  cellEditTriggerActive: {
+    borderStyle: "solid",
+    borderColor: "rgba(79,70,229,0.6)",
+    background: "#eef2ff",
+  },
+  monthPopover: {
+    position: "fixed",
+    zIndex: 50,
+    width: 220,
     background: "#ffffff",
-    padding: "4px 6px",
-    fontSize: 12,
+    borderRadius: 12,
+    border: "1px solid rgba(15,23,42,0.12)",
+    boxShadow: "0 8px 28px rgba(15,23,42,0.18)",
+    padding: 10,
+  },
+  monthPopoverHead: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  monthPopoverYear: {
+    fontSize: 13,
+    fontWeight: 800,
     color: "#0f172a",
-    boxSizing: "border-box",
+  },
+  monthNavButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    border: "1px solid rgba(15,23,42,0.12)",
+    background: "#ffffff",
+    color: "#475569",
+    fontSize: 15,
+    lineHeight: 1,
+    cursor: "pointer",
+    padding: 0,
+  },
+  monthGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: 6,
+  },
+  monthCell: {
+    borderRadius: 8,
+    border: "1px solid rgba(15,23,42,0.10)",
+    background: "#ffffff",
+    color: "#334155",
+    fontSize: 12,
+    fontWeight: 700,
+    padding: "7px 0",
+    cursor: "pointer",
+  },
+  monthCellActive: {
+    borderRadius: 8,
+    border: "1px solid rgba(79,70,229,0.5)",
+    background: "#4f46e5",
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: 800,
+    padding: "7px 0",
+    cursor: "pointer",
+  },
+  monthClear: {
+    width: "100%",
+    marginTop: 8,
+    borderRadius: 8,
+    border: "1px solid rgba(15,23,42,0.10)",
+    background: "#f8fafc",
+    color: "#64748b",
+    fontSize: 12,
+    fontWeight: 700,
+    padding: "7px 0",
+    cursor: "pointer",
   },
   chipRow: {
     display: "inline-flex",
