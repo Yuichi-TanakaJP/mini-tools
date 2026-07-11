@@ -40,8 +40,10 @@ function normalizeCrossType(value: unknown): MemoItem["crossType"] {
   }
 }
 
-function loadItemMonthsById(): Map<string, number[]> {
-  const map = new Map<string, number[]>();
+type MemoInfoById = Map<string, { months: number[]; preparationMonthsBefore?: number }>;
+
+function loadItemInfoById(): MemoInfoById {
+  const map: MemoInfoById = new Map();
   const raw = localStorage.getItem(ITEMS_KEY);
   if (!raw) return map;
 
@@ -56,7 +58,11 @@ function loadItemMonthsById(): Map<string, number[]> {
         typeof (it as any).id === "string" &&
         Array.isArray((it as any).months)
       ) {
-        map.set((it as any).id, (it as any).months as number[]);
+        const prep = (it as any).preparationMonthsBefore;
+        map.set((it as any).id, {
+          months: (it as any).months as number[],
+          preparationMonthsBefore: typeof prep === "number" ? prep : undefined,
+        });
       }
     }
   } catch {
@@ -139,7 +145,7 @@ export function loadArchivedItems(): ArchivedMemoItem[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw) as ArchivedMemoItem[];
     if (!Array.isArray(parsed)) return [];
-    const monthsByMemoId = loadItemMonthsById();
+    const infoByMemoId = loadItemInfoById();
     const normalized = parsed
       .filter(
         (it) =>
@@ -150,16 +156,20 @@ export function loadArchivedItems(): ArchivedMemoItem[] {
           typeof (it as any).name === "string" &&
           typeof (it as any).acquiredAt === "string"
       )
-      .map((it) => ({
-        ...it,
-        entitlementMonthKey:
-          typeof (it as any).entitlementMonthKey === "string"
-            ? (it as any).entitlementMonthKey
-            : resolveEntitlementMonthKey(
-                monthsByMemoId.get((it as any).memoId) ?? [],
-                (it as any).acquiredAt
-              ) ?? undefined,
-      }));
+      .map((it) => {
+        const info = infoByMemoId.get((it as any).memoId);
+        return {
+          ...it,
+          entitlementMonthKey:
+            typeof (it as any).entitlementMonthKey === "string"
+              ? (it as any).entitlementMonthKey
+              : resolveEntitlementMonthKey(
+                  info?.months ?? [],
+                  (it as any).acquiredAt,
+                  info?.preparationMonthsBefore
+                ) ?? undefined,
+        };
+      });
     localStorage.setItem(ARCHIVES_KEY, JSON.stringify(normalized));
     return normalized;
   } catch {
