@@ -407,10 +407,26 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     row: DashboardRow,
   ): { items: MemoItem[]; memo: MemoItem; addedNew: boolean } | null {
     const items = loadItems();
+    // 1) この行の対象月をすでに含むメモがあればそれを編集する
     if (row.added && row.memo) {
       const memo = items.find((item) => item.id === row.memo!.id);
       if (memo) return { items, memo, addedNew: false };
     }
+    // 2) 同じ銘柄が別権利月で登録済みなら、当月をそのメモの権利月に足して編集する。
+    //    銘柄単位の値（クロス戦略・1株保有開始など）を失わずに引き継げる。
+    if (row.candidate && row.memo) {
+      const base = items.find((item) => item.id === row.memo!.id);
+      if (base) {
+        const month = row.candidate.month;
+        const months = Array.isArray(base.months) ? base.months : [];
+        if (months.includes(month)) return { items, memo: base, addedNew: false };
+        const merged = { ...base, months: [...months, month].sort((a, b) => a - b), updatedAt: new Date().toISOString() };
+        const nextItems = items.map((item) => (item.id === base.id ? merged : item));
+        saveItems(nextItems);
+        return { items: nextItems, memo: merged, addedNew: true };
+      }
+    }
+    // 3) 銘柄自体が未登録なら候補から新規メモを作る
     if (row.candidate) {
       const candidate = row.candidate;
       const result = addMemoItemFromCandidate({
@@ -515,17 +531,13 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     );
   }
 
-  // その行の対象月の優待メモ（未登録なら null）。編集フォームの初期値と表示に使う。
-  function memoForRow(row: DashboardRow): MemoItem | null {
-    return row.added ? row.memo : null;
-  }
-
   function isEditingCell(row: DashboardRow, field: InlineField) {
     return editingCell?.rowKey === row.key && editingCell.field === field;
   }
 
   function renderPreparationCell(row: DashboardRow) {
-    const memo = memoForRow(row);
+    // 表示・初期値は銘柄単位のメモ（別権利月で登録済みでも値を見せる）。
+    const memo = row.memo;
     if (isEditingCell(row, "preparationMonthsBefore")) {
       return (
         <select
@@ -553,7 +565,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   }
 
   function renderOneShareCell(row: DashboardRow) {
-    const memo = memoForRow(row);
+    const memo = row.memo;
     if (isEditingCell(row, "oneShareStartedAt")) {
       const current = memo?.oneShareStartedAt ?? "";
       // 月ピッカーは YYYY-MM のみ扱う。旧フリーテキストは空表示にして選び直せるようにする。
@@ -577,7 +589,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   }
 
   function renderCrossTypeCell(row: DashboardRow) {
-    const memo = memoForRow(row);
+    const memo = row.memo;
     if (isEditingCell(row, "crossType")) {
       return (
         <select
