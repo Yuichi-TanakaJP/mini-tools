@@ -502,6 +502,46 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     setEditingCell({ rowKey: row.key, field });
   }
 
+  // 誤って優待メモへ追加した行を戻す。対象月だけを外し、権利月が無くなればメモごと削除する。
+  function removeMemoForRow(row: DashboardRow) {
+    if (!row.memo) return;
+    const items = loadItems();
+    const target = items.find((item) => item.id === row.memo!.id);
+    if (!target) {
+      setMemoItems(items);
+      setAddedKeys(getAddedKeysFromMemoItems(items));
+      setNotice("解除対象の優待メモが見つかりませんでした。");
+      return;
+    }
+    const months = Array.isArray(target.months) ? target.months : [];
+    // 候補行はその権利月だけを外す。それ以外（仕込み月軸のメモ行）はメモごと削除する。
+    const month = row.candidate ? row.candidate.month : null;
+    const removesWholeMemo = month === null || !months.includes(month) || months.length <= 1;
+    const message = removesWholeMemo
+      ? `${row.name} の優待メモを削除して未追加に戻します。よろしいですか？`
+      : `${row.name} の ${month}月権利を優待メモから外します。よろしいですか？`;
+    if (!window.confirm(message)) return;
+
+    const now = new Date().toISOString();
+    const next = removesWholeMemo
+      ? items.filter((item) => item.id !== target.id)
+      : items.map((item) =>
+          item.id === target.id
+            ? { ...item, months: months.filter((value) => value !== month), updatedAt: now }
+            : item,
+        );
+    saveItems(next);
+    setMemoItems(next);
+    setAddedKeys(getAddedKeysFromMemoItems(next));
+    closeMemoEdit();
+    setEditingCell(null);
+    setNotice(
+      removesWholeMemo
+        ? `${row.name} の優待メモを削除しました。`
+        : `${row.name} の ${month}月権利を優待メモから外しました。`,
+    );
+  }
+
   function openMonthPicker(row: DashboardRow, event: React.MouseEvent<HTMLElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
     const current = row.memo?.oneShareStartedAt ?? "";
@@ -986,13 +1026,22 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                     <div style={styles.detailSectionHead}>
                       <h3 style={styles.detailSectionTitle}>優待メモ</h3>
                       {isEditingSelectedMemo ? null : (
-                        <button
-                          type="button"
-                          onClick={() => openMemoEdit(selectedRow.memo as MemoItem)}
-                          style={styles.detailEditButton}
-                        >
-                          編集
-                        </button>
+                        <div style={styles.detailSectionActions}>
+                          <button
+                            type="button"
+                            onClick={() => openMemoEdit(selectedRow.memo as MemoItem)}
+                            style={styles.detailEditButton}
+                          >
+                            編集
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeMemoForRow(selectedRow)}
+                            style={styles.detailRemoveButton}
+                          >
+                            メモから外す
+                          </button>
+                        </div>
                       )}
                     </div>
 
@@ -1509,10 +1558,14 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#cbd5e1",
   },
   cellEditTrigger: {
+    // border はロングハンドで指定する。active 時に borderStyle/borderColor を
+    // 上書きしてもショートハンドと混在せず、再レンダー時の style 警告を避ける。
     display: "inline-flex",
     alignItems: "center",
     maxWidth: "100%",
-    border: "1px dashed rgba(79,70,229,0.28)",
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: "rgba(79,70,229,0.28)",
     background: "transparent",
     borderRadius: 6,
     padding: "2px 6px",
@@ -1846,10 +1899,24 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     marginBottom: 8,
   },
+  detailSectionActions: {
+    display: "flex",
+    gap: 6,
+  },
   detailEditButton: {
     border: "1px solid rgba(79,70,229,0.25)",
     background: "#eef2ff",
     color: "#4338ca",
+    borderRadius: 8,
+    padding: "3px 12px",
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  detailRemoveButton: {
+    border: "1px solid rgba(220,38,38,0.25)",
+    background: "#fef2f2",
+    color: "#b91c1c",
     borderRadius: 8,
     padding: "3px 12px",
     fontSize: 12,
