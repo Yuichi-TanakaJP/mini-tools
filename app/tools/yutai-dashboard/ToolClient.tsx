@@ -140,12 +140,16 @@ function buildCalendarCells(memo: MemoItem, acquiredMonths: Set<number>): Calend
       month = (month % 12) + 1;
     }
   }
-  // 1株保有: 開始していれば通年継続とみなし、全月に保有ストリップを引く。
-  // 開始月が YYYY-MM で分かる場合はその月に開始マーカーを付ける。
+  // 1株保有: 開始月が分かる場合は「開始月〜12月」に保有ストリップを引く（開始前は塗らない）。
+  // 開始月が不明（フリーテキスト）の場合のみ通年保有とみなす。
   if (memo.oneShareStartedAt) {
-    for (const cell of cells) cell.oneShareHeld = true;
     const startMonth = parseOneShareStartMonth(memo.oneShareStartedAt);
-    if (startMonth) cells[startMonth - 1].oneShareStart = true;
+    if (startMonth) {
+      for (let month = startMonth; month <= 12; month += 1) cells[month - 1].oneShareHeld = true;
+      cells[startMonth - 1].oneShareStart = true;
+    } else {
+      for (const cell of cells) cell.oneShareHeld = true;
+    }
   }
   return cells;
 }
@@ -345,7 +349,9 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
         key: `${item.code}:${item.month}`,
         code: item.code,
         name: item.company_name,
-        months: memo?.months?.length ? memo.months : [item.month],
+        // 各行はその候補の権利月そのものを示す。別権利月で登録済みの銘柄でも、
+        // メモの月ではなくこの候補の月を表示する（別月行が同じ月に見えるのを防ぐ）。
+        months: [item.month],
         candidate: item,
         memo,
         added: addedKeys.has(`${item.code}:${item.month}`),
@@ -1009,7 +1015,12 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                 <span style={styles.legendItem}><span style={{ ...styles.legendSwatch, ...styles.calCellEntitlement }}>権</span>権利月</span>
                 <span style={styles.legendItem}><span style={{ ...styles.legendSwatch, ...styles.calCellPrep }}>仕</span>仕込み開始</span>
                 <span style={styles.legendItem}><span style={{ ...styles.legendSwatch, ...styles.calCellBand }} />仕込み期間</span>
-                <span style={styles.legendItem}><span style={{ ...styles.legendSwatch, ...styles.calCellAcquired }}>✓</span>取得済み</span>
+                <span style={styles.legendItem}>
+                  <span style={{ ...styles.legendSwatch, ...styles.calCellEntitlement }}>
+                    権<span style={styles.calAcquiredMark}>✓</span>
+                  </span>
+                  取得済み
+                </span>
                 <span style={styles.legendItem}>
                   <span style={styles.legendSwatchPlain}>
                     <span style={styles.calOverlapDot} />
@@ -1048,30 +1059,23 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                           </span>
                         </td>
                         {cells.map((cell, index) => {
-                          const badgeStyle = cell.entitlement && cell.acquired
-                            ? styles.calCellAcquired
-                            : cell.entitlement
-                              ? styles.calCellEntitlement
-                              : cell.prepStart
-                                ? styles.calCellPrep
-                                : cell.band
-                                  ? styles.calCellBand
-                                  : styles.calCellEmpty;
-                          const label = cell.entitlement && cell.acquired
-                            ? "✓"
-                            : cell.entitlement
-                              ? "権"
-                              : cell.prepStart
-                                ? "仕"
-                                : "";
-                          // 権利月と仕込み開始が同月に重なったら、主バッジに重なりドットを添える
+                          // 権利月は取得の有無に関わらず常に「権」。取得済みは緑✓、仕込み重なりは橙ドットで重ねて示す。
+                          const badgeStyle = cell.entitlement
+                            ? styles.calCellEntitlement
+                            : cell.prepStart
+                              ? styles.calCellPrep
+                              : cell.band
+                                ? styles.calCellBand
+                                : styles.calCellEmpty;
+                          const label = cell.entitlement ? "権" : cell.prepStart ? "仕" : "";
                           const overlapPrep = cell.entitlement && cell.prepStart;
                           const holdStyle = cell.oneShareHeld
                             ? (cell.oneShareStart ? styles.calHoldStart : styles.calHold)
                             : styles.calHoldEmpty;
                           const title = [
-                            cell.entitlement ? (cell.acquired ? "取得済みの権利月" : "権利月") : cell.prepStart ? "仕込み開始" : cell.band ? "仕込み期間" : null,
-                            overlapPrep ? "（仕込み開始も同月）" : null,
+                            cell.entitlement ? "権利月" : cell.prepStart ? "仕込み開始" : cell.band ? "仕込み期間" : null,
+                            cell.acquired ? "取得済み" : null,
+                            overlapPrep ? "仕込み開始も同月" : null,
                             cell.oneShareStart ? "1株保有開始" : cell.oneShareHeld ? "1株保有中" : null,
                           ].filter(Boolean).join(" / ");
                           return (
@@ -1079,6 +1083,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                               <div style={styles.calCellStack} title={title || undefined}>
                                 <span style={badgeStyle}>
                                   {label}
+                                  {cell.acquired ? <span style={styles.calAcquiredMark}>✓</span> : null}
                                   {overlapPrep ? <span style={styles.calOverlapDot} /> : null}
                                 </span>
                                 <span style={holdStyle} />
@@ -1854,22 +1859,26 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 11,
     fontWeight: 800,
   },
-  calCellAcquired: {
-    position: "relative",
+  calAcquiredMark: {
+    position: "absolute",
+    top: 1,
+    right: 1,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    height: 22,
-    borderRadius: 5,
+    width: 12,
+    height: 12,
+    borderRadius: 999,
     background: "#16a34a",
     color: "#ffffff",
-    fontSize: 12,
-    fontWeight: 800,
+    fontSize: 9,
+    fontWeight: 900,
+    border: "1px solid #ffffff",
   },
   calOverlapDot: {
     position: "absolute",
-    top: 2,
-    right: 2,
+    top: 1,
+    left: 1,
     width: 7,
     height: 7,
     borderRadius: 999,
