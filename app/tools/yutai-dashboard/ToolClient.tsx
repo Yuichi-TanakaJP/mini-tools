@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { addMemoItemFromCandidate, isImportedMonthlyYutaiCandidate } from "@/app/tools/yutai-memo/candidate-import";
 import { loadArchivedItems, loadItems, saveItems } from "@/app/tools/yutai-memo/storage";
 import { CROSS_TYPES, type ArchivedMemoItem, type CrossType, type MemoItem } from "@/app/tools/yutai-memo/types";
-import { isPreparationMonth } from "@/app/tools/yutai-memo/date-utils";
+import { getPreparationMonth, isPreparationMonth } from "@/app/tools/yutai-memo/date-utils";
 import {
   applyMemoEdit,
   buildMemoEditDraft,
@@ -84,6 +84,53 @@ function formatMonths(months: number[]) {
   return [...months].sort((a, b) => a - b).map((month) => `${month}月`).join("・");
 }
 
+// 12ヶ月ガント風ビューの 1 セル状態
+type CalendarMonthCell = {
+  entitlement: boolean; // 権利月
+  prepStart: boolean; // 仕込み開始月
+  band: boolean; // 仕込み開始〜権利月の帯
+  acquired: boolean; // その権利月を取得済み
+};
+
+// 銘柄ごとの取得済み権利月（月番号）の集合
+function acquiredMonthsForCode(summary: AcquiredSummary | undefined): Set<number> {
+  const months = new Set<number>();
+  if (!summary) return months;
+  for (const entry of summary.entries) {
+    const key = entry.entitlementMonthKey;
+    const matched = key ? /^\d{4}-(\d{2})$/.exec(key) : null;
+    if (matched) months.add(Number(matched[1]));
+  }
+  return months;
+}
+
+// 1 銘柄メモの 12ヶ月セルを組み立てる。仕込み開始〜権利月の帯は年をまたいで循環する。
+function buildCalendarCells(memo: MemoItem, acquiredMonths: Set<number>): CalendarMonthCell[] {
+  const cells: CalendarMonthCell[] = Array.from({ length: 12 }, () => ({
+    entitlement: false,
+    prepStart: false,
+    band: false,
+    acquired: false,
+  }));
+  const months = (memo.months ?? []).filter((m) => Number.isInteger(m) && m >= 1 && m <= 12);
+  for (const entitlement of months) {
+    cells[entitlement - 1].entitlement = true;
+    if (acquiredMonths.has(entitlement)) cells[entitlement - 1].acquired = true;
+    if (memo.preparationMonthsBefore === undefined) continue;
+    const prepStart = getPreparationMonth(entitlement, memo.preparationMonthsBefore);
+    if (!prepStart) continue;
+    cells[prepStart - 1].prepStart = true;
+    // prepStart から entitlement まで循環しながら帯を塗る
+    let month = prepStart;
+    for (let guard = 0; guard < 12; guard += 1) {
+      cells[month - 1].band = true;
+      if (month === entitlement) break;
+      month = (month % 12) + 1;
+    }
+  }
+  return cells;
+}
+
 function buildAcquiredByCode(archives: ArchivedMemoItem[], memoItems: MemoItem[]) {
   const codeByMemoId = new Map(memoItems.filter((item) => item.code).map((item) => [item.id, item.code as string]));
   const map = new Map<string, AcquiredSummary>();
@@ -112,6 +159,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const { navigate, isPendingFor } = useRouterTransition();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
   const [axis, setAxis] = useState<CalendarAxis>("entitlement");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [crossFilter, setCrossFilter] = useState<CrossFilter>("all");
@@ -215,6 +263,32 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     () => buildAcquiredByCode(archivedItems, memoItems),
     [archivedItems, memoItems],
   );
+
+  // 12ヶ月ビュー用の行。登録済みメモを対象にし、検索・クロス戦略で絞り込む。
+  const calendarRows = useMemo(() => {
+    const normalizedQuery = normalizeText(query.trim());
+    const collator = new Intl.Collator("ja", { numeric: true, sensitivity: "base" });
+    return memoItems
+      .filter((memo) => {
+        if (strategyFilter !== "all" && memo.crossType !== strategyFilter) return false;
+        if (!normalizedQuery) return true;
+        return normalizeText([memo.name, memo.code ?? "", memo.memo, memo.entryTiming ?? ""].join(" "))
+          .includes(normalizedQuery);
+      })
+      .map((memo) => {
+        const acquired = memo.code ? acquiredByCode.get(memo.code) : undefined;
+        return {
+          memo,
+          cells: buildCalendarCells(memo, acquiredMonthsForCode(acquired)),
+        };
+      })
+      .sort((a, b) => {
+        const firstA = Math.min(...(a.memo.months?.length ? a.memo.months : [13]));
+        const firstB = Math.min(...(b.memo.months?.length ? b.memo.months : [13]));
+        if (firstA !== firstB) return firstA - firstB;
+        return collator.compare(a.memo.name, b.memo.name);
+      });
+  }, [acquiredByCode, memoItems, query, strategyFilter]);
 
   const rows = useMemo<DashboardRow[]>(() => {
     if (axis === "preparation") {
@@ -875,16 +949,100 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
             </label>
           </div>
 
+          <div style={styles.viewToggleRow}>
+            <div style={styles.viewToggle}>
+              <button
+                type="button"
+                style={viewMode === "table" ? styles.viewToggleActive : styles.viewToggleButton}
+                onClick={() => setViewMode("table")}
+              >
+                テーブル
+              </button>
+              <button
+                type="button"
+                style={viewMode === "calendar" ? styles.viewToggleActive : styles.viewToggleButton}
+                onClick={() => setViewMode("calendar")}
+              >
+                12ヶ月ビュー
+              </button>
+            </div>
+          </div>
+
           <div style={styles.resultsMeta}>
-            <span style={styles.resultsCount}>{hydrated ? filteredRows.length : "-"}</span>
+            <span style={styles.resultsCount}>
+              {hydrated ? (viewMode === "calendar" ? calendarRows.length : filteredRows.length) : "-"}
+            </span>
             <span style={styles.resultsLabel}>件</span>
-            {axis === "preparation" ? (
+            {viewMode === "calendar" ? (
+              <span style={styles.resultsNote}>
+                12ヶ月ビューは、優待メモに登録済みの銘柄を対象に、仕込み開始〜権利月の帯と取得実績を表示します。
+              </span>
+            ) : axis === "preparation" ? (
               <span style={styles.resultsNote}>
                 仕込み月軸は、優待メモに仕込み開始（◯か月前）を設定した銘柄だけが対象です。
               </span>
             ) : null}
           </div>
 
+          {viewMode === "calendar" ? (
+            <div style={styles.calendarScroll}>
+              <div style={styles.calendarLegend}>
+                <span style={styles.legendItem}><span style={{ ...styles.legendSwatch, ...styles.calCellEntitlement }}>権</span>権利月</span>
+                <span style={styles.legendItem}><span style={{ ...styles.legendSwatch, ...styles.calCellPrep }}>仕</span>仕込み開始</span>
+                <span style={styles.legendItem}><span style={{ ...styles.legendSwatch, ...styles.calCellBand }} />仕込み期間</span>
+                <span style={styles.legendItem}><span style={{ ...styles.legendSwatch, ...styles.calCellAcquired }}>✓</span>取得済み</span>
+              </div>
+              <table style={styles.calendarTable}>
+                <thead>
+                  <tr>
+                    <th style={{ ...styles.calTh, ...styles.calNameTh }}>銘柄</th>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                      <th key={month} style={styles.calTh}>{month}月</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {!hydrated ? (
+                    <tr><td colSpan={13} style={styles.emptyCell}>読み込み中…</td></tr>
+                  ) : calendarRows.length === 0 ? (
+                    <tr><td colSpan={13} style={styles.emptyCell}>登録済みの銘柄がありません。テーブルで「＋メモ」やセル編集を行うと登録されます。</td></tr>
+                  ) : (
+                    calendarRows.map(({ memo, cells }) => (
+                      <tr key={memo.id}>
+                        <td style={styles.calNameCell} title={memo.name}>
+                          <span style={styles.calName}>{memo.name}</span>
+                          {memo.code ? <span style={styles.calCode}>{memo.code}</span> : null}
+                        </td>
+                        {cells.map((cell, index) => {
+                          const cellStyle = cell.entitlement && cell.acquired
+                            ? styles.calCellAcquired
+                            : cell.entitlement
+                              ? styles.calCellEntitlement
+                              : cell.prepStart
+                                ? styles.calCellPrep
+                                : cell.band
+                                  ? styles.calCellBand
+                                  : styles.calCellEmpty;
+                          const label = cell.entitlement && cell.acquired
+                            ? "✓"
+                            : cell.entitlement
+                              ? "権"
+                              : cell.prepStart
+                                ? "仕"
+                                : "";
+                          return (
+                            <td key={index} style={styles.calTd}>
+                              <span style={cellStyle}>{label}</span>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : (
           <div style={styles.tableLayout}>
             <div style={styles.tableScroll}>
               <table style={styles.table}>
@@ -1221,6 +1379,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
               </aside>
             ) : null}
           </div>
+          )}
         </section>
       </div>
 
@@ -1470,6 +1629,169 @@ const styles: Record<string, React.CSSProperties> = {
     marginLeft: 10,
     fontSize: 12,
     color: "#64748b",
+  },
+  viewToggleRow: {
+    display: "flex",
+    marginBottom: 12,
+  },
+  viewToggle: {
+    display: "inline-flex",
+    gap: 4,
+    padding: 4,
+    borderRadius: 12,
+    background: "#f1f5f9",
+    border: "1px solid rgba(15,23,42,0.06)",
+  },
+  viewToggleButton: {
+    border: "none",
+    background: "transparent",
+    color: "#64748b",
+    borderRadius: 9,
+    padding: "6px 16px",
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  viewToggleActive: {
+    border: "none",
+    background: "#ffffff",
+    color: "#4338ca",
+    borderRadius: 9,
+    padding: "6px 16px",
+    fontSize: 13,
+    fontWeight: 800,
+    cursor: "pointer",
+    boxShadow: "0 1px 2px rgba(15,23,42,0.10)",
+  },
+  calendarScroll: {
+    width: "100%",
+    overflowX: "auto",
+    borderRadius: 14,
+    border: "1px solid rgba(15,23,42,0.08)",
+  },
+  calendarLegend: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 16,
+    padding: "10px 12px",
+    borderBottom: "1px solid rgba(15,23,42,0.06)",
+    background: "#f8fafc",
+  },
+  legendItem: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    fontSize: 12,
+    color: "#475569",
+    fontWeight: 600,
+  },
+  legendSwatch: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    fontSize: 11,
+    fontWeight: 800,
+  },
+  calendarTable: {
+    borderCollapse: "collapse",
+    fontSize: 12,
+    minWidth: 720,
+  },
+  calTh: {
+    position: "sticky",
+    top: 0,
+    background: "#f8fafc",
+    color: "#475569",
+    fontSize: 12,
+    fontWeight: 800,
+    textAlign: "center",
+    padding: "8px 6px",
+    borderBottom: "1px solid rgba(15,23,42,0.10)",
+    width: 48,
+    whiteSpace: "nowrap",
+  },
+  calNameTh: {
+    textAlign: "left",
+    minWidth: 160,
+    width: 200,
+    position: "sticky",
+    left: 0,
+    zIndex: 1,
+  },
+  calNameCell: {
+    padding: "6px 10px",
+    borderBottom: "1px solid rgba(15,23,42,0.06)",
+    borderRight: "1px solid rgba(15,23,42,0.06)",
+    background: "#ffffff",
+    position: "sticky",
+    left: 0,
+    zIndex: 1,
+    maxWidth: 200,
+  },
+  calName: {
+    display: "block",
+    fontWeight: 700,
+    color: "#0f172a",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  calCode: {
+    fontSize: 11,
+    color: "#94a3b8",
+    fontWeight: 700,
+  },
+  calTd: {
+    padding: 3,
+    borderBottom: "1px solid rgba(15,23,42,0.06)",
+    textAlign: "center",
+  },
+  calCellEmpty: {
+    display: "block",
+    height: 22,
+    borderRadius: 5,
+  },
+  calCellBand: {
+    display: "block",
+    height: 22,
+    borderRadius: 5,
+    background: "rgba(79,70,229,0.12)",
+  },
+  calCellPrep: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 22,
+    borderRadius: 5,
+    background: "rgba(79,70,229,0.28)",
+    color: "#3730a3",
+    fontSize: 11,
+    fontWeight: 800,
+  },
+  calCellEntitlement: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 22,
+    borderRadius: 5,
+    background: "#4f46e5",
+    color: "#ffffff",
+    fontSize: 11,
+    fontWeight: 800,
+  },
+  calCellAcquired: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 22,
+    borderRadius: 5,
+    background: "#16a34a",
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: 800,
   },
   tableLayout: {
     display: "flex",
