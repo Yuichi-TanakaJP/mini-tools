@@ -11,6 +11,7 @@ import {
   buildMemoEditDraft,
   type MemoEditDraft,
 } from "@/app/tools/_shared/yutai-memo-edit";
+import { hasPrepEntry, loadPrepLog, savePrepLog, togglePrepEntry, type PrepLog } from "./prep-log";
 import { useRouterTransition } from "@/app/tools/_shared/use-router-transition";
 import {
   canNikkoGeneralCrossNow,
@@ -219,6 +220,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const [memoItems, setMemoItems] = useState<MemoItem[]>([]);
   const [archivedItems, setArchivedItems] = useState<ArchivedMemoItem[]>([]);
   const [cardMemos, setCardMemos] = useState<Record<string, CalendarCardMemo>>({});
+  const [prepLog, setPrepLog] = useState<PrepLog>({});
   const [hydrated, setHydrated] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedRowKey, setSelectedRowKey] = useState<string | null>(null);
@@ -240,6 +242,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     setPickedCodes(loadCodeSet(PICKED_KEY));
     setPassedCodes(loadCodeSet(PASSED_KEY));
     setCardMemos(loadCardMemos());
+    setPrepLog(loadPrepLog());
     const items = loadItems();
     setAddedKeys(getAddedKeysFromMemoItems(items));
     setMemoItems(items);
@@ -705,6 +708,17 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     setMonthPicker(null);
   }
 
+  // 12ヶ月ビューで、その銘柄の「選択年度の指定月に仕込み実施した」記録をトグルする。
+  function togglePrepLog(code: string, month: number) {
+    if (!code) return;
+    const yearMonth = `${calendarYear}-${`${month}`.padStart(2, "0")}`;
+    setPrepLog((prev) => {
+      const next = togglePrepEntry(prev, code, yearMonth);
+      savePrepLog(next);
+      return next;
+    });
+  }
+
   function handleMonthChange(nextMonthId: string) {
     const params = new URLSearchParams(searchParams.toString());
     if (!nextMonthId) {
@@ -1082,6 +1096,10 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                     <span style={{ ...styles.legendSwatch, ...styles.calCellEntitlement }}>権<span style={styles.calAcquiredPastMark}>✓</span></span>
                     他年度に取得
                   </span>
+                  <span style={styles.legendItem}>
+                    <span style={{ ...styles.legendSwatch, ...styles.calCellBand }}><span style={styles.calPrepMark} /></span>
+                    仕込み実施
+                  </span>
                   <span style={styles.legendDivider} />
                   <span style={styles.legendItem}><span style={{ ...styles.legendStrip, ...styles.calHold }} />1株保有</span>
                   <span style={styles.legendItem}><span style={{ ...styles.legendStrip, ...styles.calHoldStart }} />1株開始</span>
@@ -1121,7 +1139,11 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                           </span>
                         </td>
                         {cells.map((cell, index) => {
-                          const isCurrent = calendarYear === jstNow.year && index + 1 === jstNow.month;
+                          const month = index + 1;
+                          const isCurrent = calendarYear === jstNow.year && month === jstNow.month;
+                          const prepped = memo.code
+                            ? hasPrepEntry(prepLog, memo.code, `${calendarYear}-${`${month}`.padStart(2, "0")}`)
+                            : false;
                           const badgeStyle = cell.entitlement
                             ? styles.calCellEntitlement
                             : cell.prepStart
@@ -1138,14 +1160,27 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                             ? `取得: ${cell.acquiredYears.map((year) => `${year}年`).join("・")}`
                             : null;
                           const title = [
+                            `${month}月`,
                             cell.entitlement ? "権利月" : cell.prepStart ? "仕込み開始" : cell.band ? "仕込み期間" : null,
+                            prepped ? "仕込み実施" : null,
                             acquiredTitle,
                             overlapPrep ? "仕込み開始も同月" : null,
                             cell.oneShareStart ? "1株保有開始" : cell.oneShareHeld ? "1株保有中" : null,
+                            "（クリックで仕込み実施を記録）",
                           ].filter(Boolean).join(" / ");
+                          const tdStyle = {
+                            ...styles.calTd,
+                            ...styles.calTdClickable,
+                            ...(isCurrent ? styles.calTdCurrent : null),
+                          };
                           return (
-                            <td key={index} style={isCurrent ? { ...styles.calTd, ...styles.calTdCurrent } : styles.calTd}>
-                              <div style={styles.calCellStack} title={title || undefined}>
+                            <td
+                              key={index}
+                              style={tdStyle}
+                              title={title}
+                              onClick={() => togglePrepLog(memo.code ?? "", month)}
+                            >
+                              <div style={styles.calCellStack}>
                                 <span style={badgeStyle}>
                                   {label}
                                   {cell.acquiredThisYear ? (
@@ -1154,6 +1189,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                                     <span style={styles.calAcquiredPastMark}>✓</span>
                                   ) : null}
                                   {overlapPrep ? <span style={styles.calOverlapDot} /> : null}
+                                  {prepped ? <span style={styles.calPrepMark} /> : null}
                                 </span>
                                 <span style={holdStyle} />
                               </div>
@@ -1909,6 +1945,20 @@ const styles: Record<string, React.CSSProperties> = {
   },
   calTdCurrent: {
     background: "rgba(99,102,241,0.08)",
+  },
+  calTdClickable: {
+    cursor: "pointer",
+  },
+  calPrepMark: {
+    position: "absolute",
+    bottom: 1,
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    background: "#c026d3",
+    border: "1px solid #ffffff",
   },
   calCellStack: {
     display: "flex",
