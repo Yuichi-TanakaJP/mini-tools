@@ -90,6 +90,8 @@ type CalendarMonthCell = {
   prepStart: boolean; // 仕込み開始月
   band: boolean; // 仕込み開始〜権利月の帯
   acquired: boolean; // その権利月を取得済み
+  oneShareHeld: boolean; // 1株を保有中（開始後は通年継続とみなす）
+  oneShareStart: boolean; // 1株保有を開始した月
 };
 
 // 銘柄ごとの取得済み権利月（月番号）の集合
@@ -104,6 +106,14 @@ function acquiredMonthsForCode(summary: AcquiredSummary | undefined): Set<number
   return months;
 }
 
+// oneShareStartedAt（YYYY-MM 想定）から開始月を取り出す。フリーテキストは null。
+function parseOneShareStartMonth(value: string | undefined): number | null {
+  const matched = value ? /^\d{4}-(\d{2})$/.exec(value) : null;
+  if (!matched) return null;
+  const month = Number(matched[1]);
+  return month >= 1 && month <= 12 ? month : null;
+}
+
 // 1 銘柄メモの 12ヶ月セルを組み立てる。仕込み開始〜権利月の帯は年をまたいで循環する。
 function buildCalendarCells(memo: MemoItem, acquiredMonths: Set<number>): CalendarMonthCell[] {
   const cells: CalendarMonthCell[] = Array.from({ length: 12 }, () => ({
@@ -111,6 +121,8 @@ function buildCalendarCells(memo: MemoItem, acquiredMonths: Set<number>): Calend
     prepStart: false,
     band: false,
     acquired: false,
+    oneShareHeld: false,
+    oneShareStart: false,
   }));
   const months = (memo.months ?? []).filter((m) => Number.isInteger(m) && m >= 1 && m <= 12);
   for (const entitlement of months) {
@@ -127,6 +139,13 @@ function buildCalendarCells(memo: MemoItem, acquiredMonths: Set<number>): Calend
       if (month === entitlement) break;
       month = (month % 12) + 1;
     }
+  }
+  // 1株保有: 開始していれば通年継続とみなし、全月に保有ストリップを引く。
+  // 開始月が YYYY-MM で分かる場合はその月に開始マーカーを付ける。
+  if (memo.oneShareStartedAt) {
+    for (const cell of cells) cell.oneShareHeld = true;
+    const startMonth = parseOneShareStartMonth(memo.oneShareStartedAt);
+    if (startMonth) cells[startMonth - 1].oneShareStart = true;
   }
   return cells;
 }
@@ -991,6 +1010,14 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                 <span style={styles.legendItem}><span style={{ ...styles.legendSwatch, ...styles.calCellPrep }}>仕</span>仕込み開始</span>
                 <span style={styles.legendItem}><span style={{ ...styles.legendSwatch, ...styles.calCellBand }} />仕込み期間</span>
                 <span style={styles.legendItem}><span style={{ ...styles.legendSwatch, ...styles.calCellAcquired }}>✓</span>取得済み</span>
+                <span style={styles.legendItem}>
+                  <span style={styles.legendSwatchPlain}>
+                    <span style={styles.calOverlapDot} />
+                  </span>
+                  仕込みと権利が同月
+                </span>
+                <span style={styles.legendItem}><span style={{ ...styles.legendStrip, ...styles.calHold }} />1株保有中</span>
+                <span style={styles.legendItem}><span style={{ ...styles.legendStrip, ...styles.calHoldStart }} />1株開始</span>
               </div>
               <table style={styles.calendarTable}>
                 <thead>
@@ -1011,10 +1038,17 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                       <tr key={memo.id}>
                         <td style={styles.calNameCell} title={memo.name}>
                           <span style={styles.calName}>{memo.name}</span>
-                          {memo.code ? <span style={styles.calCode}>{memo.code}</span> : null}
+                          <span style={styles.calNameSub}>
+                            {memo.code ? <span style={styles.calCode}>{memo.code}</span> : null}
+                            {memo.oneShareStartedAt ? (
+                              <span style={styles.calHoldNote} title={`1株保有開始: ${memo.oneShareStartedAt}`}>
+                                1株 {memo.oneShareStartedAt}〜
+                              </span>
+                            ) : null}
+                          </span>
                         </td>
                         {cells.map((cell, index) => {
-                          const cellStyle = cell.entitlement && cell.acquired
+                          const badgeStyle = cell.entitlement && cell.acquired
                             ? styles.calCellAcquired
                             : cell.entitlement
                               ? styles.calCellEntitlement
@@ -1030,9 +1064,25 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                               : cell.prepStart
                                 ? "仕"
                                 : "";
+                          // 権利月と仕込み開始が同月に重なったら、主バッジに重なりドットを添える
+                          const overlapPrep = cell.entitlement && cell.prepStart;
+                          const holdStyle = cell.oneShareHeld
+                            ? (cell.oneShareStart ? styles.calHoldStart : styles.calHold)
+                            : styles.calHoldEmpty;
+                          const title = [
+                            cell.entitlement ? (cell.acquired ? "取得済みの権利月" : "権利月") : cell.prepStart ? "仕込み開始" : cell.band ? "仕込み期間" : null,
+                            overlapPrep ? "（仕込み開始も同月）" : null,
+                            cell.oneShareStart ? "1株保有開始" : cell.oneShareHeld ? "1株保有中" : null,
+                          ].filter(Boolean).join(" / ");
                           return (
                             <td key={index} style={styles.calTd}>
-                              <span style={cellStyle}>{label}</span>
+                              <div style={styles.calCellStack} title={title || undefined}>
+                                <span style={badgeStyle}>
+                                  {label}
+                                  {overlapPrep ? <span style={styles.calOverlapDot} /> : null}
+                                </span>
+                                <span style={holdStyle} />
+                              </div>
                             </td>
                           );
                         })}
@@ -1739,9 +1789,20 @@ const styles: Record<string, React.CSSProperties> = {
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
+  calNameSub: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    flexWrap: "wrap",
+  },
   calCode: {
     fontSize: 11,
     color: "#94a3b8",
+    fontWeight: 700,
+  },
+  calHoldNote: {
+    fontSize: 11,
+    color: "#0d9488",
     fontWeight: 700,
   },
   calTd: {
@@ -1749,18 +1810,28 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottom: "1px solid rgba(15,23,42,0.06)",
     textAlign: "center",
   },
+  calCellStack: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+    alignItems: "stretch",
+    minWidth: 40,
+  },
   calCellEmpty: {
+    position: "relative",
     display: "block",
     height: 22,
     borderRadius: 5,
   },
   calCellBand: {
+    position: "relative",
     display: "block",
     height: 22,
     borderRadius: 5,
     background: "rgba(79,70,229,0.12)",
   },
   calCellPrep: {
+    position: "relative",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -1772,6 +1843,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 800,
   },
   calCellEntitlement: {
+    position: "relative",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -1783,6 +1855,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 800,
   },
   calCellAcquired: {
+    position: "relative",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -1792,6 +1865,47 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#ffffff",
     fontSize: 12,
     fontWeight: 800,
+  },
+  calOverlapDot: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    width: 7,
+    height: 7,
+    borderRadius: 999,
+    background: "#f59e0b",
+    border: "1px solid #ffffff",
+  },
+  calHoldEmpty: {
+    display: "block",
+    height: 5,
+    borderRadius: 3,
+  },
+  calHold: {
+    display: "block",
+    height: 5,
+    borderRadius: 3,
+    background: "#5eead4",
+  },
+  calHoldStart: {
+    display: "block",
+    height: 5,
+    borderRadius: 3,
+    background: "#0d9488",
+  },
+  legendSwatchPlain: {
+    position: "relative",
+    display: "inline-flex",
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    background: "#eef2ff",
+  },
+  legendStrip: {
+    display: "inline-block",
+    width: 22,
+    height: 6,
+    borderRadius: 3,
   },
   tableLayout: {
     display: "flex",
