@@ -539,6 +539,8 @@ export default function ToolClient({
         relatedUrl: draft.relatedUrl.trim() || undefined,
         tenureRule: draft.tenureRule.trim() || undefined,
         acquired: draft.acquired,
+        // 仕込んだ時刻を初回だけ記録（既存があれば維持、外したら残しても害はない）
+        acquiredMarkedAt: draft.acquired ? (existing?.acquiredMarkedAt ?? now) : existing?.acquiredMarkedAt,
         oneShareStartedAt: draft.oneShareStartedAt.trim() || undefined,
         priority: draft.priority,
         memo: draft.memo.trim(),
@@ -651,19 +653,28 @@ export default function ToolClient({
     clearSelection();
   }
 
+  // acquired を true にするとき、仕込んだ時刻（acquiredMarkedAt）を初回だけ記録する。
+  function applyAcquired(it: MemoItem, acquired: boolean, now: string): MemoItem {
+    return {
+      ...it,
+      acquired,
+      acquiredMarkedAt: acquired ? (it.acquiredMarkedAt ?? now) : it.acquiredMarkedAt,
+    };
+  }
+
   function bulkSetAcquired(acquired: boolean) {
     if (selectedIds.size === 0) return;
+    const now = new Date().toISOString();
     setItems((prev) =>
-      prev.map((it) => (selectedIds.has(it.id) ? { ...it, acquired } : it))
+      prev.map((it) => (selectedIds.has(it.id) ? applyAcquired(it, acquired, now) : it))
     );
     clearSelection();
   }
 
   function toggleAcquired(id: string) {
+    const now = new Date().toISOString();
     setItems((prev) =>
-      prev.map((it) =>
-        it.id === id ? { ...it, acquired: !it.acquired } : it
-      )
+      prev.map((it) => (it.id === id ? applyAcquired(it, !it.acquired, now) : it))
     );
   }
 
@@ -728,7 +739,8 @@ export default function ToolClient({
       memoId: target.id,
       code: target.code,
       name: target.name,
-      acquiredAt,
+      // 取得日は「実際に仕込んだ日（acquiredMarkedAt）」を優先し、無ければ渡された時刻でフォールバック
+      acquiredAt: target.acquiredMarkedAt ?? acquiredAt,
       entitlementMonthKey:
         entitlementMonthKey ??
         resolveEntitlementMonthKey(target.months, acquiredAt, target.preparationMonthsBefore) ??
@@ -867,6 +879,8 @@ export default function ToolClient({
       if (!it.acquired) return false;
       const monthKey = resolveEntitlementMonthKey(it.months, nowIso, it.preparationMonthsBefore);
       if (!monthKey) return false;
+      // 権利月がまだ来ていない事前仕込みはアーカイブ（リセット）対象から外す。権利月到達・経過のみ。
+      if (monthKey > currentMonth) return false;
       return !archives.some(
         (a) => a.memoId === it.id && getArchiveGroupKey(a) === monthKey
       );
