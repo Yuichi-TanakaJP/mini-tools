@@ -516,7 +516,12 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     const months = Array.isArray(target.months) ? target.months : [];
     // 候補行はその権利月だけを外す。それ以外（仕込み月軸のメモ行）はメモごと削除する。
     const month = row.candidate ? row.candidate.month : null;
-    const removesWholeMemo = month === null || !months.includes(month) || months.length <= 1;
+    // 別権利月で登録済みの銘柄を未登録月の行から消そうとした場合は、無関係なメモを守る。
+    if (month !== null && !months.includes(month)) {
+      setNotice(`${row.name} の ${month}月権利は優待メモに追加されていません。`);
+      return;
+    }
+    const removesWholeMemo = month === null || months.length <= 1;
     const message = removesWholeMemo
       ? `${row.name} の優待メモを削除して未追加に戻します。よろしいですか？`
       : `${row.name} の ${month}月権利を優待メモから外します。よろしいですか？`;
@@ -1034,13 +1039,15 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                           >
                             編集
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => removeMemoForRow(selectedRow)}
-                            style={styles.detailRemoveButton}
-                          >
-                            メモから外す
-                          </button>
+                          {selectedRow.added ? (
+                            <button
+                              type="button"
+                              onClick={() => removeMemoForRow(selectedRow)}
+                              style={styles.detailRemoveButton}
+                            >
+                              メモから外す
+                            </button>
+                          ) : null}
                         </div>
                       )}
                     </div>
