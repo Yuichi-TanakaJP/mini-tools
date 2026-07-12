@@ -539,8 +539,8 @@ export default function ToolClient({
         relatedUrl: draft.relatedUrl.trim() || undefined,
         tenureRule: draft.tenureRule.trim() || undefined,
         acquired: draft.acquired,
-        // 仕込んだ時刻を初回だけ記録（既存があれば維持、外したら残しても害はない）
-        acquiredMarkedAt: draft.acquired ? (existing?.acquiredMarkedAt ?? now) : existing?.acquiredMarkedAt,
+        // 仕込んだ時刻を初回だけ記録。取得を外したらクリア（次サイクルで再取得日を新規に取るため）
+        acquiredMarkedAt: draft.acquired ? (existing?.acquiredMarkedAt ?? now) : undefined,
         oneShareStartedAt: draft.oneShareStartedAt.trim() || undefined,
         priority: draft.priority,
         memo: draft.memo.trim(),
@@ -653,12 +653,13 @@ export default function ToolClient({
     clearSelection();
   }
 
-  // acquired を true にするとき、仕込んだ時刻（acquiredMarkedAt）を初回だけ記録する。
+  // acquired を true にするとき仕込んだ時刻を記録し、false に戻すときはクリアする。
+  // クリアしないと、次サイクルで前回の仕込み日を再利用してしまう。
   function applyAcquired(it: MemoItem, acquired: boolean, now: string): MemoItem {
     return {
       ...it,
       acquired,
-      acquiredMarkedAt: acquired ? (it.acquiredMarkedAt ?? now) : it.acquiredMarkedAt,
+      acquiredMarkedAt: acquired ? (it.acquiredMarkedAt ?? now) : undefined,
     };
   }
 
@@ -794,7 +795,7 @@ export default function ToolClient({
     setItems((prev) =>
       prev.map((it) =>
         archivedIds.has(it.id)
-          ? { ...it, acquired: false, updatedAt: acquiredAt }
+          ? { ...it, acquired: false, acquiredMarkedAt: undefined, updatedAt: acquiredAt }
           : it
       )
     );
