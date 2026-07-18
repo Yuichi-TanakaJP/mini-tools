@@ -13,6 +13,8 @@ export type CalendarCardMemo = {
   longTermRequired: boolean;
   longTermBenefit: boolean;
   preparationMonthsBefore?: number;
+  requiredShares?: number;
+  benefitValueYen?: number;
   updatedAt: string;
 };
 
@@ -59,6 +61,18 @@ export function loadCardMemos(): Record<string, CalendarCardMemo> {
               value.preparationMonthsBefore >= 0 &&
               value.preparationMonthsBefore <= 11
                 ? value.preparationMonthsBefore
+                : undefined,
+            requiredShares:
+              typeof value.requiredShares === "number" &&
+              Number.isInteger(value.requiredShares) &&
+              value.requiredShares > 0
+                ? value.requiredShares
+                : undefined,
+            benefitValueYen:
+              typeof value.benefitValueYen === "number" &&
+              Number.isInteger(value.benefitValueYen) &&
+              value.benefitValueYen > 0
+                ? value.benefitValueYen
                 : undefined,
             updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : "",
           },

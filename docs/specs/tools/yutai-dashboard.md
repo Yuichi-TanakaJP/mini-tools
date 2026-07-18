@@ -4,7 +4,7 @@
 
 - URL: `/tools/yutai-dashboard`
 - 分類: market データ + LocalStorage 併用ツール（PC 向け）
-- 主な用途: 月次優待候補の発掘（ピック / パス / 優待メモ追加）と、登録済み銘柄の運用管理（日興/SBI・仕込み時期・クロス戦略・取得実績の確認）を 1 つのテーブルで行う
+- 主な用途: 月次優待候補の発掘（ピック / パス / 優待メモ追加）と、登録済み銘柄の運用管理（日興/SBI・仕込み時期・クロス戦略・取得実績・簡易優待効率の確認）を 1 つのテーブルで行う
 
 ## 対象ユーザー
 
@@ -27,8 +27,8 @@
   - 重なりの表示: 権利月は取得の有無に関わらず常に「権」で示し、取得済みは主バッジ右上の✓、権利月と仕込み開始が同月に重なる場合は左上の橙ドットで重ねて示す
   - 各行（テーブル）の権利月は、その候補自身の権利月を表示する。同一銘柄が複数の権利月を持つ場合は権利月ごとに別行になる
 - 対象月「全月」（`?month=all`）は manifest の全月データを結合して表示する。同じ権利月が複数年分ある場合は最新年のデータだけを使う（12ヶ月カレンダー想定）。SBI は当月在庫（latest）を使い、権利付き最終日は表示しない。仕込み月軸では「仕込み時期を設定した銘柄すべて」が対象になる
-- 一覧テーブル: コード / 銘柄 / 権利月 / 日興 / SBI / 仕込み開始 / 1株開始 / クロス戦略 / 実績 / 操作
-- 行クリックで開く詳細サイドパネル: 優待内容、リンク、日興規制明細、優待メモ全項目、クロス購入実績履歴
+- 一覧テーブル: コード / 銘柄 / 権利月 / 簡易効率 / 日興 / SBI / 仕込み開始 / 1株開始 / クロス戦略 / 実績 / 操作
+- 行クリックで開く詳細サイドパネル: 優待内容、簡易優待効率の入力・計算、リンク、日興規制明細、優待メモ全項目、クロス購入実績履歴
 - 行内操作: ピック（★）/ パス（✕）/ 優待メモへ追加（＋メモ）
 
 ### 行の表示ルール
@@ -46,6 +46,7 @@
 ### 入力
 
 - ピック / パス の切替（排他）
+- 権利月軸の候補行ごとに、必要株数と優待価値（円）を正の整数で入力する。値は コード:権利月 単位で保存し、空欄に戻すと未設定にする
 - 優待メモへの追加（`yutai-candidates` と同じ `candidate-import` を使用）
 - 詳細パネルからの優待メモ編集（銘柄名・クロス戦略・仕込み開始・早打ち目安・1株保有開始・任期条件・関連リンク・優先度・取得済み・メモ本文）
 - 詳細パネルからの優待メモ解除（誤って追加した場合の取り消し）。候補行はその権利月だけを外し、権利月が無くなればメモごと削除する
@@ -59,6 +60,7 @@
 ### 出力
 
 - 候補と登録メモを結合した一覧テーブル
+- 必要株数・優待価値・最低投資金額が揃った行は簡易優待効率を表示し、「簡易優待効率が高い順」で計算可能な行を降順、計算不能な行を末尾に並べる
 - 日興バッジ（一般可 / 一般注意 / 一般停止 / 一般× / 制度可）と SBI バッジ（SBI売可）
 - 詳細パネルでの規制明細・実績履歴（年月別）・関連リンク表示
 - 詳細パネルの「編集」で優待メモをその場で更新できる（保存は `_shared/yutai-memo-edit` の純関数経由で LocalStorage へ）。優待メモ帳・優待カレンダーと同じ `yutai_memo_items_v1` を更新するため他画面にも反映される
@@ -71,10 +73,23 @@
 - 優待メモ / 取得実績: `yutai-memo/storage.ts`（LocalStorage、マウント後に読む）
 - ピック / パス / カードメモ: `_shared/yutai-selection.ts`（`yutai-candidates` と同一キーを共有）
 
+- 簡易効率の最低投資金額: 月次候補の minimum_investment_yen（みんかぶ由来の取得済みデータ）。必要株数・優待価値はユーザー入力であり、この段階では OCR や追加スクレイピングを行わない
+
 ### 保存先
+
+- 必要株数 / 優待価値: 既存の月別カードメモ LocalStorage（monthly_yutai_card_memos_v1）へ任意項目 requiredShares / benefitValueYen として保存する。新しい保存キーは増やさず、既存データと後方互換にする
 
 - ピック / パス: LocalStorage（`monthly_yutai_picks_v1` / `monthly_yutai_passes_v1`）
 - 優待メモ追加: LocalStorage（`yutai_memo_items_v1`）
+
+### 簡易優待効率
+
+- 概算株価 = 最低投資金額 ÷ 100
+- 必要資金 = 概算株価 × 必要株数
+- 簡易優待効率（%） = 優待価値 ÷ 必要資金 × 100
+- 最低投資金額を通常の100株分として扱う初期モデルであり、手数料・配当・株価変動・長期保有条件は未反映
+- 計算は _shared/yutai-efficiency.ts の純関数で行い、不足値・0以下・必要株数または優待価値が整数でない場合は計算不能とする
+- 仕込み月軸のメモ行は複数権利月を持ち得るため入力対象外とし、権利月軸の月別候補行から入力する
 
 ### fallback
 
@@ -101,6 +116,7 @@
 - [app/tools/yutai-dashboard/ToolClient.tsx](/c:/Users/yutaz/dev/mini-tools/app/tools/yutai-dashboard/ToolClient.tsx)
 - [app/tools/_shared/yutai-credit.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/_shared/yutai-credit.ts)
 - [app/tools/_shared/yutai-selection.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/_shared/yutai-selection.ts)
+- [app/tools/_shared/yutai-efficiency.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/_shared/yutai-efficiency.ts)
 - [app/tools/_shared/yutai-memo-edit.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/_shared/yutai-memo-edit.ts)
 - [app/tools/yutai-candidates/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/yutai-candidates/data-loader.ts)
 
@@ -109,6 +125,7 @@
 - UAT: [優待ダッシュボード UAT](../../uat/yutai-dashboard.md)
 - Plan: [優待統合ダッシュボード（PC）実装計画](../../plans/yutai-dashboard-plan.md)
 - Decision Log:
+  - [2026-07-18 簡易優待効率MVP](../../decision-log/2026-07-18-yutai-dashboard-simple-efficiency.md)
   - [2026-07-12 12ヶ月ビューの年度軸](../../decision-log/2026-07-12-yutai-dashboard-calendar-year-axis.md)
   - [2026-07-05 優待統合ダッシュボードの位置づけ](../../decision-log/2026-07-05-yutai-dashboard-positioning.md)
   - [2026-07-03 優待の仕込み月表示軸](../../decision-log/2026-07-03-yutai-preparation-month-axis.md)
