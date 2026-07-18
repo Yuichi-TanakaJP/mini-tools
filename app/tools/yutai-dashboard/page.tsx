@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import ToolClient from "./ToolClient";
 import {
   ALL_MONTHS_ID,
   loadMonthlyYutaiAllMonthsPageData,
   loadMonthlyYutaiPageData,
 } from "@/app/tools/yutai-candidates/data-loader";
+import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
+import { getYutaiDashboardPath } from "@/lib/premium-navigation";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "優待ダッシュボード | mini-tools",
@@ -12,6 +18,10 @@ export const metadata: Metadata = {
     "優待候補の発掘（ピック・パス・メモ追加）と、仕込み時期・クロス戦略・取得実績の管理を PC 向けの一覧テーブルで行えます。",
   alternates: {
     canonical: "/tools/yutai-dashboard",
+  },
+  robots: {
+    index: false,
+    follow: false,
   },
 };
 
@@ -23,6 +33,14 @@ type PageProps = {
 
 export default async function Page({ searchParams }: PageProps) {
   const params = searchParams ? await searchParams : undefined;
+  const cookieStore = await cookies();
+  const session = cookieStore.get(PREMIUM_COOKIE_NAME)?.value;
+
+  if (!verifyPremiumSession(session)) {
+    const dashboardPath = getYutaiDashboardPath(params?.month);
+    redirect(`/premium/login?next=${encodeURIComponent(dashboardPath)}`);
+  }
+
   const data = params?.month === ALL_MONTHS_ID
     ? await loadMonthlyYutaiAllMonthsPageData()
     : await loadMonthlyYutaiPageData(params?.month);

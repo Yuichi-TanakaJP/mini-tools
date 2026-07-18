@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import LoginForm from "./LoginForm";
 import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
+import { getSafePremiumNextPath } from "@/lib/premium-navigation";
 
 export const metadata: Metadata = {
   title: "Premium Login (開発中) | mini-tools",
@@ -12,12 +13,21 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function PremiumLoginPage() {
+type PageProps = {
+  searchParams?: Promise<{
+    next?: string | string[];
+  }>;
+};
+
+export default async function PremiumLoginPage({ searchParams }: PageProps) {
+  const params = searchParams ? await searchParams : undefined;
+  const rawNextPath = Array.isArray(params?.next) ? params.next[0] : params?.next;
+  const nextPath = getSafePremiumNextPath(rawNextPath);
   const cookieStore = await cookies();
   const session = cookieStore.get(PREMIUM_COOKIE_NAME)?.value;
 
   if (verifyPremiumSession(session)) {
-    redirect("/premium");
+    redirect(nextPath);
   }
 
   return (

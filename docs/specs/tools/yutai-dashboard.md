@@ -107,8 +107,12 @@
 
 ## premium / 権限制御
 
-- premium 制限なし
-- ログイン不要で利用できる
+- premium ログイン必須
+- 未ログインまたはセッション期限切れの場合は、データ取得前に `/premium/login` へ移動する
+- ログイン後は `/tools/yutai-dashboard` へ戻る。遷移前の `?month=` がある場合は月指定も維持する
+- premium セッションはログインから30日間有効
+- ダッシュボードのHTML/RSCはPWAランタイムキャッシュへ保存せず、常にネットワーク経由で認証を通す
+- 検索エンジンには掲載しない（`noindex, nofollow`）
 
 ## 関連実装
 
@@ -126,6 +130,7 @@
 - Plan: [優待統合ダッシュボード（PC）実装計画](../../plans/yutai-dashboard-plan.md)
 - Decision Log:
   - [2026-07-18 簡易優待効率MVP](../../decision-log/2026-07-18-yutai-dashboard-simple-efficiency.md)
+  - [2026-07-19 優待ダッシュボードのpremium認証](../../decision-log/2026-07-19-yutai-dashboard-premium-auth.md)
   - [2026-07-12 12ヶ月ビューの年度軸](../../decision-log/2026-07-12-yutai-dashboard-calendar-year-axis.md)
   - [2026-07-05 優待統合ダッシュボードの位置づけ](../../decision-log/2026-07-05-yutai-dashboard-positioning.md)
   - [2026-07-03 優待の仕込み月表示軸](../../decision-log/2026-07-03-yutai-preparation-month-axis.md)
