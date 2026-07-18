@@ -11,6 +11,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 
 設計・方針・トレードオフの判断理由を記録します。
 
+- [2026-07-12 取得＝仕込みの一本化と権利年ライフサイクル](./decision-log/2026-07-12-yutai-acquisition-equals-prep-lifecycle.md)
 - [2026-07-12 12ヶ月ビューの仕込み実績記録](./decision-log/2026-07-12-yutai-dashboard-prep-log.md)
 - [2026-07-12 取得実績の権利月ひもづけ（リード期間の当年寄せ）](./decision-log/2026-07-12-yutai-entitlement-attribution-lead-time.md)
 - [2026-07-12 優待ダッシュボード 12ヶ月ビューの年度軸](./decision-log/2026-07-12-yutai-dashboard-calendar-year-axis.md)

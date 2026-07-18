@@ -27,7 +27,8 @@ export type MemoItem = {
   preparationMonthsBefore?: number; // 権利月の何か月前から仕込むか（0-11）
   relatedUrl?: string; // 関連リンク
   tenureRule?: string; // 任期条件
-  acquired: boolean; // 取得済みか
+  acquired: boolean; // 取得済み（＝売り買いを仕込んだ）か
+  acquiredMarkedAt?: string; // acquired を true にした（仕込んだ）時刻。ISO。アーカイブの取得日に使う
   oneShareStartedAt?: string; // YYYY-MM or freeform when legacy start month is unknown
   oneShareHold?: boolean; // legacy compatibility
   priority: 1 | 2 | 3;
