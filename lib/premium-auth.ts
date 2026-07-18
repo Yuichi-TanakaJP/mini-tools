@@ -1,7 +1,7 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 export const PREMIUM_COOKIE_NAME = "mini_tools_premium";
-export const PREMIUM_SESSION_MAX_AGE_SECONDS = 60 * 60 * 8;
+export const PREMIUM_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
 function safeEqual(a: string, b: string) {
   const left = Buffer.from(a);

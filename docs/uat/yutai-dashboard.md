@@ -1,11 +1,13 @@
 # 優待ダッシュボード UAT
 
 対象: `/tools/yutai-dashboard`
-前提: PC の Chrome で確認する（スマホ最適化は対象外）。
+前提: PC の Chrome で確認する（スマホ最適化は対象外）。premium 認証が設定済みであること。
 
 ## 正常系
 
-1. トップまたはナビドロワーから「優待ダッシュボード」を開ける
+1. 未ログインで `/tools/yutai-dashboard` を開くと、データを表示せず `/premium/login` へ移動する
+1a. premium ログインすると `/tools/yutai-dashboard` に戻り、ダッシュボードを開ける
+1b. ログイン後30日以内は再ログインなしで開ける。30日を超えたセッションは再ログインになる
 2. 対象月の候補銘柄がテーブルに一覧表示される（コード / 銘柄 / 権利月 / 簡易効率 / 日興 / SBI / 仕込み開始 / 1株開始 / クロス戦略 / 実績 / 操作）
 3. 対象月を切り替えると一覧が更新され、URL の `?month=` が変わる
 4. 対象月「全月」を選ぶと全月の候補が結合表示される（同一銘柄は権利月ごとに1行）
@@ -39,7 +41,8 @@
 
 ## 異常系
 
-1. `MARKET_INFO_API_BASE_URL` 未設定（またはAPI障害）時、「データ未接続」表示になりページはクラッシュしない
+1. 未ログインまたは改ざんされたpremium Cookieではダッシュボードを表示しない
+1a. `MARKET_INFO_API_BASE_URL` 未設定（またはAPI障害）時、「データ未接続」表示になりページはクラッシュしない
 2. LocalStorage が空（初回利用）でも一覧は表示され、メモ系列は `-` になる
 3. 仕込み月軸で対象銘柄がない場合、「この月に仕込みを開始する登録銘柄はありません」と表示される
 4. 候補データに存在しないコードの日興 / SBI 列は `-` になる
@@ -55,3 +58,4 @@
 
 - Tool Spec: [優待ダッシュボード 仕様](../specs/tools/yutai-dashboard.md)
 - Decision Log: [2026-07-05 優待統合ダッシュボードの位置づけ](../decision-log/2026-07-05-yutai-dashboard-positioning.md)
+- Decision Log: [2026-07-19 優待ダッシュボードのpremium認証](../decision-log/2026-07-19-yutai-dashboard-premium-auth.md)
