@@ -27,16 +27,18 @@ import {
   getCardMemoKey,
   loadCardMemos,
   loadCodeSet,
+  saveCardMemos,
   saveCodeSet,
   type CalendarCardMemo,
 } from "@/app/tools/_shared/yutai-selection";
+import { calculateSimpleYutaiEfficiency } from "@/app/tools/_shared/yutai-efficiency";
 import type { MonthlyYutaiCandidate, MonthlyYutaiPageData, NikkoCreditRecord } from "@/app/tools/yutai-candidates/types";
 
 type StatusFilter = "all" | "added" | "picked" | "passed" | "unselected";
 type CrossFilter = "all" | "general" | "general_watch" | "institutional" | "any";
 type SbiFilter = "all" | "sbi_any";
 type StrategyFilter = "all" | CrossType;
-type SortKey = "code" | "company" | "investment" | "available_shares";
+type SortKey = "code" | "company" | "investment" | "efficiency" | "available_shares";
 type CalendarAxis = "entitlement" | "preparation";
 
 // data-loader の ALL_MONTHS_ID と同じ値。data-loader は node:fs を使うため client からは import しない。
@@ -83,6 +85,25 @@ function formatGeneratedAt(value: string | null) {
 
 function formatMonths(months: number[]) {
   return [...months].sort((a, b) => a - b).map((month) => `${month}月`).join("・");
+}
+
+function formatYen(value: number) {
+  return `¥${Math.round(value).toLocaleString("ja-JP")}`;
+}
+
+function formatEfficiencyPercent(value: number) {
+  return `${value.toLocaleString("ja-JP", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+}
+
+function getRowEfficiency(row: DashboardRow, cardMemos: Record<string, CalendarCardMemo>) {
+  // 仕込み月軸の memo 行は複数権利月を持ち得るため、月別入力の対象外にする。
+  if (!row.candidate || row.key.startsWith("memo:")) return null;
+  const cardMemo = cardMemos[getCardMemoKey(row.candidate)];
+  return calculateSimpleYutaiEfficiency({
+    minimumInvestmentYen: row.candidate.minimum_investment_yen,
+    requiredShares: cardMemo?.requiredShares,
+    benefitValueYen: cardMemo?.benefitValueYen,
+  });
 }
 
 // 12ヶ月ガント風ビューの 1 セル状態
@@ -450,6 +471,14 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
           return (a.candidate?.minimum_investment_yen ?? Number.POSITIVE_INFINITY)
             - (b.candidate?.minimum_investment_yen ?? Number.POSITIVE_INFINITY);
         }
+        if (sortKey === "efficiency") {
+          const aEfficiency = getRowEfficiency(a, cardMemos)?.efficiencyPercent;
+          const bEfficiency = getRowEfficiency(b, cardMemos)?.efficiencyPercent;
+          if (aEfficiency === undefined && bEfficiency === undefined) return collator.compare(a.code, b.code);
+          if (aEfficiency === undefined) return 1;
+          if (bEfficiency === undefined) return -1;
+          return bEfficiency - aEfficiency;
+        }
         if (sortKey === "available_shares" && byCode) {
           const aShares = byCode[a.code]?.available_shares ?? -1;
           const bShares = byCode[b.code]?.available_shares ?? -1;
@@ -457,12 +486,43 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
         }
         return collator.compare(a.name, b.name);
       });
-  }, [crossFilter, data.nikkoCredit, data.sbiCredit, query, rows, sbiFilter, sortKey, statusFilter, strategyFilter]);
+  }, [cardMemos, crossFilter, data.nikkoCredit, data.sbiCredit, query, rows, sbiFilter, sortKey, statusFilter, strategyFilter]);
 
   const selectedRow = useMemo(
     () => filteredRows.find((row) => row.key === selectedRowKey) ?? null,
     [filteredRows, selectedRowKey],
   );
+  const selectedEfficiencyMemoKey = selectedRow?.candidate && !selectedRow.key.startsWith("memo:")
+    ? getCardMemoKey(selectedRow.candidate)
+    : null;
+  const selectedCardMemo = selectedEfficiencyMemoKey ? cardMemos[selectedEfficiencyMemoKey] : undefined;
+  const selectedEfficiency = selectedRow ? getRowEfficiency(selectedRow, cardMemos) : null;
+
+  function updateSelectedEfficiencyInput(
+    field: "requiredShares" | "benefitValueYen",
+    rawValue: string,
+  ) {
+    if (!selectedEfficiencyMemoKey) return;
+    const parsed = Number(rawValue);
+    const value = rawValue !== "" && Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+    setCardMemos((prev) => {
+      const current = prev[selectedEfficiencyMemoKey] ?? {
+        longTermRequired: false,
+        longTermBenefit: false,
+        updatedAt: "",
+      };
+      const next = {
+        ...prev,
+        [selectedEfficiencyMemoKey]: {
+          ...current,
+          [field]: value,
+          updatedAt: new Date().toISOString(),
+        },
+      };
+      saveCardMemos(next);
+      return next;
+    });
+  }
 
   function togglePick(code: string) {
     setPickedCodes((prev) => {
@@ -1014,6 +1074,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                 <option value="code">コード順</option>
                 <option value="company">銘柄名順</option>
                 <option value="investment">最低投資金額順</option>
+                <option value="efficiency">簡易優待効率が高い順</option>
                 <option value="available_shares">日興在庫が多い順</option>
               </select>
             </label>
@@ -1211,6 +1272,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                     <th style={{ ...styles.th, width: 64 }}>コード</th>
                     <th style={{ ...styles.th, minWidth: 110 }}>銘柄</th>
                     <th style={{ ...styles.th, width: 84 }}>権利月</th>
+                    <th style={{ ...styles.th, width: 88 }}>簡易効率</th>
                     <th style={{ ...styles.th, width: 120 }}>日興</th>
                     <th style={{ ...styles.th, width: 76 }}>SBI</th>
                     <th style={{ ...styles.th, width: 88 }}>仕込み開始</th>
@@ -1223,11 +1285,11 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                 <tbody>
                   {!hydrated ? (
                     <tr>
-                      <td colSpan={10} style={styles.emptyCell}>読み込み中…</td>
+                      <td colSpan={11} style={styles.emptyCell}>読み込み中…</td>
                     </tr>
                   ) : filteredRows.length === 0 ? (
                     <tr>
-                      <td colSpan={10} style={styles.emptyCell}>
+                      <td colSpan={11} style={styles.emptyCell}>
                         {axis === "preparation"
                           ? "この月に仕込みを開始する登録銘柄はありません。"
                           : "条件に一致する銘柄がありません。"}
@@ -1236,6 +1298,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                   ) : (
                     filteredRows.map((row) => {
                       const acquired = acquiredByCode.get(row.code);
+                      const efficiency = getRowEfficiency(row, cardMemos);
                       const isSelected = row.key === selectedRowKey;
                       const rowStyle = isSelected
                         ? styles.trSelected
@@ -1260,6 +1323,18 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                             {row.name}
                           </td>
                           <td style={styles.td}>{formatMonths(row.months)}</td>
+                          <td style={styles.td}>
+                            {efficiency ? (
+                              <span
+                                style={styles.chipEfficiency}
+                                title={"必要資金: " + formatYen(efficiency.requiredCapitalYen)}
+                              >
+                                {formatEfficiencyPercent(efficiency.efficiencyPercent)}
+                              </span>
+                            ) : (
+                              <span style={styles.cellMuted}>-</span>
+                            )}
+                          </td>
                           <td style={styles.td}>{renderNikkoCell(row.code)}</td>
                           <td style={styles.td}>{renderSbiCell(row.code)}</td>
                           <td style={styles.td}>{renderPreparationCell(row)}</td>
@@ -1321,6 +1396,64 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                     </div>
                   </section>
                 ) : null}
+
+                <section style={styles.detailSection}>
+                  <h3 style={styles.detailSectionTitle}>簡易優待効率</h3>
+                  {selectedEfficiencyMemoKey ? (
+                    <>
+                      <div style={styles.efficiencyInputGrid}>
+                        <label style={styles.efficiencyInputLabel}>
+                          <span>必要株数</span>
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            step={1}
+                            value={selectedCardMemo?.requiredShares ?? ""}
+                            onChange={(event) => updateSelectedEfficiencyInput("requiredShares", event.target.value)}
+                            placeholder="例: 100"
+                            aria-label="優待の必要株数"
+                            style={styles.efficiencyInput}
+                          />
+                        </label>
+                        <label style={styles.efficiencyInputLabel}>
+                          <span>優待価値（円）</span>
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            step={1}
+                            value={selectedCardMemo?.benefitValueYen ?? ""}
+                            onChange={(event) => updateSelectedEfficiencyInput("benefitValueYen", event.target.value)}
+                            placeholder="例: 3000"
+                            aria-label="優待価値（円）"
+                            style={styles.efficiencyInput}
+                          />
+                        </label>
+                      </div>
+                      {selectedEfficiency ? (
+                        <div style={styles.efficiencyResult}>
+                          <strong style={styles.efficiencyResultValue}>
+                            {formatEfficiencyPercent(selectedEfficiency.efficiencyPercent)}
+                          </strong>
+                          <span>必要資金 {formatYen(selectedEfficiency.requiredCapitalYen)}</span>
+                          <span>概算株価 {formatYen(selectedEfficiency.estimatedSharePriceYen)}</span>
+                        </div>
+                      ) : (
+                        <p style={styles.detailSub}>
+                          必要株数・優待価値・最低投資金額が揃うと計算します。
+                        </p>
+                      )}
+                      <p style={styles.efficiencyNote}>
+                        最低投資金額を100株分として概算。手数料・配当・株価変動は未反映です。
+                      </p>
+                    </>
+                  ) : (
+                    <p style={styles.detailSub}>
+                      月別の候補行（権利月軸）から入力してください。
+                    </p>
+                  )}
+                </section>
 
                 <section style={styles.detailSection}>
                   <h3 style={styles.detailSectionTitle}>日興 一般信用</h3>
@@ -2335,6 +2468,13 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 800,
     border: "1px solid rgba(16,185,129,0.2)",
   },
+  chipEfficiency: {
+    ...baseChip,
+    background: "#fff7ed",
+    color: "#c2410c",
+    fontWeight: 800,
+    border: "1px solid rgba(249,115,22,0.22)",
+  },
   addedChip: {
     ...baseChip,
     background: "#f0fdf4",
@@ -2455,6 +2595,51 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "4px 0",
     fontSize: 12,
     color: "#64748b",
+  },
+  efficiencyInputGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 8,
+  },
+  efficiencyInputLabel: {
+    display: "grid",
+    gap: 4,
+    color: "#64748b",
+    fontSize: 11,
+    fontWeight: 700,
+  },
+  efficiencyInput: {
+    width: "100%",
+    minWidth: 0,
+    borderRadius: 8,
+    border: "1px solid rgba(15,23,42,0.14)",
+    background: "#ffffff",
+    padding: "7px 8px",
+    color: "#0f172a",
+    fontSize: 13,
+  },
+  efficiencyResult: {
+    display: "grid",
+    gridTemplateColumns: "auto 1fr",
+    alignItems: "baseline",
+    gap: "2px 10px",
+    marginTop: 10,
+    padding: "10px 12px",
+    borderRadius: 10,
+    background: "#fff7ed",
+    color: "#9a3412",
+    fontSize: 11,
+  },
+  efficiencyResultValue: {
+    gridRow: "1 / span 2",
+    fontSize: 20,
+    color: "#c2410c",
+  },
+  efficiencyNote: {
+    margin: "8px 0 0",
+    color: "#94a3b8",
+    fontSize: 10,
+    lineHeight: 1.5,
   },
   detailLinks: {
     display: "flex",

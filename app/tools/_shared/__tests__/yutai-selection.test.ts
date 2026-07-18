@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MemoItem } from "@/app/tools/yutai-memo/types";
 import { getAddedKeysFromMemoItems, getCardMemoKey, loadCardMemos, loadCodeSet } from "../yutai-selection";
 
@@ -44,5 +44,50 @@ describe("SSR ガード", () => {
   it("window がない環境では空値を返す", () => {
     expect(loadCodeSet("monthly_yutai_picks_v1")).toEqual(new Set());
     expect(loadCardMemos()).toEqual({});
+  });
+});
+
+describe("loadCardMemos", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("必要株数と優待価値は正の整数だけを復元する", () => {
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: () => JSON.stringify({
+          "9861:8": {
+            longTermRequired: false,
+            longTermBenefit: true,
+            requiredShares: 500,
+            benefitValueYen: 3_000,
+            updatedAt: "2026-07-18T00:00:00.000Z",
+          },
+          "1234:3": {
+            requiredShares: 0,
+            benefitValueYen: 1.5,
+          },
+        }),
+      },
+    });
+
+    expect(loadCardMemos()).toEqual({
+      "9861:8": {
+        longTermRequired: false,
+        longTermBenefit: true,
+        preparationMonthsBefore: undefined,
+        requiredShares: 500,
+        benefitValueYen: 3_000,
+        updatedAt: "2026-07-18T00:00:00.000Z",
+      },
+      "1234:3": {
+        longTermRequired: false,
+        longTermBenefit: false,
+        preparationMonthsBefore: undefined,
+        requiredShares: undefined,
+        benefitValueYen: undefined,
+        updatedAt: "",
+      },
+    });
   });
 });
