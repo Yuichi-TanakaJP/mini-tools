@@ -109,8 +109,9 @@
 
 - premium ログイン必須
 - 未ログインまたはセッション期限切れの場合は、データ取得前に `/premium/login` へ移動する
-- ログイン後は `/tools/yutai-dashboard` へ戻る
+- ログイン後は `/tools/yutai-dashboard` へ戻る。遷移前の `?month=` がある場合は月指定も維持する
 - premium セッションはログインから30日間有効
+- ダッシュボードのHTML/RSCはPWAランタイムキャッシュへ保存せず、常にネットワーク経由で認証を通す
 - 検索エンジンには掲載しない（`noindex, nofollow`）
 
 ## 関連実装

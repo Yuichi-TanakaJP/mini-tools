@@ -34,3 +34,8 @@ export function getSafePremiumNextPath(rawNextPath: string | null | undefined) {
     return DEFAULT_PREMIUM_NEXT_PATH;
   }
 }
+
+export function getYutaiDashboardPath(month: string | null | undefined) {
+  if (!month) return "/tools/yutai-dashboard";
+  return `/tools/yutai-dashboard?${new URLSearchParams({ month })}`;
+}

@@ -8,6 +8,7 @@ import {
   loadMonthlyYutaiPageData,
 } from "@/app/tools/yutai-candidates/data-loader";
 import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
+import { getYutaiDashboardPath } from "@/lib/premium-navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -31,14 +32,15 @@ type PageProps = {
 };
 
 export default async function Page({ searchParams }: PageProps) {
+  const params = searchParams ? await searchParams : undefined;
   const cookieStore = await cookies();
   const session = cookieStore.get(PREMIUM_COOKIE_NAME)?.value;
 
   if (!verifyPremiumSession(session)) {
-    redirect(`/premium/login?next=${encodeURIComponent("/tools/yutai-dashboard")}`);
+    const dashboardPath = getYutaiDashboardPath(params?.month);
+    redirect(`/premium/login?next=${encodeURIComponent(dashboardPath)}`);
   }
 
-  const params = searchParams ? await searchParams : undefined;
   const data = params?.month === ALL_MONTHS_ID
     ? await loadMonthlyYutaiAllMonthsPageData()
     : await loadMonthlyYutaiPageData(params?.month);
