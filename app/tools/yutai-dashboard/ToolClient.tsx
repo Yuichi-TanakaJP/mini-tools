@@ -5,13 +5,13 @@ import { useSearchParams } from "next/navigation";
 import { addMemoItemFromCandidate, isImportedMonthlyYutaiCandidate } from "@/app/tools/yutai-memo/candidate-import";
 import { loadArchivedItems, loadItems, saveItems } from "@/app/tools/yutai-memo/storage";
 import { CROSS_TYPES, type ArchivedMemoItem, type CrossType, type MemoItem } from "@/app/tools/yutai-memo/types";
-import { getPreparationMonth, isPreparationMonth, toJstYearMonth } from "@/app/tools/yutai-memo/date-utils";
+import { isPreparationMonth, toJstYearMonth } from "@/app/tools/yutai-memo/date-utils";
 import {
   applyMemoEdit,
   buildMemoEditDraft,
   type MemoEditDraft,
 } from "@/app/tools/_shared/yutai-memo-edit";
-import { hasPrepEntry, loadPrepLog, savePrepLog, togglePrepEntry, type PrepLog } from "./prep-log";
+import { buildCalendarCells } from "./calendar";
 import { useRouterTransition } from "@/app/tools/_shared/use-router-transition";
 import {
   canNikkoGeneralCrossNow,
@@ -106,34 +106,6 @@ function getRowEfficiency(row: DashboardRow, cardMemos: Record<string, CalendarC
   });
 }
 
-// 12ヶ月ガント風ビューの 1 セル状態
-type CalendarMonthCell = {
-  entitlement: boolean; // 権利月
-  prepStart: boolean; // 仕込み開始月
-  band: boolean; // 仕込み開始〜権利月の帯
-  acquiredThisYear: boolean; // 選択年度にその権利月を取得済み
-  acquiredPast: boolean; // 選択年度以外に取得実績がある
-  acquiredYears: number[]; // その権利月を取得した年（ツールチップ用）
-  oneShareHeld: boolean; // 選択年度にその月 1 株を保有中
-  oneShareStart: boolean; // 選択年度に 1 株保有を開始した月
-};
-
-// 銘柄ごとに「権利月 → 取得した年の集合」を作る。取得は年度別データなので年を保持する。
-function acquiredYearsByMonth(summary: AcquiredSummary | undefined): Map<number, Set<number>> {
-  const byMonth = new Map<number, Set<number>>();
-  if (!summary) return byMonth;
-  for (const entry of summary.entries) {
-    const matched = entry.entitlementMonthKey ? /^(\d{4})-(\d{2})$/.exec(entry.entitlementMonthKey) : null;
-    if (!matched) continue;
-    const year = Number(matched[1]);
-    const month = Number(matched[2]);
-    const set = byMonth.get(month) ?? new Set<number>();
-    set.add(year);
-    byMonth.set(month, set);
-  }
-  return byMonth;
-}
-
 // oneShareStartedAt（YYYY-MM 想定）から開始の年・月を取り出す。フリーテキストは null。
 function parseOneShareStart(value: string | undefined): { year: number; month: number } | null {
   const matched = value ? /^(\d{4})-(\d{2})$/.exec(value) : null;
@@ -141,61 +113,6 @@ function parseOneShareStart(value: string | undefined): { year: number; month: n
   const year = Number(matched[1]);
   const month = Number(matched[2]);
   return month >= 1 && month <= 12 ? { year, month } : null;
-}
-
-// 1 銘柄メモの、選択年度における 12ヶ月セルを組み立てる。
-// 権利月・仕込みは年度非依存（毎年サイクル）。取得・1株保有は選択年度で解釈する。
-function buildCalendarCells(
-  memo: MemoItem,
-  yearsByMonth: Map<number, Set<number>>,
-  selectedYear: number,
-): CalendarMonthCell[] {
-  const cells: CalendarMonthCell[] = Array.from({ length: 12 }, () => ({
-    entitlement: false,
-    prepStart: false,
-    band: false,
-    acquiredThisYear: false,
-    acquiredPast: false,
-    acquiredYears: [],
-    oneShareHeld: false,
-    oneShareStart: false,
-  }));
-  const months = (memo.months ?? []).filter((m) => Number.isInteger(m) && m >= 1 && m <= 12);
-  for (const entitlement of months) {
-    const cell = cells[entitlement - 1];
-    cell.entitlement = true;
-    const years = yearsByMonth.get(entitlement);
-    if (years) {
-      cell.acquiredYears = [...years].sort((a, b) => a - b);
-      cell.acquiredThisYear = years.has(selectedYear);
-      cell.acquiredPast = cell.acquiredYears.some((year) => year !== selectedYear);
-    }
-    if (memo.preparationMonthsBefore === undefined) continue;
-    const prepStart = getPreparationMonth(entitlement, memo.preparationMonthsBefore);
-    if (!prepStart) continue;
-    cells[prepStart - 1].prepStart = true;
-    // prepStart から entitlement まで循環しながら帯を塗る
-    let month = prepStart;
-    for (let guard = 0; guard < 12; guard += 1) {
-      cells[month - 1].band = true;
-      if (month === entitlement) break;
-      month = (month % 12) + 1;
-    }
-  }
-  // 1株保有: 選択年度で解釈する。開始年より後=通年、開始年=開始月〜12月、開始前=非保有。
-  // 開始が YYYY-MM で分からない（フリーテキスト）場合のみ年不明として通年保有扱い。
-  if (memo.oneShareStartedAt) {
-    const start = parseOneShareStart(memo.oneShareStartedAt);
-    if (!start) {
-      for (const cell of cells) cell.oneShareHeld = true;
-    } else if (selectedYear > start.year) {
-      for (const cell of cells) cell.oneShareHeld = true;
-    } else if (selectedYear === start.year) {
-      for (let month = start.month; month <= 12; month += 1) cells[month - 1].oneShareHeld = true;
-      cells[start.month - 1].oneShareStart = true;
-    }
-  }
-  return cells;
 }
 
 function buildAcquiredByCode(archives: ArchivedMemoItem[], memoItems: MemoItem[]) {
@@ -226,6 +143,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const { navigate, isPendingFor } = useRouterTransition();
   const searchParams = useSearchParams();
   const jstNow = useMemo(() => toJstYearMonth(new Date()), []);
+  const calendarNowIso = useMemo(() => new Date().toISOString(), []);
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
   const [calendarYear, setCalendarYear] = useState(jstNow.year);
@@ -241,7 +159,6 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const [memoItems, setMemoItems] = useState<MemoItem[]>([]);
   const [archivedItems, setArchivedItems] = useState<ArchivedMemoItem[]>([]);
   const [cardMemos, setCardMemos] = useState<Record<string, CalendarCardMemo>>({});
-  const [prepLog, setPrepLog] = useState<PrepLog>({});
   const [hydrated, setHydrated] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedRowKey, setSelectedRowKey] = useState<string | null>(null);
@@ -263,7 +180,6 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     setPickedCodes(loadCodeSet(PICKED_KEY));
     setPassedCodes(loadCodeSet(PASSED_KEY));
     setCardMemos(loadCardMemos());
-    setPrepLog(loadPrepLog());
     const items = loadItems();
     setAddedKeys(getAddedKeysFromMemoItems(items));
     setMemoItems(items);
@@ -353,7 +269,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
         const holdYear = start && calendarYear >= start.year ? calendarYear - start.year + 1 : null;
         return {
           memo,
-          cells: buildCalendarCells(memo, acquiredYearsByMonth(acquired), calendarYear),
+          cells: buildCalendarCells(memo, acquired?.entries ?? [], calendarYear, calendarNowIso),
           holdYear,
         };
       })
@@ -363,7 +279,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
         if (firstA !== firstB) return firstA - firstB;
         return collator.compare(a.memo.name, b.memo.name);
       });
-  }, [acquiredByCode, calendarYear, memoItems, query, strategyFilter]);
+  }, [acquiredByCode, calendarNowIso, calendarYear, memoItems, query, strategyFilter]);
 
   // 年度セレクタの選択肢。取得実績の最古年〜今年+1 を降順で並べる。
   const availableCalendarYears = useMemo(() => {
@@ -766,17 +682,6 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   function pickMonth(row: DashboardRow, value: string) {
     commitRowInlineEdit(row, { oneShareStartedAt: value });
     setMonthPicker(null);
-  }
-
-  // 12ヶ月ビューで、その銘柄の「選択年度の指定月に仕込み実施した」記録をトグルする。
-  function togglePrepLog(code: string, month: number) {
-    if (!code) return;
-    const yearMonth = `${calendarYear}-${`${month}`.padStart(2, "0")}`;
-    setPrepLog((prev) => {
-      const next = togglePrepEntry(prev, code, yearMonth);
-      savePrepLog(next);
-      return next;
-    });
   }
 
   function handleMonthChange(nextMonthId: string) {
@@ -1202,9 +1107,6 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                         {cells.map((cell, index) => {
                           const month = index + 1;
                           const isCurrent = calendarYear === jstNow.year && month === jstNow.month;
-                          const prepped = memo.code
-                            ? hasPrepEntry(prepLog, memo.code, `${calendarYear}-${`${month}`.padStart(2, "0")}`)
-                            : false;
                           const badgeStyle = cell.entitlement
                             ? styles.calCellEntitlement
                             : cell.prepStart
@@ -1223,15 +1125,13 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                           const title = [
                             `${month}月`,
                             cell.entitlement ? "権利月" : cell.prepStart ? "仕込み開始" : cell.band ? "仕込み期間" : null,
-                            prepped ? "仕込み実施" : null,
+                            cell.prepCompleted ? "仕込み実施" : null,
                             acquiredTitle,
                             overlapPrep ? "仕込み開始も同月" : null,
                             cell.oneShareStart ? "1株保有開始" : cell.oneShareHeld ? "1株保有中" : null,
-                            "（クリックで仕込み実施を記録）",
                           ].filter(Boolean).join(" / ");
                           const tdStyle = {
                             ...styles.calTd,
-                            ...styles.calTdClickable,
                             ...(isCurrent ? styles.calTdCurrent : null),
                           };
                           return (
@@ -1239,7 +1139,6 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                               key={index}
                               style={tdStyle}
                               title={title}
-                              onClick={() => togglePrepLog(memo.code ?? "", month)}
                             >
                               <div style={styles.calCellStack}>
                                 <span style={badgeStyle}>
@@ -1250,7 +1149,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                                     <span style={styles.calAcquiredPastMark}>✓</span>
                                   ) : null}
                                   {overlapPrep ? <span style={styles.calOverlapDot} /> : null}
-                                  {prepped ? <span style={styles.calPrepMark} /> : null}
+                                  {cell.prepCompleted ? <span style={styles.calPrepMark} /> : null}
                                 </span>
                                 <span style={holdStyle} />
                               </div>
@@ -2078,9 +1977,6 @@ const styles: Record<string, React.CSSProperties> = {
   },
   calTdCurrent: {
     background: "rgba(99,102,241,0.08)",
-  },
-  calTdClickable: {
-    cursor: "pointer",
   },
   calPrepMark: {
     position: "absolute",
