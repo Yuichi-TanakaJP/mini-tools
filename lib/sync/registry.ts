@@ -12,9 +12,6 @@ export const SYNCED_KEYS = [
   "monthly_yutai_passes_v1",
   "monthly_yutai_card_memos_v1",
 
-  // 優待ダッシュボード
-  "yutai_dashboard_prep_log_v1",
-
   // 株主優待期限帳
   "mini-tools:benefits:v2",
 

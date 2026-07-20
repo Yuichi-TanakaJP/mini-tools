@@ -1,3 +1,5 @@
+> **撤回済み:** 本決定は 2026-07-12 取得＝仕込みの一本化（[2026-07-12-yutai-acquisition-equals-prep-lifecycle.md](./2026-07-12-yutai-acquisition-equals-prep-lifecycle.md)）で撤回済み。
+
 # 2026-07-12 12ヶ月ビューの仕込み実績記録
 
 ## 背景
