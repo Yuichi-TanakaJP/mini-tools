@@ -14,7 +14,7 @@
 - 成功・エラーとも`Cache-Control: private, no-store`を返し、ブラウザー/CDN/PWAへ保存させない。
 - `next-pwa`の既定`/api/*` cacheより前に、このrouteを`NetworkOnly`へ指定する。HTTP `no-store`だけに依存しない。
 - 上流の認証・設定エラーは502へ変換し、tokenや上流本文をクライアントへ返さない。
-- 株価を簡易優待効率へ適用するUI変更は、進行中のダッシュボード表示変更と分けて後続PRで行う。
+- 株価を簡易優待効率へ適用するUI変更は別PRとし、[優待効率へのPrivate実株価適用](./2026-07-20-yutai-dashboard-live-stock-price-efficiency.md)で判断を記録する。
 
 ## データ経路
 

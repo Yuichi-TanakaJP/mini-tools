@@ -9,9 +9,33 @@ describe("calculateSimpleYutaiEfficiency", () => {
       benefitValueYen: 5_000,
     })).toEqual({
       requiredCapitalYen: 1_000_000,
-      estimatedSharePriceYen: 2_000,
+      sharePriceYen: 2_000,
+      sharePriceSource: "estimated",
       efficiencyPercent: 0.5,
     });
+  });
+
+  it("実株価があれば最低投資金額より優先する", () => {
+    expect(calculateSimpleYutaiEfficiency({
+      minimumInvestmentYen: 200_000,
+      sharePriceYen: 2_100,
+      requiredShares: 500,
+      benefitValueYen: 5_000,
+    })).toEqual({
+      requiredCapitalYen: 1_050_000,
+      sharePriceYen: 2_100,
+      sharePriceSource: "market",
+      efficiencyPercent: 5_000 / 1_050_000 * 100,
+    });
+  });
+
+  it("最低投資金額がなくても実株価があれば計算できる", () => {
+    expect(calculateSimpleYutaiEfficiency({
+      minimumInvestmentYen: null,
+      sharePriceYen: 1_500,
+      requiredShares: 100,
+      benefitValueYen: 3_000,
+    })?.efficiencyPercent).toBe(2);
   });
 
   it("100株条件なら最低投資金額をそのまま必要資金にする", () => {
