@@ -122,6 +122,22 @@ describe("GET /api/yutai/stock-prices", () => {
     expect(response.headers.get("cache-control")).toBe("private, no-store");
   });
 
+  it("要求月が一致しても画面が解釈できないschemaはキャッシュしない", async () => {
+    setSession(createPremiumSessionValue());
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({
+        schema_version: 1,
+        scope_month: "2026-07",
+      }))),
+    );
+
+    const response = await GET(request("2026-07"));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+  });
+
   it("上流認証エラーをtoken非公開の502へ変換する", async () => {
     setSession(createPremiumSessionValue());
     vi.stubGlobal(

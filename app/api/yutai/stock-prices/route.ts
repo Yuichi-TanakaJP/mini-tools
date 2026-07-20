@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getApiBaseUrl } from "@/lib/market-api";
 import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
+import { parseYutaiStockPriceSnapshot } from "@/app/tools/yutai-dashboard/stock-prices";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,6 +77,7 @@ export async function GET(request: Request) {
     const requestedMonth = new URL(request.url).searchParams.get("month");
     const cacheControl = requestedMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth)
       && getScopeMonth(payload) === requestedMonth
+      && parseYutaiStockPriceSnapshot(payload)
       ? PRIVATE_MONTH_CACHE
       : PRIVATE_NO_STORE;
     return json(payload, 200, cacheControl);
