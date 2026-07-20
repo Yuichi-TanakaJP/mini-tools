@@ -52,10 +52,13 @@ export function buildCalendarCells(
     oneShareStart: false,
   }));
   const yearsByMonth = new Map<number, Set<number>>();
+  const memoMonths = new Set(
+    (memo.months ?? []).filter((month) => Number.isInteger(month) && month >= 1 && month <= 12),
+  );
 
   for (const archive of archives) {
     const entitlement = parseYearMonth(archive.entitlementMonthKey);
-    if (!entitlement) continue;
+    if (!entitlement || !memoMonths.has(entitlement.month)) continue;
     const years = yearsByMonth.get(entitlement.month) ?? new Set<number>();
     years.add(entitlement.year);
     yearsByMonth.set(entitlement.month, years);
@@ -74,20 +77,19 @@ export function buildCalendarCells(
         memo.preparationMonthsBefore,
       ) ?? undefined,
     );
-    if (entitlement?.year === selectedYear) {
+    if (entitlement) {
       const years = yearsByMonth.get(entitlement.month) ?? new Set<number>();
-      years.add(selectedYear);
+      years.add(entitlement.year);
       yearsByMonth.set(entitlement.month, years);
 
-      if (memo.acquiredMarkedAt) {
+      if (entitlement.year === selectedYear && memo.acquiredMarkedAt) {
         const preparedMonth = monthFromIso(memo.acquiredMarkedAt);
         if (preparedMonth) cells[preparedMonth - 1].prepCompleted = true;
       }
     }
   }
 
-  const months = (memo.months ?? []).filter((month) => Number.isInteger(month) && month >= 1 && month <= 12);
-  for (const entitlement of months) {
+  for (const entitlement of memoMonths) {
     const cell = cells[entitlement - 1];
     cell.entitlement = true;
     const years = yearsByMonth.get(entitlement);

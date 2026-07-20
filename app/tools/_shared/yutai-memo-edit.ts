@@ -60,6 +60,7 @@ export function applyMemoEdit(
       relatedUrl: draft.relatedUrl.trim() || undefined,
       tenureRule: draft.tenureRule.trim() || undefined,
       acquired: draft.acquired,
+      acquiredMarkedAt: draft.acquired ? (item.acquiredMarkedAt ?? now) : undefined,
       priority: draft.priority,
       memo: draft.memo.trim(),
       updatedAt: now,

@@ -75,6 +75,29 @@ describe("applyMemoEdit", () => {
     expect(next[0].name).toBe("元名称");
   });
 
+  it("取得済みへの遷移時刻を保存し、維持し、解除時に消す", () => {
+    const original = memoItem({ id: "a", acquired: false });
+    const acquired = applyMemoEdit(
+      [original],
+      "a",
+      { ...buildMemoEditDraft(original), acquired: true },
+      now,
+    ).items[0];
+    expect(acquired.acquiredMarkedAt).toBe(now);
+
+    const later = "2026-07-07T00:00:00.000Z";
+    const kept = applyMemoEdit([acquired], "a", buildMemoEditDraft(acquired), later).items[0];
+    expect(kept.acquiredMarkedAt).toBe(now);
+
+    const cleared = applyMemoEdit(
+      [kept],
+      "a",
+      { ...buildMemoEditDraft(kept), acquired: false },
+      later,
+    ).items[0];
+    expect(cleared.acquiredMarkedAt).toBeUndefined();
+  });
+
   it("該当 id がなければ updated=false", () => {
     const items = [memoItem({ id: "a" })];
     const { items: next, updated } = applyMemoEdit(items, "zzz", buildMemoEditDraft(items[0]), now);
