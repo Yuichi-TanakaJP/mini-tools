@@ -194,6 +194,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
 
   const isAllMonths = data.selectedMonthId === ALL_MONTHS_ID;
   const selectedMonth = isAllMonths ? null : Number(data.selectedMonthId.slice(5, 7));
+  const stockPriceScopeMonth = `${jstNow.year}-${`${jstNow.month}`.padStart(2, "0")}`;
 
   useEffect(() => {
     // localStorage はサーバーで読めないため、マウント後に初期化する（hydration mismatch 回避）
@@ -213,8 +214,8 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
 
     async function loadStockPrices() {
       try {
-        const response = await fetch("/api/yutai/stock-prices", {
-          cache: "no-store",
+        const response = await fetch(`/api/yutai/stock-prices?month=${stockPriceScopeMonth}`, {
+          cache: "default",
           signal: controller.signal,
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -236,7 +237,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
       active = false;
       controller.abort();
     };
-  }, []);
+  }, [stockPriceScopeMonth]);
 
   useEffect(() => {
     // hydrated 前は空 Set を保存しない

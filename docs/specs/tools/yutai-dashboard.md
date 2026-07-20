@@ -88,7 +88,8 @@
 - 必要資金 = 計算株価 × 必要株数
 - 簡易優待効率（%） = 優待価値 ÷ 必要資金 × 100
 - ヘッダーに株価データの取得件数・生成時刻、詳細に株価/概算株価の区別と実株価の基準日を表示する
-- 株価APIはブラウザーから同一originの認証proxyだけを呼び、`no-store`かつPWA `NetworkOnly`とする。JSONをLocalStorageへ保存しない
+- 株価APIはブラウザーから同一originの認証proxyだけを呼ぶ。JST年月をクエリに含め、要求月と`scope_month`が一致する成功レスポンスだけ24時間のprivate HTTPキャッシュ（`Vary: Cookie`）を使う。月不一致・エラーは`no-store`とする
+- PWAは`NetworkOnly`を維持し、株価JSONをCache StorageやLocalStorageへ保存しない。必要資金と効率パーセントは保存せず、株価と入力値から都度再計算する
 - 手数料・配当・株価変動・長期保有条件は未反映
 - 計算は _shared/yutai-efficiency.ts の純関数で行い、不足値・0以下・必要株数または優待価値が整数でない場合は計算不能とする
 - 仕込み月軸のメモ行は複数権利月を持ち得るため入力対象外とし、権利月軸の月別候補行から入力する
@@ -106,6 +107,7 @@
 | API 未接続 | 「データ未接続」表示。候補 0 件として扱う |
 | 株価読み込み中 | ヘッダーに「株価: 読み込み中」。候補一覧は表示し、概算できる行は概算値を使う |
 | 株価API失敗 / 個別株価なし | ヘッダーに失敗状態を表示し、最低投資金額がある行だけ概算株価へフォールバックする |
+| 株価API一時失敗（成功キャッシュあり） | 24時間経過後も最大7日間は直近のprivate HTTPキャッシュを利用できる。表示中の株価基準日は詳細で確認する |
 | 該当なし | 「条件に一致する銘柄がありません」 |
 | 仕込み月軸で対象なし | 「この月に仕込みを開始する登録銘柄はありません」 |
 
@@ -135,6 +137,7 @@
 - Decision Log:
   - [2026-07-18 簡易優待効率MVP](../../decision-log/2026-07-18-yutai-dashboard-simple-efficiency.md)
   - [2026-07-20 優待効率へのPrivate実株価適用](../../decision-log/2026-07-20-yutai-dashboard-live-stock-price-efficiency.md)
+  - [2026-07-20 優待株価JSONの24時間private HTTPキャッシュ](../../decision-log/2026-07-20-yutai-stock-price-private-http-cache.md)
   - [2026-07-19 優待ダッシュボードのpremium認証](../../decision-log/2026-07-19-yutai-dashboard-premium-auth.md)
   - [2026-07-12 12ヶ月ビューの年度軸](../../decision-log/2026-07-12-yutai-dashboard-calendar-year-axis.md)
   - [2026-07-12 取得＝仕込みの一本化と権利年ライフサイクル](../../decision-log/2026-07-12-yutai-acquisition-equals-prep-lifecycle.md)
