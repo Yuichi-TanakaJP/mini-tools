@@ -13,15 +13,16 @@
 - 要求月とpayloadの`scope_month`が一致する成功レスポンスだけ、次を返す。
 
 ```text
-Cache-Control: private, max-age=86400, stale-if-error=604800
+Cache-Control: private, max-age=86400
 Vary: Cookie
 ```
 
-- 24時間はブラウザーのprivate HTTPキャッシュを再利用し、期限後に上流障害が起きた場合だけ最大7日間のstale利用を許可する。
+- 24時間はブラウザーのprivate HTTPキャッシュを再利用する。期限後の再取得で上流障害が起きた場合は、既存どおり概算株価へフォールバックする。
 - 月不一致、未ログイン、設定不足、上流失敗、不正JSONは`private, no-store`とする。
 - `Vary: Cookie`により、ログアウト後・別Premiumセッションで認証済みレスポンスを流用しない。
 - PWAは引き続き`NetworkOnly`とし、Cache Storageには保存しない。LocalStorageにも株価JSONを保存しない。
 - 必要株数・優待価値は従来どおりLocalStorageへ保存する。必要資金と効率パーセントはキャッシュした株価から画面上で再計算し、保存しない。
+- Vercel Productionが`stale-if-error`をクライアント向けレスポンスから除去することを実測したため、障害時stale利用は仕様に含めない。
 
 ## 通信量の目安
 

@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PRIVATE_NO_STORE = "private, no-store";
-const PRIVATE_MONTH_CACHE = "private, max-age=86400, stale-if-error=604800";
+const PRIVATE_MONTH_CACHE = "private, max-age=86400";
 const UPSTREAM_PATH = "/yutai/stock-prices/latest";
 const UPSTREAM_TIMEOUT_MS = 5_000;
 

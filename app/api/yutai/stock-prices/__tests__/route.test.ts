@@ -89,7 +89,7 @@ describe("GET /api/yutai/stock-prices", () => {
     const response = await GET(request());
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("cache-control")).toBe("private, max-age=86400, stale-if-error=604800");
+    expect(response.headers.get("cache-control")).toBe("private, max-age=86400");
     expect(response.headers.get("vary")).toBe("Cookie");
     await expect(response.json()).resolves.toEqual(payload);
     expect(fetchMock).toHaveBeenCalledOnce();
