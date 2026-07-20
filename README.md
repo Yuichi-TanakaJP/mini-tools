@@ -94,11 +94,16 @@ npm run dev
     - `app/tools/yutai-candidates/data-loader.ts`
     - `app/tools/earnings-calendar/data-loader.ts`
     - `lib/jpx-market-closed.ts`
+- `MARKET_INFO_API_YUTAI_STOCK_PRICES_TOKEN`
+  - 優待ダッシュボードのPrivate株価APIを呼ぶサーバー間Bearer token
+  - `/api/yutai/stock-prices`だけがサーバー側で参照する
+  - `NEXT_PUBLIC_`を付けず、ブラウザーコード・HTML・ログへ渡さない
 
 Vercel では次の env を設定しておく運用を推奨します。
 
 - `NEXT_PUBLIC_SITE_URL`
 - `MARKET_INFO_API_BASE_URL`
+- `MARKET_INFO_API_YUTAI_STOCK_PRICES_TOKEN`（優待株価を使う場合）
 - `NEXT_PUBLIC_GA_ID`（GA を使う場合のみ）
 
 これらは公開 URL や公開 ID 用であり、アクセスキーや secret のような機密情報は含めません。
