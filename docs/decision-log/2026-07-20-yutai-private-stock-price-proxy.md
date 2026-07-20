@@ -12,6 +12,7 @@
 - 未ログイン・期限切れは404とし、上流リクエストを行わない。
 - 上流Bearer tokenは`MARKET_INFO_API_YUTAI_STOCK_PRICES_TOKEN`としてサーバー環境だけに置く。`NEXT_PUBLIC_`を付けない。
 - 成功・エラーとも`Cache-Control: private, no-store`を返し、ブラウザー/CDN/PWAへ保存させない。
+- `next-pwa`の既定`/api/*` cacheより前に、このrouteを`NetworkOnly`へ指定する。HTTP `no-store`だけに依存しない。
 - 上流の認証・設定エラーは502へ変換し、tokenや上流本文をクライアントへ返さない。
 - 株価を簡易優待効率へ適用するUI変更は、進行中のダッシュボード表示変更と分けて後続PRで行う。
 

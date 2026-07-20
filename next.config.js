@@ -13,7 +13,9 @@ const withPWA = require("next-pwa")({
         if (url.origin !== self.origin) return false;
         return (
           url.pathname === "/tools/yutai-dashboard" ||
-          url.pathname.startsWith("/tools/yutai-dashboard/")
+          url.pathname.startsWith("/tools/yutai-dashboard/") ||
+          url.pathname === "/api/yutai/stock-prices" ||
+          url.pathname.startsWith("/api/yutai/stock-prices/")
         );
       },
       handler: "NetworkOnly",
