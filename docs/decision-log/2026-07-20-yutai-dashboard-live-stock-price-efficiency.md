@@ -8,13 +8,13 @@
 
 ## 決定
 
-- 優待ダッシュボードのマウント後に`GET /api/yutai/stock-prices`を`no-store`で1回取得する。
+- 優待ダッシュボードのマウント後に、JST年月を付けた`GET /api/yutai/stock-prices?month=YYYY-MM`を1回取得する。
 - `status=ok`かつ正の有限値である株価だけを、銘柄コード単位の計算へ利用する。
 - 株価がある銘柄は`実株価 × 必要株数`、株価がない銘柄は従来どおり`最低投資金額 ÷ 100 × 必要株数`で必要資金を計算する。
 - 一覧の簡易効率、効率順ソート、詳細パネルは同じ純関数と同じ株価Mapを使う。
 - 画面上に株価データの取得件数・生成時刻と、選択銘柄の株価基準日を表示する。
 - API失敗・不正schema・個別銘柄の取得失敗は概算へフォールバックし、ページ全体をエラーにしない。
-- 株価JSONはLocalStorage・Cache Storageへ保存しない。PWAは既存の`NetworkOnly`指定を維持する。
+- 株価JSONはLocalStorage・Cache Storageへ保存しない。PWAは既存の`NetworkOnly`指定を維持し、成功レスポンスだけ[24時間のprivate HTTPキャッシュ](./2026-07-20-yutai-stock-price-private-http-cache.md)を使う。
 - 手数料・配当・取得後の株価変動は引き続き初期モデルの対象外とする。
 
 ## 計算

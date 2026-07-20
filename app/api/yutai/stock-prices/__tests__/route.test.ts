@@ -7,6 +7,10 @@ vi.mock("next/headers", () => ({ cookies: vi.fn() }));
 
 const mockedCookies = vi.mocked(cookies);
 
+function request(month = "2026-07") {
+  return new Request(`https://mini.example.com/api/yutai/stock-prices?month=${month}`);
+}
+
 function setSession(value?: string) {
   mockedCookies.mockResolvedValue({
     get: vi.fn(() => (value ? { value } : undefined)),
@@ -33,7 +37,7 @@ describe("GET /api/yutai/stock-prices", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const response = await GET();
+    const response = await GET(request());
 
     expect(response.status).toBe(404);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
@@ -46,7 +50,7 @@ describe("GET /api/yutai/stock-prices", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const response = await GET();
+    const response = await GET(request());
 
     expect(response.status).toBe(503);
     expect(fetchMock).not.toHaveBeenCalled();
@@ -82,10 +86,11 @@ describe("GET /api/yutai/stock-prices", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const response = await GET();
+    const response = await GET(request());
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("cache-control")).toBe("private, max-age=86400, stale-if-error=604800");
+    expect(response.headers.get("vary")).toBe("Cookie");
     await expect(response.json()).resolves.toEqual(payload);
     expect(fetchMock).toHaveBeenCalledOnce();
     const [url, options] = fetchMock.mock.calls[0];
@@ -96,6 +101,43 @@ describe("GET /api/yutai/stock-prices", () => {
     });
   });
 
+  it("要求月とpayloadのscope_monthが違う場合はキャッシュしない", async () => {
+    setSession(createPremiumSessionValue());
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({
+        schema_version: 1,
+        scope_month: "2026-06",
+        generated_at: "2026-07-01T00:00:00+00:00",
+        provider: "yahoo_finance_chart",
+        record_count: 0,
+        success_count: 0,
+        records: [],
+      }))),
+    );
+
+    const response = await GET(request("2026-07"));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+  });
+
+  it("要求月が一致しても画面が解釈できないschemaはキャッシュしない", async () => {
+    setSession(createPremiumSessionValue());
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({
+        schema_version: 1,
+        scope_month: "2026-07",
+      }))),
+    );
+
+    const response = await GET(request("2026-07"));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+  });
+
   it("上流認証エラーをtoken非公開の502へ変換する", async () => {
     setSession(createPremiumSessionValue());
     vi.stubGlobal(
@@ -103,7 +145,7 @@ describe("GET /api/yutai/stock-prices", () => {
       vi.fn().mockResolvedValue(new Response(null, { status: 401 })),
     );
 
-    const response = await GET();
+    const response = await GET(request());
     const body = await response.json();
 
     expect(response.status).toBe(502);
@@ -118,7 +160,7 @@ describe("GET /api/yutai/stock-prices", () => {
     setSession(createPremiumSessionValue());
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("timeout")));
 
-    const response = await GET();
+    const response = await GET(request());
 
     expect(response.status).toBe(502);
     expect(response.headers.get("cache-control")).toBe("private, no-store");

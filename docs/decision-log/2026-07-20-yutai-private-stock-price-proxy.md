@@ -11,7 +11,7 @@
 - mini-toolsに`GET /api/yutai/stock-prices`を追加し、Premium Cookieを検証してからだけ上流を呼ぶ。
 - 未ログイン・期限切れは404とし、上流リクエストを行わない。
 - 上流Bearer tokenは`MARKET_INFO_API_YUTAI_STOCK_PRICES_TOKEN`としてサーバー環境だけに置く。`NEXT_PUBLIC_`を付けない。
-- 成功・エラーとも`Cache-Control: private, no-store`を返し、ブラウザー/CDN/PWAへ保存させない。
+- 当初は成功・エラーとも`Cache-Control: private, no-store`としていた。成功レスポンスのみ、後続の[24時間private HTTPキャッシュ](./2026-07-20-yutai-stock-price-private-http-cache.md)へ変更した。エラーは引き続き`no-store`とする。
 - `next-pwa`の既定`/api/*` cacheより前に、このrouteを`NetworkOnly`へ指定する。HTTP `no-store`だけに依存しない。
 - 上流の認証・設定エラーは502へ変換し、tokenや上流本文をクライアントへ返さない。
 - 株価を簡易優待効率へ適用するUI変更は別PRとし、[優待効率へのPrivate実株価適用](./2026-07-20-yutai-dashboard-live-stock-price-efficiency.md)で判断を記録する。
