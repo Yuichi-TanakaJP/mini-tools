@@ -18,6 +18,15 @@ import {
   type YutaiStockPriceQuote,
   type YutaiStockPriceSnapshot,
 } from "./stock-prices";
+import {
+  buildLaunchDisplayByKey,
+  getLaunchDisplayHint,
+  parseYutaiLaunchDisplaySnapshot,
+  type YutaiLaunchDisplayHint,
+  type YutaiLaunchDisplayItem,
+  type YutaiLaunchDisplayRecord,
+  type YutaiLaunchDisplaySnapshot,
+} from "./launch-display";
 import { useRouterTransition } from "@/app/tools/_shared/use-router-transition";
 import {
   canNikkoGeneralCrossNow,
@@ -49,6 +58,12 @@ type CalendarAxis = "entitlement" | "preparation";
 type StockPriceLoadState =
   | { status: "loading" }
   | { status: "ready"; snapshot: YutaiStockPriceSnapshot }
+  | { status: "error"; message: string };
+
+type LaunchDisplayLoadState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "ready"; snapshot: YutaiLaunchDisplaySnapshot }
   | { status: "error"; message: string };
 
 // data-loader の ALL_MONTHS_ID と同じ値。data-loader は node:fs を使うため client からは import しない。
@@ -108,6 +123,37 @@ function formatEfficiencyPercent(value: number) {
 function formatStockPriceProvider(value: string | null) {
   if (value === "yahoo_finance_chart") return "Yahoo Finance";
   return value || "株価API";
+}
+
+function getLatestMonthIdForEntitlementMonth(
+  manifest: MonthlyYutaiPageData["manifest"],
+  month: number,
+) {
+  const latest = manifest?.months
+    ?.filter((entry) => entry.month === month)
+    .sort((a, b) => b.year - a.year)[0];
+  return latest ? `${latest.year}-${String(latest.month).padStart(2, "0")}` : null;
+}
+
+function formatCalculationStatus(value: YutaiLaunchDisplayRecord["calculationStatus"]) {
+  switch (value) {
+    case "auto_calculable":
+      return "自動計算可";
+    case "mixed_user_input_required":
+      return "一部入力必要";
+    case "user_input_required":
+      return "評価額入力必要";
+    case "no_conditions":
+      return "条件未整備";
+  }
+}
+
+function formatBenefitItem(item: YutaiLaunchDisplayItem) {
+  const parts = [item.label];
+  if (typeof item.officialValueYen === "number") parts.push(formatYen(item.officialValueYen));
+  if (typeof item.quantity === "number" && item.unit) parts.push(`${item.quantity.toLocaleString("ja-JP")}${item.unit}`);
+  if (item.valuationPolicy === "user_estimate_required") parts.push("要評価");
+  return parts.join(" / ");
 }
 
 function getRowEfficiency(
@@ -180,6 +226,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const [archivedItems, setArchivedItems] = useState<ArchivedMemoItem[]>([]);
   const [cardMemos, setCardMemos] = useState<Record<string, CalendarCardMemo>>({});
   const [stockPriceState, setStockPriceState] = useState<StockPriceLoadState>({ status: "loading" });
+  const [launchDisplayState, setLaunchDisplayState] = useState<LaunchDisplayLoadState>({ status: "idle" });
   const [hydrated, setHydrated] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedRowKey, setSelectedRowKey] = useState<string | null>(null);
@@ -238,6 +285,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
       controller.abort();
     };
   }, [stockPriceScopeMonth]);
+
 
   useEffect(() => {
     // hydrated 前は空 Set を保存しない
@@ -306,6 +354,11 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const stockPriceByCode = useMemo(
     () => buildStockPriceByCode(stockPriceSnapshot),
     [stockPriceSnapshot],
+  );
+  const launchDisplaySnapshot = launchDisplayState.status === "ready" ? launchDisplayState.snapshot : null;
+  const launchDisplayByKey = useMemo(
+    () => buildLaunchDisplayByKey(launchDisplaySnapshot),
+    [launchDisplaySnapshot],
   );
 
   // 12ヶ月ビュー用の行。登録済みメモを対象にし、検索・クロス戦略で絞り込む。
@@ -471,6 +524,70 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const selectedCardMemo = selectedEfficiencyMemoKey ? cardMemos[selectedEfficiencyMemoKey] : undefined;
   const selectedEfficiency = selectedRow ? getRowEfficiency(selectedRow, cardMemos, stockPriceByCode) : null;
   const selectedStockPriceQuote = selectedRow ? stockPriceByCode.get(selectedRow.code) : undefined;
+  const selectedCandidateMonth = selectedRow?.candidate?.month ?? null;
+  const launchDisplayMonth = isAllMonths && selectedCandidateMonth !== null
+    ? getLatestMonthIdForEntitlementMonth(data.manifest, selectedCandidateMonth)
+    : isAllMonths
+      ? null
+      : data.selectedMonthId;
+  const selectedLaunchDisplay = selectedRow?.candidate ? launchDisplayByKey.get(`${selectedRow.code}:${selectedRow.candidate.month}`) : undefined;
+  const selectedLaunchHint = getLaunchDisplayHint(selectedLaunchDisplay);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    setLaunchDisplayState({ status: "loading" });
+
+    async function loadLaunchDisplay() {
+      try {
+        const query = launchDisplayMonth ? `?month=${encodeURIComponent(launchDisplayMonth)}` : "";
+        const response = await fetch(`/api/yutai/launch-display${query}`, {
+          cache: "default",
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const snapshot = parseYutaiLaunchDisplaySnapshot(await response.json());
+        if (!snapshot) throw new Error("invalid payload");
+        if (active) setLaunchDisplayState({ status: "ready", snapshot });
+      } catch (error) {
+        if (active && !controller.signal.aborted) {
+          setLaunchDisplayState({
+            status: "error",
+            message: error instanceof Error ? error.message : "unknown error",
+          });
+        }
+      }
+    }
+
+    void loadLaunchDisplay();
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [launchDisplayMonth]);
+
+  function applyLaunchDisplayHint(hint: YutaiLaunchDisplayHint) {
+    if (!selectedEfficiencyMemoKey) return;
+    setCardMemos((prev) => {
+      const current = prev[selectedEfficiencyMemoKey] ?? {
+        longTermRequired: false,
+        longTermBenefit: false,
+        updatedAt: "",
+      };
+      const next = {
+        ...prev,
+        [selectedEfficiencyMemoKey]: {
+          ...current,
+          requiredShares: hint.requiredShares,
+          benefitValueYen: hint.benefitValueYen,
+          updatedAt: new Date().toISOString(),
+        },
+      };
+      saveCardMemos(next);
+      return next;
+    });
+    setNotice(`${hint.label} を簡易優待効率へ反映しました。`);
+  }
 
   function updateSelectedEfficiencyInput(
     field: "requiredShares" | "benefitValueYen",
@@ -1363,6 +1480,59 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                     </div>
                   </section>
                 ) : null}
+
+
+                <section style={styles.detailSection}>
+                  <h3 style={styles.detailSectionTitle}>公式条件</h3>
+                  {selectedLaunchDisplay ? (
+                    <>
+                      <div style={styles.launchSummaryRow}>
+                        <span style={styles.launchStatusChip}>{formatCalculationStatus(selectedLaunchDisplay.calculationStatus)}</span>
+                        {selectedLaunchDisplay.normalizedAsOfDate ? (
+                          <span style={styles.detailSub}>正規化: {selectedLaunchDisplay.normalizedAsOfDate}</span>
+                        ) : null}
+                      </div>
+                      {selectedLaunchHint ? (
+                        <div style={styles.launchHintBox}>
+                          <div>
+                            <strong>{selectedLaunchHint.label}</strong>
+                            <span>必要株数 {selectedLaunchHint.requiredShares.toLocaleString("ja-JP")}株 / 優待価値 {formatYen(selectedLaunchHint.benefitValueYen)}</span>
+                          </div>
+                          {selectedEfficiencyMemoKey ? (
+                            <button type="button" style={styles.launchApplyButton} onClick={() => applyLaunchDisplayHint(selectedLaunchHint)}>
+                              効率入力へ反映
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : selectedLaunchDisplay.requiresUserValuation ? (
+                        <p style={styles.detailSub}>公式条件はありますが、評価額の入力が必要です。</p>
+                      ) : (
+                        <p style={styles.detailSub}>この銘柄はまだ自動計算できる条件がありません。</p>
+                      )}
+                      {selectedLaunchDisplay.programs.length > 0 ? (
+                        <div style={styles.launchProgramList}>
+                          {selectedLaunchDisplay.programs.slice(0, 3).map((program) => (
+                            <div key={program.programId} style={styles.launchProgramItem}>
+                              <div style={styles.launchProgramTitle}>{program.label}</div>
+                              {program.tiers.slice(0, 3).map((tier) => (
+                                <div key={`${program.programId}:${tier.minimumShares}:${tier.requiredHoldingMonths}`} style={styles.launchTierText}>
+                                  {tier.minimumShares.toLocaleString("ja-JP")}株{tier.requiredHoldingMonths > 0 ? ` / ${tier.requiredHoldingMonths}ヶ月保有` : ""}: {tier.groups.flatMap((group) => group.items).slice(0, 4).map(formatBenefitItem).join("、")}
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                      {selectedLaunchDisplay.notes ? <p style={styles.efficiencyNote}>{selectedLaunchDisplay.notes}</p> : null}
+                    </>
+                  ) : launchDisplayState.status === "loading" ? (
+                    <p style={styles.detailSub}>公式条件を取得中です。</p>
+                  ) : launchDisplayState.status === "error" ? (
+                    <p style={styles.detailSub}>公式条件データを取得できませんでした。</p>
+                  ) : (
+                    <p style={styles.detailSub}>この月の公式条件データはまだありません。</p>
+                  )}
+                </section>
 
                 <section style={styles.detailSection}>
                   <h3 style={styles.detailSectionTitle}>簡易優待効率</h3>
@@ -2609,6 +2779,65 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#94a3b8",
     fontSize: 10,
     lineHeight: 1.5,
+  },
+  launchSummaryRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  launchStatusChip: {
+    ...baseChip,
+    background: "#ecfdf5",
+    border: "1px solid rgba(16,185,129,0.24)",
+    color: "#047857",
+    fontWeight: 800,
+  },
+  launchHintBox: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    marginTop: 8,
+    padding: "10px 12px",
+    borderRadius: 10,
+    background: "#f0fdf4",
+    border: "1px solid rgba(22,163,74,0.16)",
+    color: "#166534",
+    fontSize: 12,
+  },
+  launchApplyButton: {
+    flexShrink: 0,
+    border: "1px solid rgba(22,163,74,0.25)",
+    background: "#ffffff",
+    color: "#15803d",
+    borderRadius: 8,
+    padding: "5px 9px",
+    fontSize: 11,
+    fontWeight: 800,
+    cursor: "pointer",
+  },
+  launchProgramList: {
+    display: "grid",
+    gap: 8,
+    marginTop: 10,
+  },
+  launchProgramItem: {
+    padding: "9px 10px",
+    borderRadius: 10,
+    background: "#f8fafc",
+    border: "1px solid rgba(15,23,42,0.06)",
+  },
+  launchProgramTitle: {
+    fontSize: 12,
+    fontWeight: 800,
+    color: "#334155",
+    marginBottom: 4,
+  },
+  launchTierText: {
+    fontSize: 11,
+    lineHeight: 1.55,
+    color: "#64748b",
   },
   detailLinks: {
     display: "flex",
