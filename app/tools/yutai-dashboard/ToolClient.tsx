@@ -160,18 +160,19 @@ function getRowEfficiency(
   row: DashboardRow,
   cardMemos: Record<string, CalendarCardMemo>,
   stockPriceByCode: ReadonlyMap<string, YutaiStockPriceQuote>,
+  launchDisplayByKey: ReadonlyMap<string, YutaiLaunchDisplayRecord>,
 ) {
   // 仕込み月軸の memo 行は複数権利月を持ち得るため、月別入力の対象外にする。
   if (!row.candidate || row.key.startsWith("memo:")) return null;
   const cardMemo = cardMemos[getCardMemoKey(row.candidate)];
+  const launchHint = getLaunchDisplayHint(launchDisplayByKey.get(`${row.code}:${row.candidate.month}`));
   return calculateSimpleYutaiEfficiency({
     minimumInvestmentYen: row.candidate.minimum_investment_yen,
     sharePriceYen: stockPriceByCode.get(row.code)?.priceYen,
-    requiredShares: cardMemo?.requiredShares,
-    benefitValueYen: cardMemo?.benefitValueYen,
+    requiredShares: cardMemo?.requiredShares ?? launchHint?.requiredShares,
+    benefitValueYen: cardMemo?.benefitValueYen ?? launchHint?.benefitValueYen,
   });
 }
-
 // oneShareStartedAt（YYYY-MM 想定）から開始の年・月を取り出す。フリーテキストは null。
 function parseOneShareStart(value: string | undefined): { year: number; month: number } | null {
   const matched = value ? /^(\d{4})-(\d{2})$/.exec(value) : null;
@@ -286,7 +287,6 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     };
   }, [stockPriceScopeMonth]);
 
-
   useEffect(() => {
     // hydrated 前は空 Set を保存しない
     if (!hydrated) return;
@@ -359,6 +359,10 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const launchDisplayByKey = useMemo(
     () => buildLaunchDisplayByKey(launchDisplaySnapshot),
     [launchDisplaySnapshot],
+  );
+  const rowLaunchDisplayByKey = useMemo(
+    () => (isAllMonths ? new Map<string, YutaiLaunchDisplayRecord>() : launchDisplayByKey),
+    [isAllMonths, launchDisplayByKey],
   );
 
   // 12ヶ月ビュー用の行。登録済みメモを対象にし、検索・クロス戦略で絞り込む。
@@ -498,8 +502,8 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
             - (b.candidate?.minimum_investment_yen ?? Number.POSITIVE_INFINITY);
         }
         if (sortKey === "efficiency") {
-          const aEfficiency = getRowEfficiency(a, cardMemos, stockPriceByCode)?.efficiencyPercent;
-          const bEfficiency = getRowEfficiency(b, cardMemos, stockPriceByCode)?.efficiencyPercent;
+          const aEfficiency = getRowEfficiency(a, cardMemos, stockPriceByCode, rowLaunchDisplayByKey)?.efficiencyPercent;
+          const bEfficiency = getRowEfficiency(b, cardMemos, stockPriceByCode, rowLaunchDisplayByKey)?.efficiencyPercent;
           if (aEfficiency === undefined && bEfficiency === undefined) return collator.compare(a.code, b.code);
           if (aEfficiency === undefined) return 1;
           if (bEfficiency === undefined) return -1;
@@ -512,7 +516,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
         }
         return collator.compare(a.name, b.name);
       });
-  }, [cardMemos, crossFilter, data.nikkoCredit, data.sbiCredit, query, rows, sbiFilter, sortKey, statusFilter, stockPriceByCode, strategyFilter]);
+  }, [cardMemos, crossFilter, data.nikkoCredit, data.sbiCredit, query, rows, rowLaunchDisplayByKey, sbiFilter, sortKey, statusFilter, stockPriceByCode, strategyFilter]);
 
   const selectedRow = useMemo(
     () => filteredRows.find((row) => row.key === selectedRowKey) ?? null,
@@ -522,7 +526,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     ? getCardMemoKey(selectedRow.candidate)
     : null;
   const selectedCardMemo = selectedEfficiencyMemoKey ? cardMemos[selectedEfficiencyMemoKey] : undefined;
-  const selectedEfficiency = selectedRow ? getRowEfficiency(selectedRow, cardMemos, stockPriceByCode) : null;
+  const selectedEfficiency = selectedRow ? getRowEfficiency(selectedRow, cardMemos, stockPriceByCode, launchDisplayByKey) : null;
   const selectedStockPriceQuote = selectedRow ? stockPriceByCode.get(selectedRow.code) : undefined;
   const selectedCandidateMonth = selectedRow?.candidate?.month ?? null;
   const launchDisplayMonth = isAllMonths && selectedCandidateMonth !== null
@@ -1382,7 +1386,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                   ) : (
                     filteredRows.map((row) => {
                       const acquired = acquiredByCode.get(row.code);
-                      const efficiency = getRowEfficiency(row, cardMemos, stockPriceByCode);
+                      const efficiency = getRowEfficiency(row, cardMemos, stockPriceByCode, rowLaunchDisplayByKey);
                       const isSelected = row.key === selectedRowKey;
                       const rowStyle = isSelected
                         ? styles.trSelected
@@ -1581,7 +1585,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                         </div>
                       ) : (
                         <p style={styles.detailSub}>
-                          必要株数・優待価値と、株価または最低投資金額が揃うと計算します。
+                          公式条件または手入力の必要株数・優待価値と、株価または最低投資金額が揃うと計算します。
                         </p>
                       )}
                       <p style={styles.efficiencyNote}>
