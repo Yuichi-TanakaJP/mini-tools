@@ -138,6 +138,29 @@ function formatYen(value: number) {
   return `¥${Math.round(value).toLocaleString("ja-JP")}`;
 }
 
+function formatPercent(value: number) {
+  return `${value.toLocaleString("ja-JP", { maximumFractionDigits: 2 })}%`;
+}
+
+function isSamePercentValue(item: YutaiLaunchDisplayItem, value: number) {
+  return item.unit === "%" && typeof item.quantity === "number" && Math.abs(item.quantity - value) < 0.0001;
+}
+
+function formatDiscountMetadata(item: YutaiLaunchDisplayItem) {
+  if (item.discountTerms?.length) {
+    return item.discountTerms
+      .map((term) => {
+        const suffix = [term.label, term.appliesTo].filter(Boolean).join("・");
+        return suffix ? `割引率 ${formatPercent(term.ratePct)}（${suffix}）` : `割引率 ${formatPercent(term.ratePct)}`;
+      })
+      .join(" / ");
+  }
+  if (typeof item.discountRatePct === "number" && !isSamePercentValue(item, item.discountRatePct)) {
+    return `割引率 ${formatPercent(item.discountRatePct)}`;
+  }
+  return null;
+}
+
 function formatEfficiencyPercent(value: number) {
   return `${value.toLocaleString("ja-JP", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 }
@@ -174,6 +197,8 @@ function formatBenefitItem(item: YutaiLaunchDisplayItem) {
   const parts = [item.label];
   if (typeof item.officialValueYen === "number") parts.push(formatYen(item.officialValueYen));
   if (typeof item.quantity === "number" && item.unit) parts.push(`${item.quantity.toLocaleString("ja-JP")}${item.unit}`);
+  const discountMetadata = formatDiscountMetadata(item);
+  if (discountMetadata) parts.push(discountMetadata);
   if (item.valuationPolicy === "user_estimate_required") parts.push("要評価");
   return parts.join(" / ");
 }

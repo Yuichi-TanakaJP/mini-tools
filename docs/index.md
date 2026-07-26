@@ -11,6 +11,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 
 設計・方針・トレードオフの判断理由を記録します。
 
+- [2026-07-26 優待公式条件の割引率・長期保有メタデータ表示](./decision-log/2026-07-26-yutai-launch-display-benefit-metadata.md)
 - [2026-07-26 優待ダッシュボードの日興クロス手数料 概算表示](./decision-log/2026-07-26-yutai-dashboard-cross-fee.md)
 - [2026-07-23 優待公式条件をPremium認証付きサーバールート経由にする](./decision-log/2026-07-23-yutai-launch-display-private-proxy.md)
 - [2026-07-20 優待株価JSONを24時間private HTTPキャッシュする](./decision-log/2026-07-20-yutai-stock-price-private-http-cache.md)
