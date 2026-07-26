@@ -1464,6 +1464,18 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
             </div>
 
             {selectedRow ? (
+              <>
+              {useMobilePanel ? (
+                // 背景タップで閉じる（閉じるボタンが小さいため）。下部ナビは覆わず操作可能に残す。
+                <div
+                  style={styles.detailBackdrop}
+                  onClick={() => {
+                    setSelectedRowKey(null);
+                    closeMemoEdit();
+                  }}
+                  aria-hidden="true"
+                />
+              ) : null}
               <aside style={useMobilePanel ? styles.detailPanelMobile : styles.detailPanel}>
                 <div style={styles.detailHeader}>
                   <div style={styles.detailHeaderTop}>
@@ -1839,6 +1851,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                   )}
                 </section>
               </aside>
+              </>
             ) : null}
           </div>
           )}
@@ -2697,6 +2710,17 @@ const styles: Record<string, React.CSSProperties> = {
     // （--bottom-nav-space はデスクトップでは 0）。
     maxHeight: "calc(100dvh - 84px - var(--bottom-nav-space, 0px))",
     overflowY: "auto",
+  },
+  detailBackdrop: {
+    // モバイルのみ。背景タップで詳細を閉じるための透明レイヤー。
+    // 下部ナビ(--bottom-nav-space)は覆わず、ナビ操作を残す。暗幕にはせずごく薄い透過。
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: "var(--bottom-nav-space, 0px)",
+    zIndex: 40,
+    background: "rgba(8,10,18,0.12)",
   },
   detailPanelMobile: {
     // モバイルはビューポート固定。ヘッダー(68px)〜下部ナビの間にドックし、
