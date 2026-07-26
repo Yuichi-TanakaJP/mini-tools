@@ -2672,7 +2672,9 @@ const styles: Record<string, React.CSSProperties> = {
     top: 68,
     // dvh を使う。モバイル Chrome の 100vh はアドレスバー分だけ実可視領域より大きく、
     // vh だとパネル底が画面外にはみ出し、内部スクロールで最下部まで届かなくなるため。
-    maxHeight: "calc(100dvh - 84px)",
+    // さらに下部固定ナビ(MobileBottomNav)の高さ分を差し引き、底がナビ裏に潜らないようにする
+    // （--bottom-nav-space はデスクトップでは 0）。
+    maxHeight: "calc(100dvh - 84px - var(--bottom-nav-space, 0px))",
     overflowY: "auto",
   },
   detailHeader: {

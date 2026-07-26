@@ -26,6 +26,10 @@
   --color-error:         #dc2626;
   --color-success:       #16a34a;
   --color-warning:       #d97706;
+
+  /* モバイル下部固定ナビ(MobileBottomNav)が占める高さ。デスクトップは 0。
+     sticky なパネル等が 100dvh 基準で高さを計算する際に差し引くために使う。 */
+  --bottom-nav-space:    0px;
 }
 
 *,
@@ -41,8 +45,11 @@ body {
 }
 
 @media (max-width: 720px) {
+  :root {
+    --bottom-nav-space: calc(64px + env(safe-area-inset-bottom));
+  }
   body {
-    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+    padding-bottom: var(--bottom-nav-space);
   }
 }
 
