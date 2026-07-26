@@ -150,8 +150,14 @@ function formatDiscountMetadata(item: YutaiLaunchDisplayItem) {
   if (item.discountTerms?.length) {
     return item.discountTerms
       .map((term) => {
-        const suffix = [term.label, term.appliesTo].filter(Boolean).join("・");
-        return suffix ? `割引率 ${formatPercent(term.ratePct)}（${suffix}）` : `割引率 ${formatPercent(term.ratePct)}`;
+        const suffix = [
+          term.label,
+          typeof term.quantity === "number" && term.unit ? `${term.quantity.toLocaleString("ja-JP")}${term.unit}` : null,
+          term.notes,
+        ]
+          .filter(Boolean)
+          .join("・");
+        return suffix ? `割引率 ${formatPercent(term.discountRatePct)}（${suffix}）` : `割引率 ${formatPercent(term.discountRatePct)}`;
       })
       .join(" / ");
   }
