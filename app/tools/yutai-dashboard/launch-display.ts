@@ -217,6 +217,23 @@ function groupValueYen(group: YutaiLaunchDisplayGroup) {
   return group.mode === "choose_one" ? Math.max(...values) : values.reduce((sum, value) => sum + value, 0);
 }
 
+/**
+ * 公式条件の tier の保有月数から、長期保有まわりのフラグを導く。
+ * - required（長期要）: すべての tier が長期保有必須（短期でもらえる tier が無い）。
+ * - benefit（長期特）: 長期保有が条件の tier が存在する（長期保有で優待/特典がある）。
+ */
+export function getLongTermFlags(
+  record: YutaiLaunchDisplayRecord | null | undefined,
+): { required: boolean; benefit: boolean } {
+  if (!record) return { required: false, benefit: false };
+  const tiers = record.programs.flatMap((program) => program.tiers);
+  if (tiers.length === 0) return { required: false, benefit: false };
+  return {
+    required: tiers.every((tier) => tier.requiredHoldingMonths > 0),
+    benefit: tiers.some((tier) => tier.requiredHoldingMonths > 0),
+  };
+}
+
 export function getLaunchDisplayHint(record: YutaiLaunchDisplayRecord | null | undefined): YutaiLaunchDisplayHint | null {
   if (!record || record.calculationStatus === "no_conditions") return null;
   for (const program of record.programs) {

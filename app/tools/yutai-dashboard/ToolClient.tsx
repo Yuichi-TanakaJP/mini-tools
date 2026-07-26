@@ -21,6 +21,7 @@ import {
 import {
   buildLaunchDisplayByKey,
   getLaunchDisplayHint,
+  getLongTermFlags,
   parseYutaiLaunchDisplaySnapshot,
   type YutaiLaunchDisplayHint,
   type YutaiLaunchDisplayItem,
@@ -169,6 +170,18 @@ function formatDiscountMetadata(item: YutaiLaunchDisplayItem) {
 
 function formatEfficiencyPercent(value: number) {
   return `${value.toLocaleString("ja-JP", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+}
+
+// 日興規制明細の生文字列を整形する。
+// 形式: "source|発行元|内容|日付"。先頭の source(exchange=取引所/internal=社内) を
+// 日本語ラベルにして、区切りを読みやすくする。
+function formatRegulationDetail(detail: string) {
+  const parts = detail.split("|");
+  if (parts.length > 1 && (parts[0] === "exchange" || parts[0] === "internal")) {
+    const source = parts[0] === "exchange" ? "取引所" : "社内";
+    return `［${source}］${parts.slice(1).join(" / ")}`;
+  }
+  return detail;
 }
 
 function formatStockPriceProvider(value: string | null) {
@@ -1494,9 +1507,11 @@ export default function ToolClient({
                 <thead>
                   <tr>
                     <th style={{ ...styles.th, width: 64 }}>コード</th>
-                    <th style={{ ...styles.th, minWidth: 110 }}>銘柄</th>
+                    <th style={{ ...styles.th, width: 200 }}>銘柄</th>
                     <th style={{ ...styles.th, width: 84 }}>権利月</th>
                     <th style={{ ...styles.th, width: 88 }}>簡易効率</th>
+                    <th style={{ ...styles.th, width: 56 }} title="長期保有が必須（短期では優待なし）">長期要</th>
+                    <th style={{ ...styles.th, width: 56 }} title="長期保有で優待・特典がある">長期特</th>
                     <th style={{ ...styles.th, width: 120 }}>日興</th>
                     <th style={{ ...styles.th, width: 76 }}>SBI</th>
                     <th style={{ ...styles.th, width: 88 }}>仕込み開始</th>
@@ -1504,16 +1519,17 @@ export default function ToolClient({
                     <th style={{ ...styles.th, width: 104 }}>クロス戦略</th>
                     <th style={{ ...styles.th, width: 72 }}>実績</th>
                     <th style={{ ...styles.th, width: 130 }}>操作</th>
+                    <th aria-hidden style={{ ...styles.th, width: "100%" }} />
                   </tr>
                 </thead>
                 <tbody>
                   {!hydrated ? (
                     <tr>
-                      <td colSpan={11} style={styles.emptyCell}>読み込み中…</td>
+                      <td colSpan={14} style={styles.emptyCell}>読み込み中…</td>
                     </tr>
                   ) : filteredRows.length === 0 ? (
                     <tr>
-                      <td colSpan={11} style={styles.emptyCell}>
+                      <td colSpan={14} style={styles.emptyCell}>
                         {axis === "preparation"
                           ? "この月に仕込みを開始する登録銘柄はありません。"
                           : "条件に一致する銘柄がありません。"}
@@ -1539,6 +1555,9 @@ export default function ToolClient({
                         : netAfterFeeYen > 0
                           ? styles.chipEfficiencyPositive
                           : styles.chipEfficiencyNegative;
+                      const longTerm = getLongTermFlags(
+                        row.candidate ? rowLaunchDisplayByKey.get(`${row.code}:${row.candidate.month}`) : undefined,
+                      );
                       const isSelected = row.key === selectedRowKey;
                       const rowStyle = isSelected
                         ? styles.trSelected
@@ -1583,6 +1602,16 @@ export default function ToolClient({
                               {renderCrossFeeLine(crossFee)}
                             </div>
                           </td>
+                          <td style={styles.td}>
+                            {longTerm.required
+                              ? <span style={styles.chipLongRequired} title="長期保有が必須（短期では優待なし）">要</span>
+                              : <span style={styles.cellMuted}>-</span>}
+                          </td>
+                          <td style={styles.td}>
+                            {longTerm.benefit
+                              ? <span style={styles.chipLongBenefit} title="長期保有で優待・特典がある">特</span>
+                              : <span style={styles.cellMuted}>-</span>}
+                          </td>
                           <td style={styles.td}>{renderNikkoCell(row.code)}</td>
                           <td style={styles.td}>{renderSbiCell(row.code)}</td>
                           <td style={styles.td}>{renderPreparationCell(row)}</td>
@@ -1594,6 +1623,7 @@ export default function ToolClient({
                               : <span style={styles.cellMuted}>-</span>}
                           </td>
                           <td style={styles.td}>{renderRowActions(row)}</td>
+                          <td aria-hidden style={styles.td} />
                         </tr>
                       );
                     })
@@ -1643,9 +1673,6 @@ export default function ToolClient({
                   <section style={styles.detailSection}>
                     <h3 style={styles.detailSectionTitle}>優待内容</h3>
                     <p style={styles.detailText}>{selectedRow.candidate.benefit_summary || "（記載なし）"}</p>
-                    <p style={styles.detailSub}>
-                      最低投資金額: {selectedRow.candidate.minimum_investment_text || "不明"}
-                    </p>
                     <div style={styles.detailLinks}>
                       <a href={selectedRow.candidate.minkabu_yutai_url} target="_blank" rel="noreferrer" style={styles.detailLink}>
                         みんかぶ優待
@@ -1659,6 +1686,19 @@ export default function ToolClient({
                   </section>
                 ) : null}
 
+
+                {selectedEfficiency ? (
+                  <div style={styles.efficiencyResult}>
+                    <strong style={styles.efficiencyResultValue}>
+                      {formatEfficiencyPercent(selectedEfficiency.efficiencyPercent)}
+                    </strong>
+                    <span>必要資金 {formatYen(selectedEfficiency.requiredCapitalYen)}</span>
+                    <span>
+                      {selectedEfficiency.sharePriceSource === "market" ? "株価" : "概算株価"}{" "}
+                      {formatYen(selectedEfficiency.sharePriceYen)}
+                    </span>
+                  </div>
+                ) : null}
 
                 <section style={styles.detailSection}>
                   <h3 style={styles.detailSectionTitle}>公式条件</h3>
@@ -1746,18 +1786,7 @@ export default function ToolClient({
                           />
                         </label>
                       </div>
-                      {selectedEfficiency ? (
-                        <div style={styles.efficiencyResult}>
-                          <strong style={styles.efficiencyResultValue}>
-                            {formatEfficiencyPercent(selectedEfficiency.efficiencyPercent)}
-                          </strong>
-                          <span>必要資金 {formatYen(selectedEfficiency.requiredCapitalYen)}</span>
-                          <span>
-                            {selectedEfficiency.sharePriceSource === "market" ? "株価" : "概算株価"}{" "}
-                            {formatYen(selectedEfficiency.sharePriceYen)}
-                          </span>
-                        </div>
-                      ) : (
+                      {selectedEfficiency ? null : (
                         <p style={styles.detailSub}>
                           公式条件または手入力の必要株数・優待価値と、株価または最低投資金額が揃うと計算します。
                         </p>
@@ -1786,7 +1815,7 @@ export default function ToolClient({
                       {nikkoCreditForSelected.regulation_details.length > 0 ? (
                         <ul style={styles.detailList}>
                           {nikkoCreditForSelected.regulation_details.map((detail) => (
-                            <li key={detail} style={styles.detailListItem}>{detail}</li>
+                            <li key={detail} style={styles.detailListItem}>{formatRegulationDetail(detail)}</li>
                           ))}
                         </ul>
                       ) : null}
@@ -2606,7 +2635,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottom: "1px solid rgba(15,23,42,0.06)",
     color: "#0f172a",
     fontWeight: 700,
-    maxWidth: 150,
+    maxWidth: 200,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
@@ -2815,6 +2844,20 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: "column",
     alignItems: "flex-start",
     gap: 3,
+  },
+  chipLongRequired: {
+    ...baseChip,
+    background: "#fef2f2",
+    color: "#b91c1c",
+    fontWeight: 800,
+    border: "1px solid rgba(220,38,38,0.22)",
+  },
+  chipLongBenefit: {
+    ...baseChip,
+    background: "#eff6ff",
+    color: "#1d4ed8",
+    fontWeight: 800,
+    border: "1px solid rgba(37,84,255,0.22)",
   },
   crossFeeLine: {
     fontSize: 11,
