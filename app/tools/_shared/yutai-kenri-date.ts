@@ -71,6 +71,21 @@ export function getKenriLastDateForMonthId(monthId: string): string | null {
 }
 
 /**
+ * 起点の日付から businessDays 営業日後の日付を返す（週末・年末年始などの休場日は飛ばす）。
+ */
+function advanceBusinessDays(from: Date, businessDays: number): Date {
+  const cursor = new Date(from);
+  let remaining = businessDays;
+  while (remaining > 0) {
+    cursor.setDate(cursor.getDate() + 1);
+    if (isBusinessDay(cursor.getFullYear(), cursor.getMonth() + 1, cursor.getDate())) {
+      remaining -= 1;
+    }
+  }
+  return cursor;
+}
+
+/**
  * 今日から businessDays 営業日後までの暦日数を返す（週末・年末年始などを跨げばその分増える）。
  * 制度信用買い→現引きまでの買方金利日数（暦日）の算出に使う。
  */
@@ -79,30 +94,30 @@ export function getCalendarDaysForBusinessDays(
   businessDays: number,
 ): number {
   const start = new Date(today.year, today.month - 1, today.day);
-  const cursor = new Date(start);
-  let remaining = businessDays;
-  while (remaining > 0) {
-    cursor.setDate(cursor.getDate() + 1);
-    if (isBusinessDay(cursor.getFullYear(), cursor.getMonth() + 1, cursor.getDate())) {
-      remaining -= 1;
-    }
-  }
-  return Math.round((cursor.getTime() - start.getTime()) / 86_400_000);
+  const end = advanceBusinessDays(start, businessDays);
+  return Math.round((end.getTime() - start.getTime()) / 86_400_000);
 }
 
 export type UpcomingKenriInfo = {
   /** 権利付最終日（YYYY-MM-DD） */
   kenriLastDate: string;
-  /** 今日から権利付最終日までの暦日数（最低 1） */
-  daysFromToday: number;
+  /** 現渡しの受渡日＝返却日（YYYY-MM-DD）。権利付最終日から returnBusinessDaysAfterKenri 営業日後。 */
+  returnDate: string;
+  /** 今日から返却日までの暦日数（最低 1）。貸株料の対象日数。 */
+  sellHoldingDays: number;
 };
 
 /**
- * 権利月（1..12）ごとに、今日から見て次回の権利付最終日と、そこまでの暦日数を返す。
- * 今年の権利付最終日を既に過ぎている月は翌年扱いにする。
+ * 権利月（1..12）ごとに、今日から見て次回の権利付最終日と、返却日（現渡し受渡日）、
+ * 今日→返却日の暦日数を返す。今年の権利付最終日を既に過ぎている月は翌年扱いにする。
+ *
+ * 返却日 = 権利付最終日 + returnBusinessDaysAfterKenri 営業日。
+ * 週末・年末年始などの休場は営業日カウントで自然に飛ばすため、月末が金曜だったり
+ * 年末を跨ぐと返却日（＝貸株料の終点）が通常より後ろにずれる。
  */
 export function getUpcomingKenriInfoByMonth(
   today: { year: number; month: number; day: number },
+  returnBusinessDaysAfterKenri: number,
 ): Record<number, UpcomingKenriInfo> {
   const todayDate = new Date(today.year, today.month - 1, today.day);
   const result: Record<number, UpcomingKenriInfo> = {};
@@ -115,11 +130,16 @@ export function getUpcomingKenriInfoByMonth(
       kenriDay = getKenriLastDay(year, month);
       kenriDate = new Date(year, month - 1, kenriDay);
     }
-    const daysFromToday = Math.max(
+    const returnDate = advanceBusinessDays(kenriDate, returnBusinessDaysAfterKenri);
+    const sellHoldingDays = Math.max(
       1,
-      Math.round((kenriDate.getTime() - todayDate.getTime()) / 86_400_000),
+      Math.round((returnDate.getTime() - todayDate.getTime()) / 86_400_000),
     );
-    result[month] = { kenriLastDate: formatIsoDate(year, month, kenriDay), daysFromToday };
+    result[month] = {
+      kenriLastDate: formatIsoDate(year, month, kenriDay),
+      returnDate: formatIsoDate(returnDate.getFullYear(), returnDate.getMonth() + 1, returnDate.getDate()),
+      sellHoldingDays,
+    };
   }
   return result;
 }

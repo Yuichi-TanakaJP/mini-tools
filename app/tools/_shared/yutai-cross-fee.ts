@@ -25,6 +25,13 @@ export const NIKKO_CROSS_FEE_RATES = {
 /** 制度信用買い→現引きまでの標準的な受渡日数（営業日）。買方金利の計上日数に使う。 */
 export const BUY_TO_GENBIKI_BUSINESS_DAYS = 2;
 
+/**
+ * 権利付最終日 → 現渡しの受渡日（返却日）までの営業日数。
+ * 権利落ち日（権利付最終日の翌営業日, +1）＋ 現渡し受渡 T+2（+2）＝ 3 営業日。
+ * 貸株料はこの返却日まで計上する（月末が金曜・年末を跨ぐと暦日が伸びる）。
+ */
+export const KENRI_TO_RETURN_BUSINESS_DAYS = 3;
+
 export type CrossSellSide = "general" | "institutional";
 
 export type NikkoCrossFee = {

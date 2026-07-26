@@ -13,7 +13,10 @@ import {
   getCalendarDaysForBusinessDays,
   getUpcomingKenriInfoByMonth,
 } from "@/app/tools/_shared/yutai-kenri-date";
-import { BUY_TO_GENBIKI_BUSINESS_DAYS } from "@/app/tools/_shared/yutai-cross-fee";
+import {
+  BUY_TO_GENBIKI_BUSINESS_DAYS,
+  KENRI_TO_RETURN_BUSINESS_DAYS,
+} from "@/app/tools/_shared/yutai-cross-fee";
 
 /** JST の今日の年・月・日を返す */
 function getJstToday(): { year: number; month: number; day: number } {
@@ -64,9 +67,9 @@ export default async function Page({ searchParams }: PageProps) {
   const data = params?.month === ALL_MONTHS_ID
     ? await loadMonthlyYutaiAllMonthsPageData()
     : await loadMonthlyYutaiPageData(params?.month);
-  // 権利月ごとの「今日→権利付最終日」の暦日数（クロス手数料の貸株料日数に使う）
+  // 権利月ごとの権利付最終日・返却日（現渡し受渡日）・今日→返却日の暦日数（貸株料日数に使う）
   const today = getJstToday();
-  const kenriInfoByMonth = getUpcomingKenriInfoByMonth(today);
+  const kenriInfoByMonth = getUpcomingKenriInfoByMonth(today, KENRI_TO_RETURN_BUSINESS_DAYS);
   // 制度信用買い→現引きまでの暦日数（買方金利の日数）
   const buyInterestDays = getCalendarDaysForBusinessDays(today, BUY_TO_GENBIKI_BUSINESS_DAYS);
   return (
