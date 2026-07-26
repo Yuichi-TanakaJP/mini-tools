@@ -128,7 +128,7 @@ function makeFetch404(): Response {
 describe("loadEarningsCalendarPageData", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
-    process.env.NODE_ENV = "test";
+    vi.stubEnv("NODE_ENV", "test");
     delete process.env.MARKET_INFO_API_BASE_URL;
     delete process.env.MINI_TOOLS_ENABLE_LOCAL_DATA_FALLBACK;
   });
@@ -136,6 +136,7 @@ describe("loadEarningsCalendarPageData", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it("API 未設定のとき domestic はローカルファイルから取得する（fetch しない）", async () => {
@@ -186,7 +187,7 @@ describe("loadEarningsCalendarPageData", () => {
   });
 
   it("production で domestic API 失敗時はローカル JSON にフォールバックしない", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
     makeLocalFiles();
     vi.mocked(fetch).mockImplementation(async (url) => {
@@ -222,7 +223,7 @@ describe("loadEarningsCalendarPageData", () => {
   });
 
   it("production で domestic monthly 失敗時は同梱 JSON で補完しない", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
     makeLocalFiles();
     vi.mocked(fetch).mockImplementation(async (url) => {

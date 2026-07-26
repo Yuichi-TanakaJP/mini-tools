@@ -38,7 +38,7 @@ function makeFetch404(): Response {
 describe("loadContributionManifest", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
-    process.env.NODE_ENV = "test";
+    vi.stubEnv("NODE_ENV", "test");
     delete process.env.MARKET_INFO_API_BASE_URL;
     delete process.env.MINI_TOOLS_ENABLE_LOCAL_DATA_FALLBACK;
   });
@@ -46,6 +46,7 @@ describe("loadContributionManifest", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it("API 未設定のとき、ローカルファイルのマニフェストを返す", async () => {
@@ -91,7 +92,7 @@ describe("loadContributionManifest", () => {
   });
 
   it("production で API 失敗時はローカル fallback せず EMPTY_MANIFEST を返す", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
     vi.mocked(fetch).mockRejectedValue(new Error("network error"));
     mockReadFile.mockClear();
@@ -117,7 +118,7 @@ describe("loadContributionManifest", () => {
 describe("loadContributionDayData", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
-    process.env.NODE_ENV = "test";
+    vi.stubEnv("NODE_ENV", "test");
     delete process.env.MARKET_INFO_API_BASE_URL;
     delete process.env.MINI_TOOLS_ENABLE_LOCAL_DATA_FALLBACK;
   });
@@ -125,6 +126,7 @@ describe("loadContributionDayData", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it("空文字を渡したとき null を即返す（fetch しない）", async () => {
@@ -177,7 +179,7 @@ describe("loadContributionDayData", () => {
   });
 
   it("production で API 失敗時はローカル fallback せず null を返す", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
     vi.mocked(fetch).mockRejectedValue(new Error("network error"));
     mockReadFile.mockClear();

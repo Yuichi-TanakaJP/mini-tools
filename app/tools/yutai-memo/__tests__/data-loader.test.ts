@@ -27,7 +27,7 @@ describe("loadNikkoShortBalance", () => {
   beforeEach(() => {
     mockReadFile.mockReset();
     vi.stubGlobal("fetch", vi.fn());
-    process.env.NODE_ENV = "test";
+    vi.stubEnv("NODE_ENV", "test");
     delete process.env.MARKET_INFO_API_BASE_URL;
     delete process.env.MINI_TOOLS_ENABLE_LOCAL_DATA_FALLBACK;
   });
@@ -35,6 +35,7 @@ describe("loadNikkoShortBalance", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it("API 未設定のとき、ローカルサンプルを返す（fetch しない）", async () => {

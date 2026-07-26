@@ -24,7 +24,7 @@ function makeFetch404(): Response {
 describe("loadRankingManifest", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
-    process.env.NODE_ENV = "test";
+    vi.stubEnv("NODE_ENV", "test");
     delete process.env.MARKET_INFO_API_BASE_URL;
     delete process.env.MINI_TOOLS_ENABLE_LOCAL_DATA_FALLBACK;
   });
@@ -32,6 +32,7 @@ describe("loadRankingManifest", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it("API 未設定のとき、ローカルファイルのマニフェストを返す", async () => {
@@ -77,7 +78,7 @@ describe("loadRankingManifest", () => {
   });
 
   it("production で API 失敗時はローカル fallback せず null を返す", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
     vi.mocked(fetch).mockRejectedValue(new Error("network error"));
     mockReadFile.mockClear();
@@ -132,7 +133,7 @@ describe("loadRankingManifest", () => {
 describe("loadRankingDayData", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
-    process.env.NODE_ENV = "test";
+    vi.stubEnv("NODE_ENV", "test");
     delete process.env.MARKET_INFO_API_BASE_URL;
     delete process.env.MINI_TOOLS_ENABLE_LOCAL_DATA_FALLBACK;
   });
@@ -140,6 +141,7 @@ describe("loadRankingDayData", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it("API 未設定のとき、ローカルファイルのデータを返す", async () => {
@@ -185,7 +187,7 @@ describe("loadRankingDayData", () => {
   });
 
   it("production で API 失敗時はローカル fallback せず null を返す", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.MARKET_INFO_API_BASE_URL = "https://api.example.com";
     vi.mocked(fetch).mockRejectedValue(new Error("network error"));
     mockReadFile.mockClear();

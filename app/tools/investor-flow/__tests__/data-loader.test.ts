@@ -111,13 +111,14 @@ function makeFetch404(): Response {
 describe("investor-flow data-loader", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
-    process.env.NODE_ENV = "test";
+    vi.stubEnv("NODE_ENV", "test");
     delete process.env.MARKET_INFO_API_BASE_URL;
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it("API 未設定のとき null を返す", async () => {
