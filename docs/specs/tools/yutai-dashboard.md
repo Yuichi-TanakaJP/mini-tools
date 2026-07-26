@@ -75,6 +75,8 @@
 - ピック / パス / カードメモ: `_shared/yutai-selection.ts`（`yutai-candidates` と同一キーを共有）
 
 - 簡易効率の最低投資金額: 月次候補の minimum_investment_yen（みんかぶ由来の取得済みデータ）。必要株数・優待価値はユーザー入力であり、この段階では OCR や追加スクレイピングを行わない
+- 公式条件APIの割引率メタデータ（`discount_rate_pct` / `discount_terms`）は詳細パネルで表示するが、簡易優待効率の優待価値には自動算入しない。割引は利用条件・購入額に依存し、円換算にユーザー判断が必要なため
+- 公式条件APIの長期保有条件は tier の `required_holding_months` として表示する。長期保有特典の有無や必須条件の集計表示は後続検討とし、現時点ではtier別条件の表示に留める
 
 ### 保存先
 
@@ -152,6 +154,7 @@
 - UAT: [優待ダッシュボード UAT](../../uat/yutai-dashboard.md)
 - Plan: [優待統合ダッシュボード（PC）実装計画](../../plans/yutai-dashboard-plan.md)
 - Decision Log:
+  - [2026-07-26 優待公式条件の割引率・長期保有メタデータ表示](../../decision-log/2026-07-26-yutai-launch-display-benefit-metadata.md)
   - [2026-07-26 日興クロス手数料の概算表示](../../decision-log/2026-07-26-yutai-dashboard-cross-fee.md)
   - [2026-07-18 簡易優待効率MVP](../../decision-log/2026-07-18-yutai-dashboard-simple-efficiency.md)
   - [2026-07-20 優待効率へのPrivate実株価適用](../../decision-log/2026-07-20-yutai-dashboard-live-stock-price-efficiency.md)

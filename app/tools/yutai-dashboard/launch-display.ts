@@ -5,7 +5,16 @@ export type YutaiLaunchDisplayItem = {
   valuationPolicy: "face_value" | "official_equivalent" | "user_estimate_required";
   quantity: number | null;
   unit: string | null;
+  discountRatePct: number | null;
+  discountTerms: YutaiLaunchDisplayDiscountTerm[] | null;
   notes: string | null;
+};
+
+
+export type YutaiLaunchDisplayDiscountTerm = {
+  label: string | null;
+  ratePct: number;
+  appliesTo: string | null;
 };
 
 export type YutaiLaunchDisplayGroup = {
@@ -81,6 +90,15 @@ function optionalNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function parseDiscountTerm(value: unknown): YutaiLaunchDisplayDiscountTerm | null {
+  if (!isRecord(value) || typeof value.rate_pct !== "number" || !Number.isFinite(value.rate_pct)) return null;
+  return {
+    label: optionalString(value.label),
+    ratePct: value.rate_pct,
+    appliesTo: optionalString(value.applies_to),
+  };
+}
+
 function parseItem(value: unknown): YutaiLaunchDisplayItem | null {
   if (!isRecord(value) || typeof value.label !== "string" || typeof value.kind !== "string" || typeof value.valuation_policy !== "string") {
     return null;
@@ -94,6 +112,10 @@ function parseItem(value: unknown): YutaiLaunchDisplayItem | null {
     valuationPolicy: value.valuation_policy as YutaiLaunchDisplayItem["valuationPolicy"],
     quantity: optionalNumber(value.quantity),
     unit: optionalString(value.unit),
+    discountRatePct: optionalNumber(value.discount_rate_pct),
+    discountTerms: Array.isArray(value.discount_terms)
+      ? value.discount_terms.map(parseDiscountTerm).filter((term): term is YutaiLaunchDisplayDiscountTerm => term !== null)
+      : null,
     notes: optionalString(value.notes),
   };
 }
