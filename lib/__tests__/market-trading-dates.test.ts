@@ -15,9 +15,12 @@ describe("filterVisibleTradingDates", () => {
         "2025-04-08",
       ],
       {
+        as_of_date: "2025-04-04",
+        from: "2025-04-04",
+        to: "2025-04-08",
         days: [
-          { date: "2025-04-07", market_closed: true },
-          { date: "2025-04-08", market_closed: false },
+          { date: "2025-04-07", market_closed: true, label: "臨時休場" },
+          { date: "2025-04-08", market_closed: false, label: "" },
         ],
       },
     );
