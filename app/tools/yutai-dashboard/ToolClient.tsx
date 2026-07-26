@@ -195,15 +195,18 @@ function getRowEfficiency(
     benefitValueYen: cardMemo?.benefitValueYen ?? launchHint?.benefitValueYen,
   });
 }
-type RowCrossFee =
-  | { status: "ok"; fee: NikkoCrossFee; kenriLastDate: string; buyUnavailable: boolean }
-  | { status: "no_sell" };
+type RowCrossFee = {
+  fee: NikkoCrossFee;
+  kenriLastDate: string;
+  buyUnavailable: boolean;
+  sellUnavailable: boolean;
+};
 
 /**
  * 行のクロス手数料（日興・制度信用買い→現引き ＋ 一般優先の売り）を概算する。
- * 制度信用買いが不可でも金利は制度買方金利で概算した参考値を出す（buyUnavailable で注記）。
- * 売りが組めない場合は status:"no_sell"、それ以外（候補でない・株価未取得・日興データ無し）は
- * null（＝表示しない）。
+ * 候補行かつ株価・必要株数・日興データが揃えば常に計算結果を返す。
+ * 制度買い不可・売建不可でも金額は出し、注記はツールチップ側で行う。
+ * 表示できない（候補でない・株価未取得・日興データ無し）場合のみ null。
  */
 function getRowCrossFee(
   row: DashboardRow,
@@ -217,24 +220,22 @@ function getRowCrossFee(
   const kenri = kenriInfoByMonth[row.candidate.month];
   if (!kenri) return null;
 
-  const sellSide = resolveCrossSellSide({
+  const resolvedSellSide = resolveCrossSellSide({
     generalTarget: isNikkoGeneralTarget(nikkoRecord),
     institutionalShort: nikkoRecord.institutional_short,
   });
-  if (!sellSide) return { status: "no_sell" };
-
+  // 売建が取れない場合も一般前提で概算する（計算結果は常に出す）。
   const fee = calculateNikkoCrossFee({
     tradeAmountYen: requiredCapitalYen,
     holdingDays: kenri.daysFromToday,
-    sellSide,
+    sellSide: resolvedSellSide ?? "general",
   });
   if (!fee) return null;
-  // 買い: 制度信用買い→現引き が前提。制度買い不可でも金利は参考値として出す。
   return {
-    status: "ok",
     fee,
     kenriLastDate: kenri.kenriLastDate,
     buyUnavailable: !nikkoRecord.institutional_buy,
+    sellUnavailable: resolvedSellSide === null,
   };
 }
 
@@ -958,13 +959,10 @@ export default function ToolClient({
     );
   }
 
-  // 簡易効率セルの 2 段目: 日興クロス手数料の概算。
+  // 簡易効率セルの 2 段目: 日興クロス手数料の概算。金額だけを表示し、注記はツールチップに寄せる。
   function renderCrossFeeLine(crossFee: RowCrossFee | null) {
     if (!crossFee) return null;
-    if (crossFee.status === "no_sell") {
-      return <span style={styles.crossFeeMuted} title="一般・制度とも信用売りが不可のためクロスを組めません">売建不可</span>;
-    }
-    const { fee, kenriLastDate, buyUnavailable } = crossFee;
+    const { fee, kenriLastDate, buyUnavailable, sellUnavailable } = crossFee;
     const sellLabel = fee.sellSide === "general" ? "一般売" : "制度売";
     const title =
       `日興クロス手数料 概算 ${formatYen(fee.totalYen)}\n` +
@@ -973,12 +971,11 @@ export default function ToolClient({
       `約定 ${formatYen(fee.tradeAmountYen)} × ${fee.holdingDays}日（〜権利付最終日 ${kenriLastDate}）\n` +
       `信用手数料・現引現渡は0円` +
       (fee.hasReverseChargeRisk ? "。制度売りのため逆日歩は別途" : "") +
-      (buyUnavailable ? "\n※制度信用買いが不可のため買方金利は参考値" : "");
+      (buyUnavailable ? "\n※制度信用買いが不可のため買方金利は参考値" : "") +
+      (sellUnavailable ? "\n※一般・制度とも信用売り不可のため一般前提の参考値" : "");
     return (
       <span style={styles.crossFeeLine} title={title}>
-        手数料 ≈{formatYen(fee.totalYen)}
-        {buyUnavailable ? <span style={styles.crossFeeWarn} title="制度信用買いが不可のため買方金利は参考値">※買建不可</span> : null}
-        {fee.hasReverseChargeRisk ? <span style={styles.crossFeeWarn} title="逆日歩は別途発生し得る">＋逆日歩</span> : null}
+        ≈{formatYen(fee.totalYen)}
       </span>
     );
   }
@@ -2756,16 +2753,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#475569",
     whiteSpace: "nowrap",
     cursor: "help",
-  },
-  crossFeeMuted: {
-    fontSize: 11,
-    color: "#94a3b8",
-    whiteSpace: "nowrap",
-  },
-  crossFeeWarn: {
-    marginLeft: 3,
-    fontSize: 10,
-    color: "#b45309",
   },
   addedChip: {
     ...baseChip,
