@@ -2670,7 +2670,9 @@ const styles: Record<string, React.CSSProperties> = {
     position: "sticky",
     // サイトヘッダー（sticky, 高さ54px）の下に収める。上端が裏に潜らないように。
     top: 68,
-    maxHeight: "calc(100vh - 84px)",
+    // dvh を使う。モバイル Chrome の 100vh はアドレスバー分だけ実可視領域より大きく、
+    // vh だとパネル底が画面外にはみ出し、内部スクロールで最下部まで届かなくなるため。
+    maxHeight: "calc(100dvh - 84px)",
     overflowY: "auto",
   },
   detailHeader: {
