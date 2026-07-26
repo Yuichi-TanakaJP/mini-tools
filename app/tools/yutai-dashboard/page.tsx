@@ -9,6 +9,22 @@ import {
 } from "@/app/tools/yutai-candidates/data-loader";
 import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
 import { getYutaiDashboardPath } from "@/lib/premium-navigation";
+import { getUpcomingKenriInfoByMonth } from "@/app/tools/_shared/yutai-kenri-date";
+
+/** JST の今日の年・月・日を返す */
+function getJstToday(): { year: number; month: number; day: number } {
+  const parts = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  return {
+    year: Number(parts.find((p) => p.type === "year")?.value ?? "0"),
+    month: Number(parts.find((p) => p.type === "month")?.value ?? "0"),
+    day: Number(parts.find((p) => p.type === "day")?.value ?? "0"),
+  };
+}
 
 export const dynamic = "force-dynamic";
 
@@ -44,5 +60,7 @@ export default async function Page({ searchParams }: PageProps) {
   const data = params?.month === ALL_MONTHS_ID
     ? await loadMonthlyYutaiAllMonthsPageData()
     : await loadMonthlyYutaiPageData(params?.month);
-  return <ToolClient data={data} />;
+  // 権利月ごとの「今日→権利付最終日」の暦日数（クロス手数料の保有日数に使う）
+  const kenriInfoByMonth = getUpcomingKenriInfoByMonth(getJstToday());
+  return <ToolClient data={data} kenriInfoByMonth={kenriInfoByMonth} />;
 }
