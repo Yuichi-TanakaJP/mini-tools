@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import { addMemoItemFromCandidate, isImportedMonthlyYutaiCandidate } from "@/app/tools/yutai-memo/candidate-import";
 import { loadArchivedItems, loadItems, saveItems } from "@/app/tools/yutai-memo/storage";
@@ -71,6 +71,21 @@ const ALL_MONTHS_ID = "all";
 
 // 表のセルからその場で編集できる項目
 type InlineField = "crossType" | "preparationMonthsBefore" | "oneShareStartedAt";
+
+// SSR 安全なメディアクエリ。サーバー/Hydration 中は必ず false（=Desktop 扱い）。
+function useMediaQuery(query: string) {
+  const subscribe = (onStoreChange: () => void) => {
+    if (typeof window === "undefined") return () => {};
+    const mql = window.matchMedia(query);
+    mql.addEventListener("change", onStoreChange);
+    return () => mql.removeEventListener("change", onStoreChange);
+  };
+  const getSnapshot = () => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia(query).matches;
+  };
+  return useSyncExternalStore(subscribe, getSnapshot, () => false);
+}
 
 type DashboardRow = {
   key: string;
@@ -209,6 +224,8 @@ const creditChipStyleByKind: Record<NikkoCreditBadgeKind, string> = {
 export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const { navigate, isPendingFor } = useRouterTransition();
   const searchParams = useSearchParams();
+  // モバイルでは詳細を全画面オーバーレイにする（横並びパネルだとスクロールバーが2本になり上端が隠れるため）
+  const isMobile = useMediaQuery("(max-width: 699px)");
   const jstNow = useMemo(() => toJstYearMonth(new Date()), []);
   const calendarNowIso = useMemo(() => new Date().toISOString(), []);
   const [query, setQuery] = useState("");
@@ -522,6 +539,8 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     () => filteredRows.find((row) => row.key === selectedRowKey) ?? null,
     [filteredRows, selectedRowKey],
   );
+  // モバイルのみ全画面オーバーレイ。hydration 前は Desktop 扱い（SSR と一致させる）。
+  const showDetailOverlay = hydrated && isMobile;
   const selectedEfficiencyMemoKey = selectedRow?.candidate && !selectedRow.key.startsWith("memo:")
     ? getCardMemoKey(selectedRow.candidate)
     : null;
@@ -1443,27 +1462,40 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
             </div>
 
             {selectedRow ? (
-              <aside style={styles.detailPanel}>
+              <>
+              {showDetailOverlay ? (
+                <div
+                  style={styles.detailBackdrop}
+                  onClick={() => {
+                    setSelectedRowKey(null);
+                    closeMemoEdit();
+                  }}
+                  aria-hidden="true"
+                />
+              ) : null}
+              <aside style={showDetailOverlay ? styles.detailPanelMobile : styles.detailPanel}>
                 <div style={styles.detailHeader}>
-                  <div>
-                    <span style={styles.codeChip}>{selectedRow.code || "コードなし"}</span>
-                    <h2 style={styles.detailTitle}>{selectedRow.name}</h2>
-                    <div style={styles.detailMonths}>権利月: {formatMonths(selectedRow.months)}</div>
+                  <div style={styles.detailHeaderTop}>
+                    <div>
+                      <span style={styles.codeChip}>{selectedRow.code || "コードなし"}</span>
+                      <h2 style={styles.detailTitle}>{selectedRow.name}</h2>
+                      <div style={styles.detailMonths}>権利月: {formatMonths(selectedRow.months)}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedRowKey(null);
+                        closeMemoEdit();
+                      }}
+                      style={styles.detailClose}
+                      aria-label="詳細を閉じる"
+                    >
+                      ✕
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedRowKey(null);
-                      closeMemoEdit();
-                    }}
-                    style={styles.detailClose}
-                    aria-label="詳細を閉じる"
-                  >
-                    ✕
-                  </button>
+                  {/* アクション行も固定領域に含め、スクロールで潰れないようにする */}
+                  <div style={styles.detailActions}>{renderRowActions(selectedRow)}</div>
                 </div>
-
-                <div style={styles.detailActions}>{renderRowActions(selectedRow)}</div>
 
                 {selectedRow.candidate ? (
                   <section style={styles.detailSection}>
@@ -1816,6 +1848,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                   )}
                 </section>
               </aside>
+              </>
             ) : null}
           </div>
           )}
@@ -2666,16 +2699,49 @@ const styles: Record<string, React.CSSProperties> = {
     background: "#fdfdfe",
     padding: "16px 16px 20px",
     position: "sticky",
-    top: 16,
-    maxHeight: "calc(100vh - 32px)",
+    // サイトヘッダー（sticky, 高さ54px）の下に収める。上端が裏に潜らないように。
+    top: 68,
+    maxHeight: "calc(100vh - 84px)",
     overflowY: "auto",
   },
+  detailBackdrop: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 40,
+    background: "rgba(8,10,18,0.45)",
+  },
+  detailPanelMobile: {
+    // モバイルは全画面オーバーレイ。スクロールは1本、ヘッダーは detailHeader が上端固定。
+    position: "fixed",
+    inset: 0,
+    zIndex: 41,
+    maxWidth: "none",
+    border: "none",
+    borderRadius: 0,
+    background: "#fdfdfe",
+    padding: "16px 16px 24px",
+    overflowY: "auto",
+    WebkitOverflowScrolling: "touch",
+  },
   detailHeader: {
+    // タイトル行とアクション行をまとめて上端に固定する。
+    // padding 分をキャンセルして全幅で背景を敷き、下に流れる内容を覆う。
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    position: "sticky",
+    top: 0,
+    zIndex: 3,
+    margin: "-16px -16px 12px",
+    padding: "14px 16px 10px",
+    background: "#fdfdfe",
+    borderBottom: "1px solid rgba(15,23,42,0.06)",
+  },
+  detailHeaderTop: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
     gap: 8,
-    marginBottom: 10,
   },
   codeChip: {
     display: "inline-flex",
@@ -2713,7 +2779,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexShrink: 0,
   },
   detailActions: {
-    marginBottom: 12,
+    // detailHeader の gap で余白を取るため marginBottom は不要
   },
   detailSection: {
     paddingTop: 12,
