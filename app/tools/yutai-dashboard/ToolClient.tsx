@@ -1510,8 +1510,7 @@ export default function ToolClient({
                     <th style={{ ...styles.th, width: 200 }}>銘柄</th>
                     <th style={{ ...styles.th, width: 84 }}>権利月</th>
                     <th style={{ ...styles.th, width: 88 }}>簡易効率</th>
-                    <th style={{ ...styles.th, width: 56 }} title="長期保有が必須（短期では優待なし）">長期要</th>
-                    <th style={{ ...styles.th, width: 56 }} title="長期保有で優待・特典がある">長期特</th>
+                    <th style={{ ...styles.th, width: 72 }} title="長=長期保有が必須（短期では優待なし） / 特=長期保有で優待・特典がある">長期</th>
                     <th style={{ ...styles.th, width: 120 }}>日興</th>
                     <th style={{ ...styles.th, width: 76 }}>SBI</th>
                     <th style={{ ...styles.th, width: 88 }}>仕込み開始</th>
@@ -1525,11 +1524,11 @@ export default function ToolClient({
                 <tbody>
                   {!hydrated ? (
                     <tr>
-                      <td colSpan={14} style={styles.emptyCell}>読み込み中…</td>
+                      <td colSpan={13} style={styles.emptyCell}>読み込み中…</td>
                     </tr>
                   ) : filteredRows.length === 0 ? (
                     <tr>
-                      <td colSpan={14} style={styles.emptyCell}>
+                      <td colSpan={13} style={styles.emptyCell}>
                         {axis === "preparation"
                           ? "この月に仕込みを開始する登録銘柄はありません。"
                           : "条件に一致する銘柄がありません。"}
@@ -1603,14 +1602,18 @@ export default function ToolClient({
                             </div>
                           </td>
                           <td style={styles.td}>
-                            {longTerm.required
-                              ? <span style={styles.chipLongRequired} title="長期保有が必須（短期では優待なし）">要</span>
-                              : <span style={styles.cellMuted}>-</span>}
-                          </td>
-                          <td style={styles.td}>
-                            {longTerm.benefit
-                              ? <span style={styles.chipLongBenefit} title="長期保有で優待・特典がある">特</span>
-                              : <span style={styles.cellMuted}>-</span>}
+                            {longTerm.required || longTerm.benefit ? (
+                              <span style={styles.chipRow}>
+                                {longTerm.required
+                                  ? <span style={styles.chipLongRequired} title="長期保有が必須（短期では優待なし）">長</span>
+                                  : null}
+                                {longTerm.benefit
+                                  ? <span style={styles.chipLongBenefit} title="長期保有で優待・特典がある">特</span>
+                                  : null}
+                              </span>
+                            ) : (
+                              <span style={styles.cellMuted}>-</span>
+                            )}
                           </td>
                           <td style={styles.td}>{renderNikkoCell(row.code)}</td>
                           <td style={styles.td}>{renderSbiCell(row.code)}</td>
