@@ -2701,14 +2701,14 @@ const styles: Record<string, React.CSSProperties> = {
   detailPanelMobile: {
     // モバイルはビューポート固定。ヘッダー(68px)〜下部ナビの間にドックし、
     // 内部の 1 本スクロールだけで常に最下部まで届くようにする（sticky の段階せり上がりを解消）。
-    // 全画面 inset:0 のオーバーレイではなく、左右に余白を残した「その場のカード」。
+    // 全画面ではなく、従来と同じ 340px 幅を右寄せで維持（狭い端末では画面幅に収める）。
     position: "fixed",
     top: 68,
-    left: 8,
     right: 8,
     bottom: "calc(8px + var(--bottom-nav-space, 0px))",
+    width: 340,
+    maxWidth: "calc(100vw - 16px)",
     zIndex: 41,
-    maxWidth: "none",
     borderRadius: 14,
     border: "1px solid rgba(15,23,42,0.08)",
     background: "#fdfdfe",
