@@ -47,6 +47,12 @@ import {
   type CalendarCardMemo,
 } from "@/app/tools/_shared/yutai-selection";
 import { calculateSimpleYutaiEfficiency } from "@/app/tools/_shared/yutai-efficiency";
+import {
+  calculateNikkoCrossFee,
+  resolveCrossSellSide,
+  type NikkoCrossFee,
+} from "@/app/tools/_shared/yutai-cross-fee";
+import type { UpcomingKenriInfo } from "@/app/tools/_shared/yutai-kenri-date";
 import type { MonthlyYutaiCandidate, MonthlyYutaiPageData, NikkoCreditRecord } from "@/app/tools/yutai-candidates/types";
 
 type StatusFilter = "all" | "added" | "picked" | "passed" | "unselected";
@@ -188,6 +194,46 @@ function getRowEfficiency(
     benefitValueYen: cardMemo?.benefitValueYen ?? launchHint?.benefitValueYen,
   });
 }
+type RowCrossFee =
+  | { status: "ok"; fee: NikkoCrossFee; kenriLastDate: string }
+  | { status: "no_buy" }
+  | { status: "no_sell" };
+
+/**
+ * 行のクロス手数料（日興・制度信用買い→現引き ＋ 一般優先の売り）を概算する。
+ * 手数料を出せる場合のみ status:"ok"。買い/売りが組めない場合はその旨を返し、
+ * それ以外（候補でない・株価未取得・日興データ無し）は null（＝表示しない）。
+ */
+function getRowCrossFee(
+  row: DashboardRow,
+  requiredCapitalYen: number | undefined,
+  nikkoRecord: NikkoCreditRecord | undefined,
+  kenriInfoByMonth: Record<number, UpcomingKenriInfo>,
+): RowCrossFee | null {
+  if (!row.candidate || row.key.startsWith("memo:")) return null;
+  if (!requiredCapitalYen || !Number.isFinite(requiredCapitalYen)) return null;
+  if (!nikkoRecord) return null;
+  const kenri = kenriInfoByMonth[row.candidate.month];
+  if (!kenri) return null;
+
+  // 買い: 制度信用買い→現引き が前提。制度買い不可なら組めない。
+  if (!nikkoRecord.institutional_buy) return { status: "no_buy" };
+
+  const sellSide = resolveCrossSellSide({
+    generalShort: nikkoRecord.general_short,
+    institutionalShort: nikkoRecord.institutional_short,
+  });
+  if (!sellSide) return { status: "no_sell" };
+
+  const fee = calculateNikkoCrossFee({
+    tradeAmountYen: requiredCapitalYen,
+    holdingDays: kenri.daysFromToday,
+    sellSide,
+  });
+  if (!fee) return null;
+  return { status: "ok", fee, kenriLastDate: kenri.kenriLastDate };
+}
+
 // oneShareStartedAt（YYYY-MM 想定）から開始の年・月を取り出す。フリーテキストは null。
 function parseOneShareStart(value: string | undefined): { year: number; month: number } | null {
   const matched = value ? /^(\d{4})-(\d{2})$/.exec(value) : null;
@@ -221,7 +267,13 @@ const creditChipStyleByKind: Record<NikkoCreditBadgeKind, string> = {
   institutional: "chipInstitutional",
 };
 
-export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
+export default function ToolClient({
+  data,
+  kenriInfoByMonth,
+}: {
+  data: MonthlyYutaiPageData;
+  kenriInfoByMonth: Record<number, UpcomingKenriInfo>;
+}) {
   const { navigate, isPendingFor } = useRouterTransition();
   const searchParams = useSearchParams();
   // モバイル(<=720px, 下部ナビが出る幅)は詳細をビューポート固定にする。
@@ -902,6 +954,32 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     );
   }
 
+  // 簡易効率セルの 2 段目: 日興クロス手数料の概算。
+  function renderCrossFeeLine(crossFee: RowCrossFee | null) {
+    if (!crossFee) return null;
+    if (crossFee.status === "no_buy") {
+      return <span style={styles.crossFeeMuted} title="制度信用買いが不可のため現引きクロスを組めません">買建不可</span>;
+    }
+    if (crossFee.status === "no_sell") {
+      return <span style={styles.crossFeeMuted} title="一般・制度とも信用売りが不可のためクロスを組めません">売建不可</span>;
+    }
+    const { fee, kenriLastDate } = crossFee;
+    const sellLabel = fee.sellSide === "general" ? "一般売" : "制度売";
+    const title =
+      `日興クロス手数料 概算 ${formatYen(fee.totalYen)}\n` +
+      `＝ 買方金利 ${formatYen(fee.buyInterestYen)}（制度買→現引）` +
+      ` ＋ 貸株料 ${formatYen(fee.sellLendingYen)}（${sellLabel}）\n` +
+      `約定 ${formatYen(fee.tradeAmountYen)} × ${fee.holdingDays}日（〜権利付最終日 ${kenriLastDate}）\n` +
+      `信用手数料・現引現渡は0円` +
+      (fee.hasReverseChargeRisk ? "。制度売りのため逆日歩は別途" : "");
+    return (
+      <span style={styles.crossFeeLine} title={title}>
+        手数料 ≈{formatYen(fee.totalYen)}
+        {fee.hasReverseChargeRisk ? <span style={styles.crossFeeWarn} title="逆日歩は別途発生し得る">＋逆日歩</span> : null}
+      </span>
+    );
+  }
+
   function renderNikkoCell(code: string) {
     if (!data.nikkoCredit) return <span style={styles.cellMuted}>-</span>;
     const badges = getNikkoCreditBadges(data.nikkoCredit.by_code[code]);
@@ -1408,6 +1486,12 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                     filteredRows.map((row) => {
                       const acquired = acquiredByCode.get(row.code);
                       const efficiency = getRowEfficiency(row, cardMemos, stockPriceByCode, rowLaunchDisplayByKey);
+                      const crossFee = getRowCrossFee(
+                        row,
+                        efficiency?.requiredCapitalYen,
+                        data.nikkoCredit?.by_code[row.code],
+                        kenriInfoByMonth,
+                      );
                       const isSelected = row.key === selectedRowKey;
                       const rowStyle = isSelected
                         ? styles.trSelected
@@ -1433,16 +1517,19 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                           </td>
                           <td style={styles.td}>{formatMonths(row.months)}</td>
                           <td style={styles.td}>
-                            {efficiency ? (
-                              <span
-                                style={styles.chipEfficiency}
-                                title={"必要資金: " + formatYen(efficiency.requiredCapitalYen)}
-                              >
-                                {formatEfficiencyPercent(efficiency.efficiencyPercent)}
-                              </span>
-                            ) : (
-                              <span style={styles.cellMuted}>-</span>
-                            )}
+                            <div style={styles.efficiencyCell}>
+                              {efficiency ? (
+                                <span
+                                  style={styles.chipEfficiency}
+                                  title={"必要資金: " + formatYen(efficiency.requiredCapitalYen)}
+                                >
+                                  {formatEfficiencyPercent(efficiency.efficiencyPercent)}
+                                </span>
+                              ) : (
+                                <span style={styles.cellMuted}>-</span>
+                              )}
+                              {renderCrossFeeLine(crossFee)}
+                            </div>
                           </td>
                           <td style={styles.td}>{renderNikkoCell(row.code)}</td>
                           <td style={styles.td}>{renderSbiCell(row.code)}</td>
@@ -2653,6 +2740,29 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#c2410c",
     fontWeight: 800,
     border: "1px solid rgba(249,115,22,0.22)",
+  },
+  efficiencyCell: {
+    // 1 段目: 簡易効率チップ / 2 段目: クロス手数料
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: 3,
+  },
+  crossFeeLine: {
+    fontSize: 11,
+    color: "#475569",
+    whiteSpace: "nowrap",
+    cursor: "help",
+  },
+  crossFeeMuted: {
+    fontSize: 11,
+    color: "#94a3b8",
+    whiteSpace: "nowrap",
+  },
+  crossFeeWarn: {
+    marginLeft: 3,
+    fontSize: 10,
+    color: "#b45309",
   },
   addedChip: {
     ...baseChip,
