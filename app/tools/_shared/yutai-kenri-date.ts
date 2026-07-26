@@ -70,6 +70,26 @@ export function getKenriLastDateForMonthId(monthId: string): string | null {
   return formatIsoDate(year, month, getKenriLastDay(year, month));
 }
 
+/**
+ * 今日から businessDays 営業日後までの暦日数を返す（週末・年末年始などを跨げばその分増える）。
+ * 制度信用買い→現引きまでの買方金利日数（暦日）の算出に使う。
+ */
+export function getCalendarDaysForBusinessDays(
+  today: { year: number; month: number; day: number },
+  businessDays: number,
+): number {
+  const start = new Date(today.year, today.month - 1, today.day);
+  const cursor = new Date(start);
+  let remaining = businessDays;
+  while (remaining > 0) {
+    cursor.setDate(cursor.getDate() + 1);
+    if (isBusinessDay(cursor.getFullYear(), cursor.getMonth() + 1, cursor.getDate())) {
+      remaining -= 1;
+    }
+  }
+  return Math.round((cursor.getTime() - start.getTime()) / 86_400_000);
+}
+
 export type UpcomingKenriInfo = {
   /** 権利付最終日（YYYY-MM-DD） */
   kenriLastDate: string;

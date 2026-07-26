@@ -213,6 +213,7 @@ function getRowCrossFee(
   requiredCapitalYen: number | undefined,
   nikkoRecord: NikkoCreditRecord | undefined,
   kenriInfoByMonth: Record<number, UpcomingKenriInfo>,
+  buyInterestDays: number,
 ): RowCrossFee | null {
   if (!row.candidate || row.key.startsWith("memo:")) return null;
   if (!requiredCapitalYen || !Number.isFinite(requiredCapitalYen)) return null;
@@ -227,7 +228,8 @@ function getRowCrossFee(
   // 売建が取れない場合も一般前提で概算する（計算結果は常に出す）。
   const fee = calculateNikkoCrossFee({
     tradeAmountYen: requiredCapitalYen,
-    holdingDays: kenri.daysFromToday,
+    sellHoldingDays: kenri.daysFromToday,
+    buyInterestDays,
     sellSide: resolvedSellSide ?? "general",
   });
   if (!fee) return null;
@@ -275,9 +277,11 @@ const creditChipStyleByKind: Record<NikkoCreditBadgeKind, string> = {
 export default function ToolClient({
   data,
   kenriInfoByMonth,
+  buyInterestDays,
 }: {
   data: MonthlyYutaiPageData;
   kenriInfoByMonth: Record<number, UpcomingKenriInfo>;
+  buyInterestDays: number;
 }) {
   const { navigate, isPendingFor } = useRouterTransition();
   const searchParams = useSearchParams();
@@ -966,9 +970,9 @@ export default function ToolClient({
     const sellLabel = fee.sellSide === "general" ? "一般売" : "制度売";
     const title =
       `日興クロス手数料 概算 ${formatYen(fee.totalYen)}\n` +
-      `＝ 買方金利 ${formatYen(fee.buyInterestYen)}（制度買→現引）` +
-      ` ＋ 貸株料 ${formatYen(fee.sellLendingYen)}（${sellLabel}）\n` +
-      `約定 ${formatYen(fee.tradeAmountYen)} × ${fee.holdingDays}日（〜権利付最終日 ${kenriLastDate}）\n` +
+      `＝ 買方金利 ${formatYen(fee.buyInterestYen)}（制度買→現引・${fee.buyInterestDays}日）` +
+      ` ＋ 貸株料 ${formatYen(fee.sellLendingYen)}（${sellLabel}・${fee.sellHoldingDays}日）\n` +
+      `約定 ${formatYen(fee.tradeAmountYen)}／貸株料は〜権利付最終日 ${kenriLastDate}\n` +
       `信用手数料・現引現渡は0円` +
       (fee.hasReverseChargeRisk ? "。制度売りのため逆日歩は別途" : "") +
       (buyUnavailable ? "\n※制度信用買いが不可のため買方金利は参考値" : "") +
@@ -1491,6 +1495,7 @@ export default function ToolClient({
                         efficiency?.requiredCapitalYen,
                         data.nikkoCredit?.by_code[row.code],
                         kenriInfoByMonth,
+                        buyInterestDays,
                       );
                       // 優待価値 − 手数料 の損益。プラスなら効率%を青、0以下は赤にする。
                       const netAfterFeeYen = efficiency && crossFee

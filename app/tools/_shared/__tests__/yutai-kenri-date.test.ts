@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getCalendarDaysForBusinessDays,
   getKenriLastDateForMonthId,
   getKenriLastDay,
   getUpcomingKenriInfoByMonth,
@@ -25,6 +26,22 @@ describe("getKenriLastDateForMonthId", () => {
   it("不正な入力は null", () => {
     expect(getKenriLastDateForMonthId("2026-13")).toBeNull();
     expect(getKenriLastDateForMonthId("bad")).toBeNull();
+  });
+});
+
+describe("getCalendarDaysForBusinessDays", () => {
+  it("週末を跨がない平日始点なら営業日数＝暦日数", () => {
+    // 2026-07-27(月) から 2営業日後 = 2026-07-29(水) → 2 暦日
+    expect(getCalendarDaysForBusinessDays({ year: 2026, month: 7, day: 27 }, 2)).toBe(2);
+  });
+
+  it("週末を跨ぐ場合は暦日数が増える", () => {
+    // 2026-07-30(木) から 2営業日後 = 2026-08-03(月) → 4 暦日（土日を跨ぐ）
+    expect(getCalendarDaysForBusinessDays({ year: 2026, month: 7, day: 30 }, 2)).toBe(4);
+  });
+
+  it("0営業日なら0", () => {
+    expect(getCalendarDaysForBusinessDays({ year: 2026, month: 7, day: 27 }, 0)).toBe(0);
   });
 });
 
