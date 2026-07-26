@@ -1,5 +1,59 @@
 import { describe, expect, it } from "vitest";
-import { buildLaunchDisplayByKey, getLaunchDisplayHint, parseYutaiLaunchDisplaySnapshot } from "../launch-display";
+import {
+  buildLaunchDisplayByKey,
+  getLaunchDisplayHint,
+  getLongTermFlags,
+  parseYutaiLaunchDisplaySnapshot,
+  type YutaiLaunchDisplayRecord,
+} from "../launch-display";
+
+function recordWithHoldingMonths(monthsPerTier: number[]): YutaiLaunchDisplayRecord {
+  return {
+    month: "2026-09",
+    code: "0000",
+    companyName: "テスト",
+    displayStatus: "conditions_available",
+    calculationStatus: "auto_calculable",
+    requiresUserValuation: false,
+    normalizedStatus: null,
+    normalizedAsOfDate: null,
+    notes: null,
+    programs: [
+      {
+        programId: "p",
+        label: "優待",
+        rightsMonths: [9],
+        notes: null,
+        tiers: monthsPerTier.map((m, i) => ({
+          minimumShares: 100 * (i + 1),
+          maximumShares: null,
+          requiredHoldingMonths: m,
+          groups: [],
+        })),
+      },
+    ],
+  };
+}
+
+describe("getLongTermFlags", () => {
+  it("短期tierのみ: required=false, benefit=false", () => {
+    expect(getLongTermFlags(recordWithHoldingMonths([0, 0]))).toEqual({ required: false, benefit: false });
+  });
+
+  it("短期と長期が混在: required=false, benefit=true（長期優遇）", () => {
+    expect(getLongTermFlags(recordWithHoldingMonths([0, 12]))).toEqual({ required: false, benefit: true });
+  });
+
+  it("全tierが長期保有必須: required=true, benefit=true", () => {
+    expect(getLongTermFlags(recordWithHoldingMonths([12, 24]))).toEqual({ required: true, benefit: true });
+  });
+
+  it("条件なし/未取得は両方false", () => {
+    expect(getLongTermFlags(recordWithHoldingMonths([]))).toEqual({ required: false, benefit: false });
+    expect(getLongTermFlags(null)).toEqual({ required: false, benefit: false });
+    expect(getLongTermFlags(undefined)).toEqual({ required: false, benefit: false });
+  });
+});
 
 describe("parseYutaiLaunchDisplaySnapshot", () => {
   it("公式条件payloadをdashboard用に変換する", () => {
