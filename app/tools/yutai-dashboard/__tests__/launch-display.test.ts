@@ -15,6 +15,10 @@ function recordWithHoldingMonths(monthsPerTier: number[]): YutaiLaunchDisplayRec
     displayStatus: "conditions_available",
     calculationStatus: "auto_calculable",
     requiresUserValuation: false,
+    hasLongTermBenefit: monthsPerTier.some((month) => month > 0),
+    requiresLongTermHolding: monthsPerTier.length > 0 && monthsPerTier.every((month) => month > 0),
+    longTermRequiredHoldingMonths: [...new Set(monthsPerTier.filter((month) => month > 0))].sort((a, b) => a - b),
+    longTermBenefitTiers: [],
     normalizedStatus: null,
     normalizedAsOfDate: null,
     notes: null,
@@ -113,6 +117,89 @@ describe("parseYutaiLaunchDisplaySnapshot", () => {
     });
   });
 
+
+  it("長期メタデータをtop-level fieldとして受け取る", () => {
+    const snapshot = parseYutaiLaunchDisplaySnapshot({
+      schema_version: 1,
+      month: "2026-09",
+      record_count: 1,
+      counts: { conditions_available: 1, auto_calculable: 1, requires_user_valuation: 0, has_long_term_benefit: 1, requires_long_term_holding: 1 },
+      generated_at: "2026-07-22T14:57:25.239015Z",
+      records: [
+        {
+          month: "2026-09",
+          code: "1952",
+          company_name: "新日本空調",
+          display_status: "conditions_available",
+          calculation_status: "auto_calculable",
+          requires_user_valuation: false,
+          has_long_term_benefit: true,
+          requires_long_term_holding: true,
+          long_term_required_holding_months: [24],
+          long_term_benefit_tiers: [
+            {
+              program_id: "september-long-holding-quo-card",
+              program_label: "長期保有優待QUOカード",
+              minimum_shares: 300,
+              required_holding_months: 24,
+              groups: [
+                {
+                  mode: "all",
+                  allow_repeated_choices: false,
+                  items: [
+                    {
+                      label: "QUOカード",
+                      kind: "money_voucher",
+                      official_value_yen: 2000,
+                      valuation_policy: "face_value",
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+          programs: [
+            {
+              program_id: "september-long-holding-quo-card",
+              label: "長期保有優待QUOカード",
+              rights_months: [9],
+              tiers: [
+                {
+                  minimum_shares: 300,
+                  required_holding_months: 24,
+                  groups: [
+                    {
+                      mode: "all",
+                      allow_repeated_choices: false,
+                      items: [
+                        {
+                          label: "QUOカード",
+                          kind: "money_voucher",
+                          official_value_yen: 2000,
+                          valuation_policy: "face_value",
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    const record = buildLaunchDisplayByKey(snapshot).get("1952:9");
+    expect(getLongTermFlags(record)).toEqual({ required: true, benefit: true });
+    expect(record?.longTermRequiredHoldingMonths).toEqual([24]);
+    expect(record?.longTermBenefitTiers[0]).toMatchObject({
+      programId: "september-long-holding-quo-card",
+      programLabel: "長期保有優待QUOカード",
+      minimumShares: 300,
+      requiredHoldingMonths: 24,
+    });
+    expect(record?.longTermBenefitTiers[0].groups[0].items[0].officialValueYen).toBe(2000);
+  });
 
   it("割引率メタデータを任意フィールドとして受け取る", () => {
     const snapshot = parseYutaiLaunchDisplaySnapshot({
