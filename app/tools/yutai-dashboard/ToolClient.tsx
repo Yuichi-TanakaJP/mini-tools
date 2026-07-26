@@ -1510,7 +1510,7 @@ export default function ToolClient({
                     <th style={{ ...styles.th, width: 200 }}>銘柄</th>
                     <th style={{ ...styles.th, width: 84 }}>権利月</th>
                     <th style={{ ...styles.th, width: 88 }}>簡易効率</th>
-                    <th style={{ ...styles.th, width: 72 }} title="長=長期保有が必須（短期では優待なし） / 特=長期保有で優待・特典がある">長期</th>
+                    <th style={{ ...styles.th, width: 88 }} title="長=長期保有が必須（短期では優待なし） / 特=長期保有で優待・特典がある">長期</th>
                     <th style={{ ...styles.th, width: 120 }}>日興</th>
                     <th style={{ ...styles.th, width: 76 }}>SBI</th>
                     <th style={{ ...styles.th, width: 88 }}>仕込み開始</th>
@@ -1603,7 +1603,7 @@ export default function ToolClient({
                           </td>
                           <td style={styles.td}>
                             {longTerm.required || longTerm.benefit ? (
-                              <span style={styles.chipRow}>
+                              <span style={styles.longTermChips}>
                                 {longTerm.required
                                   ? <span style={styles.chipLongRequired} title="長期保有が必須（短期では優待なし）">長</span>
                                   : null}
@@ -2847,6 +2847,12 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: "column",
     alignItems: "flex-start",
     gap: 3,
+  },
+  longTermChips: {
+    // 「長」「特」を折り返さず横並びにする
+    display: "inline-flex",
+    gap: 4,
+    flexWrap: "nowrap",
   },
   chipLongRequired: {
     ...baseChip,
