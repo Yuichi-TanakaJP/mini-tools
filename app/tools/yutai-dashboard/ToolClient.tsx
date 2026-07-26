@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { addMemoItemFromCandidate, isImportedMonthlyYutaiCandidate } from "@/app/tools/yutai-memo/candidate-import";
 import { loadArchivedItems, loadItems, saveItems } from "@/app/tools/yutai-memo/storage";
@@ -71,21 +71,6 @@ const ALL_MONTHS_ID = "all";
 
 // 表のセルからその場で編集できる項目
 type InlineField = "crossType" | "preparationMonthsBefore" | "oneShareStartedAt";
-
-// SSR 安全なメディアクエリ。サーバー/Hydration 中は必ず false（=Desktop 扱い）。
-function useMediaQuery(query: string) {
-  const subscribe = (onStoreChange: () => void) => {
-    if (typeof window === "undefined") return () => {};
-    const mql = window.matchMedia(query);
-    mql.addEventListener("change", onStoreChange);
-    return () => mql.removeEventListener("change", onStoreChange);
-  };
-  const getSnapshot = () => {
-    if (typeof window === "undefined") return false;
-    return window.matchMedia(query).matches;
-  };
-  return useSyncExternalStore(subscribe, getSnapshot, () => false);
-}
 
 type DashboardRow = {
   key: string;
@@ -224,8 +209,6 @@ const creditChipStyleByKind: Record<NikkoCreditBadgeKind, string> = {
 export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const { navigate, isPendingFor } = useRouterTransition();
   const searchParams = useSearchParams();
-  // モバイルでは詳細を全画面オーバーレイにする（横並びパネルだとスクロールバーが2本になり上端が隠れるため）
-  const isMobile = useMediaQuery("(max-width: 699px)");
   const jstNow = useMemo(() => toJstYearMonth(new Date()), []);
   const calendarNowIso = useMemo(() => new Date().toISOString(), []);
   const [query, setQuery] = useState("");
@@ -539,8 +522,6 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     () => filteredRows.find((row) => row.key === selectedRowKey) ?? null,
     [filteredRows, selectedRowKey],
   );
-  // モバイルのみ全画面オーバーレイ。hydration 前は Desktop 扱い（SSR と一致させる）。
-  const showDetailOverlay = hydrated && isMobile;
   const selectedEfficiencyMemoKey = selectedRow?.candidate && !selectedRow.key.startsWith("memo:")
     ? getCardMemoKey(selectedRow.candidate)
     : null;
@@ -1462,18 +1443,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
             </div>
 
             {selectedRow ? (
-              <>
-              {showDetailOverlay ? (
-                <div
-                  style={styles.detailBackdrop}
-                  onClick={() => {
-                    setSelectedRowKey(null);
-                    closeMemoEdit();
-                  }}
-                  aria-hidden="true"
-                />
-              ) : null}
-              <aside style={showDetailOverlay ? styles.detailPanelMobile : styles.detailPanel}>
+              <aside style={styles.detailPanel}>
                 <div style={styles.detailHeader}>
                   <div style={styles.detailHeaderTop}>
                     <div>
@@ -1848,7 +1818,6 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                   )}
                 </section>
               </aside>
-              </>
             ) : null}
           </div>
           )}
@@ -2703,25 +2672,6 @@ const styles: Record<string, React.CSSProperties> = {
     top: 68,
     maxHeight: "calc(100vh - 84px)",
     overflowY: "auto",
-  },
-  detailBackdrop: {
-    position: "fixed",
-    inset: 0,
-    zIndex: 40,
-    background: "rgba(8,10,18,0.45)",
-  },
-  detailPanelMobile: {
-    // モバイルは全画面オーバーレイ。スクロールは1本、ヘッダーは detailHeader が上端固定。
-    position: "fixed",
-    inset: 0,
-    zIndex: 41,
-    maxWidth: "none",
-    border: "none",
-    borderRadius: 0,
-    background: "#fdfdfe",
-    padding: "16px 16px 24px",
-    overflowY: "auto",
-    WebkitOverflowScrolling: "touch",
   },
   detailHeader: {
     // タイトル行とアクション行をまとめて上端に固定する。
