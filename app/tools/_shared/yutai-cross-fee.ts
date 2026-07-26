@@ -4,7 +4,8 @@
  * 前提:
  * - 買い: 制度信用買い → 現引き（信用委託手数料・現引き手数料ともに 0 円）
  *   コストは制度信用の買方金利のみ。
- * - 売り: 一般信用売りが可能ならそれを使い（逆日歩なし）、無ければ制度信用売り。
+ * - 売り: 一般信用売建の「対象銘柄」なら一般で計算する（在庫0・取引停止など今すぐ売れない
+ *   状態でも一般前提）。一般の対象外の銘柄に限り、奥の手として制度信用売りで計算する。
  *   コストは各区分の貸株料。制度信用売り時は逆日歩が別途発生し得る（予測不可のため非計上）。
  * - 保有日数: 今日 → 権利付最終日（月末の 2 営業日前）の暦日数。
  *
@@ -40,14 +41,15 @@ export type NikkoCrossFee = {
 };
 
 /**
- * 日興の制度信用可否から、使う売り建て区分を決める。
- * 一般信用売りを優先し、無ければ制度信用売り。どちらも不可なら null。
+ * 使う売り建て区分を決める。
+ * 一般信用売建の「対象銘柄」なら在庫状況によらず一般（generalTarget=true → "general"）。
+ * 一般の対象外に限り、奥の手として制度信用売り。どちらも不可なら null。
  */
 export function resolveCrossSellSide(availability: {
-  generalShort: boolean;
+  generalTarget: boolean;
   institutionalShort: boolean;
 }): CrossSellSide | null {
-  if (availability.generalShort) return "general";
+  if (availability.generalTarget) return "general";
   if (availability.institutionalShort) return "institutional";
   return null;
 }

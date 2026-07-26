@@ -6,17 +6,17 @@ import {
 } from "../yutai-cross-fee";
 
 describe("resolveCrossSellSide", () => {
-  it("一般信用売りが可能なら一般を優先する", () => {
-    expect(resolveCrossSellSide({ generalShort: true, institutionalShort: true })).toBe("general");
-    expect(resolveCrossSellSide({ generalShort: true, institutionalShort: false })).toBe("general");
+  it("一般対象銘柄なら在庫状況によらず一般を優先する（制度は奥の手）", () => {
+    expect(resolveCrossSellSide({ generalTarget: true, institutionalShort: true })).toBe("general");
+    expect(resolveCrossSellSide({ generalTarget: true, institutionalShort: false })).toBe("general");
   });
 
-  it("一般が不可で制度が可なら制度を使う", () => {
-    expect(resolveCrossSellSide({ generalShort: false, institutionalShort: true })).toBe("institutional");
+  it("一般対象外で制度が可なら奥の手として制度を使う", () => {
+    expect(resolveCrossSellSide({ generalTarget: false, institutionalShort: true })).toBe("institutional");
   });
 
   it("どちらも不可なら null", () => {
-    expect(resolveCrossSellSide({ generalShort: false, institutionalShort: false })).toBeNull();
+    expect(resolveCrossSellSide({ generalTarget: false, institutionalShort: false })).toBeNull();
   });
 });
 

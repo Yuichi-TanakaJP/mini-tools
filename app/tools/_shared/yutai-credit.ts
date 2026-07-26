@@ -26,6 +26,15 @@ export function isNikkoGeneralOutOfStock(credit: NikkoCreditRecord | undefined) 
   return Boolean(credit && credit.available_shares === 0 && !hasNikkoSellStop(credit));
 }
 
+// 一般信用売建の「対象銘柄」か。在庫0（available_shares===0）や取引停止など
+// 今すぐ売れない状態も対象に含める（general_short は在庫連動で false に倒れるため単独では見ない）。
+// available_shares===null（在庫枠を管理していない）かつ general_short=false のみ非対象。
+// クロス手数料の概算では、一般対象なら在庫状況によらず一般前提で計算する（制度は奥の手）。
+export function isNikkoGeneralTarget(credit: NikkoCreditRecord | undefined) {
+  if (!credit) return false;
+  return credit.general_short || credit.available_shares !== null || hasNikkoSellStop(credit);
+}
+
 export function shouldWatchNikkoGeneral(credit: NikkoCreditRecord | undefined) {
   if (!credit) return false;
   return hasNikkoSellStop(credit) || canNikkoGeneralCrossNow(credit) || (
