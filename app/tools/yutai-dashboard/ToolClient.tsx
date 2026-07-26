@@ -32,6 +32,7 @@ import {
   canNikkoGeneralCrossNow,
   getNikkoCreditBadges,
   isHandledBySbiShort,
+  isNikkoGeneralTarget,
   shouldWatchNikkoGeneral,
   type NikkoCreditBadgeKind,
 } from "@/app/tools/_shared/yutai-credit";
@@ -220,7 +221,7 @@ function getRowCrossFee(
   if (!nikkoRecord.institutional_buy) return { status: "no_buy" };
 
   const sellSide = resolveCrossSellSide({
-    generalShort: nikkoRecord.general_short,
+    generalTarget: isNikkoGeneralTarget(nikkoRecord),
     institutionalShort: nikkoRecord.institutional_short,
   });
   if (!sellSide) return { status: "no_sell" };

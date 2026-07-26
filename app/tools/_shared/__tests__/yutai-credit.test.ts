@@ -7,6 +7,7 @@ import {
   hasNikkoSellStop,
   isHandledBySbiShort,
   isNikkoGeneralOutOfStock,
+  isNikkoGeneralTarget,
   shouldWatchNikkoGeneral,
 } from "../yutai-credit";
 
@@ -74,6 +75,21 @@ describe("日興 一般信用の判定", () => {
         regulation_details: ["internal|新規売建規制 取引停止|2011/12/05"],
       })),
     ).toBe(false);
+  });
+
+  it("isNikkoGeneralTarget は在庫0・停止中でも一般対象とし、非対象(null)のみ false", () => {
+    // 在庫あり・在庫0・停止中はいずれも一般対象
+    expect(isNikkoGeneralTarget(nikkoRecord({ general_short: true, available_shares: 100 }))).toBe(true);
+    expect(isNikkoGeneralTarget(nikkoRecord({ general_short: false, available_shares: 0 }))).toBe(true);
+    expect(
+      isNikkoGeneralTarget(nikkoRecord({
+        available_shares: null,
+        regulation_details: ["internal|新規売建規制 取引停止|2011/12/05"],
+      })),
+    ).toBe(true);
+    // 在庫枠を管理しておらず売建もできない（＝非対象）
+    expect(isNikkoGeneralTarget(nikkoRecord({ general_short: false, available_shares: null }))).toBe(false);
+    expect(isNikkoGeneralTarget(undefined)).toBe(false);
   });
 
   it("shouldWatchNikkoGeneral は停止中・クロス可・在庫あり非売建を監視対象にする", () => {

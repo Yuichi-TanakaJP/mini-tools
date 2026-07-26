@@ -28,6 +28,7 @@
   - 各行（テーブル）の権利月は、その候補自身の権利月を表示する。同一銘柄が複数の権利月を持つ場合は権利月ごとに別行になる
 - 対象月「全月」（`?month=all`）は manifest の全月データを結合して表示する。同じ権利月が複数年分ある場合は最新年のデータだけを使う（12ヶ月カレンダー想定）。SBI は当月在庫（latest）を使い、権利付き最終日は表示しない。仕込み月軸では「仕込み時期を設定した銘柄すべて」が対象になる
 - 一覧テーブル: コード / 銘柄 / 権利月 / 簡易効率 / 日興 / SBI / 仕込み開始 / 1株開始 / クロス戦略 / 実績 / 操作
+  - 「簡易効率」列は 2段構成。1段目が簡易優待効率（%）、2段目が日興クロス取引の概算手数料（[2026-07-26 決定](../../decision-log/2026-07-26-yutai-dashboard-cross-fee.md)）
 - 行クリックで開く詳細サイドパネル: 優待内容、簡易優待効率の入力・計算、リンク、日興規制明細、優待メモ全項目、クロス購入実績履歴
 - 行内操作: ピック（★）/ パス（✕）/ 優待メモへ追加（＋メモ）
 
@@ -94,6 +95,17 @@
 - 計算は _shared/yutai-efficiency.ts の純関数で行い、不足値・0以下・必要株数または優待価値が整数でない場合は計算不能とする
 - 仕込み月軸のメモ行は複数権利月を持ち得るため入力対象外とし、権利月軸の月別候補行から入力する
 
+### 日興クロス手数料（概算）
+
+簡易効率セルの 2段目に、その日買った場合の日興（SMBC日興証券）クロス取引の概算手数料を表示する。判断理由は [2026-07-26 決定](../../decision-log/2026-07-26-yutai-dashboard-cross-fee.md)。
+
+- 手数料 = 買方金利（買い）＋ 貸株料（売り）。各 = 約定金額 × 年率 × 保有日数 ÷ 365。約定金額は簡易効率の必要資金（株価 × 必要株数）を使う
+- 買い: 制度信用買い → 現引き（信用委託手数料・現引き手数料は 0 円、コストは買方金利のみ）
+- 売り: 一般信用売建の対象銘柄なら在庫状況によらず一般で計算する（在庫0・取引停止でも一般前提）。一般の対象外の銘柄に限り奥の手として制度信用売り。制度信用売り時のみ「＋逆日歩（別途）」を注記し、逆日歩自体は金額に含めない
+- 保有日数 = 今日（JST）→ 権利付最終日（権利月の月末最終営業日の 2 営業日前）の暦日数。権利確定日は月末締め前提の近似で、非月末締め銘柄はズレる（対象外）
+- 率は `_shared/yutai-cross-fee.ts` の `NIKKO_CROSS_FEE_RATES` に集約（2026-07 時点: 制度買方金利 2.54% / 制度貸株料 1.15% / 一般貸株料 1.90%）。改定時はここだけ更新する
+- 表示: `手数料 ≈¥XXX`。内訳・保有日数・権利付最終日・逆日歩注記は title ツールチップ。制度買い不可は `買建不可`、一般対象外かつ制度売り不可は `売建不可`。候補行かつ株価・必要株数・日興データが揃うときだけ表示する
+
 ### fallback
 
 - market データの fallback は [Market Tools データ取得経路一覧](../cross-cutting/market-tools-data-fetch-paths.md) に従う（production では repo 同梱 JSON を自動表示しない）
@@ -126,6 +138,8 @@
 - [app/tools/_shared/yutai-credit.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/_shared/yutai-credit.ts)
 - [app/tools/_shared/yutai-selection.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/_shared/yutai-selection.ts)
 - [app/tools/_shared/yutai-efficiency.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/_shared/yutai-efficiency.ts)
+- [app/tools/_shared/yutai-cross-fee.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/_shared/yutai-cross-fee.ts)
+- [app/tools/_shared/yutai-kenri-date.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/_shared/yutai-kenri-date.ts)
 - [app/tools/_shared/yutai-memo-edit.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/_shared/yutai-memo-edit.ts)
 - [app/tools/yutai-candidates/data-loader.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/yutai-candidates/data-loader.ts)
 
@@ -134,6 +148,7 @@
 - UAT: [優待ダッシュボード UAT](../../uat/yutai-dashboard.md)
 - Plan: [優待統合ダッシュボード（PC）実装計画](../../plans/yutai-dashboard-plan.md)
 - Decision Log:
+  - [2026-07-26 日興クロス手数料の概算表示](../../decision-log/2026-07-26-yutai-dashboard-cross-fee.md)
   - [2026-07-18 簡易優待効率MVP](../../decision-log/2026-07-18-yutai-dashboard-simple-efficiency.md)
   - [2026-07-20 優待効率へのPrivate実株価適用](../../decision-log/2026-07-20-yutai-dashboard-live-stock-price-efficiency.md)
   - [2026-07-20 優待株価JSONの24時間private HTTPキャッシュ](../../decision-log/2026-07-20-yutai-stock-price-private-http-cache.md)
