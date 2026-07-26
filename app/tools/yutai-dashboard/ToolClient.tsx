@@ -198,6 +198,7 @@ function getRowEfficiency(
 type RowCrossFee = {
   fee: NikkoCrossFee;
   kenriLastDate: string;
+  returnDate: string;
   buyUnavailable: boolean;
   sellUnavailable: boolean;
 };
@@ -228,7 +229,7 @@ function getRowCrossFee(
   // 売建が取れない場合も一般前提で概算する（計算結果は常に出す）。
   const fee = calculateNikkoCrossFee({
     tradeAmountYen: requiredCapitalYen,
-    sellHoldingDays: kenri.daysFromToday,
+    sellHoldingDays: kenri.sellHoldingDays,
     buyInterestDays,
     sellSide: resolvedSellSide ?? "general",
   });
@@ -236,6 +237,7 @@ function getRowCrossFee(
   return {
     fee,
     kenriLastDate: kenri.kenriLastDate,
+    returnDate: kenri.returnDate,
     buyUnavailable: !nikkoRecord.institutional_buy,
     sellUnavailable: resolvedSellSide === null,
   };
@@ -966,13 +968,13 @@ export default function ToolClient({
   // 簡易効率セルの 2 段目: 日興クロス手数料の概算。金額だけを表示し、注記はツールチップに寄せる。
   function renderCrossFeeLine(crossFee: RowCrossFee | null) {
     if (!crossFee) return null;
-    const { fee, kenriLastDate, buyUnavailable, sellUnavailable } = crossFee;
+    const { fee, kenriLastDate, returnDate, buyUnavailable, sellUnavailable } = crossFee;
     const sellLabel = fee.sellSide === "general" ? "一般売" : "制度売";
     const title =
       `日興クロス手数料 概算 ${formatYen(fee.totalYen)}\n` +
       `＝ 買方金利 ${formatYen(fee.buyInterestYen)}（制度買→現引・${fee.buyInterestDays}日）` +
       ` ＋ 貸株料 ${formatYen(fee.sellLendingYen)}（${sellLabel}・${fee.sellHoldingDays}日）\n` +
-      `約定 ${formatYen(fee.tradeAmountYen)}／貸株料は〜権利付最終日 ${kenriLastDate}\n` +
+      `約定 ${formatYen(fee.tradeAmountYen)}／貸株料は〜返却日 ${returnDate}（権利付最終日 ${kenriLastDate}）\n` +
       `信用手数料・現引現渡は0円` +
       (fee.hasReverseChargeRisk ? "。制度売りのため逆日歩は別途" : "") +
       (buyUnavailable ? "\n※制度信用買いが不可のため買方金利は参考値" : "") +

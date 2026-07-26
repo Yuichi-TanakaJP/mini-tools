@@ -46,24 +46,31 @@ describe("getCalendarDaysForBusinessDays", () => {
 });
 
 describe("getUpcomingKenriInfoByMonth", () => {
+  const RETURN_BIZ_DAYS = 3; // 権利落ち(+1) + 現渡し受渡 T+2(+2)
+
   it("権利付最終日を過ぎた月は翌年扱いにする", () => {
     // 2026-03-28 時点: 3月の権利付最終日(27)は過ぎているので翌年へ。
-    const info = getUpcomingKenriInfoByMonth({ year: 2026, month: 3, day: 28 });
+    const info = getUpcomingKenriInfoByMonth({ year: 2026, month: 3, day: 28 }, RETURN_BIZ_DAYS);
     expect(info[3].kenriLastDate).toBe("2027-03-29");
-    expect(info[3].daysFromToday).toBeGreaterThan(300);
+    expect(info[3].returnDate > info[3].kenriLastDate).toBe(true);
+    expect(info[3].sellHoldingDays).toBeGreaterThan(300);
   });
 
-  it("同年の未来の権利付最終日までの暦日数を返す", () => {
-    const info = getUpcomingKenriInfoByMonth({ year: 2026, month: 3, day: 1 });
+  it("権利付最終日が金曜のとき、返却日は土日を跨いで後ろにずれる", () => {
+    // 2026-03: 権利付最終日 2026-03-27(金)。+3営業日(土日を飛ばす) = 2026-04-01(水)。
+    const info = getUpcomingKenriInfoByMonth({ year: 2026, month: 3, day: 1 }, RETURN_BIZ_DAYS);
     expect(info[3].kenriLastDate).toBe("2026-03-27");
-    expect(info[3].daysFromToday).toBe(26);
+    expect(info[3].returnDate).toBe("2026-04-01");
+    // 今日(3/1)→返却日(4/1) = 31 暦日（権利付最終日 3/27 までなら26日）
+    expect(info[3].sellHoldingDays).toBe(31);
   });
 
-  it("全 12 か月分を返し、日数は最低 1", () => {
-    const info = getUpcomingKenriInfoByMonth({ year: 2026, month: 7, day: 26 });
+  it("全 12 か月分を返し、日数は最低 1・返却日は権利付最終日より後", () => {
+    const info = getUpcomingKenriInfoByMonth({ year: 2026, month: 7, day: 26 }, RETURN_BIZ_DAYS);
     expect(Object.keys(info)).toHaveLength(12);
     for (let m = 1; m <= 12; m++) {
-      expect(info[m].daysFromToday).toBeGreaterThanOrEqual(1);
+      expect(info[m].sellHoldingDays).toBeGreaterThanOrEqual(1);
+      expect(info[m].returnDate > info[m].kenriLastDate).toBe(true);
     }
   });
 });
