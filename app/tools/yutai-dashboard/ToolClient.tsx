@@ -2849,24 +2849,29 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 3,
   },
   longTermChips: {
-    // 「長」「特」を折り返さず横並びにする
+    // 「長」「特」を折り返さず横並びにする（狭い列でも縦積みにならないよう二重で防止）
     display: "inline-flex",
-    gap: 4,
+    gap: 3,
     flexWrap: "nowrap",
+    whiteSpace: "nowrap",
   },
   chipLongRequired: {
     ...baseChip,
+    padding: "1px 5px",
     background: "#fef2f2",
     color: "#b91c1c",
     fontWeight: 800,
     border: "1px solid rgba(220,38,38,0.22)",
+    flex: "0 0 auto",
   },
   chipLongBenefit: {
     ...baseChip,
+    padding: "1px 5px",
     background: "#eff6ff",
     color: "#1d4ed8",
     fontWeight: 800,
     border: "1px solid rgba(37,84,255,0.22)",
+    flex: "0 0 auto",
   },
   crossFeeLine: {
     fontSize: 11,

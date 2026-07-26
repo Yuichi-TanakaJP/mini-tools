@@ -40,6 +40,15 @@ export type YutaiLaunchDisplayProgram = {
   notes: string | null;
 };
 
+export type YutaiLaunchDisplayLongTermTier = {
+  programId: string;
+  programLabel: string;
+  minimumShares: number;
+  maximumShares: number | null;
+  requiredHoldingMonths: number;
+  groups: YutaiLaunchDisplayGroup[];
+};
+
 export type YutaiLaunchDisplayRecord = {
   month: string;
   code: string;
@@ -47,6 +56,10 @@ export type YutaiLaunchDisplayRecord = {
   displayStatus: "conditions_available" | "needs_normalization";
   calculationStatus: "auto_calculable" | "mixed_user_input_required" | "no_conditions" | "user_input_required";
   requiresUserValuation: boolean;
+  hasLongTermBenefit: boolean;
+  requiresLongTermHolding: boolean;
+  longTermRequiredHoldingMonths: number[];
+  longTermBenefitTiers: YutaiLaunchDisplayLongTermTier[];
   normalizedStatus: string | null;
   normalizedAsOfDate: string | null;
   programs: YutaiLaunchDisplayProgram[];
@@ -147,6 +160,21 @@ function parseTier(value: unknown): YutaiLaunchDisplayTier | null {
   };
 }
 
+function parseLongTermTier(value: unknown): YutaiLaunchDisplayLongTermTier | null {
+  if (!isRecord(value) || typeof value.program_id !== "string" || typeof value.program_label !== "string" || typeof value.minimum_shares !== "number" || typeof value.required_holding_months !== "number" || !Array.isArray(value.groups)) {
+    return null;
+  }
+  const groups = value.groups.map(parseGroup).filter((group): group is YutaiLaunchDisplayGroup => group !== null);
+  return {
+    programId: value.program_id,
+    programLabel: value.program_label,
+    minimumShares: value.minimum_shares,
+    maximumShares: optionalNumber(value.maximum_shares),
+    requiredHoldingMonths: value.required_holding_months,
+    groups,
+  };
+}
+
 function parseProgram(value: unknown): YutaiLaunchDisplayProgram | null {
   if (!isRecord(value) || typeof value.program_id !== "string" || typeof value.label !== "string" || !Array.isArray(value.rights_months) || !Array.isArray(value.tiers)) {
     return null;
@@ -176,6 +204,13 @@ function parseDisplayRecord(value: unknown): YutaiLaunchDisplayRecord | null {
     return null;
   }
   const programs = value.programs.map(parseProgram).filter((program): program is YutaiLaunchDisplayProgram => program !== null);
+  const longTermRequiredHoldingMonths = Array.isArray(value.long_term_required_holding_months)
+    ? value.long_term_required_holding_months.filter((month): month is number => typeof month === "number" && Number.isInteger(month) && month > 0)
+    : [];
+  const longTermBenefitTiers = Array.isArray(value.long_term_benefit_tiers)
+    ? value.long_term_benefit_tiers.map(parseLongTermTier).filter((tier): tier is YutaiLaunchDisplayLongTermTier => tier !== null)
+    : [];
+  const parsedTiers = programs.flatMap((program) => program.tiers);
   return {
     month: value.month,
     code: value.code,
@@ -183,6 +218,10 @@ function parseDisplayRecord(value: unknown): YutaiLaunchDisplayRecord | null {
     displayStatus: value.display_status,
     calculationStatus: value.calculation_status,
     requiresUserValuation: value.requires_user_valuation,
+    hasLongTermBenefit: typeof value.has_long_term_benefit === "boolean" ? value.has_long_term_benefit : longTermBenefitTiers.length > 0,
+    requiresLongTermHolding: typeof value.requires_long_term_holding === "boolean" ? value.requires_long_term_holding : parsedTiers.length > 0 && parsedTiers.every((tier) => tier.requiredHoldingMonths > 0),
+    longTermRequiredHoldingMonths,
+    longTermBenefitTiers,
     normalizedStatus: optionalString(value.normalized_status),
     normalizedAsOfDate: optionalString(value.normalized_as_of_date),
     programs,
@@ -226,6 +265,12 @@ export function getLongTermFlags(
   record: YutaiLaunchDisplayRecord | null | undefined,
 ): { required: boolean; benefit: boolean } {
   if (!record) return { required: false, benefit: false };
+  if (record.hasLongTermBenefit || record.requiresLongTermHolding) {
+    return {
+      required: record.requiresLongTermHolding,
+      benefit: record.hasLongTermBenefit,
+    };
+  }
   const tiers = record.programs.flatMap((program) => program.tiers);
   if (tiers.length === 0) return { required: false, benefit: false };
   return {
