@@ -13,8 +13,10 @@ export type YutaiLaunchDisplayItem = {
 
 export type YutaiLaunchDisplayDiscountTerm = {
   label: string | null;
-  ratePct: number;
-  appliesTo: string | null;
+  discountRatePct: number;
+  quantity: number | null;
+  unit: string | null;
+  notes: string | null;
 };
 
 export type YutaiLaunchDisplayGroup = {
@@ -91,11 +93,15 @@ function optionalNumber(value: unknown): number | null {
 }
 
 function parseDiscountTerm(value: unknown): YutaiLaunchDisplayDiscountTerm | null {
-  if (!isRecord(value) || typeof value.rate_pct !== "number" || !Number.isFinite(value.rate_pct)) return null;
+  if (!isRecord(value)) return null;
+  const discountRatePct = optionalNumber(value.discount_rate_pct) ?? optionalNumber(value.rate_pct);
+  if (discountRatePct === null) return null;
   return {
     label: optionalString(value.label),
-    ratePct: value.rate_pct,
-    appliesTo: optionalString(value.applies_to),
+    discountRatePct,
+    quantity: optionalNumber(value.quantity),
+    unit: optionalString(value.unit),
+    notes: optionalString(value.notes) ?? optionalString(value.applies_to),
   };
 }
 

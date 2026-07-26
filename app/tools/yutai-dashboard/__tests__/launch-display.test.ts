@@ -96,7 +96,7 @@ describe("parseYutaiLaunchDisplaySnapshot", () => {
                           valuation_policy: "user_estimate_required",
                           discount_rate_pct: 50,
                           discount_terms: [
-                            { rate_pct: 50, label: "株主優待番号", applies_to: "国内線" },
+                            { discount_rate_pct: 50, label: "株主優待番号", quantity: 1, unit: "枚", notes: "国内線" },
                           ],
                         },
                       ],
@@ -112,8 +112,59 @@ describe("parseYutaiLaunchDisplaySnapshot", () => {
 
     const item = buildLaunchDisplayByKey(snapshot).get("9202:9")?.programs[0].tiers[0].groups[0].items[0];
     expect(item?.discountRatePct).toBe(50);
-    expect(item?.discountTerms).toEqual([{ label: "株主優待番号", ratePct: 50, appliesTo: "国内線" }]);
+    expect(item?.discountTerms).toEqual([{ label: "株主優待番号", discountRatePct: 50, quantity: 1, unit: "枚", notes: "国内線" }]);
     expect(getLaunchDisplayHint(buildLaunchDisplayByKey(snapshot).get("9202:9"))).toBeNull();
+  });
+
+
+  it("移行期間の旧discount_termsフィールドも受け取る", () => {
+    const snapshot = parseYutaiLaunchDisplaySnapshot({
+      schema_version: 1,
+      month: "2026-09",
+      record_count: 1,
+      counts: { conditions_available: 1, auto_calculable: 0, requires_user_valuation: 1 },
+      generated_at: "2026-07-22T14:57:25.239015Z",
+      records: [
+        {
+          month: "2026-09",
+          code: "9202",
+          company_name: "ANA",
+          display_status: "conditions_available",
+          calculation_status: "user_input_required",
+          requires_user_valuation: true,
+          programs: [
+            {
+              program_id: "discount",
+              label: "割引",
+              rights_months: [9],
+              tiers: [
+                {
+                  minimum_shares: 100,
+                  required_holding_months: 0,
+                  groups: [
+                    {
+                      mode: "all",
+                      allow_repeated_choices: false,
+                      items: [
+                        {
+                          label: "運賃割引",
+                          kind: "discount",
+                          valuation_policy: "user_estimate_required",
+                          discount_terms: [{ rate_pct: 50, label: "旧形式", applies_to: "国内線" }],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    const item = buildLaunchDisplayByKey(snapshot).get("9202:9")?.programs[0].tiers[0].groups[0].items[0];
+    expect(item?.discountTerms).toEqual([{ label: "旧形式", discountRatePct: 50, quantity: null, unit: null, notes: "国内線" }]);
   });
 
   it.each([null, {}, { schema_version: 2, records: [] }, { schema_version: 1, records: [] }])("必須メタデータがない応答は拒否する: %o", (value) => {
