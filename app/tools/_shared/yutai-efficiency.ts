@@ -12,6 +12,8 @@ export type SimpleYutaiEfficiencyResult = {
   sharePriceYen: number;
   sharePriceSource: "market" | "estimated";
   efficiencyPercent: number;
+  /** 計算に使った優待価値（円）。手数料との比較などに使う。 */
+  benefitValueYen: number;
 };
 
 function isPositiveFiniteNumber(value: number | null | undefined): value is number {
@@ -48,5 +50,6 @@ export function calculateSimpleYutaiEfficiency(
     sharePriceYen: resolvedSharePriceYen,
     sharePriceSource: marketPriceAvailable ? "market" : "estimated",
     efficiencyPercent: (benefitValueYen / requiredCapitalYen) * 100,
+    benefitValueYen,
   };
 }

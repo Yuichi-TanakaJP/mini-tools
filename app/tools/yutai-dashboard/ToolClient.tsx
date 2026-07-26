@@ -1492,6 +1492,15 @@ export default function ToolClient({
                         data.nikkoCredit?.by_code[row.code],
                         kenriInfoByMonth,
                       );
+                      // 優待価値 − 手数料 の損益。プラスなら効率%を青、0以下は赤にする。
+                      const netAfterFeeYen = efficiency && crossFee
+                        ? efficiency.benefitValueYen - crossFee.fee.totalYen
+                        : null;
+                      const efficiencyChipStyle = netAfterFeeYen === null
+                        ? styles.chipEfficiency
+                        : netAfterFeeYen > 0
+                          ? styles.chipEfficiencyPositive
+                          : styles.chipEfficiencyNegative;
                       const isSelected = row.key === selectedRowKey;
                       const rowStyle = isSelected
                         ? styles.trSelected
@@ -1520,8 +1529,13 @@ export default function ToolClient({
                             <div style={styles.efficiencyCell}>
                               {efficiency ? (
                                 <span
-                                  style={styles.chipEfficiency}
-                                  title={"必要資金: " + formatYen(efficiency.requiredCapitalYen)}
+                                  style={efficiencyChipStyle}
+                                  title={
+                                    "必要資金: " + formatYen(efficiency.requiredCapitalYen) +
+                                    (netAfterFeeYen !== null
+                                      ? `\n優待 ${formatYen(efficiency.benefitValueYen)} − 手数料 ${formatYen(crossFee!.fee.totalYen)} = ${formatYen(netAfterFeeYen)}`
+                                      : "")
+                                  }
                                 >
                                   {formatEfficiencyPercent(efficiency.efficiencyPercent)}
                                 </span>
@@ -2740,6 +2754,22 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#c2410c",
     fontWeight: 800,
     border: "1px solid rgba(249,115,22,0.22)",
+  },
+  // 優待価値 − 手数料 がプラス: 青系
+  chipEfficiencyPositive: {
+    ...baseChip,
+    background: "#eff6ff",
+    color: "#1d4ed8",
+    fontWeight: 800,
+    border: "1px solid rgba(37,84,255,0.22)",
+  },
+  // 優待価値 − 手数料 が 0 以下: 赤系
+  chipEfficiencyNegative: {
+    ...baseChip,
+    background: "#fef2f2",
+    color: "#dc2626",
+    fontWeight: 800,
+    border: "1px solid rgba(220,38,38,0.22)",
   },
   efficiencyCell: {
     // 1 段目: 簡易効率チップ / 2 段目: クロス手数料

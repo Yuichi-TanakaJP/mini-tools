@@ -12,6 +12,7 @@ describe("calculateSimpleYutaiEfficiency", () => {
       sharePriceYen: 2_000,
       sharePriceSource: "estimated",
       efficiencyPercent: 0.5,
+      benefitValueYen: 5_000,
     });
   });
 
@@ -26,6 +27,7 @@ describe("calculateSimpleYutaiEfficiency", () => {
       sharePriceYen: 2_100,
       sharePriceSource: "market",
       efficiencyPercent: 5_000 / 1_050_000 * 100,
+      benefitValueYen: 5_000,
     });
   });
 
