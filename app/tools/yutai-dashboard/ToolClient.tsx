@@ -239,6 +239,26 @@ function getRowEfficiency(
     benefitValueYen: cardMemo?.benefitValueYen ?? launchHint?.benefitValueYen,
   });
 }
+
+/**
+ * 行のクロス戦略の実効値。手動メモがあればその値、無ければ公式条件から導出する。
+ * - メモあり: ユーザー設定値をそのまま使う（derived=false）。
+ * - メモ無し＋公式レコードあり＋長期特典なし: 戦略判断が不要なので「長期優遇なし」を導出（derived=true）。
+ * - それ以外（特典あり未トリアージ／レコード無し＝不明）: null＝未設定のまま。
+ * 公式レコードが無い（undefined）銘柄は「長期特典なし」と断定せず未設定に残す。
+ */
+function getRowCrossType(
+  row: DashboardRow,
+  launchDisplayByKey: ReadonlyMap<string, YutaiLaunchDisplayRecord>,
+): { value: CrossType; derived: boolean } | null {
+  if (row.memo) return { value: row.memo.crossType, derived: false };
+  const record = row.candidate ? launchDisplayByKey.get(`${row.code}:${row.candidate.month}`) : undefined;
+  if (record && !getLongTermFlags(record).benefit) {
+    return { value: "長期優遇なし", derived: true };
+  }
+  return null;
+}
+
 type RowCrossFee = {
   fee: NikkoCrossFee;
   kenriLastDate: string;
@@ -606,7 +626,7 @@ export default function ToolClient({
           if (!isHandledBySbiShort(data.sbiCredit?.by_code[row.code])) return false;
         }
 
-        if (strategyFilter !== "all" && row.memo?.crossType !== strategyFilter) return false;
+        if (strategyFilter !== "all" && getRowCrossType(row, rowLaunchDisplayByKey)?.value !== strategyFilter) return false;
 
         if (!normalizedQuery) return true;
         return normalizeText(
@@ -1142,9 +1162,13 @@ export default function ToolClient({
         </select>
       );
     }
-    const display = memo
-      ? <span style={styles.chipStrategy}>{memo.crossType}</span>
-      : <span style={styles.cellMuted}>未設定</span>;
+    const effective = getRowCrossType(row, rowLaunchDisplayByKey);
+    const display = !effective
+      ? <span style={styles.cellMuted}>未設定</span>
+      : effective.derived
+        // 公式条件から導出した値は手動設定と区別できるよう控えめに表示する。
+        ? <span style={styles.cellMuted} title="公式条件に長期特典がないため自動判定">{effective.value}</span>
+        : <span style={styles.chipStrategy}>{effective.value}</span>;
     return renderEditableCell(row, "crossType", display);
   }
 
