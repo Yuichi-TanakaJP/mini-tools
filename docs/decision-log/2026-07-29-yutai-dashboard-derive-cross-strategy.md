@@ -24,13 +24,15 @@
 
 ## 影響範囲
 
+- `app/tools/yutai-dashboard/cross-strategy.ts`
+  - `getRowCrossType()` を純関数として実装（実効クロス戦略の導出。メモ優先、無ければ公式条件から導出）。単体テストは `__tests__/cross-strategy.test.ts`。
 - `app/tools/yutai-dashboard/ToolClient.tsx`
-  - `getRowCrossType()` を追加（実効クロス戦略の導出。メモ優先、無ければ公式条件から導出）。
-  - クロス戦略フィルタ（`filteredRows`）と表示セル（`renderCrossTypeCell`）の両方で導出値を使用。
+  - `getRowCrossType()` を import し、クロス戦略フィルタ（`filteredRows`）と表示セル（`renderCrossTypeCell`）の両方で導出値を使用。
   - 導出値は手動値と区別できるよう控えめ表示（`cellMuted`）＋ツールチップ。手動値は従来どおりチップ。
 - 仕込み月軸（`calendarRows`）は登録メモ限定のため対象外（現状維持）。
 - 詳細パネルのクロス戦略は `selectedRow.memo` 存在時のみ表示で従来どおり（導出値は出さない）。
 - 互換性: メモや保存データの形式は変更なし。表示・絞り込みのみの差分。
+- **全月ビューでは自動導出が働かない**: `rowLaunchDisplayByKey` は全月表示時に空 Map で渡されるため、メモ無し行は常に「未設定」となり「長期優遇なし」フィルタにも掛からない。launch-display は権利月単位のデータで全月表示が per-month 公式条件を持たない仕様に沿ったもので、既存の長/特チップと同じ挙動。自動導出は対象月を選択したときだけ働く。
 
 ## 残課題
 
