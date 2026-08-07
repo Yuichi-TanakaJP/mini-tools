@@ -5,7 +5,11 @@ import { useSearchParams } from "next/navigation";
 import { addMemoItemFromCandidate, isImportedMonthlyYutaiCandidate } from "@/app/tools/yutai-memo/candidate-import";
 import { loadArchivedItems, loadItems, saveItems } from "@/app/tools/yutai-memo/storage";
 import { CROSS_TYPES, type ArchivedMemoItem, type CrossType, type MemoItem } from "@/app/tools/yutai-memo/types";
-import { isPreparationMonth, toJstYearMonth } from "@/app/tools/yutai-memo/date-utils";
+import {
+  getActiveAcquiredEntitlementMonthKey,
+  isPreparationMonth,
+  toJstYearMonth,
+} from "@/app/tools/yutai-memo/date-utils";
 import {
   applyMemoEdit,
   buildMemoEditDraft,
@@ -112,6 +116,7 @@ type AcquiredSummary = {
   count: number;
   latestKey: string | null;
   entries: ArchivedMemoItem[];
+  activeKey: string | null;
 };
 
 function normalizeText(value: string) {
@@ -298,18 +303,25 @@ function parseOneShareStart(value: string | undefined): { year: number; month: n
   return month >= 1 && month <= 12 ? { year, month } : null;
 }
 
-function buildAcquiredByCode(archives: ArchivedMemoItem[], memoItems: MemoItem[]) {
+function buildAcquiredByCode(archives: ArchivedMemoItem[], memoItems: MemoItem[], nowIso: string) {
   const codeByMemoId = new Map(memoItems.filter((item) => item.code).map((item) => [item.id, item.code as string]));
   const map = new Map<string, AcquiredSummary>();
   for (const archive of archives) {
     const code = archive.code ?? codeByMemoId.get(archive.memoId);
     if (!code) continue;
-    const summary = map.get(code) ?? { count: 0, latestKey: null, entries: [] };
+    const summary = map.get(code) ?? { count: 0, latestKey: null, entries: [], activeKey: null };
     summary.count += 1;
     summary.entries.push(archive);
     const key = archive.entitlementMonthKey ?? null;
     if (key && (!summary.latestKey || key > summary.latestKey)) summary.latestKey = key;
     map.set(code, summary);
+  }
+  for (const item of memoItems) {
+    if (!item.code || !item.acquired) continue;
+    const summary = map.get(item.code) ?? { count: 0, latestKey: null, entries: [], activeKey: null };
+    const activeKey = getActiveAcquiredEntitlementMonthKey(item, nowIso);
+    if (activeKey && (!summary.activeKey || activeKey < summary.activeKey)) summary.activeKey = activeKey;
+    map.set(item.code, summary);
   }
   return map;
 }
@@ -474,8 +486,8 @@ export default function ToolClient({
   }, [memoItems]);
 
   const acquiredByCode = useMemo(
-    () => buildAcquiredByCode(archivedItems, memoItems),
-    [archivedItems, memoItems],
+    () => buildAcquiredByCode(archivedItems, memoItems, calendarNowIso),
+    [archivedItems, calendarNowIso, memoItems],
   );
   const stockPriceSnapshot = stockPriceState.status === "ready" ? stockPriceState.snapshot : null;
   const stockPriceProvider = formatStockPriceProvider(stockPriceSnapshot?.provider ?? null);
@@ -1627,8 +1639,10 @@ export default function ToolClient({
                           <td style={styles.td}>{renderOneShareCell(row)}</td>
                           <td style={styles.td}>{renderCrossTypeCell(row)}</td>
                           <td style={styles.td}>
-                            {acquired
-                              ? <span style={styles.chipAcquired} title={acquired.latestKey ? `直近: ${acquired.latestKey}` : undefined}>✓{acquired.count}</span>
+                            {acquired?.activeKey
+                              ? <span style={styles.chipAcquired} title={`今回取得: ${acquired.activeKey}${acquired.count ? ` / 過去 ${acquired.count}件` : ""}`}>✓ {acquired.activeKey}</span>
+                              : acquired
+                                ? <span style={styles.chipAcquired} title={acquired.latestKey ? `直近: ${acquired.latestKey}` : undefined}>✓{acquired.count}</span>
                               : <span style={styles.cellMuted}>-</span>}
                           </td>
                           <td style={styles.td}>{renderRowActions(row)}</td>
@@ -1993,6 +2007,12 @@ export default function ToolClient({
                           <dd style={styles.detailDd}>{selectedRow.memo.tenureRule || "未設定"}</dd>
                           <dt style={styles.detailDt}>取得済み</dt>
                           <dd style={styles.detailDd}>{selectedRow.memo.acquired ? "はい" : "いいえ"}</dd>
+                          {acquiredForSelected?.activeKey ? (
+                            <>
+                              <dt style={styles.detailDt}>今回の対象権利</dt>
+                              <dd style={styles.detailDd}>{acquiredForSelected.activeKey}</dd>
+                            </>
+                          ) : null}
                           <dt style={styles.detailDt}>優先度</dt>
                           <dd style={styles.detailDd}>{"★".repeat(selectedRow.memo.priority)}</dd>
                         </dl>

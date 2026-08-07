@@ -1,6 +1,7 @@
 // 優待メモの部分編集ロジック。優待カレンダー・優待ダッシュボードの両方から使う想定の純関数。
 // UI（React state / styles）には依存せず、items 配列の更新のみを扱う。
 import type { CrossType, MemoItem } from "@/app/tools/yutai-memo/types";
+import { resolveNextEntitlementMonthKey } from "@/app/tools/yutai-memo/date-utils";
 
 export type MemoEditDraft = {
   name: string;
@@ -61,6 +62,9 @@ export function applyMemoEdit(
       tenureRule: draft.tenureRule.trim() || undefined,
       acquired: draft.acquired,
       acquiredMarkedAt: draft.acquired ? (item.acquiredMarkedAt ?? now) : undefined,
+      acquiredEntitlementMonthKey: draft.acquired
+        ? (item.acquiredEntitlementMonthKey ?? resolveNextEntitlementMonthKey(item.months, item.acquiredMarkedAt ?? now) ?? undefined)
+        : undefined,
       priority: draft.priority,
       memo: draft.memo.trim(),
       updatedAt: now,

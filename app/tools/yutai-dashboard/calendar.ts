@@ -1,6 +1,6 @@
 import {
+  getActiveAcquiredEntitlementMonthKey,
   getPreparationMonth,
-  resolveEntitlementMonthKey,
   toJstYearMonth,
 } from "@/app/tools/yutai-memo/date-utils";
 import type { ArchivedMemoItem, MemoItem } from "@/app/tools/yutai-memo/types";
@@ -71,11 +71,7 @@ export function buildCalendarCells(
 
   if (memo.acquired) {
     const entitlement = parseYearMonth(
-      resolveEntitlementMonthKey(
-        memo.months,
-        memo.acquiredMarkedAt ?? nowIso,
-        memo.preparationMonthsBefore,
-      ) ?? undefined,
+      getActiveAcquiredEntitlementMonthKey(memo, nowIso) ?? undefined,
     );
     if (entitlement) {
       const years = yearsByMonth.get(entitlement.month) ?? new Set<number>();

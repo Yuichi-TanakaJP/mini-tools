@@ -18,7 +18,13 @@ import {
   saveItems,
   saveTags,
 } from "./storage";
-import { isPreparationMonth, resolveEntitlementMonthKey, toJstYearMonth, toMonthKeyFromIso } from "./date-utils";
+import {
+  getActiveAcquiredEntitlementMonthKey,
+  isPreparationMonth,
+  resolveNextEntitlementMonthKey,
+  toJstYearMonth,
+  toMonthKeyFromIso,
+} from "./date-utils";
 
 function uid() {
   // 十分実用（uuid不要ならこれでOK）
@@ -541,6 +547,9 @@ export default function ToolClient({
         acquired: draft.acquired,
         // 仕込んだ時刻を初回だけ記録。取得を外したらクリア（次サイクルで再取得日を新規に取るため）
         acquiredMarkedAt: draft.acquired ? (existing?.acquiredMarkedAt ?? now) : undefined,
+        acquiredEntitlementMonthKey: draft.acquired
+          ? (existing?.acquiredEntitlementMonthKey ?? resolveNextEntitlementMonthKey(draft.months, existing?.acquiredMarkedAt ?? now) ?? undefined)
+          : undefined,
         oneShareStartedAt: draft.oneShareStartedAt.trim() || undefined,
         priority: draft.priority,
         memo: draft.memo.trim(),
@@ -660,6 +669,9 @@ export default function ToolClient({
       ...it,
       acquired,
       acquiredMarkedAt: acquired ? (it.acquiredMarkedAt ?? now) : undefined,
+      acquiredEntitlementMonthKey: acquired
+        ? (it.acquiredEntitlementMonthKey ?? resolveNextEntitlementMonthKey(it.months, it.acquiredMarkedAt ?? now) ?? undefined)
+        : undefined,
     };
   }
 
@@ -744,7 +756,7 @@ export default function ToolClient({
       acquiredAt: target.acquiredMarkedAt ?? acquiredAt,
       entitlementMonthKey:
         entitlementMonthKey ??
-        resolveEntitlementMonthKey(target.months, acquiredAt, target.preparationMonthsBefore) ??
+        getActiveAcquiredEntitlementMonthKey(target, acquiredAt) ??
         undefined,
       note: target.memo?.trim() || undefined,
     };
@@ -772,7 +784,7 @@ export default function ToolClient({
     for (const t of targets) {
       const resolvedYm =
         entitlementByMemoId?.get(t.id) ??
-        resolveEntitlementMonthKey(t.months, acquiredAt, t.preparationMonthsBefore);
+        getActiveAcquiredEntitlementMonthKey(t, acquiredAt);
       if (!resolvedYm) {
         skippedCount += 1;
         continue;
@@ -795,7 +807,13 @@ export default function ToolClient({
     setItems((prev) =>
       prev.map((it) =>
         archivedIds.has(it.id)
-          ? { ...it, acquired: false, acquiredMarkedAt: undefined, updatedAt: acquiredAt }
+          ? {
+              ...it,
+              acquired: false,
+              acquiredMarkedAt: undefined,
+              acquiredEntitlementMonthKey: undefined,
+              updatedAt: acquiredAt,
+            }
           : it
       )
     );
@@ -806,7 +824,7 @@ export default function ToolClient({
     const target = items.find((it) => it.id === id);
     if (!target) return;
     const now = new Date().toISOString();
-    const targetYm = resolveEntitlementMonthKey(target.months, now, target.preparationMonthsBefore);
+    const targetYm = getActiveAcquiredEntitlementMonthKey(target, now);
     if (
       targetYm &&
       archives.some(
@@ -878,7 +896,7 @@ export default function ToolClient({
     const nowIso = now.toISOString();
     const candidates = items.filter((it) => {
       if (!it.acquired) return false;
-      const monthKey = resolveEntitlementMonthKey(it.months, nowIso, it.preparationMonthsBefore);
+      const monthKey = getActiveAcquiredEntitlementMonthKey(it, nowIso);
       if (!monthKey) return false;
       // 権利月がまだ来ていない事前仕込みはアーカイブ（リセット）対象から外す。権利月到達・経過のみ。
       if (monthKey > currentMonth) return false;
@@ -888,7 +906,7 @@ export default function ToolClient({
     });
     const nextDrafts: BulkArchiveDraft[] = candidates.map((it) => ({
       memoId: it.id,
-      targetYM: resolveEntitlementMonthKey(it.months, nowIso, it.preparationMonthsBefore) ?? toMonthKeyFromDate(now),
+      targetYM: getActiveAcquiredEntitlementMonthKey(it, nowIso) ?? toMonthKeyFromDate(now),
     }));
     const acquiredCount = items.filter((it) => it.acquired).length;
     const timer = window.setTimeout(() => {
