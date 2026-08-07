@@ -124,6 +124,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
   - [開示イベントレーダー 仕様](./specs/tools/disclosure-radar.md)
   - [投資主体別売買動向 仕様](./specs/tools/investor-flow.md)
   - [ペンギンシューター 仕様](./specs/tools/penguin-shooter.md)
+  - [ルーティン一覧 仕様](./specs/tools/routines.md)
 - [横断仕様インデックス](./specs/cross-cutting/index.md)
   - [mini-tools システム構成概要](./specs/cross-cutting/system-architecture-overview.md)
   - [React Server / Client 責任境界](./specs/cross-cutting/react-server-client-boundaries.md)
