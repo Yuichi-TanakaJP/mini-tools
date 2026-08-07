@@ -37,3 +37,6 @@ Thumbs.db
 .tmp-edge-cdp/
 .tmp-edge-live/
 .vercel
+
+# 個人口座データ（コミット禁止・ビルドに含めない）
+data/personal/
