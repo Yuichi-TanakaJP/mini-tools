@@ -42,6 +42,7 @@ const LAST_SEEN_MONTH_KEY = "yutai_memo_last_seen_month_v1";
 type Draft = {
   id?: string;
   createdAt?: string;
+  acquiredMarkedAt?: string;
   name: string;
   code: string;
   months: number[];
@@ -477,6 +478,7 @@ export default function ToolClient({
     setDraft({
       id: it.id,
       createdAt: it.createdAt,
+      acquiredMarkedAt: it.acquiredMarkedAt,
       name: it.name,
       code: it.code ?? "",
       months: it.months,
@@ -512,7 +514,7 @@ export default function ToolClient({
         ...d,
         months,
         acquiredEntitlementMonthKey: d.acquired && !keepsSelected
-          ? (resolveNextEntitlementMonthKey(months, new Date().toISOString()) ?? "")
+          ? (resolveNextEntitlementMonthKey(months, d.acquiredMarkedAt ?? new Date().toISOString()) ?? "")
           : d.acquiredEntitlementMonthKey,
       };
     });
@@ -560,9 +562,9 @@ export default function ToolClient({
         tenureRule: draft.tenureRule.trim() || undefined,
         acquired: draft.acquired,
         // 仕込んだ時刻を初回だけ記録。取得を外したらクリア（次サイクルで再取得日を新規に取るため）
-        acquiredMarkedAt: draft.acquired ? (existing?.acquiredMarkedAt ?? now) : undefined,
+        acquiredMarkedAt: draft.acquired ? (draft.acquiredMarkedAt ?? existing?.acquiredMarkedAt ?? now) : undefined,
         acquiredEntitlementMonthKey: draft.acquired
-          ? (draft.acquiredEntitlementMonthKey || existing?.acquiredEntitlementMonthKey || resolveNextEntitlementMonthKey(draft.months, existing?.acquiredMarkedAt ?? now) || undefined)
+          ? (draft.acquiredEntitlementMonthKey || existing?.acquiredEntitlementMonthKey || resolveNextEntitlementMonthKey(draft.months, draft.acquiredMarkedAt ?? existing?.acquiredMarkedAt ?? now) || undefined)
           : undefined,
         oneShareStartedAt: draft.oneShareStartedAt.trim() || undefined,
         priority: draft.priority,
@@ -1993,6 +1995,7 @@ export default function ToolClient({
                       setDraft((d) => ({
                         ...d,
                         acquired,
+                        acquiredMarkedAt: acquired ? (d.acquiredMarkedAt ?? now) : undefined,
                         acquiredEntitlementMonthKey: acquired
                           ? (d.acquiredEntitlementMonthKey || resolveNextEntitlementMonthKey(d.months, now) || "")
                           : "",
@@ -2015,9 +2018,7 @@ export default function ToolClient({
                   >
                     {getEntitlementMonthKeyOptions(
                       draft.months,
-                      draft.acquiredEntitlementMonthKey
-                        ? `${draft.acquiredEntitlementMonthKey}-01T00:00:00+09:00`
-                        : new Date().toISOString(),
+                      draft.acquiredMarkedAt ?? new Date().toISOString(),
                       draft.acquiredEntitlementMonthKey,
                     ).map((key) => <option key={key} value={key}>{key}</option>)}
                   </select>

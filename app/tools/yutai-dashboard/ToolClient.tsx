@@ -118,7 +118,6 @@ type AcquiredSummary = {
   count: number;
   latestKey: string | null;
   entries: ArchivedMemoItem[];
-  activeKey: string | null;
 };
 
 function normalizeText(value: string) {
@@ -305,25 +304,18 @@ function parseOneShareStart(value: string | undefined): { year: number; month: n
   return month >= 1 && month <= 12 ? { year, month } : null;
 }
 
-function buildAcquiredByCode(archives: ArchivedMemoItem[], memoItems: MemoItem[], nowIso: string) {
+function buildAcquiredByCode(archives: ArchivedMemoItem[], memoItems: MemoItem[]) {
   const codeByMemoId = new Map(memoItems.filter((item) => item.code).map((item) => [item.id, item.code as string]));
   const map = new Map<string, AcquiredSummary>();
   for (const archive of archives) {
     const code = archive.code ?? codeByMemoId.get(archive.memoId);
     if (!code) continue;
-    const summary = map.get(code) ?? { count: 0, latestKey: null, entries: [], activeKey: null };
+    const summary = map.get(code) ?? { count: 0, latestKey: null, entries: [] };
     summary.count += 1;
     summary.entries.push(archive);
     const key = archive.entitlementMonthKey ?? null;
     if (key && (!summary.latestKey || key > summary.latestKey)) summary.latestKey = key;
     map.set(code, summary);
-  }
-  for (const item of memoItems) {
-    if (!item.code || !item.acquired) continue;
-    const summary = map.get(item.code) ?? { count: 0, latestKey: null, entries: [], activeKey: null };
-    const activeKey = getActiveAcquiredEntitlementMonthKey(item, nowIso);
-    if (activeKey && (!summary.activeKey || activeKey < summary.activeKey)) summary.activeKey = activeKey;
-    map.set(item.code, summary);
   }
   return map;
 }
@@ -488,8 +480,8 @@ export default function ToolClient({
   }, [memoItems]);
 
   const acquiredByCode = useMemo(
-    () => buildAcquiredByCode(archivedItems, memoItems, calendarNowIso),
-    [archivedItems, calendarNowIso, memoItems],
+    () => buildAcquiredByCode(archivedItems, memoItems),
+    [archivedItems, memoItems],
   );
   const stockPriceSnapshot = stockPriceState.status === "ready" ? stockPriceState.snapshot : null;
   const stockPriceProvider = formatStockPriceProvider(stockPriceSnapshot?.provider ?? null);
@@ -1223,6 +1215,9 @@ export default function ToolClient({
     ? data.nikkoCredit?.by_code[selectedRow.code]
     : undefined;
   const acquiredForSelected = selectedRow ? acquiredByCode.get(selectedRow.code) : undefined;
+  const activeKeyForSelected = selectedRow?.memo?.acquired
+    ? getActiveAcquiredEntitlementMonthKey(selectedRow.memo, calendarNowIso)
+    : null;
   const isEditingSelectedMemo = Boolean(selectedRow?.memo && editingMemoId === selectedRow.memo.id);
 
   return (
@@ -1563,6 +1558,9 @@ export default function ToolClient({
                   ) : (
                     filteredRows.map((row) => {
                       const acquired = acquiredByCode.get(row.code);
+                      const activeKey = row.memo?.acquired
+                        ? getActiveAcquiredEntitlementMonthKey(row.memo, calendarNowIso)
+                        : null;
                       const efficiency = getRowEfficiency(row, cardMemos, stockPriceByCode, rowLaunchDisplayByKey);
                       const crossFee = getRowCrossFee(
                         row,
@@ -1647,8 +1645,8 @@ export default function ToolClient({
                           <td style={styles.td}>{renderOneShareCell(row)}</td>
                           <td style={styles.td}>{renderCrossTypeCell(row)}</td>
                           <td style={styles.td}>
-                            {acquired?.activeKey
-                              ? <span style={styles.chipAcquired} title={`今回取得: ${acquired.activeKey}${acquired.count ? ` / 過去 ${acquired.count}件` : ""}`}>✓ {acquired.activeKey}</span>
+                            {activeKey
+                              ? <span style={styles.chipAcquired} title={`今回取得: ${activeKey}${acquired?.count ? ` / 過去 ${acquired.count}件` : ""}`}>✓ {activeKey}</span>
                               : acquired
                                 ? <span style={styles.chipAcquired} title={acquired.latestKey ? `直近: ${acquired.latestKey}` : undefined}>✓{acquired.count}</span>
                               : <span style={styles.cellMuted}>-</span>}
@@ -2001,9 +1999,7 @@ export default function ToolClient({
                             >
                               {getEntitlementMonthKeyOptions(
                                 selectedRow.memo.months,
-                                memoDraft.acquiredEntitlementMonthKey
-                                  ? `${memoDraft.acquiredEntitlementMonthKey}-01T00:00:00+09:00`
-                                  : (selectedRow.memo.acquiredMarkedAt ?? calendarNowIso),
+                                selectedRow.memo.acquiredMarkedAt ?? calendarNowIso,
                                 memoDraft.acquiredEntitlementMonthKey,
                               ).map((key) => <option key={key} value={key}>{key}</option>)}
                             </select>
@@ -2042,11 +2038,11 @@ export default function ToolClient({
                           <dd style={styles.detailDd}>{selectedRow.memo.tenureRule || "未設定"}</dd>
                           <dt style={styles.detailDt}>取得済み</dt>
                           <dd style={styles.detailDd}>{selectedRow.memo.acquired ? "はい" : "いいえ"}</dd>
-                          {acquiredForSelected?.activeKey ? (
+                          {activeKeyForSelected ? (
                             <>
                               <dt style={styles.detailDt}>今回の対象権利</dt>
                               <dd style={styles.detailDd}>
-                                {acquiredForSelected.activeKey}{" "}
+                                {activeKeyForSelected}{" "}
                                 <button
                                   type="button"
                                   onClick={() => openMemoEdit(selectedRow.memo!)}
