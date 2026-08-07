@@ -9,6 +9,8 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 
 ## 📘 Decision Log（設計判断）
 
+- [2026-08-07 優待取得時に次回権利月を固定する](./decision-log/2026-08-07-yutai-acquired-entitlement-lock.md)
+
 設計・方針・トレードオフの判断理由を記録します。
 
 - [2026-07-26 優待公式条件の割引率・長期保有メタデータ表示](./decision-log/2026-07-26-yutai-launch-display-benefit-metadata.md)

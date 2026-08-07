@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { getPreparationMonth, isPreparationMonth, resolveEntitlementMonthKey } from "../date-utils";
+import {
+  getActiveAcquiredEntitlementMonthKey,
+  getEntitlementMonthKeyOptions,
+  getPreparationMonth,
+  isPreparationMonth,
+  resolveEntitlementMonthKey,
+  resolveNextEntitlementMonthKey,
+} from "../date-utils";
 
 describe("getPreparationMonth", () => {
   it("権利月から指定月数を引く", () => {
@@ -66,5 +73,41 @@ describe("resolveEntitlementMonthKey", () => {
   it("複数権利月ではリードに入る直近の権利へ寄せる", () => {
     // 2月・8月権利・3か月前、6月取得（8月のリード5〜8月内）→ 当年8月
     expect(resolveEntitlementMonthKey([2, 8], iso(2026, 6), 3)).toBe("2026-08");
+  });
+});
+
+describe("resolveNextEntitlementMonthKey", () => {
+  const iso = (year: number, month: number) =>
+    `${year}-${`${month}`.padStart(2, "0")}-15T00:00:00+09:00`;
+
+  it("仕込み開始設定に依存せず次に来る権利月へ紐づける", () => {
+    expect(resolveNextEntitlementMonthKey([9], iso(2026, 2))).toBe("2026-09");
+    expect(resolveNextEntitlementMonthKey([9], iso(2026, 10))).toBe("2027-09");
+  });
+
+  it("複数権利月では最も近い次回権利を選ぶ", () => {
+    expect(resolveNextEntitlementMonthKey([3, 9], iso(2026, 4))).toBe("2026-09");
+    expect(resolveNextEntitlementMonthKey([3, 9], iso(2026, 10))).toBe("2027-03");
+  });
+
+  it("保存済みの対象権利は後日の再計算より優先する", () => {
+    expect(getActiveAcquiredEntitlementMonthKey({
+      months: [3, 9],
+      acquiredMarkedAt: iso(2026, 2),
+      acquiredEntitlementMonthKey: "2026-03",
+    }, iso(2026, 10))).toBe("2026-03");
+  });
+
+  it("訂正候補は直前・次回・その次の権利年月に絞る", () => {
+    expect(getEntitlementMonthKeyOptions([3, 9], iso(2026, 4), "2026-09")).toEqual([
+      "2026-03",
+      "2026-09",
+      "2027-03",
+    ]);
+    expect(getEntitlementMonthKeyOptions([3, 9], iso(2026, 4), "2026-03")).toEqual([
+      "2026-03",
+      "2026-09",
+      "2027-03",
+    ]);
   });
 });

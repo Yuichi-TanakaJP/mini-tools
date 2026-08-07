@@ -70,6 +70,67 @@ export function resolveEntitlementMonthKey(
   return `${targetYear}-${`${targetMonth}`.padStart(2, "0")}`;
 }
 
+/**
+ * 取得済みにした時点から、次に到来する権利月（当月を含む）を求める。
+ * 取得＝仕込みの操作では、仕込み開始設定の有無にかかわらず次回分として固定保存する。
+ */
+export function resolveNextEntitlementMonthKey(
+  months: number[],
+  acquiredAt: string,
+): string | null {
+  if (!Array.isArray(months) || months.length === 0) return toMonthKeyFromIso(acquiredAt);
+  const t = Date.parse(acquiredAt);
+  if (Number.isNaN(t)) return null;
+  const ym = toJstYearMonth(new Date(t));
+  const normalized = Array.from(
+    new Set(months.filter((month) => Number.isInteger(month) && month >= 1 && month <= 12)),
+  ).sort((a, b) => a - b);
+  if (normalized.length === 0) return toMonthKeyFromIso(acquiredAt);
+
+  const month = normalized.find((value) => value >= ym.month) ?? normalized[0];
+  const year = month >= ym.month ? ym.year : ym.year + 1;
+  return `${year}-${`${month}`.padStart(2, "0")}`;
+}
+
+export function getActiveAcquiredEntitlementMonthKey(
+  item: { months: number[]; acquiredMarkedAt?: string; acquiredEntitlementMonthKey?: string },
+  fallbackIso: string,
+): string | null {
+  if (item.acquiredEntitlementMonthKey && /^\d{4}-\d{2}$/.test(item.acquiredEntitlementMonthKey)) {
+    return item.acquiredEntitlementMonthKey;
+  }
+  return resolveNextEntitlementMonthKey(item.months, item.acquiredMarkedAt ?? fallbackIso);
+}
+
+/** 現在取得の訂正UIに出す、直前・次回・その次の権利年月候補。 */
+export function getEntitlementMonthKeyOptions(
+  months: number[],
+  referenceIso: string,
+  selectedKey?: string,
+): string[] {
+  const t = Date.parse(referenceIso);
+  if (Number.isNaN(t)) return selectedKey ? [selectedKey] : [];
+  const ym = toJstYearMonth(new Date(t));
+  const referenceIdx = ym.year * 12 + (ym.month - 1);
+  const normalized = Array.from(
+    new Set(months.filter((month) => Number.isInteger(month) && month >= 1 && month <= 12)),
+  ).sort((a, b) => a - b);
+  const occurrences = normalized
+    .flatMap((month) => [-1, 0, 1, 2].map((offset) => (ym.year + offset) * 12 + (month - 1)))
+    .sort((a, b) => a - b);
+  const nextIndex = occurrences.findIndex((value) => value >= referenceIdx);
+  const start = Math.max(0, nextIndex - 1);
+  const chosen = occurrences.slice(start, start + 3).map((value) => {
+    const year = Math.floor(value / 12);
+    const month = (value % 12) + 1;
+    return `${year}-${`${month}`.padStart(2, "0")}`;
+  });
+  if (selectedKey && /^\d{4}-\d{2}$/.test(selectedKey) && !chosen.includes(selectedKey)) {
+    chosen.push(selectedKey);
+  }
+  return chosen.sort();
+}
+
 export function getPreparationMonth(
   entitlementMonth: number,
   monthsBefore: number,

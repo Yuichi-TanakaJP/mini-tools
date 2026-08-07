@@ -5,7 +5,13 @@ import { useSearchParams } from "next/navigation";
 import { addMemoItemFromCandidate, isImportedMonthlyYutaiCandidate } from "@/app/tools/yutai-memo/candidate-import";
 import { loadArchivedItems, loadItems, saveItems } from "@/app/tools/yutai-memo/storage";
 import { CROSS_TYPES, type ArchivedMemoItem, type CrossType, type MemoItem } from "@/app/tools/yutai-memo/types";
-import { isPreparationMonth, toJstYearMonth } from "@/app/tools/yutai-memo/date-utils";
+import {
+  getActiveAcquiredEntitlementMonthKey,
+  getEntitlementMonthKeyOptions,
+  isPreparationMonth,
+  resolveNextEntitlementMonthKey,
+  toJstYearMonth,
+} from "@/app/tools/yutai-memo/date-utils";
 import {
   applyMemoEdit,
   buildMemoEditDraft,
@@ -825,7 +831,13 @@ export default function ToolClient({
       return;
     }
     setEditingMemoId(target.id);
-    setMemoDraft(buildMemoEditDraft(target));
+    const draft = buildMemoEditDraft(target);
+    setMemoDraft({
+      ...draft,
+      acquiredEntitlementMonthKey: target.acquired
+        ? (getActiveAcquiredEntitlementMonthKey(target, calendarNowIso) ?? "")
+        : "",
+    });
     setNotice(null);
   }
 
@@ -1203,6 +1215,9 @@ export default function ToolClient({
     ? data.nikkoCredit?.by_code[selectedRow.code]
     : undefined;
   const acquiredForSelected = selectedRow ? acquiredByCode.get(selectedRow.code) : undefined;
+  const activeKeyForSelected = selectedRow?.memo?.acquired
+    ? getActiveAcquiredEntitlementMonthKey(selectedRow.memo, calendarNowIso)
+    : null;
   const isEditingSelectedMemo = Boolean(selectedRow?.memo && editingMemoId === selectedRow.memo.id);
 
   return (
@@ -1543,6 +1558,9 @@ export default function ToolClient({
                   ) : (
                     filteredRows.map((row) => {
                       const acquired = acquiredByCode.get(row.code);
+                      const activeKey = row.memo?.acquired
+                        ? getActiveAcquiredEntitlementMonthKey(row.memo, calendarNowIso)
+                        : null;
                       const efficiency = getRowEfficiency(row, cardMemos, stockPriceByCode, rowLaunchDisplayByKey);
                       const crossFee = getRowCrossFee(
                         row,
@@ -1627,8 +1645,10 @@ export default function ToolClient({
                           <td style={styles.td}>{renderOneShareCell(row)}</td>
                           <td style={styles.td}>{renderCrossTypeCell(row)}</td>
                           <td style={styles.td}>
-                            {acquired
-                              ? <span style={styles.chipAcquired} title={acquired.latestKey ? `直近: ${acquired.latestKey}` : undefined}>✓{acquired.count}</span>
+                            {activeKey
+                              ? <span style={styles.chipAcquired} title={`今回取得: ${activeKey}${acquired?.count ? ` / 過去 ${acquired.count}件` : ""}`}>✓ {activeKey}</span>
+                              : acquired
+                                ? <span style={styles.chipAcquired} title={acquired.latestKey ? `直近: ${acquired.latestKey}` : undefined}>✓{acquired.count}</span>
                               : <span style={styles.cellMuted}>-</span>}
                           </td>
                           <td style={styles.td}>{renderRowActions(row)}</td>
@@ -1956,10 +1976,35 @@ export default function ToolClient({
                           <input
                             type="checkbox"
                             checked={memoDraft.acquired}
-                            onChange={(event) => updateDraft("acquired", event.target.checked)}
+                            onChange={(event) => {
+                              const acquired = event.target.checked;
+                              setMemoDraft((prev) => prev ? {
+                                ...prev,
+                                acquired,
+                                acquiredEntitlementMonthKey: acquired
+                                  ? (prev.acquiredEntitlementMonthKey || resolveNextEntitlementMonthKey(selectedRow.memo!.months, calendarNowIso) || "")
+                                  : "",
+                              } : prev);
+                            }}
                           />
                           <span style={styles.editLabel}>取得済み</span>
                         </label>
+                        {memoDraft.acquired ? (
+                          <label style={styles.editField}>
+                            <span style={styles.editLabel}>対象権利</span>
+                            <select
+                              value={memoDraft.acquiredEntitlementMonthKey}
+                              onChange={(event) => updateDraft("acquiredEntitlementMonthKey", event.target.value)}
+                              style={styles.editInput}
+                            >
+                              {getEntitlementMonthKeyOptions(
+                                selectedRow.memo.months,
+                                selectedRow.memo.acquiredMarkedAt ?? calendarNowIso,
+                                memoDraft.acquiredEntitlementMonthKey,
+                              ).map((key) => <option key={key} value={key}>{key}</option>)}
+                            </select>
+                          </label>
+                        ) : null}
                         <label style={styles.editField}>
                           <span style={styles.editLabel}>メモ</span>
                           <textarea
@@ -1993,6 +2038,21 @@ export default function ToolClient({
                           <dd style={styles.detailDd}>{selectedRow.memo.tenureRule || "未設定"}</dd>
                           <dt style={styles.detailDt}>取得済み</dt>
                           <dd style={styles.detailDd}>{selectedRow.memo.acquired ? "はい" : "いいえ"}</dd>
+                          {activeKeyForSelected ? (
+                            <>
+                              <dt style={styles.detailDt}>今回の対象権利</dt>
+                              <dd style={styles.detailDd}>
+                                {activeKeyForSelected}{" "}
+                                <button
+                                  type="button"
+                                  onClick={() => openMemoEdit(selectedRow.memo!)}
+                                  style={styles.detailEditButton}
+                                >
+                                  変更
+                                </button>
+                              </dd>
+                            </>
+                          ) : null}
                           <dt style={styles.detailDt}>優先度</dt>
                           <dd style={styles.detailDd}>{"★".repeat(selectedRow.memo.priority)}</dd>
                         </dl>

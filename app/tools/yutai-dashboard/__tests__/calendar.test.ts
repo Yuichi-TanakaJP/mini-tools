@@ -86,6 +86,23 @@ describe("buildCalendarCells の取得（＝仕込み）表示", () => {
     expect(cells.some((cell) => cell.prepCompleted)).toBe(false);
   });
 
+  it("現在の acquired は取得時に固定した対象権利年を優先する", () => {
+    const cells = buildCalendarCells(
+      memo({
+        acquired: true,
+        acquiredMarkedAt: "2026-06-10T00:00:00+09:00",
+        acquiredEntitlementMonthKey: "2027-09",
+      }),
+      [],
+      2027,
+      NOW_ISO,
+    );
+
+    expect(cells[8].acquiredThisYear).toBe(true);
+    expect(cells[8].acquiredYears).toEqual([2027]);
+    expect(cells[5].prepCompleted).toBe(true);
+  });
+
   it("同じ銘柄コードでもメモの権利月と異なる archive の仕込み実施は表示しない", () => {
     const cells = buildCalendarCells(
       memo({ months: [9] }),
