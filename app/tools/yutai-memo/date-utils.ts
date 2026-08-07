@@ -102,6 +102,35 @@ export function getActiveAcquiredEntitlementMonthKey(
   return resolveNextEntitlementMonthKey(item.months, item.acquiredMarkedAt ?? fallbackIso);
 }
 
+/** 現在取得の訂正UIに出す、直前・次回・その次の権利年月候補。 */
+export function getEntitlementMonthKeyOptions(
+  months: number[],
+  referenceIso: string,
+  selectedKey?: string,
+): string[] {
+  const t = Date.parse(referenceIso);
+  if (Number.isNaN(t)) return selectedKey ? [selectedKey] : [];
+  const ym = toJstYearMonth(new Date(t));
+  const referenceIdx = ym.year * 12 + (ym.month - 1);
+  const normalized = Array.from(
+    new Set(months.filter((month) => Number.isInteger(month) && month >= 1 && month <= 12)),
+  ).sort((a, b) => a - b);
+  const occurrences = normalized
+    .flatMap((month) => [-1, 0, 1, 2].map((offset) => (ym.year + offset) * 12 + (month - 1)))
+    .sort((a, b) => a - b);
+  const nextIndex = occurrences.findIndex((value) => value >= referenceIdx);
+  const start = Math.max(0, nextIndex - 1);
+  const chosen = occurrences.slice(start, start + 3).map((value) => {
+    const year = Math.floor(value / 12);
+    const month = (value % 12) + 1;
+    return `${year}-${`${month}`.padStart(2, "0")}`;
+  });
+  if (selectedKey && /^\d{4}-\d{2}$/.test(selectedKey) && !chosen.includes(selectedKey)) {
+    chosen.push(selectedKey);
+  }
+  return chosen.sort();
+}
+
 export function getPreparationMonth(
   entitlementMonth: number,
   monthsBefore: number,

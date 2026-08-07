@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getActiveAcquiredEntitlementMonthKey,
+  getEntitlementMonthKeyOptions,
   getPreparationMonth,
   isPreparationMonth,
   resolveEntitlementMonthKey,
@@ -95,5 +96,13 @@ describe("resolveNextEntitlementMonthKey", () => {
       acquiredMarkedAt: iso(2026, 2),
       acquiredEntitlementMonthKey: "2026-03",
     }, iso(2026, 10))).toBe("2026-03");
+  });
+
+  it("訂正候補は直前・次回・その次の権利年月に絞る", () => {
+    expect(getEntitlementMonthKeyOptions([3, 9], iso(2026, 4), "2026-09")).toEqual([
+      "2026-03",
+      "2026-09",
+      "2027-03",
+    ]);
   });
 });

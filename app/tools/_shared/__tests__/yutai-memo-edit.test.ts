@@ -101,6 +101,22 @@ describe("applyMemoEdit", () => {
     expect(cleared.acquiredEntitlementMonthKey).toBeUndefined();
   });
 
+  it("ユーザーが訂正した対象権利年月を保存する", () => {
+    const original = memoItem({ id: "a", months: [3, 9], acquired: false });
+    const { items: next } = applyMemoEdit(
+      [original],
+      "a",
+      {
+        ...buildMemoEditDraft(original),
+        acquired: true,
+        acquiredEntitlementMonthKey: "2026-09",
+      },
+      now,
+    );
+
+    expect(next[0].acquiredEntitlementMonthKey).toBe("2026-09");
+  });
+
   it("該当 id がなければ updated=false", () => {
     const items = [memoItem({ id: "a" })];
     const { items: next, updated } = applyMemoEdit(items, "zzz", buildMemoEditDraft(items[0]), now);

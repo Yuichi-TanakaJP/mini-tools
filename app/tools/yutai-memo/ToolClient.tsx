@@ -20,6 +20,7 @@ import {
 } from "./storage";
 import {
   getActiveAcquiredEntitlementMonthKey,
+  getEntitlementMonthKeyOptions,
   isPreparationMonth,
   resolveNextEntitlementMonthKey,
   toJstYearMonth,
@@ -51,6 +52,7 @@ type Draft = {
   relatedUrl: string;
   tenureRule: string;
   acquired: boolean;
+  acquiredEntitlementMonthKey: string;
   oneShareStartedAt: string;
   priority: 1 | 2 | 3;
   memo: string;
@@ -85,6 +87,7 @@ const emptyDraft = (): Draft => ({
   relatedUrl: "",
   tenureRule: "",
   acquired: false,
+  acquiredEntitlementMonthKey: "",
   oneShareStartedAt: "",
   priority: 2,
   memo: "",
@@ -484,6 +487,9 @@ export default function ToolClient({
       relatedUrl: it.relatedUrl ?? "",
       tenureRule: it.tenureRule ?? "",
       acquired: it.acquired,
+      acquiredEntitlementMonthKey: it.acquired
+        ? (getActiveAcquiredEntitlementMonthKey(it, new Date().toISOString()) ?? "")
+        : "",
       oneShareStartedAt: it.oneShareStartedAt ?? "",
       priority: it.priority,
       memo: it.memo,
@@ -500,7 +506,15 @@ export default function ToolClient({
       }
       const months = has ? d.months.filter((x) => x !== m) : [...d.months, m];
       months.sort((a, b) => a - b);
-      return { ...d, months };
+      const selectedMonth = Number(d.acquiredEntitlementMonthKey.slice(5, 7));
+      const keepsSelected = months.includes(selectedMonth);
+      return {
+        ...d,
+        months,
+        acquiredEntitlementMonthKey: d.acquired && !keepsSelected
+          ? (resolveNextEntitlementMonthKey(months, new Date().toISOString()) ?? "")
+          : d.acquiredEntitlementMonthKey,
+      };
     });
   }
 
@@ -548,7 +562,7 @@ export default function ToolClient({
         // 仕込んだ時刻を初回だけ記録。取得を外したらクリア（次サイクルで再取得日を新規に取るため）
         acquiredMarkedAt: draft.acquired ? (existing?.acquiredMarkedAt ?? now) : undefined,
         acquiredEntitlementMonthKey: draft.acquired
-          ? (existing?.acquiredEntitlementMonthKey ?? resolveNextEntitlementMonthKey(draft.months, existing?.acquiredMarkedAt ?? now) ?? undefined)
+          ? (draft.acquiredEntitlementMonthKey || existing?.acquiredEntitlementMonthKey || resolveNextEntitlementMonthKey(draft.months, existing?.acquiredMarkedAt ?? now) || undefined)
           : undefined,
         oneShareStartedAt: draft.oneShareStartedAt.trim() || undefined,
         priority: draft.priority,
@@ -1438,6 +1452,16 @@ export default function ToolClient({
                           >
                             {it.acquired ? "取得済み" : "未取得"}
                           </button>
+                          {it.acquired ? (
+                            <button
+                              type="button"
+                              className={styles.archiveBtn}
+                              onClick={() => openEdit(it)}
+                              title="今回の対象権利年月を変更"
+                            >
+                              {getActiveAcquiredEntitlementMonthKey(it, new Date().toISOString())} 変更
+                            </button>
+                          ) : null}
                           <button
                             type="button"
                             className={styles.archiveBtn}
@@ -1963,14 +1987,43 @@ export default function ToolClient({
                   <input
                     type="checkbox"
                     checked={draft.acquired}
-                    onChange={(e) =>
-                      setDraft((d) => ({ ...d, acquired: e.target.checked }))
-                    }
+                    onChange={(e) => {
+                      const acquired = e.target.checked;
+                      const now = new Date().toISOString();
+                      setDraft((d) => ({
+                        ...d,
+                        acquired,
+                        acquiredEntitlementMonthKey: acquired
+                          ? (d.acquiredEntitlementMonthKey || resolveNextEntitlementMonthKey(d.months, now) || "")
+                          : "",
+                      }));
+                    }}
                   />
                   取得済み
                 </label>
               </div>
             </div>
+
+            {draft.acquired ? (
+              <div className={styles.row} style={{ marginTop: 8 }}>
+                <label className={styles.small} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  対象権利
+                  <select
+                    className={styles.select}
+                    value={draft.acquiredEntitlementMonthKey}
+                    onChange={(e) => setDraft((d) => ({ ...d, acquiredEntitlementMonthKey: e.target.value }))}
+                  >
+                    {getEntitlementMonthKeyOptions(
+                      draft.months,
+                      draft.acquiredEntitlementMonthKey
+                        ? `${draft.acquiredEntitlementMonthKey}-01T00:00:00+09:00`
+                        : new Date().toISOString(),
+                      draft.acquiredEntitlementMonthKey,
+                    ).map((key) => <option key={key} value={key}>{key}</option>)}
+                  </select>
+                </label>
+              </div>
+            ) : null}
 
             <div className={styles.row} style={{ marginTop: 10 }}>
               <textarea

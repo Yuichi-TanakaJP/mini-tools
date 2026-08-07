@@ -12,6 +12,7 @@ export type MemoEditDraft = {
   relatedUrl: string;
   tenureRule: string;
   acquired: boolean;
+  acquiredEntitlementMonthKey: string;
   priority: 1 | 2 | 3;
   memo: string;
 };
@@ -27,6 +28,7 @@ export function buildMemoEditDraft(item: MemoItem): MemoEditDraft {
     relatedUrl: item.relatedUrl ?? "",
     tenureRule: item.tenureRule ?? "",
     acquired: item.acquired,
+    acquiredEntitlementMonthKey: item.acquiredEntitlementMonthKey ?? "",
     priority: item.priority,
     memo: item.memo,
   };
@@ -63,7 +65,7 @@ export function applyMemoEdit(
       acquired: draft.acquired,
       acquiredMarkedAt: draft.acquired ? (item.acquiredMarkedAt ?? now) : undefined,
       acquiredEntitlementMonthKey: draft.acquired
-        ? (item.acquiredEntitlementMonthKey ?? resolveNextEntitlementMonthKey(item.months, item.acquiredMarkedAt ?? now) ?? undefined)
+        ? (draft.acquiredEntitlementMonthKey || item.acquiredEntitlementMonthKey || resolveNextEntitlementMonthKey(item.months, item.acquiredMarkedAt ?? now) || undefined)
         : undefined,
       priority: draft.priority,
       memo: draft.memo.trim(),

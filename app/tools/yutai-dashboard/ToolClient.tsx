@@ -7,7 +7,9 @@ import { loadArchivedItems, loadItems, saveItems } from "@/app/tools/yutai-memo/
 import { CROSS_TYPES, type ArchivedMemoItem, type CrossType, type MemoItem } from "@/app/tools/yutai-memo/types";
 import {
   getActiveAcquiredEntitlementMonthKey,
+  getEntitlementMonthKeyOptions,
   isPreparationMonth,
+  resolveNextEntitlementMonthKey,
   toJstYearMonth,
 } from "@/app/tools/yutai-memo/date-utils";
 import {
@@ -837,7 +839,13 @@ export default function ToolClient({
       return;
     }
     setEditingMemoId(target.id);
-    setMemoDraft(buildMemoEditDraft(target));
+    const draft = buildMemoEditDraft(target);
+    setMemoDraft({
+      ...draft,
+      acquiredEntitlementMonthKey: target.acquired
+        ? (getActiveAcquiredEntitlementMonthKey(target, calendarNowIso) ?? "")
+        : "",
+    });
     setNotice(null);
   }
 
@@ -1970,10 +1978,37 @@ export default function ToolClient({
                           <input
                             type="checkbox"
                             checked={memoDraft.acquired}
-                            onChange={(event) => updateDraft("acquired", event.target.checked)}
+                            onChange={(event) => {
+                              const acquired = event.target.checked;
+                              setMemoDraft((prev) => prev ? {
+                                ...prev,
+                                acquired,
+                                acquiredEntitlementMonthKey: acquired
+                                  ? (prev.acquiredEntitlementMonthKey || resolveNextEntitlementMonthKey(selectedRow.memo!.months, calendarNowIso) || "")
+                                  : "",
+                              } : prev);
+                            }}
                           />
                           <span style={styles.editLabel}>取得済み</span>
                         </label>
+                        {memoDraft.acquired ? (
+                          <label style={styles.editField}>
+                            <span style={styles.editLabel}>対象権利</span>
+                            <select
+                              value={memoDraft.acquiredEntitlementMonthKey}
+                              onChange={(event) => updateDraft("acquiredEntitlementMonthKey", event.target.value)}
+                              style={styles.editInput}
+                            >
+                              {getEntitlementMonthKeyOptions(
+                                selectedRow.memo.months,
+                                memoDraft.acquiredEntitlementMonthKey
+                                  ? `${memoDraft.acquiredEntitlementMonthKey}-01T00:00:00+09:00`
+                                  : (selectedRow.memo.acquiredMarkedAt ?? calendarNowIso),
+                                memoDraft.acquiredEntitlementMonthKey,
+                              ).map((key) => <option key={key} value={key}>{key}</option>)}
+                            </select>
+                          </label>
+                        ) : null}
                         <label style={styles.editField}>
                           <span style={styles.editLabel}>メモ</span>
                           <textarea
@@ -2010,7 +2045,16 @@ export default function ToolClient({
                           {acquiredForSelected?.activeKey ? (
                             <>
                               <dt style={styles.detailDt}>今回の対象権利</dt>
-                              <dd style={styles.detailDd}>{acquiredForSelected.activeKey}</dd>
+                              <dd style={styles.detailDd}>
+                                {acquiredForSelected.activeKey}{" "}
+                                <button
+                                  type="button"
+                                  onClick={() => openMemoEdit(selectedRow.memo!)}
+                                  style={styles.detailEditButton}
+                                >
+                                  変更
+                                </button>
+                              </dd>
                             </>
                           ) : null}
                           <dt style={styles.detailDt}>優先度</dt>
