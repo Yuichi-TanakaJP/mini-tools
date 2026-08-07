@@ -32,7 +32,9 @@ function RoutineChip({ routine }: { routine: Routine }) {
         color: color.fg,
         borderColor: color.border,
       }}
-      title={`${MODE_LABELS[routine.mode]} / ${routine.repo} / ${routine.source}`}
+      title={[MODE_LABELS[routine.mode], routine.repo, routine.source]
+        .filter(Boolean)
+        .join(" / ")}
     >
       <span aria-hidden="true">{MODE_ICONS[routine.mode]}</span>
       {routine.label}

@@ -61,7 +61,9 @@
 | mode | 出所 |
 |---|---|
 | `auto` / `semi` | Windows タスクスケジューラの登録内容（`market_info/scripts/register_tasks.ps1` ほか） |
-| `manual` | 各リポジトリの `.claude/skills/*/SKILL.md` |
+| `manual` | 各リポジトリの `.claude/skills/*/SKILL.md`、`market_info/docs/operations/{daily,monthly}_operations.md`、および本人への確認 |
+
+コードを伴わない目視確認（証券口座の入金確認など）は `repo` を持たない。
 
 ### 保存先
 
