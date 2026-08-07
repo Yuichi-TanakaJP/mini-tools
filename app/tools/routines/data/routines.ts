@@ -3,7 +3,8 @@
 // 出所:
 // - auto / semi: Windows タスクスケジューラの登録内容
 //   （`market_info/scripts/register_tasks.ps1` ほか）
-// - manual: 各リポジトリの `.claude/skills/*/SKILL.md`
+// - manual: 各リポジトリの `.claude/skills/*/SKILL.md` と
+//   `market_info/docs/operations/{daily,monthly}_operations.md`
 //
 // 実行実績を自動で取り込む仕組みは持たない。棚卸ししたときに手で更新する。
 // 最終棚卸し: 2026-08-08
@@ -198,6 +199,39 @@ export const ROUTINES: Routine[] = [
     schedule: { kind: "monthly", daysOfMonth: [1], times: ["09:00"] },
     source: "monthly_rankings_reminder",
     repo: "market_info",
+  },
+
+  // ---- 手動: 市場データ取得 ----
+  {
+    id: "naito-daily-run",
+    label: "market ランキング取得・publish",
+    description:
+      "内藤証券にログイン（2FA を手で処理）して 9tables を取得し、株価ランキング / 日経225寄与度 / TOPIX33 / 米国株ランキングを publish してバックアップまで流す。火曜は信用残、木曜は投資部門別の追加取得が走る。run_naito_and_backup.ps1。",
+    mode: "manual",
+    domain: "market-data",
+    schedule: { kind: "weekday", times: [] },
+    source: "scripts/run_naito_and_backup.ps1",
+    repo: "market_info",
+  },
+
+  // ---- 手動: 保有・優待・入金の確認 ----
+  {
+    id: "yutai-purchase-check",
+    label: "優待の購入銘柄チェック",
+    description: "権利取りの対象銘柄と購入状況を確認する。",
+    mode: "manual",
+    domain: "portfolio-check",
+    schedule: { kind: "daily", times: [] },
+    source: "手作業",
+  },
+  {
+    id: "sbi-dividend-check",
+    label: "SBI 配当の入金チェック",
+    description: "SBI 証券の口座で配当金の入金状況を確認する。",
+    mode: "manual",
+    domain: "portfolio-check",
+    schedule: { kind: "daily", times: [] },
+    source: "手作業",
   },
 
   // ---- 手動: X 投稿 ----

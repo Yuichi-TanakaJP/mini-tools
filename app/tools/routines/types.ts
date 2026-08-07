@@ -15,7 +15,9 @@ export type RoutineDomain =
   | "market-data"
   | "x-post"
   | "line-notify"
-  | "dev-ops";
+  | "dev-ops"
+  /** 自分の保有・優待・入金まわりの目視確認 */
+  | "portfolio-check";
 
 /** 0=日曜 ... 6=土曜。JS の Date#getDay と揃える。 */
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
@@ -43,6 +45,6 @@ export type Routine = {
   schedule: RoutineSchedule;
   /** タスク名やスキル名など、実体をたどるための識別子 */
   source: string;
-  /** 実体があるリポジトリ/フォルダ */
-  repo: string;
+  /** 実体があるリポジトリ/フォルダ。証券会社サイトの目視確認などコードを伴わないものは持たない */
+  repo?: string;
 };
