@@ -29,6 +29,16 @@ const withPWA = require("next-pwa")({
 
 const nextConfig = {
   reactStrictMode: true,
+  async redirects() {
+    return [
+      {
+        // ルーティン一覧は premium 配下へ移動した。旧 URL のブックマークを拾う。
+        source: "/tools/routines",
+        destination: "/premium/routines",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 module.exports = withPWA(nextConfig);

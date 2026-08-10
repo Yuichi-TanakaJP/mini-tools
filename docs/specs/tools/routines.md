@@ -2,7 +2,7 @@
 
 ## 概要
 
-- URL: `/tools/routines`
+- URL: `/premium/routines`
 - 分類: 運用可視化（市場データ系でも入力系でもない）
 - 主な用途: いま自分が回している定期作業の総量を、週間タイムテーブルで一枚に把握する
 - 目的: 日々浴びている情報量の現状を把握し、減らす・まとめる・自動化する対策の判断材料にする
@@ -53,7 +53,7 @@
 
 ### 取得元
 
-- [`app/tools/routines/data/routines.ts`](../../../app/tools/routines/data/routines.ts) の静的定義のみ
+- [`app/premium/routines/data/routines.ts`](../../../app/premium/routines/data/routines.ts) の静的定義のみ
 - API 呼び出しなし、外部データ取得なし
 
 定義の出所は次の 2 つで、**取り込みは自動化しない**。
@@ -75,7 +75,7 @@
 
 ## 集計ルール
 
-[`timetable.ts`](../../../app/tools/routines/timetable.ts) の純関数で計算する。
+[`timetable.ts`](../../../app/premium/routines/timetable.ts) の純関数で計算する。
 
 - **週あたりの実行回数** = 対象曜日数 × 時刻数。時刻未設定なら 1 回として数える
 - **月あたりの実行回数** = `monthly` の時刻数。`3〜10日` のような複数日指定は
@@ -95,14 +95,22 @@
 
 個人の作業内容の棚卸しであり、一般利用者向けの機能ではないため次のようにする。
 
-- [`lib/tools-catalog.ts`](../../../lib/tools-catalog.ts) に登録しない（ホームのグリッドとナビドロワーに出さない）
+- premium 配下に置き、Cookie セッションでゲートする（下記「premium / 権限制御」）
+- [`lib/tools-catalog.ts`](../../../lib/tools-catalog.ts) に登録しない（公開ツール一覧とナビドロワーに出さない）
 - [`app/sitemap.ts`](../../../app/sitemap.ts) に追加しない
 - ページの `metadata.robots` を `index: false, follow: false` にする
-- 到達は直接 URL のみ
+
+旧 URL `/tools/routines` は [`next.config.js`](../../../next.config.js) の `redirects()` で
+`/premium/routines` へ 308 リダイレクトする。
 
 ## premium / 権限制御
 
-- なし。認証・権限による出し分けはしない
+他の premium ページと同じ方式にする。
+
+- `PREMIUM_COOKIE_NAME` の Cookie を [`verifyPremiumSession`](../../../lib/premium-auth.ts) で検証する
+- 未ログインなら `/premium/login?next=/premium/routines` へ redirect する
+- 到達導線は [Premium ホーム](../../../app/premium/page.tsx) のカード。直接 URL でも入れる
+- `next` パラメータは `getSafePremiumNextPath` の許可リスト（`/premium` 配下）に含まれる
 
 ## 更新運用
 
@@ -119,12 +127,12 @@ Get-ScheduledTask -TaskPath '\market_info\','\' | ForEach-Object {
 
 ## 関連実装
 
-- [app/tools/routines/page.tsx](../../../app/tools/routines/page.tsx)
-- [app/tools/routines/RoutinesView.tsx](../../../app/tools/routines/RoutinesView.tsx)
-- [app/tools/routines/timetable.ts](../../../app/tools/routines/timetable.ts)
-- [app/tools/routines/types.ts](../../../app/tools/routines/types.ts)
-- [app/tools/routines/data/routines.ts](../../../app/tools/routines/data/routines.ts)
-- [app/tools/routines/__tests__/timetable.test.ts](../../../app/tools/routines/__tests__/timetable.test.ts)
+- [app/premium/routines/page.tsx](../../../app/premium/routines/page.tsx)
+- [app/premium/routines/RoutinesView.tsx](../../../app/premium/routines/RoutinesView.tsx)
+- [app/premium/routines/timetable.ts](../../../app/premium/routines/timetable.ts)
+- [app/premium/routines/types.ts](../../../app/premium/routines/types.ts)
+- [app/premium/routines/data/routines.ts](../../../app/premium/routines/data/routines.ts)
+- [app/premium/routines/__tests__/timetable.test.ts](../../../app/premium/routines/__tests__/timetable.test.ts)
 
 ## 関連 docs
 

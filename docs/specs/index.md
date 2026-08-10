@@ -26,7 +26,7 @@
 | 開示イベントレーダー | `/tools/disclosure-radar` | [disclosure-radar.md](./tools/disclosure-radar.md) |
 | 投資主体別売買動向 | `/tools/investor-flow` | [investor-flow.md](./tools/investor-flow.md) |
 | ペンギンシューター | `/tools/penguin-shooter` | [penguin-shooter.md](./tools/penguin-shooter.md) |
-| ルーティン一覧 | `/tools/routines` | [routines.md](./tools/routines.md) |
+| ルーティン一覧 | `/premium/routines` | [routines.md](./tools/routines.md) |
 
 ## テンプレート
 

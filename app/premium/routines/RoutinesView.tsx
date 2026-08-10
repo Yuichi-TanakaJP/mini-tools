@@ -2,6 +2,7 @@
 // 状態も入力も持たないため "use client" は付けない。
 
 import type { CSSProperties } from "react";
+import Link from "next/link";
 import type { Routine, RoutineMode } from "./types";
 import {
   MODE_ICONS,
@@ -188,6 +189,9 @@ export default function RoutinesView() {
     <main style={styles.page}>
       <div style={styles.shell}>
         <section style={styles.hero}>
+          <Link href="/premium" style={styles.backLink}>
+            ← Premium ホーム
+          </Link>
           <div style={styles.eyebrow}>routine inventory</div>
           <h1 style={styles.title}>ルーティン一覧</h1>
           <p style={styles.description}>
@@ -226,6 +230,15 @@ const styles: Record<string, CSSProperties> = {
   },
   hero: {
     marginBottom: 22,
+  },
+  backLink: {
+    // block にして eyebrow チップと同じ行に並ばないようにする
+    display: "block",
+    marginBottom: 12,
+    fontSize: 12,
+    fontWeight: 700,
+    color: "#64748b",
+    textDecoration: "none",
   },
   eyebrow: {
     display: "inline-flex",
