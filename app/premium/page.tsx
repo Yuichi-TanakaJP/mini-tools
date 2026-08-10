@@ -19,7 +19,7 @@ type FeatureCard = {
   icon: string;
   title: string;
   description: string;
-  tone: "blue" | "amber" | "slate";
+  tone: "blue" | "amber" | "violet" | "slate";
 };
 
 const FEATURE_CARDS: FeatureCard[] = [
@@ -38,6 +38,13 @@ const FEATURE_CARDS: FeatureCard[] = [
     tone: "amber",
   },
   {
+    href: "/premium/routines",
+    icon: "🗓",
+    title: "ルーティン一覧",
+    description: "自動・半自動・手動で回している定期作業を、週間タイムテーブルで棚卸しします。",
+    tone: "violet",
+  },
+  {
     href: "/admin",
     icon: "⚙",
     title: "管理コンソール",
@@ -49,6 +56,7 @@ const FEATURE_CARDS: FeatureCard[] = [
 const TONE_MAP: Record<FeatureCard["tone"], { bg: string; border: string; fg: string }> = {
   blue: { bg: "#eff6ff", border: "#bfdbfe", fg: "#1d4ed8" },
   amber: { bg: "#fff7ed", border: "#fdba74", fg: "#c2410c" },
+  violet: { bg: "#eef2ff", border: "#c7d2fe", fg: "#4338ca" },
   slate: { bg: "#f8fafc", border: "#cbd5e1", fg: "#334155" },
 };
 

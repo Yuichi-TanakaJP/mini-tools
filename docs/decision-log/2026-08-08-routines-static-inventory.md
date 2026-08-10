@@ -26,7 +26,7 @@
 ### 1. 実行ログではなく静的な棚卸しにする
 
 - 日々の記録機能（チェックイン、連続日数、実績カウント）は **作らない**
-- 定義は `app/tools/routines/data/routines.ts` にハードコードし、棚卸し時に手で更新する
+- 定義は `app/premium/routines/data/routines.ts` にハードコードし、棚卸し時に手で更新する
 - 保存先を持たない（LocalStorage も使わない）
 
 理由:
