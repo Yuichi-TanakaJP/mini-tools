@@ -6,7 +6,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeItems } from "@/app/tools/my-stocks/storage";
 import type { MyStockItem } from "@/app/tools/my-stocks/types";
-import type { StockNotesEarningsInfo } from "./earnings-types";
+import type { EarningsFoldEntry, StockNotesEarningsInfo } from "./earnings-types";
 import type {
   StockNoteAction,
   StockNoteAnalysis,
@@ -228,11 +228,52 @@ export async function fetchHoldings(): Promise<HoldingsWithSync> {
  * 失敗時は呼び出し側（load.ts）でキャッチし、ダッシュボード全体は失敗させず
  * 「決算情報を取得できませんでした」の表示に落とす。
  */
+/**
+ * fetchEarnings が受け取った `lastEarnings` を実行時に正規化する。
+ *
+ * なぜ必要か: `/api/stock-notes/earnings` は `Cache-Control: public, max-age=300`
+ * を返している。デプロイ直後は、ブラウザ/CDN に残った「旧形式（`lastEarnings` が
+ * 銘柄コード -> 日付文字列だった時代）」のレスポンスを、新しいクライアントコード
+ * （`lastEarnings[code].date` を前提にしたコード）が読んでしまう経路がありうる。
+ * そのまま `entry.date` を参照すると `undefined` になり、`formatMonthDay(undefined)`
+ * が呼ばれて画面がクラッシュしうる。
+ *
+ * 方針: サーバーとクライアントのバージョンを厳密に揃える（キャッシュバスター、
+ * no-cache 化）よりも、「外部から来た JSON の形をそのまま信用しない」前提で
+ * クライアント側で正規化する方が副作用が少ない（他のキャッシュ済みレスポンスにも
+ * 効く、サーバー側の変更が不要）。将来また `lastEarnings` の形式を変える場合も、
+ * ここで吸収できるようにしておく。
+ * - 値が文字列（旧形式）の場合: `{ date: <その文字列>, announcementType: "", publishStatus: "" }` に変換する
+ * - 値がオブジェクトで `date` が文字列の場合: 型を軽く検証しつつそのまま使う
+ * - それ以外（壊れた形）は黙って無視する（該当銘柄の前回決算は「不明」として扱われる。
+ *   `lastEarningsDisplay` はキーが無ければ null を返し、行自体を出さない）
+ */
+export function normalizeLastEarnings(raw: unknown): Record<string, EarningsFoldEntry> {
+  const result: Record<string, EarningsFoldEntry> = {};
+  if (!raw || typeof raw !== "object") return result;
+  for (const [code, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === "string") {
+      result[code] = { date: value, announcementType: "", publishStatus: "" };
+      continue;
+    }
+    if (value && typeof value === "object" && typeof (value as { date?: unknown }).date === "string") {
+      const entry = value as Partial<EarningsFoldEntry>;
+      result[code] = {
+        date: entry.date as string,
+        announcementType: typeof entry.announcementType === "string" ? entry.announcementType : "",
+        publishStatus: typeof entry.publishStatus === "string" ? entry.publishStatus : "",
+      };
+    }
+  }
+  return result;
+}
+
 export async function fetchEarnings(codes: string[]): Promise<StockNotesEarningsInfo> {
   const query = new URLSearchParams({ codes: codes.join(",") }).toString();
   const res = await fetch(`/api/stock-notes/earnings?${query}`, { method: "GET" });
   if (!res.ok) {
     throw new Error(`決算日の取得に失敗しました（HTTP ${res.status}）`);
   }
-  return (await res.json()) as StockNotesEarningsInfo;
+  const raw = (await res.json()) as StockNotesEarningsInfo;
+  return { ...raw, lastEarnings: normalizeLastEarnings(raw.lastEarnings) };
 }

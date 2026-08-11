@@ -45,6 +45,10 @@
 
 `lastEarnings` は日付だけでなく決算区分（`announcementType`）・発表状況（`publishStatus`）も持つ（次回決算の `earnings` と同じ形）。経過日数は `app/tools/stock-notes/logic.ts` の `daysSinceEarnings`（純関数、JSTの日付境界で計算）を使う。
 
+`earnings.complete === false`（月次データの一部取得に失敗）の場合、その `lastEarnings` は欠落月にもっと新しい決算があった可能性があり確定情報ではないため、表示に「（一部期間が未取得のため不確実）」を付す（決算またぎ警告自体は抑制しない。理由は decision-log 参照）。
+
+`/api/stock-notes/earnings` のレスポンスには `Cache-Control: public, max-age=300` が付いているため、デプロイ直後は古いキャッシュ済みレスポンス（`lastEarnings` が旧形式=日付文字列のみだった時代のもの）をクライアントが受け取る場合がある。`app/tools/stock-notes/data.ts` の `fetchEarnings` は受信直後に `normalizeLastEarnings` で形式を正規化し（文字列なら `{date, announcementType: "", publishStatus: ""}` に変換、壊れた値は無視）、クラッシュしないようにしている。
+
 決算またぎの警告（鮮度バッジ「要更新（決算後未分析）」）にも前回決算日を入れ、「8/4の決算後、未分析」のように表示する（`FreshnessBadge`、`app/tools/stock-notes/ToolClient.tsx`）。日付が入ることで、利用者が何を確認すべきかが即座に分かる。
 
 ### 保有リスト同期の注意表示

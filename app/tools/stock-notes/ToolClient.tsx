@@ -25,12 +25,12 @@ import {
   computeUnanalyzedHoldings,
   countHoldingTabItems,
   createLoadGuard,
-  daysSinceEarnings,
   daysSinceSync,
-  daysUntil,
+  earningsDisplay,
+  formatMonthDay,
   freshnessLevelWithEarnings,
-  isEarningsSoon,
   isOverdue,
+  lastEarningsDisplay,
   latestAnalyzedAt,
   openActionCountForStock,
   selectLatestThesis,
@@ -103,70 +103,9 @@ const dangerText: React.CSSProperties = {
   fontWeight: 700,
 };
 
-/** "YYYY-MM-DD" を "M/D" に変換する（表示用）。 */
-function formatMonthDay(dateStr: string): string {
-  const [, month, day] = dateStr.split("-");
-  return `${Number(month)}/${Number(day)}`;
-}
-
-/**
- * 次回決算の表示テキストを組み立てる。
- * - earnings が null（取得自体に失敗）: 「決算情報を取得できませんでした」
- * - 予定が見つかった: 「次回決算 8/14（あと3日）」
- * - 予定が見つからず、かつ取得が完全（`complete`）だった: 「次回決算 未判明（カレンダーは9/30まで）」
- *   （「予定なし」とは書かない。カレンダーが約2ヶ月先までしか無いため）
- * - 予定が見つからず、かつ一部の月の取得に失敗していた（`complete: false`）: 未判明とは断定できない
- *   （欠落した月にその銘柄の決算が入っていた可能性があるため）ので「取得できませんでした」側に倒す
- */
-function earningsDisplay(
-  code: string,
-  earnings: StockNotesEarningsInfo | null,
-  now: Date = new Date(),
-): { text: string; soon: boolean; failed: boolean } {
-  if (earnings === null) {
-    return { text: "決算情報を取得できませんでした", soon: false, failed: true };
-  }
-  const entry = earnings.earnings[code];
-  if (entry) {
-    const days = daysUntil(entry.date, now);
-    const daysText = days === 0 ? "本日" : days > 0 ? `あと${days}日` : `${Math.abs(days)}日前`;
-    return {
-      text: `次回決算 ${formatMonthDay(entry.date)}（${daysText}）`,
-      soon: isEarningsSoon(entry.date, now),
-      failed: false,
-    };
-  }
-  if (!earnings.complete) {
-    return { text: "決算情報を取得できませんでした（一部期間が未取得）", soon: false, failed: true };
-  }
-  const windowText = earnings.windowTo ? `${formatMonthDay(earnings.windowTo)}まで` : "約2ヶ月先まで";
-  return { text: `次回決算 未判明（カレンダーは${windowText}）`, soon: false, failed: false };
-}
-
-/**
- * 前回決算（過ぎてしまった決算）の表示テキストを組み立てる。
- * - lastEarnings にキーが無ければ null（呼び出し側は行自体を出さない。「不明」と書き足しても
- *   情報量が無いのに行が増えるだけのため）
- * - 次回決算が判明している場合は経過日数を付けない（次回情報が主役なので、前回は補助情報でよい）:
- *   「前回決算 8/4（1Q）」
- * - 次回決算が未判明の場合は前回決算が唯一の手がかりになるため、経過日数を付けて目立たせる:
- *   「前回決算 8/4（1Q・7日前）」
- */
-function lastEarningsDisplay(
-  code: string,
-  earnings: StockNotesEarningsInfo | null,
-  emphasize: boolean,
-  now: Date = new Date(),
-): string | null {
-  const entry = earnings?.lastEarnings[code];
-  if (!entry) return null;
-  if (!emphasize) {
-    return `前回決算 ${formatMonthDay(entry.date)}（${entry.announcementType}）`;
-  }
-  const days = daysSinceEarnings(entry.date, now);
-  const daysText = days === 0 ? "本日" : `${days}日前`;
-  return `前回決算 ${formatMonthDay(entry.date)}（${entry.announcementType}・${daysText}）`;
-}
+// formatMonthDay / earningsDisplay / lastEarningsDisplay は純関数として
+// app/tools/stock-notes/logic.ts に切り出し、そちらでユニットテストしている
+// （React に依存しないロジックはコンポーネント外に置く方針。詳細は decision-log 参照）。
 
 const card: React.CSSProperties = {
   background: "var(--color-bg-card)",

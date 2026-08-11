@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MyStockItem } from "@/app/tools/my-stocks/types";
+import type { StockNotesEarningsInfo } from "../earnings-types";
 import {
   FRESHNESS_DANGER_DAYS,
   FRESHNESS_WARN_DAYS,
@@ -12,10 +13,13 @@ import {
   daysSinceEarnings,
   daysSinceSync,
   daysUntil,
+  earningsDisplay,
+  formatMonthDay,
   freshnessLevel,
   freshnessLevelWithEarnings,
   isEarningsSoon,
   isOverdue,
+  lastEarningsDisplay,
   latestAnalyzedAt,
   selectLatestThesis,
   sortOpenActions,
@@ -225,6 +229,18 @@ describe("daysUntil / isEarningsSoon", () => {
   it("過去日は isEarningsSoon が false", () => {
     expect(isEarningsSoon("2026-08-10", now)).toBe(false);
   });
+
+  describe("不正な日付（外部JSONの壊れたデータ想定、P2/P3対応）", () => {
+    it("daysUntil は不正な日付文字列に対して null を返す（NaNにしない）", () => {
+      expect(daysUntil("not-a-date", now)).toBeNull();
+      expect(daysUntil("", now)).toBeNull();
+      expect(daysUntil("2026-13-99", now)).toBeNull();
+    });
+
+    it("isEarningsSoon は不正な日付に対して false を返す", () => {
+      expect(isEarningsSoon("not-a-date", now)).toBe(false);
+    });
+  });
 });
 
 describe("daysSinceEarnings", () => {
@@ -242,12 +258,142 @@ describe("daysSinceEarnings", () => {
     expect(daysSinceEarnings("2026-08-14", now)).toBe(0);
   });
 
+  it("不正な日付文字列は null を返す（NaN日前と表示させない）", () => {
+    expect(daysSinceEarnings("not-a-date", now)).toBeNull();
+  });
+
   describe("JST境界（日付だけで判定し、時差でずれないこと）", () => {
     it("JST日付の変わり目をまたいでも経過日数がずれない", () => {
       // JST 2026-08-11 00:30 = UTC 2026-08-10T15:30:00.000Z
       const jstJustAfterMidnight = new Date("2026-08-10T15:30:00.000Z");
       expect(daysSinceEarnings("2026-08-04", jstJustAfterMidnight)).toBe(7);
     });
+  });
+});
+
+describe("formatMonthDay", () => {
+  it("YYYY-MM-DD を M/D に変換する", () => {
+    expect(formatMonthDay("2026-08-04")).toBe("8/4");
+    expect(formatMonthDay("2026-01-09")).toBe("1/9");
+  });
+
+  it("不正な形式は日付を捏造せず (日付不明) を返す", () => {
+    expect(formatMonthDay("not-a-date")).toBe("(日付不明)");
+    expect(formatMonthDay("")).toBe("(日付不明)");
+    expect(formatMonthDay(null)).toBe("(日付不明)");
+    expect(formatMonthDay(undefined)).toBe("(日付不明)");
+  });
+});
+
+function makeEarningsInfo(overrides: Partial<StockNotesEarningsInfo>): StockNotesEarningsInfo {
+  return {
+    asOfDate: "2026-08-11",
+    windowTo: "2026-09-30",
+    earnings: {},
+    lastEarnings: {},
+    complete: true,
+    missingMonths: [],
+    ...overrides,
+  };
+}
+
+describe("earningsDisplay", () => {
+  const now = new Date("2026-08-11T02:00:00.000Z"); // JST 2026-08-11 11:00
+
+  it("earnings が null なら取得失敗の文言", () => {
+    expect(earningsDisplay("5401", null, now)).toEqual({
+      text: "決算情報を取得できませんでした",
+      soon: false,
+      failed: true,
+    });
+  });
+
+  it("予定が見つかれば日付と残り日数を表示する", () => {
+    const earnings = makeEarningsInfo({
+      earnings: { "7433": { date: "2026-08-12", announcementType: "1Q", publishStatus: "予定" } },
+    });
+    expect(earningsDisplay("7433", earnings, now)).toEqual({
+      text: "次回決算 8/12（あと1日）",
+      soon: true,
+      failed: false,
+    });
+  });
+
+  it("予定が見つからず complete なら「未判明」（windowToを反映）", () => {
+    const earnings = makeEarningsInfo({ earnings: {} });
+    expect(earningsDisplay("5401", earnings, now)).toEqual({
+      text: "次回決算 未判明（カレンダーは9/30まで）",
+      soon: false,
+      failed: false,
+    });
+  });
+
+  it("予定が見つからず complete:false なら「未判明」ではなく取得失敗寄りの文言", () => {
+    const earnings = makeEarningsInfo({ earnings: {}, complete: false });
+    expect(earningsDisplay("5401", earnings, now)).toEqual({
+      text: "決算情報を取得できませんでした（一部期間が未取得）",
+      soon: false,
+      failed: true,
+    });
+  });
+
+  it("次回決算の日付が不正でもクラッシュせず、日数部分だけ省く（P3対応）", () => {
+    const earnings = makeEarningsInfo({
+      earnings: { "7433": { date: "not-a-date", announcementType: "1Q", publishStatus: "予定" } },
+    });
+    const result = earningsDisplay("7433", earnings, now);
+    expect(result.text).toBe("次回決算 (日付不明)");
+    expect(result.soon).toBe(false);
+  });
+});
+
+describe("lastEarningsDisplay", () => {
+  const now = new Date("2026-08-11T02:00:00.000Z"); // JST 2026-08-11 11:00
+
+  it("lastEarnings にキーが無ければ null（行を出さない）", () => {
+    expect(lastEarningsDisplay("5401", makeEarningsInfo({}), false, now)).toBeNull();
+    expect(lastEarningsDisplay("5401", null, false, now)).toBeNull();
+  });
+
+  it("emphasize=false（次回決算が判明）は区分のみ、経過日数を付けない", () => {
+    const earnings = makeEarningsInfo({
+      lastEarnings: { "4063": { date: "2026-07-24", announcementType: "1Q", publishStatus: "発表済" } },
+    });
+    expect(lastEarningsDisplay("4063", earnings, false, now)).toBe("前回決算 7/24（1Q）");
+  });
+
+  it("emphasize=true（次回決算が未判明）は経過日数を付けて目立たせる", () => {
+    const earnings = makeEarningsInfo({
+      lastEarnings: { "5401": { date: "2026-08-04", announcementType: "1Q", publishStatus: "予定" } },
+    });
+    expect(lastEarningsDisplay("5401", earnings, true, now)).toBe("前回決算 8/4（1Q・7日前）");
+  });
+
+  it("complete:false のときは一部期間が未取得のため不確実という注記を添える（P2対応）", () => {
+    const earnings = makeEarningsInfo({
+      lastEarnings: { "4063": { date: "2026-07-24", announcementType: "1Q", publishStatus: "発表済" } },
+      complete: false,
+    });
+    expect(lastEarningsDisplay("4063", earnings, false, now)).toBe(
+      "前回決算 7/24（1Q・一部期間が未取得のため不確実）",
+    );
+    expect(lastEarningsDisplay("4063", earnings, true, now)).toBe(
+      "前回決算 7/24（1Q・18日前・一部期間が未取得のため不確実）",
+    );
+  });
+
+  it("旧形式からの正規化で announcementType が空文字になっても区分無しで表示する（クラッシュしない）", () => {
+    const earnings = makeEarningsInfo({
+      lastEarnings: { "5401": { date: "2026-08-04", announcementType: "", publishStatus: "" } },
+    });
+    expect(lastEarningsDisplay("5401", earnings, false, now)).toBe("前回決算 8/4");
+  });
+
+  it("決算日が不正でもクラッシュしない（P3対応）", () => {
+    const earnings = makeEarningsInfo({
+      lastEarnings: { "5401": { date: "not-a-date", announcementType: "1Q", publishStatus: "予定" } },
+    });
+    expect(lastEarningsDisplay("5401", earnings, true, now)).toBe("前回決算 (日付不明)（1Q）");
   });
 });
 

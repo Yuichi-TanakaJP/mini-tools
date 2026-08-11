@@ -1,6 +1,7 @@
 // app/tools/stock-notes/logic.ts
 // 画面の外側で独立してテストできる純関数群（window / Supabase 非依存）。
 import type { MyStockItem } from "@/app/tools/my-stocks/types";
+import type { StockNotesEarningsInfo } from "./earnings-types";
 import type {
   StockNoteAction,
   StockNoteAnalysis,
@@ -205,9 +206,14 @@ export function sortUnanalyzedHoldingsByEarnings(
   });
 }
 
-/** 決算までの残り日数（当日は0、過去日ならマイナス値）。日付のみで計算し、時刻・タイムゾーンの誤差は無視する。 */
-export function daysUntil(dateStr: string, now: Date = new Date()): number {
+/**
+ * 決算までの残り日数（当日は0、過去日ならマイナス値）。日付のみで計算し、時刻・タイムゾーンの誤差は無視する。
+ * dateStr が不正（壊れた外部JSON等で "YYYY-MM-DD" として解釈できない）な場合は null を返す。
+ * 呼び出し側はこれを見て「NaN日前」のような表示をしないよう、日数表示自体を省く。
+ */
+export function daysUntil(dateStr: string, now: Date = new Date()): number | null {
   const target = new Date(`${dateStr}T00:00:00+09:00`).getTime();
+  if (!Number.isFinite(target)) return null;
   const nowJstMidnight = new Date(
     new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Tokyo",
@@ -219,19 +225,102 @@ export function daysUntil(dateStr: string, now: Date = new Date()): number {
   return Math.round((target - nowJstMidnight) / (1000 * 60 * 60 * 24));
 }
 
-/** 決算が3日以内（当日〜3日後）に迫っている銘柄かどうか。強調表示の判定に使う。 */
+/** 決算が3日以内（当日〜3日後）に迫っている銘柄かどうか。強調表示の判定に使う。不正な日付は false。 */
 export function isEarningsSoon(dateStr: string, now: Date = new Date()): boolean {
   const days = daysUntil(dateStr, now);
-  return days >= 0 && days <= 3;
+  return days !== null && days >= 0 && days <= 3;
 }
 
 /**
  * 過去の決算日からの経過日数（当日は0、必ず0以上）。「前回決算 8/4（7日前）」の表示に使う。
  * daysUntil は未来日を正・過去日を負で返すため符号を反転する。dateStr に未来日を渡した場合
  * （データ不整合等）は安全側で0に丸める。JSTでの日付境界の扱いは daysUntil に委譲する。
+ * dateStr が不正な場合は null を返す（呼び出し側は「N日前」の表示を省く）。
  */
-export function daysSinceEarnings(dateStr: string, now: Date = new Date()): number {
-  return Math.max(0, -daysUntil(dateStr, now));
+export function daysSinceEarnings(dateStr: string, now: Date = new Date()): number | null {
+  const days = daysUntil(dateStr, now);
+  return days === null ? null : Math.max(0, -days);
+}
+
+/**
+ * "YYYY-MM-DD" を "M/D" に変換する（表示用）。外部JSON由来のため形式を検証し、
+ * 不正な場合は日付を捏造せず "(日付不明)" にフォールバックする。
+ */
+export function formatMonthDay(dateStr: string | null | undefined): string {
+  const match = typeof dateStr === "string" ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr) : null;
+  if (!match) return "(日付不明)";
+  return `${Number(match[2])}/${Number(match[3])}`;
+}
+
+export type EarningsDisplay = { text: string; soon: boolean; failed: boolean };
+
+/**
+ * 次回決算の表示テキストを組み立てる。
+ * - earnings が null（取得自体に失敗）: 「決算情報を取得できませんでした」
+ * - 予定が見つかった: 「次回決算 8/14（あと3日）」
+ * - 予定が見つからず、かつ取得が完全（`complete`）だった: 「次回決算 未判明（カレンダーは9/30まで）」
+ *   （「予定なし」とは書かない。カレンダーが約2ヶ月先までしか無いため）
+ * - 予定が見つからず、かつ一部の月の取得に失敗していた（`complete: false`）: 未判明とは断定できない
+ *   （欠落した月にその銘柄の決算が入っていた可能性があるため）ので「取得できませんでした」側に倒す
+ */
+export function earningsDisplay(
+  code: string,
+  earnings: StockNotesEarningsInfo | null,
+  now: Date = new Date(),
+): EarningsDisplay {
+  if (earnings === null) {
+    return { text: "決算情報を取得できませんでした", soon: false, failed: true };
+  }
+  const entry = earnings.earnings[code];
+  if (entry) {
+    const days = daysUntil(entry.date, now);
+    const daysText = days === null ? "" : days === 0 ? "本日" : days > 0 ? `あと${days}日` : `${Math.abs(days)}日前`;
+    return {
+      text: `次回決算 ${formatMonthDay(entry.date)}${daysText ? `（${daysText}）` : ""}`,
+      soon: isEarningsSoon(entry.date, now),
+      failed: false,
+    };
+  }
+  if (!earnings.complete) {
+    return { text: "決算情報を取得できませんでした（一部期間が未取得）", soon: false, failed: true };
+  }
+  const windowText = earnings.windowTo ? `${formatMonthDay(earnings.windowTo)}まで` : "約2ヶ月先まで";
+  return { text: `次回決算 未判明（カレンダーは${windowText}）`, soon: false, failed: false };
+}
+
+/**
+ * 前回決算（過ぎてしまった決算）の表示テキストを組み立てる。
+ * - lastEarnings にキーが無ければ null（呼び出し側は行自体を出さない。「不明」と書き足しても
+ *   情報量が無いのに行が増えるだけのため）
+ * - 次回決算が判明している場合は経過日数を付けない（次回情報が主役なので、前回は補助情報でよい）:
+ *   「前回決算 8/4（1Q）」
+ * - 次回決算が未判明の場合は前回決算が唯一の手がかりになるため、経過日数を付けて目立たせる:
+ *   「前回決算 8/4（1Q・7日前）」
+ * - `earnings.complete === false`（一部の月の取得に失敗）の場合、この lastEarnings は本来より
+ *   新しい決算を見落としている可能性がある（例: 7月分の取得に失敗し6月分は成功していると、
+ *   実際には7月に決算があるのに「前回決算 6月」と表示されてしまう）。この場合は「一部期間が
+ *   未取得のため不確実」という注記を添える。決算またぎ警告（freshnessLevelWithEarnings）自体は
+ *   抑制しない。抑制すると、欠落が無ければ検出できていたはずの「決算またぎ」の警告まで消えてしまい、
+ *   既存データで判定できる範囲の情報量を失う（false negative の方が false positive より実害が大きい
+ *   と判断した）。詳細: docs/decision-log/2026-08-11-stock-notes-dashboard-design.md
+ */
+export function lastEarningsDisplay(
+  code: string,
+  earnings: StockNotesEarningsInfo | null,
+  emphasize: boolean,
+  now: Date = new Date(),
+): string | null {
+  const entry = earnings?.lastEarnings[code];
+  if (!entry) return null;
+  const parts: string[] = [];
+  if (entry.announcementType) parts.push(entry.announcementType);
+  if (emphasize) {
+    const days = daysSinceEarnings(entry.date, now);
+    if (days !== null) parts.push(days === 0 ? "本日" : `${days}日前`);
+  }
+  if (earnings?.complete === false) parts.push("一部期間が未取得のため不確実");
+  const suffix = parts.length > 0 ? `（${parts.join("・")}）` : "";
+  return `前回決算 ${formatMonthDay(entry.date)}${suffix}`;
 }
 
 /**
