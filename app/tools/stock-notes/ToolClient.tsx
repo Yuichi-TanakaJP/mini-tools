@@ -38,6 +38,7 @@ import {
   SYNC_STALE_DAYS,
   syncStaleness,
   type FreshnessLevelV2,
+  type SyncStaleness,
 } from "./logic";
 import type {
   StockNoteAction,
@@ -106,9 +107,12 @@ function formatMonthDay(dateStr: string): string {
 
 /**
  * 次回決算の表示テキストを組み立てる。
- * - earnings が null（取得失敗）: 「決算情報を取得できませんでした」
- * - コードに該当する予定が無い: 「次回決算 未判明（カレンダーは約2ヶ月先まで）」（「予定なし」とは書かない）
- * - 予定がある: 「次回決算 8/14（あと3日）」
+ * - earnings が null（取得自体に失敗）: 「決算情報を取得できませんでした」
+ * - 予定が見つかった: 「次回決算 8/14（あと3日）」
+ * - 予定が見つからず、かつ取得が完全（`complete`）だった: 「次回決算 未判明（カレンダーは9/30まで）」
+ *   （「予定なし」とは書かない。カレンダーが約2ヶ月先までしか無いため）
+ * - 予定が見つからず、かつ一部の月の取得に失敗していた（`complete: false`）: 未判明とは断定できない
+ *   （欠落した月にその銘柄の決算が入っていた可能性があるため）ので「取得できませんでした」側に倒す
  */
 function earningsDisplay(
   code: string,
@@ -119,16 +123,20 @@ function earningsDisplay(
     return { text: "決算情報を取得できませんでした", soon: false, failed: true };
   }
   const entry = earnings.earnings[code];
-  if (!entry) {
-    return { text: "次回決算 未判明（カレンダーは約2ヶ月先まで）", soon: false, failed: false };
+  if (entry) {
+    const days = daysUntil(entry.date, now);
+    const daysText = days === 0 ? "本日" : days > 0 ? `あと${days}日` : `${Math.abs(days)}日前`;
+    return {
+      text: `次回決算 ${formatMonthDay(entry.date)}（${daysText}）`,
+      soon: isEarningsSoon(entry.date, now),
+      failed: false,
+    };
   }
-  const days = daysUntil(entry.date, now);
-  const daysText = days === 0 ? "本日" : days > 0 ? `あと${days}日` : `${Math.abs(days)}日前`;
-  return {
-    text: `次回決算 ${formatMonthDay(entry.date)}（${daysText}）`,
-    soon: isEarningsSoon(entry.date, now),
-    failed: false,
-  };
+  if (!earnings.complete) {
+    return { text: "決算情報を取得できませんでした（一部期間が未取得）", soon: false, failed: true };
+  }
+  const windowText = earnings.windowTo ? `${formatMonthDay(earnings.windowTo)}まで` : "約2ヶ月先まで";
+  return { text: `次回決算 未判明（カレンダーは${windowText}）`, soon: false, failed: false };
 }
 
 const card: React.CSSProperties = {
@@ -317,7 +325,7 @@ export default function ToolClient() {
     [unanalyzedHoldingsRaw, earnings],
   );
   const syncDaysAgo = useMemo(() => daysSinceSync(holdingsUpdatedAt), [holdingsUpdatedAt]);
-  const syncIsStale = useMemo(() => syncStaleness(holdingsUpdatedAt) === "stale", [holdingsUpdatedAt]);
+  const syncState: SyncStaleness = useMemo(() => syncStaleness(holdingsUpdatedAt), [holdingsUpdatedAt]);
   // holdings.length ではなく tab='holding' の件数で判定する。
   // ウォッチのみ登録されている場合に「保有銘柄はすべて分析済みです」と誤表示しないため。
   const holdingTabCount = useMemo(() => countHoldingTabItems(holdings), [holdings]);
@@ -411,12 +419,12 @@ export default function ToolClient() {
             <div
               style={{
                 ...card,
-                borderColor: syncIsStale ? "rgba(220,38,38,0.4)" : "var(--color-border)",
+                borderColor: syncState === "fresh" ? "var(--color-border)" : "rgba(220,38,38,0.4)",
               }}
             >
               <p style={{ margin: 0, fontSize: 12, color: "var(--color-text-sub)" }}>
                 保有リストの同期:{" "}
-                {holdingsUpdatedAt ? (
+                {holdingsUpdatedAt && syncState !== "unknown" ? (
                   <>
                     {formatDate(holdingsUpdatedAt)}
                     {syncDaysAgo != null && `（${syncDaysAgo}日前）`}
@@ -425,9 +433,18 @@ export default function ToolClient() {
                   "未同期"
                 )}
               </p>
-              {syncIsStale && (
+              {syncState === "stale" && (
                 <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--color-danger, #dc2626)", lineHeight: 1.6 }}>
                   同期が{SYNC_STALE_DAYS}日以上前です。保有リストが更新されている場合、この画面の「未分析◯件」などの数字は古い可能性があります。マイ銘柄リストを更新した場合は、
+                  <Link href="/account" style={{ color: "var(--color-danger, #dc2626)", fontWeight: 700 }}>
+                    /account
+                  </Link>
+                  の「この端末を保存」を押してください。
+                </p>
+              )}
+              {syncState === "unknown" && (
+                <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--color-danger, #dc2626)", lineHeight: 1.6 }}>
+                  保有リストの同期日時を確認できません。マイ銘柄リストを更新した場合は、
                   <Link href="/account" style={{ color: "var(--color-danger, #dc2626)", fontWeight: 700 }}>
                     /account
                   </Link>

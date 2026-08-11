@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { HoldingsFetchError, fetchHoldings } from "../data";
+import { HoldingsFetchError, fetchEarnings, fetchHoldings } from "../data";
 
 function makeFetchResponse(ok: boolean, status: number, body: unknown): Response {
   return {
@@ -67,5 +67,38 @@ describe("fetchHoldings", () => {
     vi.mocked(fetch).mockResolvedValue(makeFetchResponse(true, 200, { items: [] }));
 
     await expect(fetchHoldings()).resolves.toEqual({ holdings: [], updatedAt: null });
+  });
+});
+
+describe("fetchEarnings", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("codes をカンマ区切りのクエリパラメータとして渡す（全銘柄を取りに行かないため必須）", async () => {
+    const payload = {
+      asOfDate: "2026-08-11",
+      windowTo: "2026-09-30",
+      earnings: {},
+      lastEarnings: {},
+      complete: true,
+      missingMonths: [],
+    };
+    vi.mocked(fetch).mockResolvedValue(makeFetchResponse(true, 200, payload));
+
+    await fetchEarnings(["7203", "6758"]);
+
+    expect(fetch).toHaveBeenCalledWith("/api/stock-notes/earnings?codes=7203%2C6758", { method: "GET" });
+  });
+
+  it("失敗時はエラーを投げる（呼び出し側 load.ts でキャッチしてearnings:nullにする）", async () => {
+    vi.mocked(fetch).mockResolvedValue(makeFetchResponse(false, 502, { error: "boom" }));
+
+    await expect(fetchEarnings(["7203"])).rejects.toThrow();
   });
 });

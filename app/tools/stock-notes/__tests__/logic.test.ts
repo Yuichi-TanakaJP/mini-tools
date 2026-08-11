@@ -157,6 +157,22 @@ describe("freshnessLevelWithEarnings", () => {
   it("分析が0件なら unknown", () => {
     expect(freshnessLevelWithEarnings(null, "2026-08-05", now)).toBe("unknown");
   });
+
+  describe("JST境界（決算日のカットオフはUTCではなくJSTでなければならない）", () => {
+    const laterNow = new Date("2026-09-01T00:00:00.000Z"); // 判定対象より十分後
+
+    it("決算日の翌日0:00 JSTの分析は post-earnings にならない（決算後の分析として扱う）", () => {
+      // 2026-08-05 決算。分析は 2026-08-06 00:00:00 JST = 2026-08-05T15:00:00.000Z
+      const lastAnalyzedAt = "2026-08-05T15:00:00.000Z";
+      expect(freshnessLevelWithEarnings(lastAnalyzedAt, "2026-08-05", laterNow)).not.toBe("post-earnings");
+    });
+
+    it("決算日当日23:00 JSTの分析は post-earnings になる（決算日のうちに決算をまたいだとみなす）", () => {
+      // 2026-08-05 決算。分析は 2026-08-05 23:00:00 JST = 2026-08-05T14:00:00.000Z
+      const lastAnalyzedAt = "2026-08-05T14:00:00.000Z";
+      expect(freshnessLevelWithEarnings(lastAnalyzedAt, "2026-08-05", laterNow)).toBe("post-earnings");
+    });
+  });
 });
 
 describe("sortUnanalyzedHoldingsByEarnings", () => {
@@ -223,9 +239,13 @@ describe("syncStaleness / daysSinceSync", () => {
     expect(syncStaleness(old, now)).toBe("stale");
   });
 
-  it("updatedAt が無ければ stale（安全側）", () => {
-    expect(syncStaleness(null, now)).toBe("stale");
-    expect(syncStaleness(undefined, now)).toBe("stale");
+  it("updatedAt が無ければ unknown（stale=「30日以上前」と混同しない）", () => {
+    expect(syncStaleness(null, now)).toBe("unknown");
+    expect(syncStaleness(undefined, now)).toBe("unknown");
+  });
+
+  it("updatedAt が不正な値でも unknown", () => {
+    expect(syncStaleness("not-a-date", now)).toBe("unknown");
   });
 
   it("daysSinceSync は経過日数を返す", () => {

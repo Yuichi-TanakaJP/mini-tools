@@ -61,7 +61,12 @@ export function freshnessLevelWithEarnings(
 
   // 決算日は日付のみ（YYYY-MM-DD）。当日23:59:59 JST相当までを「その日の決算」とみなし、
   // 分析日時と比較する。タイムゾーンの厳密な扱いより「またいだかどうか」の判定を優先する。
-  const earnings = new Date(`${lastEarningsDate}T23:59:59.999Z`).getTime();
+  // 注意: ここは +09:00（JST）でなければならない。Z（UTC）にすると、カットオフが
+  // 実際より9時間遅く（決算日の翌朝08:59:59 JST）ずれるため、決算日の翌朝9時より前に
+  // 行った分析（＝実際には決算後の分析）まで誤って post-earnings 扱いになってしまう
+  // （例: 8/5決算、8/6 00:00 JST の分析は決算後なので post-earnings ではないはずだが、
+  //  UTC基準のカットオフ 8/6 08:59:59 JST より前のため誤検知していた）。
+  const earnings = new Date(`${lastEarningsDate}T23:59:59.999+09:00`).getTime();
   if (!Number.isFinite(earnings)) return dayLevel;
 
   if (earnings > lastAnalyzed) return "post-earnings";
@@ -220,15 +225,22 @@ export function isEarningsSoon(dateStr: string, now: Date = new Date()): boolean
   return days >= 0 && days <= 3;
 }
 
-export type SyncStaleness = "fresh" | "stale";
+/**
+ * 保有リストの同期状態。
+ * - fresh: SYNC_STALE_DAYS 未満
+ * - stale: SYNC_STALE_DAYS 以上
+ * - unknown: 同期日時が無い、または不正な値（一度も同期していない等）。
+ *   「stale」と混同すると「30日以上前」という誤った具体的な経過を伝えてしまうため区別する。
+ */
+export type SyncStaleness = "fresh" | "stale" | "unknown";
 
 /** 保有リスト（/api/sync）の同期が30日以上前かどうか。 */
 export const SYNC_STALE_DAYS = 30;
 
 export function syncStaleness(updatedAt: string | null | undefined, now: Date = new Date()): SyncStaleness {
-  if (!updatedAt) return "stale";
+  if (!updatedAt) return "unknown";
   const updated = new Date(updatedAt).getTime();
-  if (!Number.isFinite(updated)) return "stale";
+  if (!Number.isFinite(updated)) return "unknown";
   const days = (now.getTime() - updated) / (1000 * 60 * 60 * 24);
   return days >= SYNC_STALE_DAYS ? "stale" : "fresh";
 }

@@ -16,11 +16,19 @@ export type EarningsFoldEntry = {
  * - earnings: 銘柄コード -> 今日以降で最も近い決算予定
  * - lastEarnings: 銘柄コード -> 直近の過去の決算日（決算またぎ判定用）
  * - windowTo: カレンダーが確定している範囲の終端（manifest.current_window.to）。
- *   取得できなかった場合は null（「未判明」表示ではこの日付が無くても文言は出せる）。
+ *   manifest の取得に失敗した場合は null。
+ * - complete: 対象月（過去分・未来分すべて）の月次JSON取得が全て成功したかどうか。
+ *   false の場合、`earnings` / `lastEarnings` に本来あるはずの予定が欠落している可能性がある。
+ *   呼び出し側はこれが false のとき、「未判明」ではなく「取得できませんでした」寄りの表示にする
+ *   （欠落を「決算が無い」と誤解させないため）。
+ * - missingMonths: 取得に失敗した月（YYYY-MM）の一覧。当月が失敗した場合はこのルート自体が
+ *   エラーレスポンス（502）を返すため、ここに入るのは当月以外の月だけ。
  */
 export type StockNotesEarningsInfo = {
   asOfDate: string;
   windowTo: string | null;
   earnings: Record<string, EarningsFoldEntry>;
   lastEarnings: Record<string, string>;
+  complete: boolean;
+  missingMonths: string[];
 };

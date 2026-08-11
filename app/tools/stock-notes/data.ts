@@ -222,11 +222,15 @@ export async function fetchHoldings(): Promise<HoldingsWithSync> {
  * 次回決算日を /api/stock-notes/earnings（サーバールート）から取得する。
  * このルートは月次JSON（1本約500KB）をサーバー側で畳み込んでから返すため、
  * クライアントには銘柄コードごとの最小限の情報だけが届く。
+ * `codes`（対象銘柄コードの一覧。保有＋分析済みの合算、通常は数十件）を渡すことで、
+ * サーバー側で全銘柄（実測1,039銘柄・約140KB）ではなくこの利用者に必要な分だけへ絞り込む。
+ * codes が空の場合は呼び出さない（load.ts 側で判定する）。
  * 失敗時は呼び出し側（load.ts）でキャッチし、ダッシュボード全体は失敗させず
  * 「決算情報を取得できませんでした」の表示に落とす。
  */
-export async function fetchEarnings(): Promise<StockNotesEarningsInfo> {
-  const res = await fetch("/api/stock-notes/earnings", { method: "GET" });
+export async function fetchEarnings(codes: string[]): Promise<StockNotesEarningsInfo> {
+  const query = new URLSearchParams({ codes: codes.join(",") }).toString();
+  const res = await fetch(`/api/stock-notes/earnings?${query}`, { method: "GET" });
   if (!res.ok) {
     throw new Error(`決算日の取得に失敗しました（HTTP ${res.status}）`);
   }

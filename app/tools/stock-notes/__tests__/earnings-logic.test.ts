@@ -75,4 +75,42 @@ describe("foldEarningsCalendar", () => {
     const { next } = foldEarningsCalendar([month], "2026-08-10");
     expect(Object.keys(next)).toHaveLength(0);
   });
+
+  describe("同日の発表状況（publish_status）による振り分け", () => {
+    it("today と同日で publish_status='発表済' なら last に入る（next には入らない）", () => {
+      const month = makeMonth("2026-08-01", [
+        { date: "2026-08-10", codes: [{ code: "7203", publishStatus: "発表済" }] },
+      ]);
+      const { next, last } = foldEarningsCalendar([month], "2026-08-10");
+      expect(next["7203"]).toBeUndefined();
+      expect(last["7203"]).toBe("2026-08-10");
+    });
+
+    it("today と同日で publish_status='予定'（未発表）なら next に入る（last には入らない）", () => {
+      const month = makeMonth("2026-08-01", [
+        { date: "2026-08-10", codes: [{ code: "7203", publishStatus: "予定" }] },
+      ]);
+      const { next, last } = foldEarningsCalendar([month], "2026-08-10");
+      expect(next["7203"]?.date).toBe("2026-08-10");
+      expect(last["7203"]).toBeUndefined();
+    });
+  });
+
+  describe("codesFilter", () => {
+    it("codesFilter を渡すと、含まれない銘柄コードは next/last どちらにも出さない", () => {
+      const month = makeMonth("2026-08-01", [
+        { date: "2026-08-20", codes: [{ code: "7203" }, { code: "6758" }] },
+        { date: "2026-08-05", codes: [{ code: "9999" }] },
+      ]);
+      const { next, last } = foldEarningsCalendar([month], "2026-08-10", new Set(["7203"]));
+      expect(Object.keys(next)).toEqual(["7203"]);
+      expect(Object.keys(last)).toHaveLength(0);
+    });
+
+    it("codesFilter が未指定なら全銘柄を対象にする（後方互換）", () => {
+      const month = makeMonth("2026-08-01", [{ date: "2026-08-20", codes: [{ code: "7203" }] }]);
+      const { next } = foldEarningsCalendar([month], "2026-08-10");
+      expect(next["7203"]).toBeDefined();
+    });
+  });
 });

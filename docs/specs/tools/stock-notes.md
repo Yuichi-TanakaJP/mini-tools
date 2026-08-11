@@ -27,15 +27,25 @@
 
 | 状態 | 表示 |
 |---|---|
-| カレンダーのウィンドウ内に予定あり | 「次回決算 8/14（あと3日）」 |
-| ウィンドウ内に予定が無い（未判明） | 「次回決算 未判明（カレンダーは約2ヶ月先まで）」 |
-| `/api/stock-notes/earnings` 自体の取得に失敗 | 「決算情報を取得できませんでした」 |
+| 予定が見つかった | 「次回決算 8/14（あと3日）」 |
+| 予定が見つからず、かつ月次データの取得が完全（`complete: true`） | 「次回決算 未判明（カレンダーは9/30まで）」（`windowTo` を具体的な日付として文言に反映する） |
+| `/api/stock-notes/earnings` 自体の取得に失敗、または一部の月（`missingMonths`）の取得だけ失敗した（`complete: false`） | 「決算情報を取得できませんでした」（一部失敗の場合は「（一部期間が未取得）」を付す） |
 
-決算カレンダーは約2ヶ月先までしか用意されていないため（`app/tools/earnings-calendar` の manifest `current_window` 参照）、ウィンドウ外は「決算が無い」のではなく「まだ判明していない」ことを表現する。理由の詳細は decision-log 参照。
+決算カレンダーは約2ヶ月先までしか用意されていないため（`app/tools/earnings-calendar` の manifest `current_window` 参照）、ウィンドウ外は「決算が無い」のではなく「まだ判明していない」ことを表現する。ただし、月次データの取得が一部失敗している状態（`complete: false`）で「未判明」と表示すると、実際には欠落した月にその銘柄の決算が入っていた可能性を隠してしまうため、この場合は「未判明」ではなく「取得できませんでした」側に倒す。理由の詳細は decision-log 参照。
 
 ### 保有リスト同期の注意表示
 
-`my_stocks_items_v1` は LocalStorage が正本で、`/account` の「この端末を保存」を押したときだけクラウド（`tool_data`）へアップロードされる（自動同期ではない）。このダッシュボードは `/api/sync` 経由でクラウド側の保有リストを読むため、ローカルでの直近の編集が反映されていない場合がある。30日以上同期していない場合は注意表示を出し、「未分析◯件」等の数字が古い保有リストに基づく可能性があることを伝える。理由の詳細は decision-log 参照。
+`my_stocks_items_v1` は LocalStorage が正本で、`/account` の「この端末を保存」を押したときだけクラウド（`tool_data`）へアップロードされる（自動同期ではない）。このダッシュボードは `/api/sync` 経由でクラウド側の保有リストを読むため、ローカルでの直近の編集が反映されていない場合がある。
+
+同期状態は3種類に区別する。
+
+| 状態 | 条件 | 表示 |
+|---|---|---|
+| fresh | 同期から30日未満 | 注意表示なし |
+| stale | 同期から30日以上 | 「同期が30日以上前です。…」＋`/account`導線 |
+| unknown | 同期日時が無い（一度も同期していない）、または不正な値 | 「保有リストの同期日時を確認できません。…」＋`/account`導線（「30日以上前」とは言わない） |
+
+「未分析◯件」等の数字が古い、または確認できない保有リストに基づく可能性があることを伝える。理由の詳細は decision-log 参照。
 
 ### 入力
 
@@ -53,8 +63,8 @@
   - `stock_notes_analyses` の一覧・タイムライン取得では `body`（会話原文、最大4.5万文字）を select しない。「原文を表示」を押したときだけ `id` 指定で `select("id, body")` を再クエリする
   - `stock_notes_actions` は `status='open'` のみ取得する
   - 4テーブルは個別クエリで取得し、`stock_id` で突き合わせる（SQLのjoinは使わない。理由は [decision-log](../../decision-log/2026-08-11-stock-notes-dashboard-design.md) 参照）
-- 保有リスト（`my_stocks_items_v1`）: 既存の `/api/sync`（`tool_data` テーブル経由）から取得する。`my-stocks` の LocalStorage は直接読まない
-- 次回決算日: `app/api/stock-notes/earnings/route.ts`（サーバールート）が `{market-info-api}/earnings-calendar/domestic/monthly/{YYYY-MM}`（当月＋翌月＋翌々月分。決算またぎ判定用に前月分も）を取得し、銘柄コードごとに畳み込んで返す。クライアントは `app/tools/stock-notes/data.ts` の `fetchEarnings` からこのルートを叩く（Supabase ではなく通常の fetch）（別端末からの利用を想定するため）
+- 保有リスト（`my_stocks_items_v1`）: 既存の `/api/sync`（`tool_data` テーブル経由）から取得する。`my-stocks` の LocalStorage は直接読まない（別端末からの利用を想定するため）
+- 次回決算日: `app/api/stock-notes/earnings/route.ts`（サーバールート）が `{market-info-api}/earnings-calendar/domestic/monthly/{YYYY-MM}`（当月＋翌月＋翌々月分。決算またぎ判定用に前月分も）を取得し、銘柄コードごとに畳み込んで返す。クライアントは `app/tools/stock-notes/data.ts` の `fetchEarnings` からこのルートを叩く（Supabase ではなく通常の fetch）。呼び出し側（`app/tools/stock-notes/load.ts`）は stocks・holdings 取得後に確定する対象銘柄コード（保有＋分析済み、通常は数十件）を `?codes=` クエリで渡し、サーバー側でその銘柄だけに絞り込んでもらう（全銘柄を返すと実測1,039銘柄・約140KBになるため）。`codes` が空（=表示する銘柄が無い）場合はこのルートを呼ばない
 
 ### 保存先
 
@@ -67,6 +77,7 @@
 - 保有リスト取得元の `/api/sync` が **401（セッション切れ）** を返した場合は、他の取得失敗と区別し「セッションが切れています。ログインし直してください」＋再ログイン導線を表示する（`app/tools/stock-notes/load.ts` の `loadDashboardData`）。`/api/sync` の失敗を空配列へフォールバックすることはしない。フォールバックすると「保有0件」と「取得失敗」の区別がつかず、未分析銘柄が黙って0件表示になってしまうため
 - ユーザー切替・ログアウトが短時間に連続しても、古いリクエストの結果で新しい画面を上書きしない（取得世代ガード。`app/tools/stock-notes/logic.ts` の `createLoadGuard`）。ログアウト時は表示中のデータを即座にクリアする
 - 次回決算日（`/api/stock-notes/earnings`）の取得失敗は、他の4テーブル・保有リストの取得失敗とは別扱いにする。ダッシュボード本体（保有だが未分析、等）は決算日が無くても表示できるため、`app/tools/stock-notes/load.ts` の `loadDashboardData` はこの失敗だけを個別に catch し、`earnings: null` としてページ自体は正常表示する。決算日の表示箇所だけ「決算情報を取得できませんでした」になる（部分表示するのはこのケースのみ）
+- `/api/stock-notes/earnings` は、当月分の月次JSON取得に失敗した場合はエラーレスポンス（502）を返す。当月以外（前月・翌月・翌々月）の月次JSON取得だけが一部失敗した場合は200のまま返すが、レスポンスに `complete: false` と `missingMonths`（取得できなかった月の一覧）を含める。呼び出し側はこれを見て、欠落した月にその銘柄の決算が入っていた可能性を「未判明」と誤解させないよう「取得できませんでした」寄りの表示にする
 
 ## 状態・エラー表示
 
