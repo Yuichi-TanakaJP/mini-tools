@@ -34,6 +34,40 @@ export function freshnessLevel(
   return "fresh";
 }
 
+/**
+ * 鮮度判定を「決算またぎ」基準に拡張したバージョン。
+ * 最終分析日より後に決算発表があった銘柄は、経過日数に関係なく
+ * "post-earnings"（要更新・決算後未分析）にする。これがこのツールの本来の警告。
+ * 決算日が判明していない場合は、従来どおり経過日数（90日/180日）だけで判定する。
+ * 詳細: docs/decision-log/2026-08-11-stock-notes-dashboard-design.md
+ */
+export type FreshnessLevelV2 = FreshnessLevel | "post-earnings";
+
+/**
+ * @param lastAnalyzedAt 最終分析日（ISO文字列）
+ * @param lastEarningsDate 直近の過去の決算日（YYYY-MM-DD）。判明していなければ null
+ * @param now 現在時刻（テスト用に注入可能）
+ */
+export function freshnessLevelWithEarnings(
+  lastAnalyzedAt: string | null | undefined,
+  lastEarningsDate: string | null | undefined,
+  now: Date = new Date(),
+): FreshnessLevelV2 {
+  const dayLevel = freshnessLevel(lastAnalyzedAt, now);
+  if (!lastAnalyzedAt || !lastEarningsDate) return dayLevel;
+
+  const lastAnalyzed = new Date(lastAnalyzedAt).getTime();
+  if (!Number.isFinite(lastAnalyzed)) return dayLevel;
+
+  // 決算日は日付のみ（YYYY-MM-DD）。当日23:59:59 JST相当までを「その日の決算」とみなし、
+  // 分析日時と比較する。タイムゾーンの厳密な扱いより「またいだかどうか」の判定を優先する。
+  const earnings = new Date(`${lastEarningsDate}T23:59:59.999Z`).getTime();
+  if (!Number.isFinite(earnings)) return dayLevel;
+
+  if (earnings > lastAnalyzed) return "post-earnings";
+  return dayLevel;
+}
+
 export type UnanalyzedHolding = {
   code: string;
   name: string;
@@ -142,6 +176,70 @@ export function isOverdue(dueDate: string | null, now: Date = new Date()): boole
   if (!dueDate) return false;
   const due = new Date(dueDate).getTime();
   return Number.isFinite(due) && due < now.getTime();
+}
+
+/**
+ * 未分析の保有銘柄を「決算が近い順」に並べ替える。
+ * 決算日が判明している銘柄を先頭に日付昇順、判明していない銘柄はその後ろにコード順で並べる。
+ * @param earningsByCode 銘柄コード -> 次回決算日（YYYY-MM-DD）。判明していない銘柄はキーが無い。
+ */
+export function sortUnanalyzedHoldingsByEarnings(
+  holdings: UnanalyzedHolding[],
+  earningsByCode: Record<string, { date: string }>,
+): UnanalyzedHolding[] {
+  return holdings.slice().sort((a, b) => {
+    const dateA = earningsByCode[a.code]?.date ?? null;
+    const dateB = earningsByCode[b.code]?.date ?? null;
+    if (dateA && dateB) {
+      if (dateA !== dateB) return dateA < dateB ? -1 : 1;
+      return a.code.localeCompare(b.code);
+    }
+    if (dateA && !dateB) return -1;
+    if (!dateA && dateB) return 1;
+    return a.code.localeCompare(b.code);
+  });
+}
+
+/** 決算までの残り日数（当日は0、過去日ならマイナス値）。日付のみで計算し、時刻・タイムゾーンの誤差は無視する。 */
+export function daysUntil(dateStr: string, now: Date = new Date()): number {
+  const target = new Date(`${dateStr}T00:00:00+09:00`).getTime();
+  const nowJstMidnight = new Date(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(now) + "T00:00:00+09:00",
+  ).getTime();
+  return Math.round((target - nowJstMidnight) / (1000 * 60 * 60 * 24));
+}
+
+/** 決算が3日以内（当日〜3日後）に迫っている銘柄かどうか。強調表示の判定に使う。 */
+export function isEarningsSoon(dateStr: string, now: Date = new Date()): boolean {
+  const days = daysUntil(dateStr, now);
+  return days >= 0 && days <= 3;
+}
+
+export type SyncStaleness = "fresh" | "stale";
+
+/** 保有リスト（/api/sync）の同期が30日以上前かどうか。 */
+export const SYNC_STALE_DAYS = 30;
+
+export function syncStaleness(updatedAt: string | null | undefined, now: Date = new Date()): SyncStaleness {
+  if (!updatedAt) return "stale";
+  const updated = new Date(updatedAt).getTime();
+  if (!Number.isFinite(updated)) return "stale";
+  const days = (now.getTime() - updated) / (1000 * 60 * 60 * 24);
+  return days >= SYNC_STALE_DAYS ? "stale" : "fresh";
+}
+
+/** 保有リストの同期からの経過日数（表示用、0未満は0に丸める）。 */
+export function daysSinceSync(updatedAt: string | null | undefined, now: Date = new Date()): number | null {
+  if (!updatedAt) return null;
+  const updated = new Date(updatedAt).getTime();
+  if (!Number.isFinite(updated)) return null;
+  const days = Math.floor((now.getTime() - updated) / (1000 * 60 * 60 * 24));
+  return Math.max(days, 0);
 }
 
 /** tab='holding' の件数。空状態の判定に使う（ウォッチのみ登録時に「保有はすべて分析済み」と誤表示しないため）。 */

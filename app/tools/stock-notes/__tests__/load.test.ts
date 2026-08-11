@@ -2,25 +2,33 @@ import { describe, expect, it } from "vitest";
 import { HoldingsFetchError } from "../data";
 import { loadDashboardData } from "../load";
 
+const emptyEarnings = { asOfDate: "2026-08-11", windowTo: "2026-09-30", earnings: {}, lastEarnings: {} };
+
 const emptyOkFetchers = {
   fetchStocks: async () => [],
   fetchAnalyses: async () => [],
   fetchTheses: async () => [],
   fetchOpenActions: async () => [],
-  fetchHoldings: async () => [],
+  fetchHoldings: async () => ({ holdings: [], updatedAt: null }),
+  fetchEarnings: async () => emptyEarnings,
 };
 
 describe("loadDashboardData", () => {
   it("全部成功したら status: ok で結果を返す", async () => {
     const result = await loadDashboardData({
       ...emptyOkFetchers,
-      fetchHoldings: async () => [
-        { id: "a", code: "7203", name: "トヨタ自動車", market: "", sector: null, tab: "holding", addedAt: 1, updatedAt: 1 },
-      ],
+      fetchHoldings: async () => ({
+        holdings: [
+          { id: "a", code: "7203", name: "トヨタ自動車", market: "", sector: null, tab: "holding", addedAt: 1, updatedAt: 1 },
+        ],
+        updatedAt: "2026-06-21T00:00:00.000Z",
+      }),
     });
     expect(result.status).toBe("ok");
     if (result.status === "ok") {
       expect(result.holdings).toHaveLength(1);
+      expect(result.holdingsUpdatedAt).toBe("2026-06-21T00:00:00.000Z");
+      expect(result.earnings).toEqual(emptyEarnings);
     }
   });
 
@@ -57,6 +65,19 @@ describe("loadDashboardData", () => {
     expect(result.status).toBe("error");
     if (result.status === "error") {
       expect(result.message).toContain("network error");
+    }
+  });
+
+  it("決算日の取得が失敗しても status: ok のまま、earningsだけnullになる（ページ全体を失敗させない）", async () => {
+    const result = await loadDashboardData({
+      ...emptyOkFetchers,
+      fetchEarnings: async () => {
+        throw new Error("upstream down");
+      },
+    });
+    expect(result.status).toBe("ok");
+    if (result.status === "ok") {
+      expect(result.earnings).toBeNull();
     }
   });
 });

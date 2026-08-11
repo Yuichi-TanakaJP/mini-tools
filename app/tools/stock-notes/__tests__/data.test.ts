@@ -35,12 +35,13 @@ describe("fetchHoldings", () => {
     await expect(fetchHoldings()).rejects.toMatchObject({ status: 500 });
   });
 
-  it("正常時は my_stocks_items_v1 を normalize して返す", async () => {
+  it("正常時は my_stocks_items_v1 を normalize して返し、同期日時(updatedAt)も返す", async () => {
     vi.mocked(fetch).mockResolvedValue(
       makeFetchResponse(true, 200, {
         items: [
           {
             key: "my_stocks_items_v1",
+            updatedAt: "2026-06-21T00:00:00.000Z",
             value: [
               {
                 id: "a",
@@ -57,13 +58,14 @@ describe("fetchHoldings", () => {
     );
 
     const result = await fetchHoldings();
-    expect(result).toHaveLength(1);
-    expect(result[0].code).toBe("7203");
+    expect(result.holdings).toHaveLength(1);
+    expect(result.holdings[0].code).toBe("7203");
+    expect(result.updatedAt).toBe("2026-06-21T00:00:00.000Z");
   });
 
-  it("my_stocks_items_v1 が無ければ空配列を返す（本当に0件の場合はエラーにしない）", async () => {
+  it("my_stocks_items_v1 が無ければ空配列とnullのupdatedAtを返す（本当に0件の場合はエラーにしない）", async () => {
     vi.mocked(fetch).mockResolvedValue(makeFetchResponse(true, 200, { items: [] }));
 
-    await expect(fetchHoldings()).resolves.toEqual([]);
+    await expect(fetchHoldings()).resolves.toEqual({ holdings: [], updatedAt: null });
   });
 });

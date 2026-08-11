@@ -6,6 +6,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeItems } from "@/app/tools/my-stocks/storage";
 import type { MyStockItem } from "@/app/tools/my-stocks/types";
+import type { StockNotesEarningsInfo } from "./earnings-types";
 import type {
   StockNoteAction,
   StockNoteAnalysis,
@@ -186,18 +187,48 @@ export class HoldingsFetchError extends Error {
 }
 
 /**
+ * 保有リスト（my_stocks_items_v1）と、その最終同期日時。
+ * updatedAt は /api/sync（tool_data）の updated_at。
+ * これは「保有リストが最後にこの端末からクラウドへ保存された日時」であり、
+ * ローカルでの編集が反映されているとは限らない（同期は手動、/account の
+ * 「この端末を保存」を押した時だけアップロードされる）。
+ * 詳細: docs/decision-log/2026-08-11-stock-notes-dashboard-design.md
+ */
+export type HoldingsWithSync = {
+  holdings: MyStockItem[];
+  updatedAt: string | null;
+};
+
+/**
  * 保有リストは my-stocks の正本（tool_data の my_stocks_items_v1）を
  * 既存の /api/sync 経由で読む。my-stocks の LocalStorage は直接読まない
  * （この端末とは限らないため）。
  * 取得失敗（セッション切れ・サーバー障害など）は空配列にフォールバックせず throw する。
  */
-export async function fetchHoldings(): Promise<MyStockItem[]> {
+export async function fetchHoldings(): Promise<HoldingsWithSync> {
   const res = await fetch("/api/sync", { method: "GET" });
   if (!res.ok) {
     throw new HoldingsFetchError(res.status, `保有リストの取得に失敗しました（HTTP ${res.status}）`);
   }
-  const data = (await res.json()) as { items?: Array<{ key: string; value: unknown }> };
+  const data = (await res.json()) as {
+    items?: Array<{ key: string; value: unknown; updatedAt?: string }>;
+  };
   const item = (data.items ?? []).find((it) => it.key === "my_stocks_items_v1");
-  if (!item) return [];
-  return normalizeItems(item.value);
+  if (!item) return { holdings: [], updatedAt: null };
+  return { holdings: normalizeItems(item.value), updatedAt: item.updatedAt ?? null };
+}
+
+/**
+ * 次回決算日を /api/stock-notes/earnings（サーバールート）から取得する。
+ * このルートは月次JSON（1本約500KB）をサーバー側で畳み込んでから返すため、
+ * クライアントには銘柄コードごとの最小限の情報だけが届く。
+ * 失敗時は呼び出し側（load.ts）でキャッチし、ダッシュボード全体は失敗させず
+ * 「決算情報を取得できませんでした」の表示に落とす。
+ */
+export async function fetchEarnings(): Promise<StockNotesEarningsInfo> {
+  const res = await fetch("/api/stock-notes/earnings", { method: "GET" });
+  if (!res.ok) {
+    throw new Error(`決算日の取得に失敗しました（HTTP ${res.status}）`);
+  }
+  return (await res.json()) as StockNotesEarningsInfo;
 }
