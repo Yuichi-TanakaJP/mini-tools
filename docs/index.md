@@ -9,6 +9,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 
 ## 📘 Decision Log（設計判断）
 
+- [2026-08-11 銘柄分析ダッシュボード（stock-notes連携）の設計判断](./decision-log/2026-08-11-stock-notes-dashboard-design.md)
 - [2026-08-07 優待取得時に次回権利月を固定する](./decision-log/2026-08-07-yutai-acquired-entitlement-lock.md)
 
 設計・方針・トレードオフの判断理由を記録します。
@@ -122,6 +123,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
   - [決算カレンダー 仕様](./specs/tools/earnings-calendar.md)
   - [TDNET適時開示一覧 仕様](./specs/tools/tdnet-disclosures.md)
   - [開示イベントレーダー 仕様](./specs/tools/disclosure-radar.md)
+  - [銘柄分析ダッシュボード 仕様](./specs/tools/stock-notes.md)
   - [投資主体別売買動向 仕様](./specs/tools/investor-flow.md)
   - [ペンギンシューター 仕様](./specs/tools/penguin-shooter.md)
   - [ルーティン一覧 仕様](./specs/tools/routines.md)

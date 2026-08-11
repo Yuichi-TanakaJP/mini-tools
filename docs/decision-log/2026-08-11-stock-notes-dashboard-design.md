@@ -70,3 +70,37 @@ stock-notes API は**全利用者共通の Bearer トークン1本**で認証し
 - Issue: #446
 - 関連リポジトリ: [stock-notes](https://github.com/Yuichi-TanakaJP/stock-notes)、発端は ideas#31
 - 参照 docs: stock-notes 側の `docs/design.md`（全体アーキテクチャ）、`docs/custom-gpt.md`（チャット側の運用）
+
+## 実装時の追加判断（2026-08-11）
+
+Issue #446 の実装で、設計時点では未確定だった細部を以下のとおり決めた。
+
+### テーブルの突き合わせ方法
+
+`stock_notes_stocks` / `stock_notes_analyses` / `stock_notes_theses` / `stock_notes_actions` は
+Supabase の SQL join（`select("*, stock_notes_analyses(*)")` のような埋め込み select）を使わず、
+4本の独立したクエリで取得し、`stock_id` をキーに **クライアント側（純関数）で突き合わせる** ことにした。
+件数が少なく（銘柄・分析・見立てとも数十件規模）join のパフォーマンス上の利点が薄いのに対し、
+埋め込み select は返却 shape が複雑になりテストしにくい。素朴な配列 + `Map` の方が
+`app/tools/stock-notes/logic.ts` の純関数として単体テストしやすいことを優先した。
+
+### 鮮度バッジの閾値（90日 / 180日）
+
+stock-notes 側の分析頻度は決算・ニュース起点で不定期（実績: 2026-01〜08 の8ヶ月で17件、銘柄あたり月1回に満たない）。
+四半期決算1回分＝約90日を「そろそろ確認」、半年（決算2回分）＝約180日を「要更新」の目安とした。
+将来、分析頻度の実績が変わったら `app/tools/stock-notes/logic.ts` の `FRESHNESS_WARN_DAYS` /
+`FRESHNESS_DANGER_DAYS` を見直す。
+
+### 保有リストの取得経路
+
+「保有だが未分析」の判定に使う `my_stocks_items_v1` は、`my-stocks` の LocalStorage を直接読まず、
+既存の `/api/sync`（`tool_data` テーブル経由）から取得することにした。
+このダッシュボードは外出先（別端末）から見る想定であり、この端末の LocalStorage には
+保有データが無い場合があるため。`lib/sync/registry.ts` の `SYNCED_KEYS` は変更していない
+（`/api/sync` の GET はユーザーの `tool_data` 全件を返すため、registry に無いキーでも読める）。
+
+### 会話原文（body）の取得
+
+一覧・タイムラインの select には `body` を含めず、詳細画面で「原文を表示」を押したときだけ
+`stock_notes_analyses` を `id` 指定・`select("id, body")` で再クエリする方式にした
+（`stock-notes#10` の `get_analysis` 実装を待たず、Supabase 直読みで対応）。

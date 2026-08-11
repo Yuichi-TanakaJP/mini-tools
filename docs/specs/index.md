@@ -21,6 +21,7 @@
 | TOPIX33業種 | `/tools/topix33` | [topix33.md](./tools/topix33.md) |
 | 優待銘柄メモ帳 | `/tools/yutai-memo` | [yutai-memo.md](./tools/yutai-memo.md) |
 | 優待ダッシュボード | `/tools/yutai-dashboard` | [yutai-dashboard.md](./tools/yutai-dashboard.md) |
+| 銘柄分析ダッシュボード | `/tools/stock-notes` | [stock-notes.md](./tools/stock-notes.md) |
 | 決算カレンダー | `/tools/earnings-calendar` | [earnings-calendar.md](./tools/earnings-calendar.md) |
 | TDNET適時開示一覧 | `/tools/tdnet-disclosures` | [tdnet-disclosures.md](./tools/tdnet-disclosures.md) |
 | 開示イベントレーダー | `/tools/disclosure-radar` | [disclosure-radar.md](./tools/disclosure-radar.md) |
