@@ -18,7 +18,11 @@ import type { StockNotesEarningsInfo } from "@/app/tools/stock-notes/earnings-ty
 //   本ルートは取得失敗時にエラーレスポンス（本文なし・空オブジェクトへのフォールバックはしない）を返す
 // - 過去分・未来分の月次JSONが一部だけ取得に失敗した場合も、当月分さえ取れていれば200を返すが、
 //   `complete: false` と `missingMonths` で欠落を明示する。呼び出し側はこれを見て
-//   「未判明」と誤解させない表示に倒す（欠落した月にだけ決算があった銘柄を見逃す可能性があるため）
+//   「未判明」と誤解させない表示に倒す（欠落した月にだけ決算があった銘柄を見逃す可能性があるため）。
+//   ただし manifest の current_window（公開範囲）より先の月は「まだ公開されていない」だけの
+//   正常な状態であり、取得失敗ではないため missingMonths / complete の判定対象に含めない
+//   （でないと、当ルートが当月+2ヶ月先まで要求している都合で、未公開の月が常に「欠落」扱いになり
+//   complete が恒常的に false になってしまう）
 
 const CACHE_CONTROL = "public, max-age=300";
 // 過去分は「決算またぎ」判定に使うだけなので、当月＋前月まで見れば十分（設計判断の追加メモ参照）
@@ -112,7 +116,18 @@ export async function GET(request: Request) {
   // 当月以外の月が取得に失敗した場合は200のまま返すが、欠落を明示する。
   // （例: 月初に前月データの取得だけ失敗すると、決算またぎ判定に必要な lastEarnings が
   //  欠落したまま「未判明」に見えてしまうため、呼び出し側が区別できるようにする）
-  const missingMonths = monthIds.filter((_, index) => !monthResponses[index]);
+  //
+  // ただし、決算カレンダーは manifest の current_window より先の月をそもそも公開していない
+  // （実測: 2026-08-11時点で current_window.to = 2026-09-30。当ルートは当月+2ヶ月先まで
+  // 要求するため、公開範囲外の月（例: 2026-10）は常に取得失敗になる）。これは障害ではなく
+  // 「まだ判明していない」正常な状態なので、公開範囲より先の月は missingMonths に含めない
+  // （= complete の判定対象から除外する）。manifest 自体が取得できず公開範囲が分からない
+  // 場合は、安全側に倒して欠落月をそのまま missingMonths に残す（除外の判断ができないため）。
+  const missingMonthsRaw = monthIds.filter((_, index) => !monthResponses[index]);
+  const windowToMonth = manifest?.current_window.to.slice(0, 7) ?? null;
+  const missingMonths = windowToMonth
+    ? missingMonthsRaw.filter((id) => id <= windowToMonth)
+    : missingMonthsRaw;
   const complete = missingMonths.length === 0;
 
   const { next, last } = foldEarningsCalendar(monthResponses, today, codesFilter);

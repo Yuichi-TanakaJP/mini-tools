@@ -238,3 +238,21 @@ post-earnings になる）を追加した。
 「30日以上前」という具体的な経過日数を主張するのは不正確だったため、`"unknown"` を
 返り値に追加し、`updatedAt` が無い／不正な場合は「保有リストの同期日時を確認できません」
 という別の文言に分けた。
+
+## complete 判定の回帰修正（2026-08-11 追記）
+
+上記の codex レビュー対応を実サーバーで動作確認したところ、`complete: false` が
+常態化する新たな回帰が見つかった（`missingMonths: ['2026-10']`、`windowTo: 2026-09-30`）。
+
+原因: `/api/stock-notes/earnings` は「当月＋翌月＋翌々月」を固定で要求するが、決算カレンダーは
+manifest の `current_window`（実測: 2026-08-01〜2026-09-30）より先を公開していない。
+2026-10分が無いのは障害ではなく「まだ公開されていない」正常な状態だが、修正前の実装は
+これも一律「欠落」として `missingMonths` に入れていたため、日本製鉄など次回決算が未判明の
+銘柄が常に「決算情報を取得できませんでした」という誤った障害表示になっていた。
+
+`complete` / `missingMonths` の判定を「manifest の `current_window.to` までの月（公開範囲内）
+のうち取得できなかった月があるか」に変更した。公開範囲より先の月は、取得に失敗しても
+`missingMonths` に含めない（＝ `complete` の判定対象から除外する）。manifest 自体が
+取得できず公開範囲が分からない場合は、安全側に倒して欠落月をそのまま `missingMonths` に
+残す（除外の判断ができないため）。実サーバー（`curl localhost:3000/api/stock-notes/earnings?codes=5401,7433,8766`）で
+`complete: true, missingMonths: []` になることを確認した。

@@ -226,6 +226,115 @@ describe("GET /api/stock-notes/earnings", () => {
     expect(body.missingMonths).not.toContain("2026-08");
   });
 
+  describe("complete の判定は manifest の公開範囲（current_window）を基準にする", () => {
+    const augData = {
+      as_of_date: "2026-08-10",
+      calendar: [
+        {
+          date: "2026-08-14",
+          count: 1,
+          detail_status: "present",
+          items: [
+            {
+              time: "15:00",
+              code: "7203",
+              name: "トヨタ自動車",
+              market: "プライム",
+              announcement_type: "本決算",
+              publish_status: "予定",
+              progress_status: "",
+            },
+          ],
+        },
+      ],
+    };
+
+    it("公開範囲を超える月（2026-10）しか欠けていない場合は complete:true になる（実サーバーで確認した回帰の再現）", async () => {
+      process.env.MARKET_INFO_API_BASE_URL = "https://market.example.com";
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockImplementation((url: string) => {
+          if (url.includes("/manifest")) {
+            return Promise.resolve(
+              jsonResponse({
+                as_of_date: "2026-08-10",
+                current_window: { from: "2026-08-01", to: "2026-09-30" },
+                months: [],
+              }),
+            );
+          }
+          if (url.includes("/monthly/2026-10")) {
+            // current_window.to (2026-09-30) より先の月はまだ公開されていない
+            // （market-info-api が404等で返す状況を再現）
+            return Promise.reject(new Error("not published yet"));
+          }
+          return Promise.resolve(jsonResponse(augData));
+        }),
+      );
+
+      const response = await GET(request("7203"));
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body.windowTo).toBe("2026-09-30");
+      expect(body.complete).toBe(true);
+      expect(body.missingMonths).toEqual([]);
+    });
+
+    it("公開範囲内の月（2026-09）が取得できなかった場合は complete:false になる", async () => {
+      process.env.MARKET_INFO_API_BASE_URL = "https://market.example.com";
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockImplementation((url: string) => {
+          if (url.includes("/manifest")) {
+            return Promise.resolve(
+              jsonResponse({
+                as_of_date: "2026-08-10",
+                current_window: { from: "2026-08-01", to: "2026-09-30" },
+                months: [],
+              }),
+            );
+          }
+          if (url.includes("/monthly/2026-09")) {
+            return Promise.reject(new Error("upstream flaky"));
+          }
+          return Promise.resolve(jsonResponse(augData));
+        }),
+      );
+
+      const response = await GET(request("7203"));
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body.complete).toBe(false);
+      expect(body.missingMonths).toContain("2026-09");
+    });
+
+    it("manifest取得が失敗すると公開範囲が分からないため、欠落月をそのまま complete:false に反映する", async () => {
+      process.env.MARKET_INFO_API_BASE_URL = "https://market.example.com";
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockImplementation((url: string) => {
+          if (url.includes("/manifest")) {
+            return Promise.reject(new Error("manifest down"));
+          }
+          if (url.includes("/monthly/2026-10")) {
+            return Promise.reject(new Error("not published yet"));
+          }
+          return Promise.resolve(jsonResponse(augData));
+        }),
+      );
+
+      const response = await GET(request("7203"));
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body.windowTo).toBeNull();
+      expect(body.complete).toBe(false);
+      expect(body.missingMonths).toContain("2026-10");
+    });
+  });
+
   it("manifest取得が失敗してもwindowToをnullにして200を返す（決算情報自体は返せるため）", async () => {
     process.env.MARKET_INFO_API_BASE_URL = "https://market.example.com";
     vi.stubGlobal(
