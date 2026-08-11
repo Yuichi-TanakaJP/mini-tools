@@ -6,6 +6,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSyncConfigured } from "@/lib/supabase/config";
 import { pullAll, pushAll } from "@/lib/sync/client";
 import { track } from "@/lib/analytics";
+import { validateNewPassword } from "@/lib/auth/password";
 
 const card: React.CSSProperties = {
   background: "var(--color-bg-card)",
@@ -59,6 +60,18 @@ export default function AccountClient() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotBusy, setForgotBusy] = useState(false);
+  const [forgotMessage, setForgotMessage] = useState<string | null>(null);
+
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [changeBusy, setChangeBusy] = useState(false);
+  const [changeMessage, setChangeMessage] = useState<string | null>(null);
+  const [changeError, setChangeError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!supabase) {
@@ -126,6 +139,51 @@ export default function AccountClient() {
       }
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleForgotPassword() {
+    if (!supabase) return;
+    setForgotBusy(true);
+    setForgotMessage(null);
+    try {
+      await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+        redirectTo: `${window.location.origin}/account/reset-password`,
+      });
+      track("action_clicked", { action: "auth_reset_password_request" });
+    } catch {
+      // ネットワークエラー等が起きても、メールアドレスの存在有無は画面に出さない（アカウント列挙防止）。
+    } finally {
+      // 存在しないメールアドレスでも同じ文言にする（アカウント列挙防止）。
+      setForgotMessage(
+        "メールを送信しました。届いたリンクから新しいパスワードを設定してください。数分待っても届かない場合は迷惑メールフォルダもご確認ください。",
+      );
+      setForgotBusy(false);
+    }
+  }
+
+  async function handleChangePassword() {
+    if (!supabase) return;
+    setChangeError(null);
+    setChangeMessage(null);
+    const check = validateNewPassword(newPassword, confirmPassword);
+    if (!check.valid) {
+      setChangeError(check.error ?? "入力内容を確認してください。");
+      return;
+    }
+    setChangeBusy(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        setChangeError(error.message);
+        return;
+      }
+      track("action_clicked", { action: "auth_change_password" });
+      setNewPassword("");
+      setConfirmPassword("");
+      setChangeMessage("パスワードを変更しました。");
+    } finally {
+      setChangeBusy(false);
     }
   }
 
@@ -241,6 +299,84 @@ export default function AccountClient() {
               </button>
             </div>
           </div>
+
+          <div style={card}>
+            <h2 style={{ fontSize: 16, fontWeight: 800, margin: "0 0 6px" }}>パスワードを変更</h2>
+            <p
+              style={{
+                margin: "0 0 14px",
+                fontSize: 13,
+                color: "var(--color-text-muted)",
+                lineHeight: 1.6,
+              }}
+            >
+              新しいパスワードを入力してください。
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <label style={{ fontSize: 13, fontWeight: 700 }}>
+                新しいパスワード
+                <div style={{ position: "relative", marginTop: 6 }}>
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    autoComplete="new-password"
+                    style={{ ...inputStyle, paddingRight: 64 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword((v) => !v)}
+                    aria-pressed={showNewPassword}
+                    aria-label={showNewPassword ? "パスワードを隠す" : "パスワードを表示"}
+                    style={{
+                      position: "absolute",
+                      right: 8,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      border: "none",
+                      background: "transparent",
+                      color: "var(--color-text-muted)",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      padding: "4px 6px",
+                    }}
+                  >
+                    {showNewPassword ? "隠す" : "表示"}
+                  </button>
+                </div>
+              </label>
+              <label style={{ fontSize: 13, fontWeight: 700 }}>
+                新しいパスワード（確認用）
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  autoComplete="new-password"
+                  style={{ ...inputStyle, marginTop: 6 }}
+                />
+              </label>
+              <div>
+                <button
+                  onClick={handleChangePassword}
+                  style={primaryBtn}
+                  disabled={changeBusy || !newPassword || !confirmPassword}
+                >
+                  パスワードを変更
+                </button>
+              </div>
+              {changeError && (
+                <p style={{ fontSize: 13, color: "var(--color-danger, #dc2626)", margin: 0 }}>
+                  {changeError}
+                </p>
+              )}
+              {changeMessage && (
+                <p style={{ fontSize: 13, color: "var(--color-accent)", margin: 0, lineHeight: 1.6 }}>
+                  {changeMessage}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       ) : (
         <div style={card}>
@@ -296,6 +432,66 @@ export default function AccountClient() {
                 新規登録
               </button>
             </div>
+
+            <div style={{ marginTop: 4 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForgotPassword((v) => !v);
+                  setForgotMessage(null);
+                }}
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  color: "var(--color-accent)",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              >
+                パスワードを忘れた場合
+              </button>
+            </div>
+
+            {showForgotPassword && (
+              <div
+                style={{
+                  marginTop: 4,
+                  paddingTop: 12,
+                  borderTop: "1px solid var(--color-border)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                }}
+              >
+                <label style={{ fontSize: 13, fontWeight: 700 }}>
+                  登録済みのメールアドレス
+                  <input
+                    type="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    autoComplete="email"
+                    style={{ ...inputStyle, marginTop: 6 }}
+                  />
+                </label>
+                <div>
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    style={subBtn}
+                    disabled={forgotBusy || !forgotEmail}
+                  >
+                    リセットメールを送信
+                  </button>
+                </div>
+                {forgotMessage && (
+                  <p style={{ fontSize: 13, color: "var(--color-accent)", margin: 0, lineHeight: 1.6 }}>
+                    {forgotMessage}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

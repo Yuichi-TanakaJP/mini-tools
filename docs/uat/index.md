@@ -21,6 +21,7 @@ PR マージ後・リリース前に「何を確認すれば OK か」をツー�
 | 優待銘柄メモ帳 | `/tools/yutai-memo` | LocalStorage のみ | [yutai-memo.md](./yutai-memo.md) |
 | 優待ダッシュボード | `/tools/yutai-dashboard` | API + LocalStorage | [yutai-dashboard.md](./yutai-dashboard.md) |
 | 銘柄分析ダッシュボード | `/tools/stock-notes` | Supabase（読み取り専用）、要ログイン | [stock-notes.md](./stock-notes.md) |
+| アカウント（パスワードのリセット・変更） | `/account`, `/account/reset-password` | Supabase Auth | [password-reset.md](./password-reset.md) |
 | ペンギンシューター | `/tools/penguin-shooter` | なし（初期版はメモリ上のゲーム状態のみ） | [penguin-shooter.md](./penguin-shooter.md) |
 
 ## 確認環境
