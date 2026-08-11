@@ -3,16 +3,23 @@ import type { MyStockItem } from "@/app/tools/my-stocks/types";
 import {
   FRESHNESS_DANGER_DAYS,
   FRESHNESS_WARN_DAYS,
+  SYNC_STALE_DAYS,
   analysesForStock,
   buildAnalysisPrompt,
   computeUnanalyzedHoldings,
   countHoldingTabItems,
   createLoadGuard,
+  daysSinceSync,
+  daysUntil,
   freshnessLevel,
+  freshnessLevelWithEarnings,
+  isEarningsSoon,
   isOverdue,
   latestAnalyzedAt,
   selectLatestThesis,
   sortOpenActions,
+  sortUnanalyzedHoldingsByEarnings,
+  syncStaleness,
 } from "../logic";
 import type { StockNoteAction, StockNoteAnalysis, StockNoteStock, StockNoteThesis } from "../types";
 
@@ -122,6 +129,132 @@ describe("freshnessLevel", () => {
 
   it("不正な日付は unknown", () => {
     expect(freshnessLevel("not-a-date", now)).toBe("unknown");
+  });
+});
+
+describe("freshnessLevelWithEarnings", () => {
+  const now = new Date("2026-08-11T00:00:00.000Z");
+
+  it("決算日が判明していなければ経過日数のみで判定する（従来どおり）", () => {
+    const recent = new Date(now.getTime() - 10 * 86400000).toISOString();
+    expect(freshnessLevelWithEarnings(recent, null, now)).toBe("fresh");
+    const old = new Date(now.getTime() - (FRESHNESS_DANGER_DAYS + 1) * 86400000).toISOString();
+    expect(freshnessLevelWithEarnings(old, null, now)).toBe("danger");
+  });
+
+  it("最終分析日より後に決算があれば post-earnings（経過日数に関係なく）", () => {
+    const lastAnalyzedAt = "2026-08-01T00:00:00.000Z";
+    const lastEarningsDate = "2026-08-05"; // 分析より後
+    expect(freshnessLevelWithEarnings(lastAnalyzedAt, lastEarningsDate, now)).toBe("post-earnings");
+  });
+
+  it("最終分析日より前の決算なら post-earnings にならない（経過日数どおり）", () => {
+    const lastAnalyzedAt = "2026-08-05T00:00:00.000Z";
+    const lastEarningsDate = "2026-08-01"; // 分析より前
+    expect(freshnessLevelWithEarnings(lastAnalyzedAt, lastEarningsDate, now)).toBe("fresh");
+  });
+
+  it("分析が0件なら unknown", () => {
+    expect(freshnessLevelWithEarnings(null, "2026-08-05", now)).toBe("unknown");
+  });
+
+  describe("JST境界（決算日のカットオフはUTCではなくJSTでなければならない）", () => {
+    const laterNow = new Date("2026-09-01T00:00:00.000Z"); // 判定対象より十分後
+
+    it("決算日の翌日0:00 JSTの分析は post-earnings にならない（決算後の分析として扱う）", () => {
+      // 2026-08-05 決算。分析は 2026-08-06 00:00:00 JST = 2026-08-05T15:00:00.000Z
+      const lastAnalyzedAt = "2026-08-05T15:00:00.000Z";
+      expect(freshnessLevelWithEarnings(lastAnalyzedAt, "2026-08-05", laterNow)).not.toBe("post-earnings");
+    });
+
+    it("決算日当日23:00 JSTの分析は post-earnings になる（決算日のうちに決算をまたいだとみなす）", () => {
+      // 2026-08-05 決算。分析は 2026-08-05 23:00:00 JST = 2026-08-05T14:00:00.000Z
+      const lastAnalyzedAt = "2026-08-05T14:00:00.000Z";
+      expect(freshnessLevelWithEarnings(lastAnalyzedAt, "2026-08-05", laterNow)).toBe("post-earnings");
+    });
+  });
+});
+
+describe("sortUnanalyzedHoldingsByEarnings", () => {
+  it("決算日が判明している銘柄を先頭に日付昇順で並べる", () => {
+    const holdings = [
+      { code: "1111", name: "A", quantity: null },
+      { code: "2222", name: "B", quantity: null },
+      { code: "3333", name: "C", quantity: null },
+    ];
+    const earnings = {
+      "3333": { date: "2026-08-20" },
+      "1111": { date: "2026-08-14" },
+    };
+    const result = sortUnanalyzedHoldingsByEarnings(holdings, earnings);
+    expect(result.map((h) => h.code)).toEqual(["1111", "3333", "2222"]);
+  });
+
+  it("未判明の銘柄同士はコード順で並べる", () => {
+    const holdings = [
+      { code: "9999", name: "Z", quantity: null },
+      { code: "1111", name: "A", quantity: null },
+    ];
+    const result = sortUnanalyzedHoldingsByEarnings(holdings, {});
+    expect(result.map((h) => h.code)).toEqual(["1111", "9999"]);
+  });
+});
+
+describe("daysUntil / isEarningsSoon", () => {
+  const now = new Date("2026-08-11T02:00:00.000Z"); // JST 2026-08-11 11:00
+
+  it("同日なら0", () => {
+    expect(daysUntil("2026-08-11", now)).toBe(0);
+  });
+
+  it("未来日は正の日数", () => {
+    expect(daysUntil("2026-08-14", now)).toBe(3);
+  });
+
+  it("過去日は負の日数", () => {
+    expect(daysUntil("2026-08-08", now)).toBe(-3);
+  });
+
+  it("3日以内（当日含む）は isEarningsSoon が true", () => {
+    expect(isEarningsSoon("2026-08-11", now)).toBe(true);
+    expect(isEarningsSoon("2026-08-14", now)).toBe(true);
+    expect(isEarningsSoon("2026-08-15", now)).toBe(false);
+  });
+
+  it("過去日は isEarningsSoon が false", () => {
+    expect(isEarningsSoon("2026-08-10", now)).toBe(false);
+  });
+});
+
+describe("syncStaleness / daysSinceSync", () => {
+  const now = new Date("2026-08-11T00:00:00.000Z");
+
+  it(`${SYNC_STALE_DAYS}日未満は fresh`, () => {
+    const recent = new Date(now.getTime() - (SYNC_STALE_DAYS - 1) * 86400000).toISOString();
+    expect(syncStaleness(recent, now)).toBe("fresh");
+  });
+
+  it(`${SYNC_STALE_DAYS}日以上は stale`, () => {
+    const old = new Date(now.getTime() - SYNC_STALE_DAYS * 86400000).toISOString();
+    expect(syncStaleness(old, now)).toBe("stale");
+  });
+
+  it("updatedAt が無ければ unknown（stale=「30日以上前」と混同しない）", () => {
+    expect(syncStaleness(null, now)).toBe("unknown");
+    expect(syncStaleness(undefined, now)).toBe("unknown");
+  });
+
+  it("updatedAt が不正な値でも unknown", () => {
+    expect(syncStaleness("not-a-date", now)).toBe("unknown");
+  });
+
+  it("daysSinceSync は経過日数を返す", () => {
+    const updatedAt = new Date(now.getTime() - 52 * 86400000).toISOString();
+    expect(daysSinceSync(updatedAt, now)).toBe(52);
+  });
+
+  it("updatedAt が無ければ daysSinceSync は null", () => {
+    expect(daysSinceSync(null, now)).toBeNull();
   });
 });
 

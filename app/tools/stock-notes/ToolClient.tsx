@@ -7,7 +7,16 @@ import TabBar from "@/app/tools/_shared/TabBar";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSyncConfigured } from "@/lib/supabase/config";
 import type { MyStockItem } from "@/app/tools/my-stocks/types";
-import { fetchAnalysisBody, fetchAnalyses, fetchHoldings, fetchOpenActions, fetchStocks, fetchTheses } from "./data";
+import {
+  fetchAnalysisBody,
+  fetchAnalyses,
+  fetchEarnings,
+  fetchHoldings,
+  fetchOpenActions,
+  fetchStocks,
+  fetchTheses,
+} from "./data";
+import type { StockNotesEarningsInfo } from "./earnings-types";
 import { loadDashboardData } from "./load";
 import {
   analysesForStock,
@@ -16,13 +25,20 @@ import {
   computeUnanalyzedHoldings,
   countHoldingTabItems,
   createLoadGuard,
-  freshnessLevel,
+  daysSinceSync,
+  daysUntil,
+  freshnessLevelWithEarnings,
+  isEarningsSoon,
   isOverdue,
   latestAnalyzedAt,
   openActionCountForStock,
   selectLatestThesis,
   sortOpenActions,
-  type FreshnessLevel,
+  sortUnanalyzedHoldingsByEarnings,
+  SYNC_STALE_DAYS,
+  syncStaleness,
+  type FreshnessLevelV2,
+  type SyncStaleness,
 } from "./logic";
 import type {
   StockNoteAction,
@@ -69,12 +85,59 @@ const ANALYSIS_TYPE_LABELS: Record<StockNoteAnalysis["analysisType"], string> = 
   news: "ニュース",
   other: "その他",
 };
-const FRESHNESS_COLORS: Record<FreshnessLevel, { bg: string; fg: string; label: string } | null> = {
+const FRESHNESS_COLORS: Record<FreshnessLevelV2, { bg: string; fg: string; label: string } | null> = {
   fresh: null,
   unknown: null,
   warn: { bg: "rgba(217,119,6,0.14)", fg: "#d97706", label: "そろそろ確認" },
   danger: { bg: "rgba(220,38,38,0.14)", fg: "#dc2626", label: "要更新" },
+  "post-earnings": { bg: "rgba(220,38,38,0.14)", fg: "#dc2626", label: "要更新（決算後未分析）" },
 };
+
+const dangerText: React.CSSProperties = {
+  fontSize: 12,
+  color: "var(--color-danger, #dc2626)",
+  fontWeight: 700,
+};
+
+/** "YYYY-MM-DD" を "M/D" に変換する（表示用）。 */
+function formatMonthDay(dateStr: string): string {
+  const [, month, day] = dateStr.split("-");
+  return `${Number(month)}/${Number(day)}`;
+}
+
+/**
+ * 次回決算の表示テキストを組み立てる。
+ * - earnings が null（取得自体に失敗）: 「決算情報を取得できませんでした」
+ * - 予定が見つかった: 「次回決算 8/14（あと3日）」
+ * - 予定が見つからず、かつ取得が完全（`complete`）だった: 「次回決算 未判明（カレンダーは9/30まで）」
+ *   （「予定なし」とは書かない。カレンダーが約2ヶ月先までしか無いため）
+ * - 予定が見つからず、かつ一部の月の取得に失敗していた（`complete: false`）: 未判明とは断定できない
+ *   （欠落した月にその銘柄の決算が入っていた可能性があるため）ので「取得できませんでした」側に倒す
+ */
+function earningsDisplay(
+  code: string,
+  earnings: StockNotesEarningsInfo | null,
+  now: Date = new Date(),
+): { text: string; soon: boolean; failed: boolean } {
+  if (earnings === null) {
+    return { text: "決算情報を取得できませんでした", soon: false, failed: true };
+  }
+  const entry = earnings.earnings[code];
+  if (entry) {
+    const days = daysUntil(entry.date, now);
+    const daysText = days === 0 ? "本日" : days > 0 ? `あと${days}日` : `${Math.abs(days)}日前`;
+    return {
+      text: `次回決算 ${formatMonthDay(entry.date)}（${daysText}）`,
+      soon: isEarningsSoon(entry.date, now),
+      failed: false,
+    };
+  }
+  if (!earnings.complete) {
+    return { text: "決算情報を取得できませんでした（一部期間が未取得）", soon: false, failed: true };
+  }
+  const windowText = earnings.windowTo ? `${formatMonthDay(earnings.windowTo)}まで` : "約2ヶ月先まで";
+  return { text: `次回決算 未判明（カレンダーは${windowText}）`, soon: false, failed: false };
+}
 
 const card: React.CSSProperties = {
   background: "var(--color-bg-card)",
@@ -148,6 +211,8 @@ export default function ToolClient() {
   const [theses, setTheses] = useState<StockNoteThesis[]>([]);
   const [actions, setActions] = useState<StockNoteAction[]>([]);
   const [holdings, setHoldings] = useState<MyStockItem[]>([]);
+  const [holdingsUpdatedAt, setHoldingsUpdatedAt] = useState<string | null>(null);
+  const [earnings, setEarnings] = useState<StockNotesEarningsInfo | null>(null);
 
   const [categoryTab, setCategoryTab] = useState<StockNoteCategory>("holding");
   const [expandedStockId, setExpandedStockId] = useState<string | null>(null);
@@ -164,6 +229,8 @@ export default function ToolClient() {
     setTheses([]);
     setActions([]);
     setHoldings([]);
+    setHoldingsUpdatedAt(null);
+    setEarnings(null);
     setBodies({});
     setExpandedStockId(null);
     setLoadErrorMessage(null);
@@ -181,6 +248,7 @@ export default function ToolClient() {
       fetchTheses: () => fetchTheses(supabase),
       fetchOpenActions: () => fetchOpenActions(supabase),
       fetchHoldings,
+      fetchEarnings,
     });
     // 完了までの間により新しい取得が始まっていたら、この結果は古いので画面に反映しない。
     if (!loadGuardRef.current.isCurrent(token)) return;
@@ -191,6 +259,8 @@ export default function ToolClient() {
       setTheses(result.theses);
       setActions(result.actions);
       setHoldings(result.holdings);
+      setHoldingsUpdatedAt(result.holdingsUpdatedAt);
+      setEarnings(result.earnings);
       setLoadState("loaded");
     } else if (result.status === "unauthorized") {
       setLoadErrorMessage(result.message);
@@ -245,10 +315,17 @@ export default function ToolClient() {
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [supabase, loadData, resetData]);
 
-  const unanalyzedHoldings = useMemo(
+  const unanalyzedHoldingsRaw = useMemo(
     () => computeUnanalyzedHoldings(holdings, stocks, analyses),
     [holdings, stocks, analyses],
   );
+  // 決算が近い順（判明している銘柄を先頭に日付昇順、未判明は後ろにコード順）に並べ替える。
+  const unanalyzedHoldings = useMemo(
+    () => sortUnanalyzedHoldingsByEarnings(unanalyzedHoldingsRaw, earnings?.earnings ?? {}),
+    [unanalyzedHoldingsRaw, earnings],
+  );
+  const syncDaysAgo = useMemo(() => daysSinceSync(holdingsUpdatedAt), [holdingsUpdatedAt]);
+  const syncState: SyncStaleness = useMemo(() => syncStaleness(holdingsUpdatedAt), [holdingsUpdatedAt]);
   // holdings.length ではなく tab='holding' の件数で判定する。
   // ウォッチのみ登録されている場合に「保有銘柄はすべて分析済みです」と誤表示しないため。
   const holdingTabCount = useMemo(() => countHoldingTabItems(holdings), [holdings]);
@@ -336,6 +413,46 @@ export default function ToolClient() {
           </div>
         ) : (
           <>
+            {/* 保有リストの同期状態。my-stocks はローカルが正本で、/account の「この端末を保存」を
+                押した時だけクラウドへアップロードされる（自動同期ではない）。ここで表示している
+                「未分析◯件」等の数字が古い保有リストに基づく可能性があることを伝える。 */}
+            <div
+              style={{
+                ...card,
+                borderColor: syncState === "fresh" ? "var(--color-border)" : "rgba(220,38,38,0.4)",
+              }}
+            >
+              <p style={{ margin: 0, fontSize: 12, color: "var(--color-text-sub)" }}>
+                保有リストの同期:{" "}
+                {holdingsUpdatedAt && syncState !== "unknown" ? (
+                  <>
+                    {formatDate(holdingsUpdatedAt)}
+                    {syncDaysAgo != null && `（${syncDaysAgo}日前）`}
+                  </>
+                ) : (
+                  "未同期"
+                )}
+              </p>
+              {syncState === "stale" && (
+                <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--color-danger, #dc2626)", lineHeight: 1.6 }}>
+                  同期が{SYNC_STALE_DAYS}日以上前です。保有リストが更新されている場合、この画面の「未分析◯件」などの数字は古い可能性があります。マイ銘柄リストを更新した場合は、
+                  <Link href="/account" style={{ color: "var(--color-danger, #dc2626)", fontWeight: 700 }}>
+                    /account
+                  </Link>
+                  の「この端末を保存」を押してください。
+                </p>
+              )}
+              {syncState === "unknown" && (
+                <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--color-danger, #dc2626)", lineHeight: 1.6 }}>
+                  保有リストの同期日時を確認できません。マイ銘柄リストを更新した場合は、
+                  <Link href="/account" style={{ color: "var(--color-danger, #dc2626)", fontWeight: 700 }}>
+                    /account
+                  </Link>
+                  の「この端末を保存」を押してください。
+                </p>
+              )}
+            </div>
+
             {/* 1. 未分析の保有銘柄 */}
             <section style={{ display: "grid", gap: 10 }}>
               <h2 style={sectionTitle}>保有だが未分析（{unanalyzedHoldings.length}件）</h2>
@@ -347,36 +464,49 @@ export default function ToolClient() {
                 <p style={emptyText}>保有銘柄はすべて分析済みです。</p>
               ) : (
                 <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
-                  {unanalyzedHoldings.map((h) => (
-                    <li
-                      key={h.code}
-                      style={{
-                        ...card,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 10,
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <div style={{ display: "grid", gap: 2, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-                          <span style={{ fontWeight: 900, color: "var(--color-text)", fontSize: 14 }}>
-                            {h.code}
+                  {unanalyzedHoldings.map((h) => {
+                    const earningsInfo = earningsDisplay(h.code, earnings);
+                    return (
+                      <li
+                        key={h.code}
+                        style={{
+                          ...card,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 10,
+                          flexWrap: "wrap",
+                          borderColor: earningsInfo.soon ? "rgba(220,38,38,0.4)" : "var(--color-border)",
+                        }}
+                      >
+                        <div style={{ display: "grid", gap: 2, minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                            <span style={{ fontWeight: 900, color: "var(--color-text)", fontSize: 14 }}>
+                              {h.code}
+                            </span>
+                            <span style={{ color: "var(--color-text)", fontSize: 13 }}>{h.name}</span>
+                          </div>
+                          {h.quantity != null && (
+                            <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
+                              {h.quantity.toLocaleString("ja-JP")}株
+                            </span>
+                          )}
+                          <span
+                            style={
+                              earningsInfo.soon
+                                ? dangerText
+                                : { fontSize: 11, color: "var(--color-text-muted)" }
+                            }
+                          >
+                            {earningsInfo.text}
                           </span>
-                          <span style={{ color: "var(--color-text)", fontSize: 13 }}>{h.name}</span>
                         </div>
-                        {h.quantity != null && (
-                          <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-                            {h.quantity.toLocaleString("ja-JP")}株
-                          </span>
-                        )}
-                      </div>
-                      <button type="button" onClick={() => copyPrompt(h.code, h.name)} style={subBtn}>
-                        {copiedCode === h.code ? "コピーしました" : "分析用プロンプトをコピー"}
-                      </button>
-                    </li>
-                  ))}
+                        <button type="button" onClick={() => copyPrompt(h.code, h.name)} style={subBtn}>
+                          {copiedCode === h.code ? "コピーしました" : "分析用プロンプトをコピー"}
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </section>
@@ -405,6 +535,7 @@ export default function ToolClient() {
                       analyses={analyses}
                       theses={theses}
                       actions={actions}
+                      earnings={earnings}
                       expanded={expandedStockId === stock.id}
                       onToggle={() =>
                         setExpandedStockId((cur) => (cur === stock.id ? null : stock.id))
@@ -467,7 +598,7 @@ export default function ToolClient() {
   );
 }
 
-function FreshnessBadge({ level }: { level: FreshnessLevel }) {
+function FreshnessBadge({ level }: { level: FreshnessLevelV2 }) {
   const info = FRESHNESS_COLORS[level];
   if (!info) return null;
   return <span style={badgeStyle(info.bg, info.fg)}>{info.label}</span>;
@@ -478,6 +609,7 @@ function StockRow({
   analyses,
   theses,
   actions,
+  earnings,
   expanded,
   onToggle,
   bodies,
@@ -487,6 +619,7 @@ function StockRow({
   analyses: StockNoteAnalysis[];
   theses: StockNoteThesis[];
   actions: StockNoteAction[];
+  earnings: StockNotesEarningsInfo | null;
   expanded: boolean;
   onToggle: () => void;
   bodies: Record<string, string | "loading" | "error">;
@@ -494,10 +627,14 @@ function StockRow({
 }) {
   const thesis = selectLatestThesis(theses, stock.id);
   const lastAnalyzed = latestAnalyzedAt(analyses, stock.id);
-  const level = freshnessLevel(lastAnalyzed);
+  // 鮮度は「決算またぎ」を優先し、経過日数（90日/180日）は補助として使う。
+  // 決算日が未判明の場合は従来どおり経過日数のみで判定する。
+  const lastEarningsDate = earnings?.lastEarnings[stock.code] ?? null;
+  const level = freshnessLevelWithEarnings(lastAnalyzed, lastEarningsDate);
   const analysisCount = analysisCountForStock(analyses, stock.id);
   const openActions = openActionCountForStock(actions, stock.id);
   const timeline = expanded ? analysesForStock(analyses, stock.id) : [];
+  const earningsInfo = earningsDisplay(stock.code, earnings);
 
   return (
     <li style={card}>
@@ -540,6 +677,11 @@ function StockRow({
               未消化アクション{openActions}件
             </span>
           )}
+        </div>
+        <div style={{ marginTop: 4 }}>
+          <span style={earningsInfo.soon ? dangerText : { fontSize: 11, color: "var(--color-text-muted)" }}>
+            {earningsInfo.text}
+          </span>
         </div>
       </button>
 

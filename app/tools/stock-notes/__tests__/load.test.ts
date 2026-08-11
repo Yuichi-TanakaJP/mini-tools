@@ -2,25 +2,80 @@ import { describe, expect, it } from "vitest";
 import { HoldingsFetchError } from "../data";
 import { loadDashboardData } from "../load";
 
+const emptyEarnings = {
+  asOfDate: "2026-08-11",
+  windowTo: "2026-09-30",
+  earnings: {},
+  lastEarnings: {},
+  complete: true,
+  missingMonths: [] as string[],
+};
+
 const emptyOkFetchers = {
   fetchStocks: async () => [],
   fetchAnalyses: async () => [],
   fetchTheses: async () => [],
   fetchOpenActions: async () => [],
-  fetchHoldings: async () => [],
+  fetchHoldings: async () => ({ holdings: [], updatedAt: null }),
+  fetchEarnings: async (_codes: string[]) => emptyEarnings,
 };
 
 describe("loadDashboardData", () => {
   it("全部成功したら status: ok で結果を返す", async () => {
     const result = await loadDashboardData({
       ...emptyOkFetchers,
-      fetchHoldings: async () => [
-        { id: "a", code: "7203", name: "トヨタ自動車", market: "", sector: null, tab: "holding", addedAt: 1, updatedAt: 1 },
-      ],
+      fetchHoldings: async () => ({
+        holdings: [
+          { id: "a", code: "7203", name: "トヨタ自動車", market: "", sector: null, tab: "holding", addedAt: 1, updatedAt: 1 },
+        ],
+        updatedAt: "2026-06-21T00:00:00.000Z",
+      }),
     });
     expect(result.status).toBe("ok");
     if (result.status === "ok") {
       expect(result.holdings).toHaveLength(1);
+      expect(result.holdingsUpdatedAt).toBe("2026-06-21T00:00:00.000Z");
+      expect(result.earnings).toEqual(emptyEarnings);
+    }
+  });
+
+  it("stocks + holdings のコード集合を fetchEarnings に渡す（重複は除く）", async () => {
+    const receivedCodes: string[][] = [];
+    await loadDashboardData({
+      ...emptyOkFetchers,
+      fetchStocks: async () => [
+        { id: "s1", code: "7203", name: "トヨタ自動車", category: "holding", categoryChangedAt: null, categoryChangeReason: null, createdAt: "", updatedAt: "" },
+        { id: "s2", code: "6758", name: "ソニーグループ", category: "watch", categoryChangedAt: null, categoryChangeReason: null, createdAt: "", updatedAt: "" },
+      ],
+      fetchHoldings: async () => ({
+        holdings: [
+          { id: "a", code: "7203", name: "トヨタ自動車", market: "", sector: null, tab: "holding", addedAt: 1, updatedAt: 1 },
+          { id: "b", code: "9999", name: "重複しない銘柄", market: "", sector: null, tab: "holding", addedAt: 1, updatedAt: 1 },
+        ],
+        updatedAt: null,
+      }),
+      fetchEarnings: async (codes: string[]) => {
+        receivedCodes.push(codes);
+        return emptyEarnings;
+      },
+    });
+    expect(receivedCodes).toHaveLength(1);
+    expect(new Set(receivedCodes[0])).toEqual(new Set(["7203", "6758", "9999"]));
+  });
+
+  it("対象銘柄コードが0件なら fetchEarnings を呼ばず earnings は null", async () => {
+    let called = false;
+    const result = await loadDashboardData({
+      ...emptyOkFetchers,
+      fetchEarnings: async (codes: string[]) => {
+        called = true;
+        return { ...emptyEarnings };
+      },
+    });
+    expect(called).toBe(false);
+    expect(result.status).toBe("ok");
+    if (result.status === "ok") {
+      expect(result.earnings).toBeNull();
     }
   });
 
@@ -57,6 +112,25 @@ describe("loadDashboardData", () => {
     expect(result.status).toBe("error");
     if (result.status === "error") {
       expect(result.message).toContain("network error");
+    }
+  });
+
+  it("決算日の取得が失敗しても status: ok のまま、earningsだけnullになる（ページ全体を失敗させない）", async () => {
+    const result = await loadDashboardData({
+      ...emptyOkFetchers,
+      fetchHoldings: async () => ({
+        holdings: [
+          { id: "a", code: "7203", name: "トヨタ自動車", market: "", sector: null, tab: "holding", addedAt: 1, updatedAt: 1 },
+        ],
+        updatedAt: null,
+      }),
+      fetchEarnings: async (_codes: string[]) => {
+        throw new Error("upstream down");
+      },
+    });
+    expect(result.status).toBe("ok");
+    if (result.status === "ok") {
+      expect(result.earnings).toBeNull();
     }
   });
 });
