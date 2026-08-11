@@ -9,6 +9,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 
 ## 📘 Decision Log（設計判断）
 
+- [2026-08-11 パスワードのリセット・変更機能の追加](./decision-log/2026-08-11-password-reset-and-change.md)
 - [2026-08-11 銘柄分析ダッシュボード（stock-notes連携）の設計判断](./decision-log/2026-08-11-stock-notes-dashboard-design.md)
 - [2026-08-07 優待取得時に次回権利月を固定する](./decision-log/2026-08-07-yutai-acquired-entitlement-lock.md)
 
