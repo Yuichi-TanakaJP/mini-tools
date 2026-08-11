@@ -4,7 +4,7 @@
 // 決算カレンダー本体の型（EarningsCalendarResponse 等）は
 // app/tools/earnings-calendar/types.ts を再利用する。
 
-/** 銘柄コードごとの直近の未来の決算予定。 */
+/** 銘柄コードごとの決算予定・実績1件分（区分・発表状況つき）。next にも last にも使う共通の形。 */
 export type EarningsFoldEntry = {
   date: string;
   announcementType: string;
@@ -14,7 +14,10 @@ export type EarningsFoldEntry = {
 /**
  * /api/stock-notes/earnings のレスポンス。
  * - earnings: 銘柄コード -> 今日以降で最も近い決算予定
- * - lastEarnings: 銘柄コード -> 直近の過去の決算日（決算またぎ判定用）
+ * - lastEarnings: 銘柄コード -> 直近の過去の決算（決算またぎ判定用、かつ画面での「前回決算」表示用）。
+ *   date だけでなく区分（announcementType）・発表状況（publishStatus）も持つ。次回決算が未判明の
+ *   銘柄では、この情報が唯一の決算関連の手がかりになるため画面に表示する
+ *   （詳細: docs/decision-log/2026-08-11-stock-notes-dashboard-design.md）。
  * - windowTo: カレンダーが確定している範囲の終端（manifest.current_window.to）。
  *   manifest の取得に失敗した場合は null。
  * - complete: 対象月（過去分・未来分すべて）の月次JSON取得が全て成功したかどうか。
@@ -28,7 +31,7 @@ export type StockNotesEarningsInfo = {
   asOfDate: string;
   windowTo: string | null;
   earnings: Record<string, EarningsFoldEntry>;
-  lastEarnings: Record<string, string>;
+  lastEarnings: Record<string, EarningsFoldEntry>;
   complete: boolean;
   missingMonths: string[];
 };

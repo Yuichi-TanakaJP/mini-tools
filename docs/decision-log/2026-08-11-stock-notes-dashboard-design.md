@@ -256,3 +256,105 @@ manifest の `current_window`（実測: 2026-08-01〜2026-09-30）より先を�
 取得できず公開範囲が分からない場合は、安全側に倒して欠落月をそのまま `missingMonths` に
 残す（除外の判断ができないため）。実サーバー（`curl localhost:3000/api/stock-notes/earnings?codes=5401,7433,8766`）で
 `complete: true, missingMonths: []` になることを確認した。
+
+## 過ぎてしまった決算日（前回決算）の画面表示（2026-08-11 追記）
+
+`lastEarnings`（銘柄コード -> 直近の過去の決算日）はサーバールートで取得済みだったが、
+決算またぎの鮮度判定にだけ使われ、画面には一切表示されていなかった。利用者から
+「過ぎてしまった決算の日付が分かるなら表示してほしい」という要望が出たため対応した。
+
+### なぜ表示するのか
+
+次回決算が「未判明」（カレンダーは約2ヶ月先までしか公開されない）の銘柄では、次回決算日が
+出せない。この場合、**前回決算がいつだったかが唯一の決算関連の手がかり**になる
+（例: 5401 日本製鉄は次回未判明だが前回は 2026-08-04、4063 信越化学は前回 2026-07-24）。
+次回が判明している銘柄では前回情報は補助（経過日数は付けず区分のみ表示）、未判明の銘柄では
+経過日数（「7日前」）まで付けて主役として目立たせる、と表示の重みを次回の有無で切り替えた。
+前回決算も不明な場合は行自体を出さない（「不明」と書き足しても情報量が無いのに行が増えるだけ
+のため）。
+
+### `lastEarnings` を構造化した理由
+
+これまで `lastEarnings: Record<string, string>`（日付だけ）だった型を、未来側の
+`EarningsFoldEntry`（`{ date, announcementType, publishStatus }`）と同じ形に揃えた。
+「前回決算 8/4（1Q）」のように決算区分（`announcementType`）まで画面に出したかったため。
+`app/tools/stock-notes/earnings-logic.ts` の `foldEarningsCalendar` の `last` の型を
+`Record<string, string>` から `Record<string, EarningsFoldEntry>` に変更し、
+`app/api/stock-notes/earnings/route.ts` のレスポンス型もこれに合わせた。
+この変更に伴い、決算またぎ判定 `freshnessLevelWithEarnings`（日付文字列だけを受け取る関数の
+まま維持）への呼び出し側（`ToolClient.tsx`）を `lastEarnings[code]` から `lastEarnings[code].date`
+を渡す形に修正した。ここを直し忘れると決算またぎ判定が静かに壊れる（`date` を含むオブジェクトを
+そのまま日付として渡すと `new Date(object)` は Invalid Date になり `freshnessLevel` 相当の判定に
+フォールバックしてしまう）ため、テストで担保している
+（`app/tools/stock-notes/__tests__/logic.test.ts` の `freshnessLevelWithEarnings` 系）。
+
+### 過去の探索範囲を四半期分に広げた理由
+
+`app/api/stock-notes/earnings/route.ts` の過去側の月次JSON取得範囲は「当月＋前月」
+（`PAST_MONTH_OFFSETS = [-1, 0]`）だったが、四半期決算は約3ヶ月間隔で発表されるため、
+この範囲では前回決算が見つからない銘柄が実測で出た（対象18銘柄のうち6件で `lastEarnings` が
+空だった）。`PAST_MONTH_OFFSETS` を「当月＋過去3ヶ月」（`[-3, -2, -1, 0]`）に広げ、計4ヶ月分の
+月次JSONを見るようにした。月次JSONは1本あたり約500KBあるため、追加した月も含めて全月を
+`Promise.all` で並列取得する既存方針をそのまま維持している（サーバー側で畳み込んでから
+コンパクトな形で返す設計自体は変えていない）。
+
+`complete` / `missingMonths` の判定方針（manifest の公開範囲より先の月は欠落扱いにしない）は
+そのまま維持した。過去の月は公開範囲の判定と無関係に「常に取得できて当然」なため
+（`missingMonthsRaw` のフィルタ条件 `id <= windowToMonth` は、過去の月は常に真になるので
+自然と `missingMonths` に残り、欠落扱いになる。個別の分岐追加は不要だった）。
+
+## codex レビュー対応（前回決算表示、2026-08-11 追記）
+
+PR #459（前回決算表示）について codex レビューを受け、以下3件を修正した。鮮度判定の通常経路・
+JST計算・最新決算の選択は問題なしと確認されている。
+
+### レスポンス形式変更とキャッシュの非互換（P1）
+
+`lastEarnings` を「文字列」から「オブジェクト」に変えたが、`/api/stock-notes/earnings` は
+`Cache-Control: public, max-age=300` を返しているため、デプロイ直後にブラウザ/CDN に残った
+旧形式（文字列）のレスポンスを新しいクライアントコードが読んでしまう経路がありうる。
+`lastEarningsDisplay` が `entry.date` を参照して `undefined` になり、
+`formatMonthDay(undefined)` の呼び出し方によってはクラッシュしうる状態だった。
+
+キャッシュバスターや no-cache 化ではなく、**クライアント側で実行時に正規化する**方式にした
+（`app/tools/stock-notes/data.ts` の `normalizeLastEarnings`）。理由: キャッシュ制御の変更は
+既にCDN/ブラウザに乗っている旧レスポンスには効かない（配信が新しくなった後もローカルキャッシュが
+残っている端末には旧形式が届き続ける）のに対し、受信直後の正規化はどの経路で旧形式が来ても
+確実に吸収できる。`fetchEarnings` が JSON を受け取った直後に `lastEarnings` の各値を検査し、
+文字列なら `{ date: <その文字列>, announcementType: "", publishStatus: "" }` に変換、
+壊れた形（`date` が文字列でない等）は黙って無視する（該当銘柄は「前回決算不明」として扱われる。
+`lastEarningsDisplay` はキーが無ければ null を返し、行を出さない）。外部から来た JSON の形を
+将来も信用しない方針をコード上のコメントに残した。
+
+### `complete=false` のときの前回決算表示（P2）
+
+欠落月がある場合でも `lastEarnings` があればそのまま確定情報として表示していた。例えば
+7月分の取得に失敗し6月分だけ成功していると、実際には7月に決算があるのに「前回決算 6月」と
+表示されてしまう。
+
+2つの選択肢（注記を添える／決算またぎ警告を抑制する）のうち、**注記を添える**方式を選んだ
+（`lastEarningsDisplay` に `earnings.complete === false` のとき「一部期間が未取得のため不確実」を
+追加）。決算またぎ警告（`freshnessLevelWithEarnings` によるバッジ）自体は抑制しないことにした。
+理由: 欠落月の影響は「本来もっと新しい決算があるのに古い決算しか見えていない」という
+**過小評価（false negative）方向にしか起きない**（欠落によって余分な決算が「見える」ことはない）。
+既存の `lastEarnings` だけで「決算またぎ」を検出できているケースまで警告を抑制すると、
+欠落が無ければ正しく出ていたはずの警告まで消えてしまい、確実に持っている情報量を捨てることになる。
+不確実性を隠さず注記として見せる方が、抑制して静かに情報を失うより実害が小さいと判断した。
+
+### 不正な日付が NaN として表示される（P3）
+
+`daysUntil` / `daysSinceEarnings` が日付の妥当性を検証しておらず、外部JSONが壊れていると
+「NaN日前」のような表示になりうる状態だった。`daysUntil` を `number | null` を返すよう変更し
+（不正な日付は `null`）、`daysSinceEarnings` もこれに合わせた。`formatMonthDay` も
+`"YYYY-MM-DD"` 形式を正規表現で検証し、不正な場合は日付を捏造せず `"(日付不明)"` に
+フォールバックするようにした。`earningsDisplay` / `lastEarningsDisplay` はこれらの `null` を
+見て、日数部分（「あと3日」「7日前」等）を省いた表示に倒す（日付部分は `(日付不明)` になるが、
+テキスト全体はクラッシュしない）。
+
+### 副次的なリファクタ
+
+上記3件のテストを書きやすくするため、`formatMonthDay` / `earningsDisplay` /
+`lastEarningsDisplay`（旧: `ToolClient.tsx` 内のコンポーネント外関数）を
+`app/tools/stock-notes/logic.ts` の純関数として切り出した。React に依存しないロジックは
+コンポーネントファイルの外に置く、という既存の方針（`daysUntil` 等も元々 `logic.ts` にあった）
+に合わせている。

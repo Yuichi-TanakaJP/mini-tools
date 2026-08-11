@@ -25,8 +25,10 @@ import type { StockNotesEarningsInfo } from "@/app/tools/stock-notes/earnings-ty
 //   complete が恒常的に false になってしまう）
 
 const CACHE_CONTROL = "public, max-age=300";
-// 過去分は「決算またぎ」判定に使うだけなので、当月＋前月まで見れば十分（設計判断の追加メモ参照）
-const PAST_MONTH_OFFSETS = [-1, 0];
+// 過去分は「決算またぎ」判定と「前回決算」表示の両方に使う。四半期決算は約3ヶ月間隔のため、
+// 当月＋前月だけでは前回決算が見つからない銘柄が実測で出た（対象18銘柄中6件が空だった）。
+// 当月＋過去3ヶ月（計4ヶ月分）まで見る（設計判断の追加メモ参照）
+const PAST_MONTH_OFFSETS = [-3, -2, -1, 0];
 // 未来分は当月＋翌月＋翌々月まで見る（カレンダーの提供範囲が「約2ヶ月先まで」のため、余裕を持たせる）
 const FUTURE_MONTH_OFFSETS = [0, 1, 2];
 
