@@ -9,6 +9,7 @@ import {
   computeUnanalyzedHoldings,
   countHoldingTabItems,
   createLoadGuard,
+  daysSinceEarnings,
   daysSinceSync,
   daysUntil,
   freshnessLevel,
@@ -223,6 +224,30 @@ describe("daysUntil / isEarningsSoon", () => {
 
   it("過去日は isEarningsSoon が false", () => {
     expect(isEarningsSoon("2026-08-10", now)).toBe(false);
+  });
+});
+
+describe("daysSinceEarnings", () => {
+  const now = new Date("2026-08-11T02:00:00.000Z"); // JST 2026-08-11 11:00
+
+  it("当日なら0", () => {
+    expect(daysSinceEarnings("2026-08-11", now)).toBe(0);
+  });
+
+  it("過去日は経過日数（正の値）を返す", () => {
+    expect(daysSinceEarnings("2026-08-04", now)).toBe(7);
+  });
+
+  it("未来日を渡した場合は安全側で0に丸める", () => {
+    expect(daysSinceEarnings("2026-08-14", now)).toBe(0);
+  });
+
+  describe("JST境界（日付だけで判定し、時差でずれないこと）", () => {
+    it("JST日付の変わり目をまたいでも経過日数がずれない", () => {
+      // JST 2026-08-11 00:30 = UTC 2026-08-10T15:30:00.000Z
+      const jstJustAfterMidnight = new Date("2026-08-10T15:30:00.000Z");
+      expect(daysSinceEarnings("2026-08-04", jstJustAfterMidnight)).toBe(7);
+    });
   });
 });
 

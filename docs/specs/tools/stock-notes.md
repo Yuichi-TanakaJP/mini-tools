@@ -33,6 +33,20 @@
 
 決算カレンダーは約2ヶ月先までしか用意されていないため（`app/tools/earnings-calendar` の manifest `current_window` 参照）、ウィンドウ外は「決算が無い」のではなく「まだ判明していない」ことを表現する。ただし、月次データの取得が一部失敗している状態（`complete: false`）で「未判明」と表示すると、実際には欠落した月にその銘柄の決算が入っていた可能性を隠してしまうため、この場合は「未判明」ではなく「取得できませんでした」側に倒す。理由の詳細は decision-log 参照。
 
+### 前回決算（過ぎてしまった決算）の表示
+
+未分析の保有銘柄・分析済み銘柄の各行に、次回決算に加えて前回決算も表示する。次回決算が未判明の銘柄では前回決算が唯一の決算関連の手がかりになるため、次回の判明状況によって表示の重みを変える。
+
+| 状態 | 表示 |
+|---|---|
+| 前回決算が判明しており、かつ次回決算も判明している | 「前回決算 8/4（1Q）」（経過日数は付けない。次回情報が主役のため、補助情報として控えめに表示） |
+| 前回決算が判明しており、次回決算は未判明 | 「前回決算 8/4（1Q・7日前）」（経過日数を付けて目立たせる。唯一の決算関連の手がかりになるため） |
+| 前回決算も判明していない（`lastEarnings` にキーが無い） | 前回決算の行自体を出さない（「不明」と書き足しても情報量が無いのに行が増えるだけのため） |
+
+`lastEarnings` は日付だけでなく決算区分（`announcementType`）・発表状況（`publishStatus`）も持つ（次回決算の `earnings` と同じ形）。経過日数は `app/tools/stock-notes/logic.ts` の `daysSinceEarnings`（純関数、JSTの日付境界で計算）を使う。
+
+決算またぎの警告（鮮度バッジ「要更新（決算後未分析）」）にも前回決算日を入れ、「8/4の決算後、未分析」のように表示する（`FreshnessBadge`、`app/tools/stock-notes/ToolClient.tsx`）。日付が入ることで、利用者が何を確認すべきかが即座に分かる。
+
 ### 保有リスト同期の注意表示
 
 `my_stocks_items_v1` は LocalStorage が正本で、`/account` の「この端末を保存」を押したときだけクラウド（`tool_data`）へアップロードされる（自動同期ではない）。このダッシュボードは `/api/sync` 経由でクラウド側の保有リストを読むため、ローカルでの直近の編集が反映されていない場合がある。
@@ -64,7 +78,7 @@
   - `stock_notes_actions` は `status='open'` のみ取得する
   - 4テーブルは個別クエリで取得し、`stock_id` で突き合わせる（SQLのjoinは使わない。理由は [decision-log](../../decision-log/2026-08-11-stock-notes-dashboard-design.md) 参照）
 - 保有リスト（`my_stocks_items_v1`）: 既存の `/api/sync`（`tool_data` テーブル経由）から取得する。`my-stocks` の LocalStorage は直接読まない（別端末からの利用を想定するため）
-- 次回決算日: `app/api/stock-notes/earnings/route.ts`（サーバールート）が `{market-info-api}/earnings-calendar/domestic/monthly/{YYYY-MM}`（当月＋翌月＋翌々月分。決算またぎ判定用に前月分も）を取得し、銘柄コードごとに畳み込んで返す。クライアントは `app/tools/stock-notes/data.ts` の `fetchEarnings` からこのルートを叩く（Supabase ではなく通常の fetch）。呼び出し側（`app/tools/stock-notes/load.ts`）は stocks・holdings 取得後に確定する対象銘柄コード（保有＋分析済み、通常は数十件）を `?codes=` クエリで渡し、サーバー側でその銘柄だけに絞り込んでもらう（全銘柄を返すと実測1,039銘柄・約140KBになるため）。`codes` が空（=表示する銘柄が無い）場合はこのルートを呼ばない
+- 次回決算日・前回決算日: `app/api/stock-notes/earnings/route.ts`（サーバールート）が `{market-info-api}/earnings-calendar/domestic/monthly/{YYYY-MM}`（未来側は当月＋翌月＋翌々月分、過去側は当月＋過去3ヶ月分。決算またぎ判定と前回決算表示の両方に使うため、四半期決算の間隔（約3ヶ月）を取りこぼさない範囲にしている）を全て `Promise.all` で並列取得し、銘柄コードごとに畳み込んで返す。クライアントは `app/tools/stock-notes/data.ts` の `fetchEarnings` からこのルートを叩く（Supabase ではなく通常の fetch）。呼び出し側（`app/tools/stock-notes/load.ts`）は stocks・holdings 取得後に確定する対象銘柄コード（保有＋分析済み、通常は数十件）を `?codes=` クエリで渡し、サーバー側でその銘柄だけに絞り込んでもらう（全銘柄を返すと実測1,039銘柄・約140KBになるため）。`codes` が空（=表示する銘柄が無い）場合はこのルートを呼ばない
 
 ### 保存先
 
@@ -100,7 +114,7 @@
 
 | 条件 | レベル | 表示 |
 |---|---|---|
-| 最終分析日より後に決算発表があった（`lastEarnings[code]` が最終分析日より新しい） | post-earnings | 「要更新（決算後未分析）」（red） |
+| 最終分析日より後に決算発表があった（`lastEarnings[code].date` が最終分析日より新しい） | post-earnings | 「8/4の決算後、未分析」のように決算日を入れる（red）。`lastEarnings[code]` が無い等で日付が組み立てられない場合のみ「要更新（決算後未分析）」にフォールバックする |
 | 上記に該当せず、経過日数が90日以内 | fresh | バッジなし |
 | 上記に該当せず、経過日数が90日超180日以内 | warn | 「そろそろ確認」（amber） |
 | 上記に該当せず、経過日数が180日超 | danger | 「要更新」（red） |

@@ -226,6 +226,15 @@ export function isEarningsSoon(dateStr: string, now: Date = new Date()): boolean
 }
 
 /**
+ * 過去の決算日からの経過日数（当日は0、必ず0以上）。「前回決算 8/4（7日前）」の表示に使う。
+ * daysUntil は未来日を正・過去日を負で返すため符号を反転する。dateStr に未来日を渡した場合
+ * （データ不整合等）は安全側で0に丸める。JSTでの日付境界の扱いは daysUntil に委譲する。
+ */
+export function daysSinceEarnings(dateStr: string, now: Date = new Date()): number {
+  return Math.max(0, -daysUntil(dateStr, now));
+}
+
+/**
  * 保有リストの同期状態。
  * - fresh: SYNC_STALE_DAYS 未満
  * - stale: SYNC_STALE_DAYS 以上

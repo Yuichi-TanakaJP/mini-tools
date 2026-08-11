@@ -8,8 +8,12 @@ import type { EarningsFoldEntry } from "./earnings-types";
 export type FoldEarningsResult = {
   /** 銘柄コード -> today 以降（まだ発表されていない）で最も近い決算予定 */
   next: Record<string, EarningsFoldEntry>;
-  /** 銘柄コード -> today 時点で直近の決算日（複数月にまたがる場合は最も新しい過去日） */
-  last: Record<string, string>;
+  /**
+   * 銘柄コード -> today 時点で直近の過去の決算（複数月にまたがる場合は最も新しい過去日を選ぶ）。
+   * next と同じ形（date/announcementType/publishStatus）を持つ。区分・発表状況まで返すのは、
+   * 次回決算が未判明の銘柄で「前回決算 8/4（1Q）」のように区分まで画面表示するため。
+   */
+  last: Record<string, EarningsFoldEntry>;
 };
 
 const PUBLISHED_STATUS = "発表済";
@@ -31,7 +35,7 @@ export function foldEarningsCalendar(
   codesFilter?: ReadonlySet<string> | null,
 ): FoldEarningsResult {
   const next: Record<string, EarningsFoldEntry> = {};
-  const last: Record<string, string> = {};
+  const last: Record<string, EarningsFoldEntry> = {};
 
   for (const response of monthlyResponses) {
     if (!response) continue;
@@ -47,8 +51,12 @@ export function foldEarningsCalendar(
 
         if (isPast || isPublishedToday) {
           const existing = last[code];
-          if (!existing || day.date > existing) {
-            last[code] = day.date;
+          if (!existing || day.date > existing.date) {
+            last[code] = {
+              date: day.date,
+              announcementType: item.announcement_type,
+              publishStatus: item.publish_status,
+            };
           }
           continue;
         }

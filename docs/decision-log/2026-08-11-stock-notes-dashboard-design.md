@@ -256,3 +256,49 @@ manifest の `current_window`（実測: 2026-08-01〜2026-09-30）より先を�
 取得できず公開範囲が分からない場合は、安全側に倒して欠落月をそのまま `missingMonths` に
 残す（除外の判断ができないため）。実サーバー（`curl localhost:3000/api/stock-notes/earnings?codes=5401,7433,8766`）で
 `complete: true, missingMonths: []` になることを確認した。
+
+## 過ぎてしまった決算日（前回決算）の画面表示（2026-08-11 追記）
+
+`lastEarnings`（銘柄コード -> 直近の過去の決算日）はサーバールートで取得済みだったが、
+決算またぎの鮮度判定にだけ使われ、画面には一切表示されていなかった。利用者から
+「過ぎてしまった決算の日付が分かるなら表示してほしい」という要望が出たため対応した。
+
+### なぜ表示するのか
+
+次回決算が「未判明」（カレンダーは約2ヶ月先までしか公開されない）の銘柄では、次回決算日が
+出せない。この場合、**前回決算がいつだったかが唯一の決算関連の手がかり**になる
+（例: 5401 日本製鉄は次回未判明だが前回は 2026-08-04、4063 信越化学は前回 2026-07-24）。
+次回が判明している銘柄では前回情報は補助（経過日数は付けず区分のみ表示）、未判明の銘柄では
+経過日数（「7日前」）まで付けて主役として目立たせる、と表示の重みを次回の有無で切り替えた。
+前回決算も不明な場合は行自体を出さない（「不明」と書き足しても情報量が無いのに行が増えるだけ
+のため）。
+
+### `lastEarnings` を構造化した理由
+
+これまで `lastEarnings: Record<string, string>`（日付だけ）だった型を、未来側の
+`EarningsFoldEntry`（`{ date, announcementType, publishStatus }`）と同じ形に揃えた。
+「前回決算 8/4（1Q）」のように決算区分（`announcementType`）まで画面に出したかったため。
+`app/tools/stock-notes/earnings-logic.ts` の `foldEarningsCalendar` の `last` の型を
+`Record<string, string>` から `Record<string, EarningsFoldEntry>` に変更し、
+`app/api/stock-notes/earnings/route.ts` のレスポンス型もこれに合わせた。
+この変更に伴い、決算またぎ判定 `freshnessLevelWithEarnings`（日付文字列だけを受け取る関数の
+まま維持）への呼び出し側（`ToolClient.tsx`）を `lastEarnings[code]` から `lastEarnings[code].date`
+を渡す形に修正した。ここを直し忘れると決算またぎ判定が静かに壊れる（`date` を含むオブジェクトを
+そのまま日付として渡すと `new Date(object)` は Invalid Date になり `freshnessLevel` 相当の判定に
+フォールバックしてしまう）ため、テストで担保している
+（`app/tools/stock-notes/__tests__/logic.test.ts` の `freshnessLevelWithEarnings` 系）。
+
+### 過去の探索範囲を四半期分に広げた理由
+
+`app/api/stock-notes/earnings/route.ts` の過去側の月次JSON取得範囲は「当月＋前月」
+（`PAST_MONTH_OFFSETS = [-1, 0]`）だったが、四半期決算は約3ヶ月間隔で発表されるため、
+この範囲では前回決算が見つからない銘柄が実測で出た（対象18銘柄のうち6件で `lastEarnings` が
+空だった）。`PAST_MONTH_OFFSETS` を「当月＋過去3ヶ月」（`[-3, -2, -1, 0]`）に広げ、計4ヶ月分の
+月次JSONを見るようにした。月次JSONは1本あたり約500KBあるため、追加した月も含めて全月を
+`Promise.all` で並列取得する既存方針をそのまま維持している（サーバー側で畳み込んでから
+コンパクトな形で返す設計自体は変えていない）。
+
+`complete` / `missingMonths` の判定方針（manifest の公開範囲より先の月は欠落扱いにしない）は
+そのまま維持した。過去の月は公開範囲の判定と無関係に「常に取得できて当然」なため
+（`missingMonthsRaw` のフィルタ条件 `id <= windowToMonth` は、過去の月は常に真になるので
+自然と `missingMonths` に残り、欠落扱いになる。個別の分岐追加は不要だった）。

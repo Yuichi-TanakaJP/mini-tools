@@ -25,6 +25,7 @@ import {
   computeUnanalyzedHoldings,
   countHoldingTabItems,
   createLoadGuard,
+  daysSinceEarnings,
   daysSinceSync,
   daysUntil,
   freshnessLevelWithEarnings,
@@ -90,6 +91,9 @@ const FRESHNESS_COLORS: Record<FreshnessLevelV2, { bg: string; fg: string; label
   unknown: null,
   warn: { bg: "rgba(217,119,6,0.14)", fg: "#d97706", label: "そろそろ確認" },
   danger: { bg: "rgba(220,38,38,0.14)", fg: "#dc2626", label: "要更新" },
+  // label はフォールバック（lastEarningsDate が取れないケース用）。通常は FreshnessBadge が
+  // 「8/4の決算後、未分析」のように日付入りの文言を動的に組み立てる（decision-log参照:
+  // 日付が入ることで、利用者が何を確認すべきか即座に分かるようにするため）。
   "post-earnings": { bg: "rgba(220,38,38,0.14)", fg: "#dc2626", label: "要更新（決算後未分析）" },
 };
 
@@ -137,6 +141,31 @@ function earningsDisplay(
   }
   const windowText = earnings.windowTo ? `${formatMonthDay(earnings.windowTo)}まで` : "約2ヶ月先まで";
   return { text: `次回決算 未判明（カレンダーは${windowText}）`, soon: false, failed: false };
+}
+
+/**
+ * 前回決算（過ぎてしまった決算）の表示テキストを組み立てる。
+ * - lastEarnings にキーが無ければ null（呼び出し側は行自体を出さない。「不明」と書き足しても
+ *   情報量が無いのに行が増えるだけのため）
+ * - 次回決算が判明している場合は経過日数を付けない（次回情報が主役なので、前回は補助情報でよい）:
+ *   「前回決算 8/4（1Q）」
+ * - 次回決算が未判明の場合は前回決算が唯一の手がかりになるため、経過日数を付けて目立たせる:
+ *   「前回決算 8/4（1Q・7日前）」
+ */
+function lastEarningsDisplay(
+  code: string,
+  earnings: StockNotesEarningsInfo | null,
+  emphasize: boolean,
+  now: Date = new Date(),
+): string | null {
+  const entry = earnings?.lastEarnings[code];
+  if (!entry) return null;
+  if (!emphasize) {
+    return `前回決算 ${formatMonthDay(entry.date)}（${entry.announcementType}）`;
+  }
+  const days = daysSinceEarnings(entry.date, now);
+  const daysText = days === 0 ? "本日" : `${days}日前`;
+  return `前回決算 ${formatMonthDay(entry.date)}（${entry.announcementType}・${daysText}）`;
 }
 
 const card: React.CSSProperties = {
@@ -466,6 +495,9 @@ export default function ToolClient() {
                 <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
                   {unanalyzedHoldings.map((h) => {
                     const earningsInfo = earningsDisplay(h.code, earnings);
+                    // 次回決算が未判明のときだけ前回決算を目立たせる（唯一の手がかりになるため）。
+                    const emphasizeLast = !earnings?.earnings[h.code] && !earningsInfo.failed;
+                    const lastText = lastEarningsDisplay(h.code, earnings, emphasizeLast);
                     return (
                       <li
                         key={h.code}
@@ -500,6 +532,17 @@ export default function ToolClient() {
                           >
                             {earningsInfo.text}
                           </span>
+                          {lastText && (
+                            <span
+                              style={
+                                emphasizeLast
+                                  ? { fontSize: 12, color: "var(--color-accent)", fontWeight: 800 }
+                                  : { fontSize: 11, color: "var(--color-text-muted)" }
+                              }
+                            >
+                              {lastText}
+                            </span>
+                          )}
                         </div>
                         <button type="button" onClick={() => copyPrompt(h.code, h.name)} style={subBtn}>
                           {copiedCode === h.code ? "コピーしました" : "分析用プロンプトをコピー"}
@@ -598,10 +641,25 @@ export default function ToolClient() {
   );
 }
 
-function FreshnessBadge({ level }: { level: FreshnessLevelV2 }) {
+/**
+ * lastEarningsDate が分かる場合、post-earnings のラベルに日付を入れる
+ * （「要更新（決算後未分析）」ではなく「8/4の決算後、未分析」）。
+ * 利用者が何を確認すべきか（いつの決算を踏まえて分析すべきか）を即座に分かるようにするため。
+ */
+function FreshnessBadge({
+  level,
+  lastEarningsDate,
+}: {
+  level: FreshnessLevelV2;
+  lastEarningsDate?: string | null;
+}) {
   const info = FRESHNESS_COLORS[level];
   if (!info) return null;
-  return <span style={badgeStyle(info.bg, info.fg)}>{info.label}</span>;
+  const label =
+    level === "post-earnings" && lastEarningsDate
+      ? `${formatMonthDay(lastEarningsDate)}の決算後、未分析`
+      : info.label;
+  return <span style={badgeStyle(info.bg, info.fg)}>{label}</span>;
 }
 
 function StockRow({
@@ -629,12 +687,15 @@ function StockRow({
   const lastAnalyzed = latestAnalyzedAt(analyses, stock.id);
   // 鮮度は「決算またぎ」を優先し、経過日数（90日/180日）は補助として使う。
   // 決算日が未判明の場合は従来どおり経過日数のみで判定する。
-  const lastEarningsDate = earnings?.lastEarnings[stock.code] ?? null;
+  const lastEarningsDate = earnings?.lastEarnings[stock.code]?.date ?? null;
   const level = freshnessLevelWithEarnings(lastAnalyzed, lastEarningsDate);
   const analysisCount = analysisCountForStock(analyses, stock.id);
   const openActions = openActionCountForStock(actions, stock.id);
   const timeline = expanded ? analysesForStock(analyses, stock.id) : [];
   const earningsInfo = earningsDisplay(stock.code, earnings);
+  // 次回決算が未判明のときだけ前回決算を目立たせる（唯一の手がかりになるため）。
+  const emphasizeLast = !earnings?.earnings[stock.code] && !earningsInfo.failed;
+  const lastEarningsText = lastEarningsDisplay(stock.code, earnings, emphasizeLast);
 
   return (
     <li style={card}>
@@ -670,7 +731,7 @@ function StockRow({
           <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
             最終分析 {formatDate(lastAnalyzed)}
           </span>
-          <FreshnessBadge level={level} />
+          <FreshnessBadge level={level} lastEarningsDate={lastEarningsDate} />
           <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>分析{analysisCount}件</span>
           {openActions > 0 && (
             <span style={badgeStyle("var(--color-accent-sub)", "var(--color-accent)")}>
@@ -678,10 +739,21 @@ function StockRow({
             </span>
           )}
         </div>
-        <div style={{ marginTop: 4 }}>
+        <div style={{ marginTop: 4, display: "flex", gap: 10, flexWrap: "wrap" }}>
           <span style={earningsInfo.soon ? dangerText : { fontSize: 11, color: "var(--color-text-muted)" }}>
             {earningsInfo.text}
           </span>
+          {lastEarningsText && (
+            <span
+              style={
+                emphasizeLast
+                  ? { fontSize: 12, color: "var(--color-accent)", fontWeight: 800 }
+                  : { fontSize: 11, color: "var(--color-text-muted)" }
+              }
+            >
+              {lastEarningsText}
+            </span>
+          )}
         </div>
       </button>
 
