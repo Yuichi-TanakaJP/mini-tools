@@ -7,6 +7,7 @@ import {
   SYNC_STALE_DAYS,
   analysesForStock,
   buildAnalysisPrompt,
+  buildRevalidateFailureMessage,
   computeUnanalyzedHoldings,
   countHoldingTabItems,
   createLoadGuard,
@@ -14,6 +15,7 @@ import {
   daysSinceSync,
   daysUntil,
   earningsDisplay,
+  formatClockTime,
   formatMonthDay,
   freshnessLevel,
   freshnessLevelWithEarnings,
@@ -25,6 +27,7 @@ import {
   sortOpenActions,
   sortUnanalyzedHoldingsByEarnings,
   syncStaleness,
+  withFallback,
 } from "../logic";
 import type { StockNoteAction, StockNoteAnalysis, StockNoteStock, StockNoteThesis } from "../types";
 
@@ -601,5 +604,93 @@ describe("createLoadGuard", () => {
     const token = guard.next();
     expect(guard.isCurrent(token)).toBe(true);
     expect(guard.isCurrent(token)).toBe(true);
+  });
+});
+
+describe("formatClockTime", () => {
+  it("ISO文字列をJSTのHH:MMに変換する", () => {
+    // 2026-08-11T03:05:00Z は JST 12:05
+    expect(formatClockTime("2026-08-11T03:05:00.000Z")).toBe("12:05");
+  });
+
+  it("null/undefinedはnull", () => {
+    expect(formatClockTime(null)).toBeNull();
+    expect(formatClockTime(undefined)).toBeNull();
+  });
+
+  it("不正な日付文字列はnull", () => {
+    expect(formatClockTime("not-a-date")).toBeNull();
+  });
+});
+
+describe("buildRevalidateFailureMessage", () => {
+  it("fetchedAtがあれば時刻入りの案内文になる", () => {
+    // 2026-08-11T03:05:00Z は JST 12:05
+    expect(buildRevalidateFailureMessage("2026-08-11T03:05:00.000Z")).toBe(
+      "最新の取得に失敗しました（表示は12:05時点）。",
+    );
+  });
+
+  it("fetchedAtが無ければ時刻を省いた案内文になる", () => {
+    expect(buildRevalidateFailureMessage(null)).toBe("最新の取得に失敗しました。");
+    expect(buildRevalidateFailureMessage(undefined)).toBe("最新の取得に失敗しました。");
+  });
+
+  it("fetchedAtが不正な値でも時刻を省いた案内文にフォールバックする", () => {
+    expect(buildRevalidateFailureMessage("not-a-date")).toBe("最新の取得に失敗しました。");
+  });
+});
+
+describe("withFallback", () => {
+  const colors = { bullish: "green", bearish: "red" } as const;
+
+  it("キーが存在すればその値を返す", () => {
+    expect(withFallback(colors, "bullish", "gray")).toBe("green");
+  });
+
+  it("キーが存在しなければ既定値を返す（想定外のenum値でクラッシュしないようにするため）", () => {
+    expect(withFallback(colors, "unknown-value", "gray")).toBe("gray");
+  });
+
+  it("プロトタイプ汚染的なキー（toString等）でも own property でなければ既定値を返す", () => {
+    expect(withFallback(colors, "toString", "gray")).toBe("gray");
+  });
+});
+
+describe("createLoadGuard（stock-notes での回帰シナリオ）", () => {
+  // createLoadGuard は取得の「世代」ガードとして作られたが、ToolClient.tsx では
+  // 認証状態の世代ガード（authGuardRef）としても同じ仕組みを再利用している。
+  // ここでは実際に起きていた2つの不具合（codexレビュー指摘）を、
+  // createLoadGuard の基本動作を組み合わせたシナリオとして再現し、
+  // 修正後の設計（ToolClient.tsx 側の実装）が依拠している前提を保証する。
+
+  it("シナリオ1: getUser()より先にonAuthStateChangeが発火したら、getUser()側のトークンは古い扱いになる（別ユーザーIDの誤適用を防ぐ）", () => {
+    const authGuard = createLoadGuard();
+    // マウント時、getUser() を呼ぶ直前にトークンを採番する
+    const tokenAtGetUserStart = authGuard.next();
+    // getUser() の応答が届く前に、アカウント切替（onAuthStateChange）が先に発火し、世代が進む
+    authGuard.next();
+    // 遅れて届いた getUser() の結果は、もはや最新の世代ではないので適用してはいけない
+    expect(authGuard.isCurrent(tokenAtGetUserStart)).toBe(false);
+  });
+
+  it("シナリオ1逆順: onAuthStateChangeより先にgetUser()が解決すれば、そのトークンは現在の世代のまま適用してよい", () => {
+    const authGuard = createLoadGuard();
+    const tokenAtGetUserStart = authGuard.next();
+    // この時点でまだ onAuthStateChange は発火していない
+    expect(authGuard.isCurrent(tokenAtGetUserStart)).toBe(true);
+  });
+
+  it("シナリオ2: 古い取得（revalidate相当）が世代不一致で終了しても、新しい取得（load相当）自身のトークンは有効なまま", () => {
+    // isRevalidating が解除されない不具合は「古いrevalidateDataがisCurrentで弾かれ、
+    // 新しいloadDataがisRevalidatingに触れない」という2つの要因の組み合わせで起きていた。
+    // guard自体は「新しいトークンが常にcurrentである」という前提を守れていることを確認する
+    // （ToolClient.tsx 側は、loadData 開始時に isRevalidating を同期的に false へ倒すことで、
+    // このガードの結果に関わらず正しい状態に収束させている）。
+    const loadGuard = createLoadGuard();
+    const revalidateToken = loadGuard.next();
+    const loadToken = loadGuard.next();
+    expect(loadGuard.isCurrent(revalidateToken)).toBe(false);
+    expect(loadGuard.isCurrent(loadToken)).toBe(true);
   });
 });

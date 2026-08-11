@@ -17,16 +17,19 @@ import {
   fetchTheses,
 } from "./data";
 import type { StockNotesEarningsInfo } from "./earnings-types";
-import { loadDashboardData } from "./load";
+import { invalidateStockNotesCache, readStockNotesCache, writeStockNotesCache } from "./cache";
+import { loadDashboardData, type DashboardData } from "./load";
 import {
   analysesForStock,
   analysisCountForStock,
   buildAnalysisPrompt,
+  buildRevalidateFailureMessage,
   computeUnanalyzedHoldings,
   countHoldingTabItems,
   createLoadGuard,
   daysSinceSync,
   earningsDisplay,
+  formatClockTime,
   formatMonthDay,
   freshnessLevelWithEarnings,
   isOverdue,
@@ -38,6 +41,7 @@ import {
   sortUnanalyzedHoldingsByEarnings,
   SYNC_STALE_DAYS,
   syncStaleness,
+  withFallback,
   type FreshnessLevelV2,
   type SyncStaleness,
 } from "./logic";
@@ -171,6 +175,7 @@ export default function ToolClient() {
 
   const [authReady, setAuthReady] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const [loadState, setLoadState] = useState<LoadState>("idle");
   const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
@@ -182,6 +187,15 @@ export default function ToolClient() {
   const [holdingsUpdatedAt, setHoldingsUpdatedAt] = useState<string | null>(null);
   const [earnings, setEarnings] = useState<StockNotesEarningsInfo | null>(null);
 
+  // stale-while-revalidate 用の表示状態。
+  // dataUpdatedAt: 現在画面に出ているデータ（キャッシュ or 直近取得）の取得時刻（ISO）。
+  //   「最終更新 HH:MM」表示と、再取得失敗時の案内文の両方に使う。
+  // isRevalidating: バックグラウンド再取得（マウント時の自動 or 手動更新ボタン）が進行中かどうか。
+  // revalidateError: バックグラウンド再取得が失敗したときの案内文。表示中のデータは消さない。
+  const [dataUpdatedAt, setDataUpdatedAt] = useState<string | null>(null);
+  const [isRevalidating, setIsRevalidating] = useState(false);
+  const [revalidateError, setRevalidateError] = useState<string | null>(null);
+
   const [categoryTab, setCategoryTab] = useState<StockNoteCategory>("holding");
   const [expandedStockId, setExpandedStockId] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -190,6 +204,22 @@ export default function ToolClient() {
   // 取得の「世代」を管理するガード。ユーザー切替・ログアウトが連続したときに、
   // 古いリクエストの結果が新しい画面を上書きしないようにする（詳細: logic.ts の createLoadGuard）。
   const loadGuardRef = useRef(createLoadGuard());
+  // onAuthStateChange のサブスクリプションは effect 実行時に1回だけ張られるため、
+  // 通常の state（userId）をそのままクロージャで参照すると、ログイン直後の値を
+  // 拾えず古い値（null 等）を見てしまう（stale closure）。ログアウト時に「直前の
+  // ユーザーID」を確実に取れるよう、ref にも同じ値を都度反映しておく。
+  const userIdRef = useRef<string | null>(null);
+  // 認証状態の「世代」ガード（createLoadGuard を流用）。
+  // マウント時に張る supabase.auth.getUser() は非同期のため、その結果が返ってくる前に
+  // アカウント切替（onAuthStateChange の SIGNED_IN/SIGNED_OUT）が先に起きることがある。
+  // 例: A でログイン中に getUser() を発行 → 応答が届く前に B へ切り替わり
+  // onAuthStateChange が先に uid=B で startForUser を開始 → 遅れて届いた getUser() の
+  // 結果（uid=A）をそのまま適用すると、実際のセッションは B なのに uid=A で
+  // 取得・表示・キャッシュ保存してしまう（別ユーザーのデータ混入）。
+  // getUser() を呼ぶ直前にこのガードで世代を1つ進めて記録しておき、onAuthStateChange が
+  // 発火するたびにも世代を進める。getUser() の結果を適用する前に世代が変わっていないか
+  // 確認し、変わっていれば（＝より新しい認証イベントを先に処理済み）その結果は捨てる。
+  const authGuardRef = useRef(createLoadGuard());
 
   const resetData = useCallback(() => {
     setStocks([]);
@@ -203,41 +233,134 @@ export default function ToolClient() {
     setExpandedStockId(null);
     setLoadErrorMessage(null);
     setLoadState("idle");
+    setDataUpdatedAt(null);
+    setIsRevalidating(false);
+    setRevalidateError(null);
   }, []);
 
-  const loadData = useCallback(async () => {
-    if (!supabase) return;
-    const token = loadGuardRef.current.next();
-    setLoadState("loading");
-    setLoadErrorMessage(null);
-    const result = await loadDashboardData({
-      fetchStocks: () => fetchStocks(supabase),
-      fetchAnalyses: () => fetchAnalyses(supabase),
-      fetchTheses: () => fetchTheses(supabase),
-      fetchOpenActions: () => fetchOpenActions(supabase),
-      fetchHoldings,
-      fetchEarnings,
-    });
-    // 完了までの間により新しい取得が始まっていたら、この結果は古いので画面に反映しない。
-    if (!loadGuardRef.current.isCurrent(token)) return;
+  const applyDashboardData = useCallback((data: DashboardData, fetchedAt: string) => {
+    setStocks(data.stocks);
+    setAnalyses(data.analyses);
+    setTheses(data.theses);
+    setActions(data.actions);
+    setHoldings(data.holdings);
+    setHoldingsUpdatedAt(data.holdingsUpdatedAt);
+    setEarnings(data.earnings);
+    setDataUpdatedAt(fetchedAt);
+  }, []);
 
-    if (result.status === "ok") {
-      setStocks(result.stocks);
-      setAnalyses(result.analyses);
-      setTheses(result.theses);
-      setActions(result.actions);
-      setHoldings(result.holdings);
-      setHoldingsUpdatedAt(result.holdingsUpdatedAt);
-      setEarnings(result.earnings);
-      setLoadState("loaded");
-    } else if (result.status === "unauthorized") {
-      setLoadErrorMessage(result.message);
-      setLoadState("unauthorized");
-    } else {
-      setLoadErrorMessage(result.message);
-      setLoadState("error");
-    }
-  }, [supabase]);
+  /**
+   * 通常（フォアグラウンド）のロード。キャッシュが無いとき・エラー後の「再読み込み」で使う。
+   * ローディング画面を出し、失敗時は画面全体をエラー/未ログイン表示に切り替える
+   * （このパスに来る時点でまだ画面に表示できるデータが無いため、維持すべきキャッシュも無い）。
+   */
+  const loadData = useCallback(
+    async (uid: string | null) => {
+      if (!supabase) return;
+      const token = loadGuardRef.current.next();
+      setLoadState("loading");
+      setLoadErrorMessage(null);
+      setRevalidateError(null);
+      // このフォアグラウンドロードが、進行中だったバックグラウンド再取得（revalidateData）を
+      // 供給元として上書きする。revalidateData 側は「自分の取得が今も最新か」でしか
+      // isRevalidating を解除しないため、そのまま放置すると「更新中…」が消えなくなる
+      // （旧revalidateDataが世代不一致で早期returnし、かつ後続のこのloadDataがisRevalidatingに
+      // 触れないと解除されない、という不具合があった）。ここで同期的に false にしておくことで、
+      // どちらが先に解決しても最終的に正しい状態に収束する。
+      setIsRevalidating(false);
+      const result = await loadDashboardData({
+        fetchStocks: () => fetchStocks(supabase),
+        fetchAnalyses: () => fetchAnalyses(supabase),
+        fetchTheses: () => fetchTheses(supabase),
+        fetchOpenActions: () => fetchOpenActions(supabase),
+        fetchHoldings,
+        fetchEarnings,
+      });
+      // 完了までの間により新しい取得が始まっていたら、この結果は古いので画面に反映しない。
+      if (!loadGuardRef.current.isCurrent(token)) return;
+
+      if (result.status === "ok") {
+        const fetchedAtIso = new Date().toISOString();
+        const data: DashboardData = {
+          stocks: result.stocks,
+          analyses: result.analyses,
+          theses: result.theses,
+          actions: result.actions,
+          holdings: result.holdings,
+          holdingsUpdatedAt: result.holdingsUpdatedAt,
+          earnings: result.earnings,
+        };
+        applyDashboardData(data, fetchedAtIso);
+        setLoadState("loaded");
+        if (uid) writeStockNotesCache(uid, data);
+      } else if (result.status === "unauthorized") {
+        if (uid) invalidateStockNotesCache(uid);
+        setLoadErrorMessage(result.message);
+        setLoadState("unauthorized");
+      } else {
+        setLoadErrorMessage(result.message);
+        setLoadState("error");
+      }
+    },
+    [supabase, applyDashboardData],
+  );
+
+  /**
+   * stale-while-revalidate のバックグラウンド再取得（マウント時のキャッシュ表示後の裏取得、
+   * および手動更新ボタン）。既に画面に何かが表示されている前提で呼ぶため、
+   * 取得失敗時は画面をエラー表示に倒さず、表示中のデータをそのまま維持して
+   * 「最新の取得に失敗しました（表示は HH:MM時点）」の案内だけ出す。
+   * ただし 401（セッション切れ）は例外: 表示中のデータが無効なセッションのものになるため、
+   * ログイン画面へ切り替え、ローカルキャッシュも破棄する。
+   */
+  const revalidateData = useCallback(
+    async (uid: string | null, referenceFetchedAt: string | null) => {
+      if (!supabase) return;
+      const token = loadGuardRef.current.next();
+      setIsRevalidating(true);
+      setRevalidateError(null);
+      const result = await loadDashboardData({
+        fetchStocks: () => fetchStocks(supabase),
+        fetchAnalyses: () => fetchAnalyses(supabase),
+        fetchTheses: () => fetchTheses(supabase),
+        fetchOpenActions: () => fetchOpenActions(supabase),
+        fetchHoldings,
+        fetchEarnings,
+      });
+      if (!loadGuardRef.current.isCurrent(token)) return;
+      setIsRevalidating(false);
+
+      if (result.status === "ok") {
+        const fetchedAtIso = new Date().toISOString();
+        const data: DashboardData = {
+          stocks: result.stocks,
+          analyses: result.analyses,
+          theses: result.theses,
+          actions: result.actions,
+          holdings: result.holdings,
+          holdingsUpdatedAt: result.holdingsUpdatedAt,
+          earnings: result.earnings,
+        };
+        applyDashboardData(data, fetchedAtIso);
+        setLoadState("loaded");
+        setLoadErrorMessage(null);
+        if (uid) writeStockNotesCache(uid, data);
+        return;
+      }
+
+      if (result.status === "unauthorized") {
+        if (uid) invalidateStockNotesCache(uid);
+        resetData();
+        setLoadErrorMessage(result.message);
+        setLoadState("unauthorized");
+        return;
+      }
+
+      // ネットワーク不調・サーバーエラー等の一般的な失敗はキャッシュ/前回表示を維持する。
+      setRevalidateError(buildRevalidateFailureMessage(referenceFetchedAt));
+    },
+    [supabase, applyDashboardData, resetData],
+  );
 
   // 認証確認とログイン中のデータ読み込みを1つのeffectにまとめる。
   // 「effectがstateを更新→その値に依存する別のeffectが発火してさらにstateを更新」という
@@ -251,28 +374,67 @@ export default function ToolClient() {
       return;
     }
     let active = true;
+
+    // ログイン確定後の共通処理: キャッシュがあれば即座に描画してから裏で再取得する
+    // （stale-while-revalidate）。キャッシュが無ければ従来どおりローディング表示から取得する。
+    const startForUser = (uid: string) => {
+      const cached = readStockNotesCache(uid);
+      if (cached) {
+        applyDashboardData(cached.data, cached.fetchedAt);
+        setLoadState("loaded");
+        setLoadErrorMessage(null);
+        revalidateData(uid, cached.fetchedAt);
+      } else {
+        loadData(uid);
+      }
+    };
+
+    // getUser() を呼ぶ直前に世代を1つ進めて記録する。この後 onAuthStateChange が
+    // 一度でも発火すれば世代がさらに進むため、getUser() の結果が返ってきた時点で
+    // 世代が一致しなければ「より新しい認証イベントを先に処理済み」と判断できる。
+    const authTokenAtGetUserStart = authGuardRef.current.next();
     supabase.auth.getUser().then(({ data }) => {
       if (!active) return;
-      const nextEmail = data.user?.email ?? null;
-      setEmail(nextEmail);
+      // getUser() の結果を state に適用するかどうかに関わらず、認証確認は完了している。
       setAuthReady(true);
-      if (nextEmail) {
-        loadData();
+      if (!authGuardRef.current.isCurrent(authTokenAtGetUserStart)) {
+        // 先に onAuthStateChange が発火し、そちらが正しい最新の認証状態を既に処理している。
+        // この getUser() の結果は古いので、userId/email 等には一切反映しない
+        // （反映すると別ユーザーのuidで取得・キャッシュ保存してしまう）。
+        return;
+      }
+      const nextEmail = data.user?.email ?? null;
+      const nextUserId = data.user?.id ?? null;
+      userIdRef.current = nextUserId;
+      setEmail(nextEmail);
+      setUserId(nextUserId);
+      if (nextEmail && nextUserId) {
+        startForUser(nextUserId);
       } else {
         loadGuardRef.current.invalidate();
         resetData();
       }
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      // 世代を進める。これにより、まだ解決していない（先に呼んだ）getUser() の結果は
+      // 古いものとして破棄される。
+      authGuardRef.current.next();
       const nextEmail = session?.user?.email ?? null;
+      const nextUserId = session?.user?.id ?? null;
       setEmail(nextEmail);
-      if (nextEmail) {
-        // ユーザー切替（別アカウントでの再ログイン含む）でも loadData 内で新しい世代を発行するため、
+      setUserId(nextUserId);
+      if (nextEmail && nextUserId) {
+        // ユーザー切替（別アカウントでの再ログイン含む）でも新しい世代を発行するため、
         // 直前のユーザーの取得結果は自動的に無効化される。
-        loadData();
+        userIdRef.current = nextUserId;
+        startForUser(nextUserId);
       } else {
-        // ログアウト: 進行中の取得結果を無効化し、表示中のデータを即座にクリアする。
+        // ログアウト: 進行中の取得結果を無効化し、表示中のデータとローカルキャッシュ（このユーザー分）を
+        // 即座にクリアする。同じ端末を他人が使う場合に前のユーザーの分析内容が残らないようにするため。
+        const prevUserId = userIdRef.current;
+        userIdRef.current = null;
         loadGuardRef.current.invalidate();
+        if (prevUserId) invalidateStockNotesCache(prevUserId);
         resetData();
       }
     });
@@ -281,7 +443,7 @@ export default function ToolClient() {
       sub.subscription.unsubscribe();
     };
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [supabase, loadData, resetData]);
+  }, [supabase, loadData, revalidateData, resetData, applyDashboardData]);
 
   const unanalyzedHoldingsRaw = useMemo(
     () => computeUnanalyzedHoldings(holdings, stocks, analyses),
@@ -371,7 +533,7 @@ export default function ToolClient() {
             <p style={{ margin: "0 0 10px", fontSize: 13, color: "var(--color-danger, #dc2626)" }}>
               データの取得に失敗しました{loadErrorMessage ? `（${loadErrorMessage}）` : ""}。
             </p>
-            <button type="button" onClick={loadData} style={subBtn}>
+            <button type="button" onClick={() => loadData(userId)} style={subBtn}>
               再読み込み
             </button>
           </div>
@@ -381,6 +543,39 @@ export default function ToolClient() {
           </div>
         ) : (
           <>
+            {/* stale-while-revalidate の状態表示。キャッシュ表示中でも「最終更新」が分かるようにし、
+                手動更新ボタンでキャッシュを無視した再取得ができるようにする。 */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
+                {isRevalidating
+                  ? "更新中…"
+                  : dataUpdatedAt
+                    ? `最終更新 ${formatClockTime(dataUpdatedAt) ?? "-"}`
+                    : ""}
+              </span>
+              <button
+                type="button"
+                onClick={() => revalidateData(userId, dataUpdatedAt)}
+                disabled={isRevalidating}
+                style={{ ...subBtn, opacity: isRevalidating ? 0.6 : 1 }}
+              >
+                {isRevalidating ? "更新中…" : "今すぐ更新"}
+              </button>
+            </div>
+            {revalidateError && (
+              <p style={{ margin: 0, fontSize: 12, color: "var(--color-danger, #dc2626)", lineHeight: 1.6 }}>
+                {revalidateError}
+              </p>
+            )}
+
             {/* 保有リストの同期状態。my-stocks はローカルが正本で、/account の「この端末を保存」を
                 押した時だけクラウドへアップロードされる（自動同期ではない）。ここで表示している
                 「未分析◯件」等の数字が古い保有リストに基づく可能性があることを伝える。 */}
@@ -656,13 +851,18 @@ function StockRow({
           <span style={{ fontWeight: 900, color: "var(--color-text)", fontSize: 14 }}>{stock.code}</span>
           <span style={{ color: "var(--color-text)", fontSize: 13 }}>{stock.name}</span>
           {thesis && (
-            <span style={badgeStyle(VIEW_COLORS[thesis.view].bg, VIEW_COLORS[thesis.view].fg)}>
-              {VIEW_LABELS[thesis.view]}
+            <span
+              style={badgeStyle(
+                withFallback(VIEW_COLORS, thesis.view, VIEW_COLORS.neutral).bg,
+                withFallback(VIEW_COLORS, thesis.view, VIEW_COLORS.neutral).fg,
+              )}
+            >
+              {withFallback(VIEW_LABELS, thesis.view, "不明")}
             </span>
           )}
           {thesis && (
             <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-              {CONFIDENCE_LABELS[thesis.confidence]}
+              {withFallback(CONFIDENCE_LABELS, thesis.confidence, "確信度不明")}
             </span>
           )}
         </div>
@@ -744,7 +944,7 @@ function StockRow({
                       {formatDate(a.analyzedAt)}
                     </span>
                     <span style={badgeStyle("var(--color-bg-input)", "var(--color-text-sub)")}>
-                      {ANALYSIS_TYPE_LABELS[a.analysisType]}
+                      {withFallback(ANALYSIS_TYPE_LABELS, a.analysisType, "その他")}
                     </span>
                   </div>
                   {a.conclusion && (

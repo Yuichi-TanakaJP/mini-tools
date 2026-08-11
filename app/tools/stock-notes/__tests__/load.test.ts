@@ -115,6 +115,29 @@ describe("loadDashboardData", () => {
     }
   });
 
+  it("stock_notes側のSupabase取得がセッション切れ相当のエラー（PGRST301）で失敗したらstatus: unauthorized（/api/syncの401と同じ扱いにする）", async () => {
+    const result = await loadDashboardData({
+      ...emptyOkFetchers,
+      fetchStocks: async () => {
+        throw { code: "PGRST301", message: "JWT expired" };
+      },
+    });
+    expect(result.status).toBe("unauthorized");
+    if (result.status === "unauthorized") {
+      expect(result.message).toContain("ログインし直して");
+    }
+  });
+
+  it("stock_notes側のSupabase取得が単なる権限エラー（42501等）ではstatus: error（セッション切れと混同しない）", async () => {
+    const result = await loadDashboardData({
+      ...emptyOkFetchers,
+      fetchStocks: async () => {
+        throw { code: "42501", message: "permission denied" };
+      },
+    });
+    expect(result.status).toBe("error");
+  });
+
   it("決算日の取得が失敗しても status: ok のまま、earningsだけnullになる（ページ全体を失敗させない）", async () => {
     const result = await loadDashboardData({
       ...emptyOkFetchers,

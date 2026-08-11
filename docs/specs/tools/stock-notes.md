@@ -13,6 +13,8 @@
 
 ## 画面仕様
 
+画面最上部（目立たない位置）に、現在表示しているデータの取得時刻を「最終更新 12:05」のように表示し、隣に手動更新ボタン（「今すぐ更新」）を置く。裏で再取得中は「更新中…」に切り替わる。手動更新ボタンを押すとキャッシュの有無に関わらず即座に再取得する。詳細は「キャッシュ（stale-while-revalidate）」節を参照。
+
 ### 主な画面要素
 
 0. **保有リストの同期状態**（画面上部）: `/api/sync` の `my_stocks_items_v1` の最終同期日時（`updated_at`）を「保有リストの同期: 2026-06-21（52日前）」のように表示する。30日以上前の場合は注意表示＋`/account`（「この端末を保存」）への導線を出す。詳細は「保有リスト同期の注意表示」節を参照
@@ -65,6 +67,25 @@
 
 「未分析◯件」等の数字が古い、または確認できない保有リストに基づく可能性があることを伝える。理由の詳細は decision-log 参照。
 
+### キャッシュ（stale-while-revalidate）
+
+このツールは読み取り専用で、分析データ（`stock_notes_*`）は週に数回しか増えないため、開くたびに毎回全件取得する必要はない。`app/tools/stock-notes/cache.ts` が localStorage に TTL 15分のキャッシュを持つ。
+
+- 保存内容: `app/tools/stock-notes/load.ts` の `DashboardData`（銘柄・分析サマリー・見立て・アクション・保有リスト・保有リスト同期日時・決算情報）＋取得時刻（`fetchedAt`）＋スキーマバージョン。会話原文（`body`）は一覧取得に元々含まれないため、キャッシュにも含まれない
+- キーにログインユーザーIDを含める（`stock_notes_dashboard_cache_v1_<userId>`）。別アカウントのキャッシュは読めない
+- TTL は15分。分析は週に数回しか増えず、`/api/stock-notes/earnings` は既に `Cache-Control: max-age=300`（5分）でキャッシュ済みのため。根拠: `app/tools/stock-notes/cache.ts` の `CACHE_TTL_MS` コメント、decision-log
+- スキーマバージョン（`version: 1`）を持つ。過去に `lastEarnings` の形式変更でキャッシュ互換性の問題を起こしたことがあるため、`DashboardData` の形を変えたら version を上げて古いキャッシュを無効化する
+- 読み出しは防御的に行う。JSON parse 失敗・version不一致・userId不一致・形の不正（`earnings` の入れ子構造の不正も含む）・TTL超過のいずれでも例外を投げず `null` を返し、通常取得にフォールバックする。書き込み失敗（容量超過・プライベートモード等）も握りつぶす
+- `view` / `confidence` / `analysisType` のような enum 相当のフィールドは、キャッシュ層では構造レベルの検証にとどめ、個々の値の妥当性チェックはしない。想定外の値（キャッシュ由来・Supabaseからの直接取得由来の両方でありうる）は描画側（`ToolClient.tsx`）で安全な既定値にフォールバックする（`logic.ts` の `withFallback`）
+
+マウント時（ログイン確認直後）にまずキャッシュを読み、あれば即座に描画してから裏で再取得して差し替える（stale-while-revalidate、`ToolClient.tsx` の `startForUser`）。キャッシュが無ければ従来どおりローディング表示 → 取得（`loadData`）。裏の再取得（自動・手動更新ボタンとも `revalidateData` を使う）が失敗した場合はキャッシュ表示を維持し、「最新の取得に失敗しました（表示はHH:MM時点）」と伝える（キャッシュを消して真っ白にはしない）。ただし裏の再取得が401相当（セッション切れ。`/api/sync` の401、または `stock_notes_*` のSupabase直読みでの `isSessionExpiredSupabaseError`）で失敗した場合は例外で、表示中のデータとローカルキャッシュを破棄してログイン画面へ切り替える（表示中のデータが無効なセッションのものになるため）。既存の取得世代ガード（`createLoadGuard`）は `loadData` / `revalidateData` の両方で使い、古いリクエストの結果で上書きしないようにする。
+
+マウント時に発行する `supabase.auth.getUser()` の結果は、認証状態の世代ガード（`authGuardRef`、`createLoadGuard` を再利用）で保護している。`getUser()` の応答が届く前に `onAuthStateChange`（アカウント切替）が先に発火した場合、遅れて届いた `getUser()` の結果（古いユーザーのuid）は一切 state に反映しない。反映すると、実際のセッションは切り替わっているのに古いuidで取得・キャッシュ保存してしまう（別アカウントのデータ混入）ため。
+
+ログアウト時（`onAuthStateChange` でセッションが null になったタイミング）は、表示中のデータのクリアに加えて、直前のユーザーのローカルキャッシュも `invalidateStockNotesCache(userId)` で削除する。同じ端末を他人が使う場合に前のユーザーの分析内容が残らないようにするため。
+
+将来この画面に銘柄登録・分類変更・アーカイブ等の書き込み機能を追加する場合、書き込み成功後に必ず `invalidateStockNotesCache(userId)` を呼ぶこと。呼び忘れると、TTL内は古いキャッシュがそのまま表示され続け「登録したのに画面に反映されない」不具合になる。詳細は decision-log 参照。
+
 ### 入力
 
 - なし（読み取り専用）。「分析用プロンプトをコピー」はクリップボードへの書き込みのみで、Supabase への保存は行わない
@@ -92,7 +113,7 @@
 
 - Supabase 未設定（`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` 未設定）時は「利用できません」の案内のみ表示する
 - 各テーブル取得のいずれかが失敗した場合は、データを一切表示せず「取得に失敗しました」＋再読み込みボタンを表示する（部分表示はしない）
-- 保有リスト取得元の `/api/sync` が **401（セッション切れ）** を返した場合は、他の取得失敗と区別し「セッションが切れています。ログインし直してください」＋再ログイン導線を表示する（`app/tools/stock-notes/load.ts` の `loadDashboardData`）。`/api/sync` の失敗を空配列へフォールバックすることはしない。フォールバックすると「保有0件」と「取得失敗」の区別がつかず、未分析銘柄が黙って0件表示になってしまうため
+- 保有リスト取得元の `/api/sync` が **401（セッション切れ）** を返した場合、および `stock_notes_*` の Supabase 直読みが**セッション切れ相当のエラー**（PostgRESTの `PGRST301` = JWT expired 等、`app/tools/stock-notes/data.ts` の `isSessionExpiredSupabaseError`）を返した場合は、どちらも同じ「セッション切れ」として扱い、他の取得失敗と区別して「セッションが切れています。ログインし直してください」＋再ログイン導線を表示する（`app/tools/stock-notes/load.ts` の `loadDashboardData`）。`/api/sync` の失敗を空配列へフォールバックすることはしない。フォールバックすると「保有0件」と「取得失敗」の区別がつかず、未分析銘柄が黙って0件表示になってしまうため
 - ユーザー切替・ログアウトが短時間に連続しても、古いリクエストの結果で新しい画面を上書きしない（取得世代ガード。`app/tools/stock-notes/logic.ts` の `createLoadGuard`）。ログアウト時は表示中のデータを即座にクリアする
 - 次回決算日（`/api/stock-notes/earnings`）の取得失敗は、他の4テーブル・保有リストの取得失敗とは別扱いにする。ダッシュボード本体（保有だが未分析、等）は決算日が無くても表示できるため、`app/tools/stock-notes/load.ts` の `loadDashboardData` はこの失敗だけを個別に catch し、`earnings: null` としてページ自体は正常表示する。決算日の表示箇所だけ「決算情報を取得できませんでした」になる（部分表示するのはこのケースのみ）
 - `/api/stock-notes/earnings` は、当月分の月次JSON取得に失敗した場合はエラーレスポンス（502）を返す。当月以外（前月・翌月・翌々月）の月次JSON取得だけが一部失敗した場合は200のまま返すが、レスポンスに `complete: false` と `missingMonths`（取得できなかった月の一覧）を含める。呼び出し側はこれを見て、欠落した月にその銘柄の決算が入っていた可能性を「未判明」と誤解させないよう「取得できませんでした」寄りの表示にする
@@ -141,6 +162,7 @@
 - [app/tools/stock-notes/page.tsx](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-notes/page.tsx)
 - [app/tools/stock-notes/ClientOnly.tsx](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-notes/ClientOnly.tsx)
 - [app/tools/stock-notes/ToolClient.tsx](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-notes/ToolClient.tsx)
+- [app/tools/stock-notes/cache.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-notes/cache.ts)
 - [app/tools/stock-notes/data.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-notes/data.ts)
 - [app/tools/stock-notes/load.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-notes/load.ts)
 - [app/tools/stock-notes/logic.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-notes/logic.ts)

@@ -288,6 +288,99 @@ manifest の `current_window`（実測: 2026-08-01〜2026-09-30）より先を�
 フォールバックしてしまう）ため、テストで担保している
 （`app/tools/stock-notes/__tests__/logic.test.ts` の `freshnessLevelWithEarnings` 系）。
 
+## キャッシュ（stale-while-revalidate）の追加（2026-08-12 追記）
+
+Issue #446 の続きとして、開くたびに Supabase 4本＋`/api/sync`＋`/api/stock-notes/earnings` の
+計6リクエストを毎回取り直していた状態に、localStorage ベースの TTL 付きキャッシュを追加した
+（`app/tools/stock-notes/cache.ts`）。
+
+### なぜキャッシュするのか
+
+このツールは読み取り専用で、分析データ（`stock_notes_*`）は週に数回しか増えない
+（実績: 2026-01〜08の8ヶ月で分析17件）。にもかかわらず、外出先からスマホで開くたびに
+6リクエストを毎回待たされるのは、このツールの利用シーン（「外出先など別端末から、これまでの
+分析状況・見立て・未消化アクションを確認したいとき」）に対して過剰なコストだった。
+
+### なぜ stale-while-revalidate（キャッシュを即座に描画し、裏で再取得）にしたのか
+
+単純な「TTL内はキャッシュだけ返す」方式だと、TTL内に stock-notes 側でデータが更新されても
+画面に反映されない期間が生じる。逆に「常に取得してから表示」だと、このツールの主目的である
+「外出先から素早く開いて確認する」体験が損なわれる。両立させるため、キャッシュがあれば
+まず即座に描画し、その裏で常に最新を取りに行って差し替える方式にした。取得失敗時は
+新しく取れないだけで、キャッシュ自体は引き続き正しい可能性が高いため、画面を空白/エラーには
+せず表示を維持し、「最新の取得に失敗しました（表示は HH:MM時点）」と伝えるに留める
+（`app/tools/stock-notes/logic.ts` の `buildRevalidateFailureMessage`）。
+
+ただし、裏の再取得が **401（セッション切れ）** で失敗した場合はキャッシュ表示を維持しない。
+表示中のデータが無効なセッションのものになってしまい、他の取得失敗（ネットワーク不調等）とは
+性質が異なる（アカウント状態そのものが変わった）ため、ログイン画面へ切り替え、
+ローカルキャッシュも破棄する。
+
+### TTL を15分にした根拠
+
+分析データは週に数回しか増えず、次回決算日の取得元 `/api/stock-notes/earnings` は既に
+`Cache-Control: public, max-age=300`（5分）でサーバー側キャッシュ済み。ダッシュボード全体を
+これより短い周期で再取得しても実質的な鮮度向上は薄い。一方で、セッションを長時間（例えば
+半日〜数日）放置したまま古いデータを見せ続けるのも避けたい。この画面は毎回裏で再取得する
+（stale-while-revalidate）ため、TTL自体は「即座に描画してよい上限」という位置づけであり、
+15分は「スマホからの再訪（数分〜数十分おき）ではキャッシュヒットさせつつ、それ以上放置した
+セッションでは通常のローディング画面に戻す」バランスの値として選んだ。定数化して
+`app/tools/stock-notes/cache.ts` の `CACHE_TTL_MS` にコメント付きで残している。
+
+### なぜ localStorage にしたのか
+
+このリポジトリの既存ツール（`my-stocks` など）は localStorage をローカル正本として使う
+パターンが確立しており、実装・レビューの一貫性を優先した。加えて `next-pwa` は導入済みだが
+Supabase は mini-tools と別オリジンのため Service Worker のキャッシュ対象にできない
+（`/api/sync` や `/api/stock-notes/earnings` は同一オリジンだが、Supabase 直読みの4テーブルは
+対象外）。localStorage であれば取得元を問わず統一的にキャッシュでき、PWA での再訪時にも
+（サーバーへ到達する前に）即座に表示できる。
+
+### ログイン中ユーザーIDをキーに含める理由
+
+同じ端末を複数アカウントで使う可能性があるため、`stock_notes_dashboard_cache_v1_<userId>`
+のようにキーへユーザーIDを含め、別アカウントのキャッシュが混ざらないようにした。
+ログアウト時（`ToolClient.tsx` の `onAuthStateChange` でセッションが null になったタイミング）に
+`invalidateStockNotesCache(prevUserId)` を呼んでそのユーザーのキャッシュを明示的に削除する。
+同じ端末を他人が次に使う場合に、前のユーザーの分析内容（銘柄名・見立て・アクション等）が
+画面に一瞬でも残らないようにするため。
+
+### スキーマバージョンを持たせる理由
+
+このダッシュボードは以前、`lastEarnings` の形式変更（文字列 → オブジェクト）でキャッシュ
+互換性の問題を起こしている（`fetchEarnings` の `Cache-Control: max-age=300` により、
+デプロイ直後に旧形式のレスポンスが混ざりうる問題。上記「レスポンス形式変更とキャッシュの
+非互換（P1）」節参照）。localStorage のキャッシュも同様に、将来 `DashboardData` の形を
+変えたときに古いキャッシュが残っていると同じ種類の問題を起こしうる。`cache.ts` に
+`version`（現在 `1`）を持たせ、保存時の値と一致しない場合は読み出し側で無条件に無効化する
+（読めなければ通常取得にフォールバックするだけなので、安全側に倒せる）。
+
+### 読み出しを防御的にする理由
+
+外部要因（他タブでの操作、ブラウザ拡張、プライベートモードの制限、手動でのlocalStorage編集等）
+によって保存内容が壊れる可能性は消せない。`readStockNotesCache` は JSON parse 失敗・
+version不一致・userId不一致・形の不正（配列であるべきフィールドが配列でない）・TTL超過の
+いずれでも例外を投げず `null` を返し、呼び出し側は「キャッシュが無かった」場合と同じ通常取得
+フローにフォールバックする。書き込み（容量超過・プライベートモードでの `setItem` 拒否等）も
+同様に握りつぶし、通常動作（キャッシュ無しの都度取得）を継続する。
+
+### 会話原文（body）を含めない理由
+
+`body`（会話原文、最大4.5万文字・合計16万文字規模）は元々一覧取得の select に含めていない
+（詳細画面で明示操作したときだけ別クエリで取得する設計。上記「会話原文（body）の取得」節参照）。
+キャッシュに保存するデータ（`app/tools/stock-notes/load.ts` の `DashboardData`）はこの一覧取得の
+結果をそのまま使うため、キャッシュにも自然と `body` は含まれない。書き込み時に別途フィルタする
+実装は不要だった。
+
+### 将来の書き込み機能に備えた `invalidateStockNotesCache` のエクスポート
+
+このダッシュボードには今後、銘柄の登録・分類変更・アーカイブなど Supabase への書き込み機能を
+追加する計画がある（現時点では未着手。上記「残課題」参照）。書き込み後にこのキャッシュが
+残っていると、「登録したのに画面に反映されない」（TTL内は古いキャッシュがそのまま表示され続ける）
+不具合になる。そのため `cache.ts` は `invalidateStockNotesCache(userId)` を今回から
+エクスポートしておき、次に書き込み機能を実装する人が書き込み成功後にこれを呼べばよいようにした
+（今回のPRでは書き込み機能自体は実装しない。呼び出し箇所はログアウト時のみ）。
+
 ### 過去の探索範囲を四半期分に広げた理由
 
 `app/api/stock-notes/earnings/route.ts` の過去側の月次JSON取得範囲は「当月＋前月」
@@ -358,3 +451,92 @@ JST計算・最新決算の選択は問題なしと確認されている。
 `app/tools/stock-notes/logic.ts` の純関数として切り出した。React に依存しないロジックは
 コンポーネントファイルの外に置く、という既存の方針（`daysUntil` 等も元々 `logic.ts` にあった）
 に合わせている。
+
+## codex レビュー対応（キャッシュ機能、2026-08-12 追記）
+
+PR #460（キャッシュ／stale-while-revalidate）について codex レビューを受け、P1が2件・P2が2件の
+指摘に対応した。会話原文がキャッシュに含まれないこと、「最終更新 HH:MM」がJSTでズレないこと、
+通常のログアウト（`SIGNED_OUT`）での `userIdRef` によるキャッシュ破棄は問題なしと確認された。
+
+### アカウント切替中の別ユーザーIDでの取得・保存（P1）
+
+マウント時に発行する `supabase.auth.getUser()` は非同期のため、その応答が届く前に
+`onAuthStateChange`（A→Bのアカウント切替）が先に発火すると、遅れて届いた `getUser()` の
+結果（uid=A）をそのまま適用してしまい、実際のセッションはBなのにuid=Aとして取得・表示・
+**キャッシュ保存**してしまう不具合があった。`createLoadGuard`（取得の世代ガード）は
+`startForUser` 呼び出し以降の非同期処理は守れるが、「`startForUser` を呼ぶかどうかの判断」
+自体がこの問題だったため防げなかった。
+
+`userIdRef`（ログアウト時のstale closure対策）とは別に、`ToolClient.tsx` に
+`authGuardRef`（`createLoadGuard` を認証状態の世代ガードとして再利用）を追加した。
+`getUser()` を呼ぶ直前に世代を1つ進めて記録し、`onAuthStateChange` が発火するたびにも
+世代を進める。`getUser()` の結果が返ってきた時点で世代が変わっていれば
+（＝より新しい認証イベントを先に処理済み）、その結果は一切 state に反映しない
+（`userId`/`email` はもちろん、`startForUser` も呼ばない）。取得の世代ガードと認証状態の
+世代ガードは責務が異なるため、同じ `createLoadGuard` の実装を再利用しつつ別の ref として分離した。
+
+### Supabase直読み側の401がキャッシュ維持のまま埋もれる（P1）
+
+`unauthorized`（セッション切れ）への分岐は `/api/sync`（`HoldingsFetchError` の401）にしか
+効いておらず、`stock_notes_*` の Supabase 直読みでセッション切れ相当のエラーが起きても
+一般的な `status: "error"` に倒れ、stale-while-revalidate の「取得失敗時はキャッシュ表示を
+維持する」設計と合わさって、無効なセッションに基づく古い表示を延々と見せ続けてしまう
+不具合があった。
+
+判別方法として、PostgRESTがJWT検証（RLSより前の段階）に失敗すると返すエラーコード
+`PGRST301`（"JWT expired"）を使うことにした（`app/tools/stock-notes/data.ts` の
+`isSessionExpiredSupabaseError`）。RLSで単に対象行が見えない場合（有効なセッションだが
+本人の行が無い等）は黙って0件が返るだけでエラーにならないため、「0件」を「セッション切れ」と
+誤判定することはない。`code` が環境によって欠落するケースへの保険として、`message` に
+"jwt expired" を含む場合もフォールバックで拾う。`42501`（permission denied）等の一般的な
+権限エラーはセッション切れとは別物として `status: "error"` のままにした
+（テスト: `data.test.ts` / `load.test.ts`）。
+
+### キャッシュの形検証が浅く、壊れていると画面がクラッシュする（P2）
+
+`isValidEnvelope` は各フィールドが「配列かどうか」しか見ておらず、例えば `earnings: {}`
+（`earnings.earnings` / `earnings.lastEarnings` を持たない）が通ってしまい、
+`earningsDisplay` / `sortUnanalyzedHoldingsByEarnings` 等で `earnings.earnings[code]` を
+参照した瞬間にクラッシュする問題があった。また `thesis.view` のような enum 相当のフィールドが
+想定外の値だと `VIEW_COLORS[view].bg` の参照でも同様にクラッシュしうる状態だった
+（これは cache 由来に限らず、Supabase から直接返る値でも起こりうる。DB側の型はTSの
+union を実行時に保証しないため）。
+
+この2つは性質が違うため対応も分けた。
+
+- `earnings` の構造（`earnings`/`lastEarnings` がオブジェクトであること）は `cache.ts` の
+  `isValidEnvelope`（内部で `isValidEarnings`）で検証し、壊れていればキャッシュ全体を
+  無効化する（何が正しい既定値か決められない構造的な破損のため、部分的な救済はしない）
+- `view` / `confidence` / `analysisType` のような enum 相当の値は、キャッシュ層だけでなく
+  Supabase からの直接取得でも同じリスクがあるため、描画側（`ToolClient.tsx`）で
+  安全な既定値にフォールバックする方式にした。`logic.ts` に汎用ヘルパー `withFallback` を
+  追加し、`VIEW_COLORS` / `VIEW_LABELS` / `CONFIDENCE_LABELS` / `ANALYSIS_TYPE_LABELS` の
+  参照箇所に適用した
+
+過剰に厳格な構造検証はキャッシュがヒットしにくくなり stale-while-revalidate の効果を薄める
+ため、「読み出し側が配列/オブジェクトとして扱えるレベル」の検証にとどめ、個々の値の
+妥当性は描画側の安全策に委ねる、という役割分担にした。
+
+### 「更新中…」表示が解除されないまま残る（P2）
+
+古い `revalidateData` の呼び出しが `loadGuardRef` の世代不一致で早期returnする際、
+`isRevalidating` を false に戻さないまま抜けていた。その後 `loadData`（フォアグラウンドの
+通常ロード）が実行されても `loadData` は `isRevalidating` に一切触れていなかったため、
+「更新中…」表示・更新ボタンの disabled 状態が解除されないまま残ってしまう不具合があった。
+
+`loadData` の開始時に同期的に `setIsRevalidating(false)` を呼ぶよう修正した。
+これにより、`revalidateData` が世代不一致で早期returnして `isRevalidating` を触らなくても、
+それを上書きする `loadData` 側で確実に解除される。`revalidateData` 同士が競合するケース
+（新しい `revalidateData` が古い `revalidateData` を上書きする場合）は、古い方が
+早期returnで `isRevalidating` に触れないことがそのまま正しい（新しい方が引き続き
+「更新中」であるべきなため）ので、そちらの分岐は変更していない。
+
+### テストについて（補足）
+
+このリポジトリには React コンポーネントの単体テスト基盤（React Testing Library 等）が無いため、
+上記の1件目・4件目（ToolClient.tsx 内の非同期・状態管理の修正）は component レベルのテストは
+追加していない。代わりに、両方の修正が依拠している `createLoadGuard` の世代管理の前提
+（「先に発火した方が current になり、遅れて届いた方は破棄される」）を、実際に起きていた
+シナリオを再現する形で `logic.test.ts` に回帰テストとして残した。2件目・3件目は純関数
+（`isSessionExpiredSupabaseError` / `isValidEnvelope` 経由の `readStockNotesCache` /
+`withFallback`）として実装したため、通常どおり直接テストしている。

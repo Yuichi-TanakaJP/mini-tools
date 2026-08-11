@@ -71,6 +71,35 @@ function toStringArray(value: unknown): string[] {
   return value.filter((v): v is string => typeof v === "string");
 }
 
+/**
+ * Supabase（PostgREST）から返るエラーが「セッション切れ（JWTの有効期限切れ・無効）」を
+ * 示しているかどうかを判定する。
+ *
+ * なぜ必要か: `/api/sync` は自前のルートなので 401 を HTTP ステータスとして返せる
+ * （`HoldingsFetchError`）が、`stock_notes_*` は supabase-js 経由の直読みで、
+ * `.select()` のエラーは `PostgrestError`（`{message, details, hint, code}`）であり、
+ * fetch の HTTP ステータスをそのまま持たない。セッションが切れているのに一般的な
+ * `status: "error"` に倒すと、このダッシュボードは stale-while-revalidate で
+ * キャッシュ表示を維持する設計のため、期限切れセッションの結果に基づく古い表示を
+ * 延々と見せ続けてしまう（本来は /api/sync の401と同様にログイン画面へ切り替えるべき）。
+ *
+ * 判定方法: PostgREST は JWT の検証（RLSより前の段階）に失敗すると、行フィルタで
+ * 静かに0件を返すのとは別に、リクエスト自体を拒否してエラーコード `PGRST301`
+ * （"JWT expired" 等）を返す
+ * （https://docs.postgrest.org/en/stable/references/errors.html#pgrst301）。
+ * つまり「有効なセッションだが本人の行が無い/権限が無い」ケース（RLSが黙って
+ * 0件を返す、または `42501` 等の別コード）とは明確に区別できるため、
+ * 「0件」を誤って「セッション切れ」と判定することはない。
+ * `code` が環境（PostgREST/PostgRESTのプロキシ経由等）によって欠落するケースへの
+ * 保険として、`message` に "jwt expired" を含む場合もフォールバックで拾う。
+ */
+export function isSessionExpiredSupabaseError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const err = error as { code?: unknown; message?: unknown };
+  if (err.code === "PGRST301") return true;
+  return typeof err.message === "string" && /jwt expired/i.test(err.message);
+}
+
 export async function fetchStocks(supabase: SupabaseClient): Promise<StockNoteStock[]> {
   const { data, error } = await supabase
     .from("stock_notes_stocks")
