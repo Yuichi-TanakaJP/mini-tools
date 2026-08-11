@@ -53,6 +53,14 @@ export const TOOLS: ToolItem[] = [
     category: "yutai",
   },
   {
+    title: "銘柄分析ダッシュボード",
+    short: "stock-notesの分析を一覧で確認",
+    detail: "カスタムGPT（stock-notes）に記録した銘柄分析・見立て・アクションを一覧化。保有しているのに分析が無い銘柄をトップに表示。要ログイン、読み取り専用。",
+    href: "/tools/stock-notes",
+    icon: "🧠",
+    category: "yutai",
+  },
+  {
     title: "開示イベントレーダー",
     short: "優待変更とマイ銘柄の重要開示",
     detail: "全銘柄の優待変更と、マイ銘柄の配当・業績修正・自社株買いなどをまとめて確認。",
