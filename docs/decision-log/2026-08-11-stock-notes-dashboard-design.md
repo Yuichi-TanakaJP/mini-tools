@@ -451,3 +451,92 @@ JST計算・最新決算の選択は問題なしと確認されている。
 `app/tools/stock-notes/logic.ts` の純関数として切り出した。React に依存しないロジックは
 コンポーネントファイルの外に置く、という既存の方針（`daysUntil` 等も元々 `logic.ts` にあった）
 に合わせている。
+
+## codex レビュー対応（キャッシュ機能、2026-08-12 追記）
+
+PR #460（キャッシュ／stale-while-revalidate）について codex レビューを受け、P1が2件・P2が2件の
+指摘に対応した。会話原文がキャッシュに含まれないこと、「最終更新 HH:MM」がJSTでズレないこと、
+通常のログアウト（`SIGNED_OUT`）での `userIdRef` によるキャッシュ破棄は問題なしと確認された。
+
+### アカウント切替中の別ユーザーIDでの取得・保存（P1）
+
+マウント時に発行する `supabase.auth.getUser()` は非同期のため、その応答が届く前に
+`onAuthStateChange`（A→Bのアカウント切替）が先に発火すると、遅れて届いた `getUser()` の
+結果（uid=A）をそのまま適用してしまい、実際のセッションはBなのにuid=Aとして取得・表示・
+**キャッシュ保存**してしまう不具合があった。`createLoadGuard`（取得の世代ガード）は
+`startForUser` 呼び出し以降の非同期処理は守れるが、「`startForUser` を呼ぶかどうかの判断」
+自体がこの問題だったため防げなかった。
+
+`userIdRef`（ログアウト時のstale closure対策）とは別に、`ToolClient.tsx` に
+`authGuardRef`（`createLoadGuard` を認証状態の世代ガードとして再利用）を追加した。
+`getUser()` を呼ぶ直前に世代を1つ進めて記録し、`onAuthStateChange` が発火するたびにも
+世代を進める。`getUser()` の結果が返ってきた時点で世代が変わっていれば
+（＝より新しい認証イベントを先に処理済み）、その結果は一切 state に反映しない
+（`userId`/`email` はもちろん、`startForUser` も呼ばない）。取得の世代ガードと認証状態の
+世代ガードは責務が異なるため、同じ `createLoadGuard` の実装を再利用しつつ別の ref として分離した。
+
+### Supabase直読み側の401がキャッシュ維持のまま埋もれる（P1）
+
+`unauthorized`（セッション切れ）への分岐は `/api/sync`（`HoldingsFetchError` の401）にしか
+効いておらず、`stock_notes_*` の Supabase 直読みでセッション切れ相当のエラーが起きても
+一般的な `status: "error"` に倒れ、stale-while-revalidate の「取得失敗時はキャッシュ表示を
+維持する」設計と合わさって、無効なセッションに基づく古い表示を延々と見せ続けてしまう
+不具合があった。
+
+判別方法として、PostgRESTがJWT検証（RLSより前の段階）に失敗すると返すエラーコード
+`PGRST301`（"JWT expired"）を使うことにした（`app/tools/stock-notes/data.ts` の
+`isSessionExpiredSupabaseError`）。RLSで単に対象行が見えない場合（有効なセッションだが
+本人の行が無い等）は黙って0件が返るだけでエラーにならないため、「0件」を「セッション切れ」と
+誤判定することはない。`code` が環境によって欠落するケースへの保険として、`message` に
+"jwt expired" を含む場合もフォールバックで拾う。`42501`（permission denied）等の一般的な
+権限エラーはセッション切れとは別物として `status: "error"` のままにした
+（テスト: `data.test.ts` / `load.test.ts`）。
+
+### キャッシュの形検証が浅く、壊れていると画面がクラッシュする（P2）
+
+`isValidEnvelope` は各フィールドが「配列かどうか」しか見ておらず、例えば `earnings: {}`
+（`earnings.earnings` / `earnings.lastEarnings` を持たない）が通ってしまい、
+`earningsDisplay` / `sortUnanalyzedHoldingsByEarnings` 等で `earnings.earnings[code]` を
+参照した瞬間にクラッシュする問題があった。また `thesis.view` のような enum 相当のフィールドが
+想定外の値だと `VIEW_COLORS[view].bg` の参照でも同様にクラッシュしうる状態だった
+（これは cache 由来に限らず、Supabase から直接返る値でも起こりうる。DB側の型はTSの
+union を実行時に保証しないため）。
+
+この2つは性質が違うため対応も分けた。
+
+- `earnings` の構造（`earnings`/`lastEarnings` がオブジェクトであること）は `cache.ts` の
+  `isValidEnvelope`（内部で `isValidEarnings`）で検証し、壊れていればキャッシュ全体を
+  無効化する（何が正しい既定値か決められない構造的な破損のため、部分的な救済はしない）
+- `view` / `confidence` / `analysisType` のような enum 相当の値は、キャッシュ層だけでなく
+  Supabase からの直接取得でも同じリスクがあるため、描画側（`ToolClient.tsx`）で
+  安全な既定値にフォールバックする方式にした。`logic.ts` に汎用ヘルパー `withFallback` を
+  追加し、`VIEW_COLORS` / `VIEW_LABELS` / `CONFIDENCE_LABELS` / `ANALYSIS_TYPE_LABELS` の
+  参照箇所に適用した
+
+過剰に厳格な構造検証はキャッシュがヒットしにくくなり stale-while-revalidate の効果を薄める
+ため、「読み出し側が配列/オブジェクトとして扱えるレベル」の検証にとどめ、個々の値の
+妥当性は描画側の安全策に委ねる、という役割分担にした。
+
+### 「更新中…」表示が解除されないまま残る（P2）
+
+古い `revalidateData` の呼び出しが `loadGuardRef` の世代不一致で早期returnする際、
+`isRevalidating` を false に戻さないまま抜けていた。その後 `loadData`（フォアグラウンドの
+通常ロード）が実行されても `loadData` は `isRevalidating` に一切触れていなかったため、
+「更新中…」表示・更新ボタンの disabled 状態が解除されないまま残ってしまう不具合があった。
+
+`loadData` の開始時に同期的に `setIsRevalidating(false)` を呼ぶよう修正した。
+これにより、`revalidateData` が世代不一致で早期returnして `isRevalidating` を触らなくても、
+それを上書きする `loadData` 側で確実に解除される。`revalidateData` 同士が競合するケース
+（新しい `revalidateData` が古い `revalidateData` を上書きする場合）は、古い方が
+早期returnで `isRevalidating` に触れないことがそのまま正しい（新しい方が引き続き
+「更新中」であるべきなため）ので、そちらの分岐は変更していない。
+
+### テストについて（補足）
+
+このリポジトリには React コンポーネントの単体テスト基盤（React Testing Library 等）が無いため、
+上記の1件目・4件目（ToolClient.tsx 内の非同期・状態管理の修正）は component レベルのテストは
+追加していない。代わりに、両方の修正が依拠している `createLoadGuard` の世代管理の前提
+（「先に発火した方が current になり、遅れて届いた方は破棄される」）を、実際に起きていた
+シナリオを再現する形で `logic.test.ts` に回帰テストとして残した。2件目・3件目は純関数
+（`isSessionExpiredSupabaseError` / `isValidEnvelope` 経由の `readStockNotesCache` /
+`withFallback`）として実装したため、通常どおり直接テストしている。

@@ -358,6 +358,22 @@ export function countHoldingTabItems(holdings: MyStockItem[]): number {
 }
 
 /**
+ * Record からキーで値を引くとき、キーが存在しなければ既定値にフォールバックする。
+ *
+ * なぜ必要か: `view` / `confidence` / `analysisType` のような値は TypeScript の型定義上は
+ * 閉じた union（例: `"bullish" | "neutral" | "bearish"`）だが、これは実行時には保証されない。
+ * 値の出どころは Supabase からの直読み（DBスキーマ変更・手動編集等で想定外の値が入りうる）と
+ * localStorage キャッシュ（cache.ts は構造レベルの検証のみで、個々の値までは検証しない）の
+ * 2系統あり、どちらも「型が保証しない実行時の値」を運んでくる可能性がある。
+ * `VIEW_COLORS[thesis.view]` のように union をキーにした Record への直接アクセスは、
+ * 想定外の値が来ると `undefined` を返し、その先で `.bg` 等を参照してクラッシュする。
+ * この関数を経由することで、想定外の値でも既定値にフォールバックして描画を継続できる。
+ */
+export function withFallback<T>(record: Record<string, T>, key: string, fallback: T): T {
+  return Object.prototype.hasOwnProperty.call(record, key) ? record[key] : fallback;
+}
+
+/**
  * ISO文字列を「HH:MM」（JST）表示に変換する。キャッシュの「最終更新」表示と、
  * 再取得失敗時の案内文の両方で使う。不正な値・未設定は null（呼び出し側は時刻部分を省く）。
  */

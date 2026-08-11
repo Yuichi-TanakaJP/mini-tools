@@ -156,4 +156,56 @@ describe("stock-notes cache", () => {
     });
     expect(() => invalidateStockNotesCache("user-1")).not.toThrow();
   });
+
+  it("earningsがnullなら有効（決算日取得に失敗した状態も正しいキャッシュとして読める）", () => {
+    const now = Date.now();
+    writeStockNotesCache("user-1", { ...emptyData, earnings: null }, now);
+    const result = readStockNotesCache("user-1", now + 1000);
+    expect(result?.data.earnings).toBeNull();
+  });
+
+  it("earningsが正しい形（earnings/lastEarningsがオブジェクト）なら往復できる", () => {
+    const now = Date.now();
+    const earnings = {
+      asOfDate: "2026-08-11",
+      windowTo: "2026-09-30",
+      earnings: { "7203": { date: "2026-08-14", announcementType: "1Q", publishStatus: "予定" } },
+      lastEarnings: {},
+      complete: true,
+      missingMonths: [] as string[],
+    };
+    writeStockNotesCache("user-1", { ...emptyData, earnings }, now);
+    const result = readStockNotesCache("user-1", now + 1000);
+    expect(result?.data.earnings).toEqual(earnings);
+  });
+
+  it("earningsが壊れている（空オブジェクト等でearnings/lastEarningsが無い）とキャッシュ全体を無効化する（earnings.earnings[code]でのクラッシュを防ぐ）", () => {
+    const now = Date.now();
+    const raw = JSON.stringify({
+      version: 1,
+      userId: "user-1",
+      fetchedAt: new Date(now).toISOString(),
+      data: { ...emptyData, earnings: {} },
+    });
+    (window as unknown as { localStorage: Storage }).localStorage.setItem(
+      "stock_notes_dashboard_cache_v1_user-1",
+      raw,
+    );
+    expect(readStockNotesCache("user-1", now + 1000)).toBeNull();
+  });
+
+  it("earningsが文字列など全く違う型でもキャッシュ全体を無効化する", () => {
+    const now = Date.now();
+    const raw = JSON.stringify({
+      version: 1,
+      userId: "user-1",
+      fetchedAt: new Date(now).toISOString(),
+      data: { ...emptyData, earnings: "not-an-object" },
+    });
+    (window as unknown as { localStorage: Storage }).localStorage.setItem(
+      "stock_notes_dashboard_cache_v1_user-1",
+      raw,
+    );
+    expect(readStockNotesCache("user-1", now + 1000)).toBeNull();
+  });
 });

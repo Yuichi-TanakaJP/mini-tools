@@ -41,6 +41,7 @@ import {
   sortUnanalyzedHoldingsByEarnings,
   SYNC_STALE_DAYS,
   syncStaleness,
+  withFallback,
   type FreshnessLevelV2,
   type SyncStaleness,
 } from "./logic";
@@ -208,6 +209,17 @@ export default function ToolClient() {
   // 拾えず古い値（null 等）を見てしまう（stale closure）。ログアウト時に「直前の
   // ユーザーID」を確実に取れるよう、ref にも同じ値を都度反映しておく。
   const userIdRef = useRef<string | null>(null);
+  // 認証状態の「世代」ガード（createLoadGuard を流用）。
+  // マウント時に張る supabase.auth.getUser() は非同期のため、その結果が返ってくる前に
+  // アカウント切替（onAuthStateChange の SIGNED_IN/SIGNED_OUT）が先に起きることがある。
+  // 例: A でログイン中に getUser() を発行 → 応答が届く前に B へ切り替わり
+  // onAuthStateChange が先に uid=B で startForUser を開始 → 遅れて届いた getUser() の
+  // 結果（uid=A）をそのまま適用すると、実際のセッションは B なのに uid=A で
+  // 取得・表示・キャッシュ保存してしまう（別ユーザーのデータ混入）。
+  // getUser() を呼ぶ直前にこのガードで世代を1つ進めて記録しておき、onAuthStateChange が
+  // 発火するたびにも世代を進める。getUser() の結果を適用する前に世代が変わっていないか
+  // 確認し、変わっていれば（＝より新しい認証イベントを先に処理済み）その結果は捨てる。
+  const authGuardRef = useRef(createLoadGuard());
 
   const resetData = useCallback(() => {
     setStocks([]);
@@ -249,6 +261,13 @@ export default function ToolClient() {
       setLoadState("loading");
       setLoadErrorMessage(null);
       setRevalidateError(null);
+      // このフォアグラウンドロードが、進行中だったバックグラウンド再取得（revalidateData）を
+      // 供給元として上書きする。revalidateData 側は「自分の取得が今も最新か」でしか
+      // isRevalidating を解除しないため、そのまま放置すると「更新中…」が消えなくなる
+      // （旧revalidateDataが世代不一致で早期returnし、かつ後続のこのloadDataがisRevalidatingに
+      // 触れないと解除されない、という不具合があった）。ここで同期的に false にしておくことで、
+      // どちらが先に解決しても最終的に正しい状態に収束する。
+      setIsRevalidating(false);
       const result = await loadDashboardData({
         fetchStocks: () => fetchStocks(supabase),
         fetchAnalyses: () => fetchAnalyses(supabase),
@@ -370,14 +389,25 @@ export default function ToolClient() {
       }
     };
 
+    // getUser() を呼ぶ直前に世代を1つ進めて記録する。この後 onAuthStateChange が
+    // 一度でも発火すれば世代がさらに進むため、getUser() の結果が返ってきた時点で
+    // 世代が一致しなければ「より新しい認証イベントを先に処理済み」と判断できる。
+    const authTokenAtGetUserStart = authGuardRef.current.next();
     supabase.auth.getUser().then(({ data }) => {
       if (!active) return;
+      // getUser() の結果を state に適用するかどうかに関わらず、認証確認は完了している。
+      setAuthReady(true);
+      if (!authGuardRef.current.isCurrent(authTokenAtGetUserStart)) {
+        // 先に onAuthStateChange が発火し、そちらが正しい最新の認証状態を既に処理している。
+        // この getUser() の結果は古いので、userId/email 等には一切反映しない
+        // （反映すると別ユーザーのuidで取得・キャッシュ保存してしまう）。
+        return;
+      }
       const nextEmail = data.user?.email ?? null;
       const nextUserId = data.user?.id ?? null;
       userIdRef.current = nextUserId;
       setEmail(nextEmail);
       setUserId(nextUserId);
-      setAuthReady(true);
       if (nextEmail && nextUserId) {
         startForUser(nextUserId);
       } else {
@@ -386,6 +416,9 @@ export default function ToolClient() {
       }
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      // 世代を進める。これにより、まだ解決していない（先に呼んだ）getUser() の結果は
+      // 古いものとして破棄される。
+      authGuardRef.current.next();
       const nextEmail = session?.user?.email ?? null;
       const nextUserId = session?.user?.id ?? null;
       setEmail(nextEmail);
@@ -818,13 +851,18 @@ function StockRow({
           <span style={{ fontWeight: 900, color: "var(--color-text)", fontSize: 14 }}>{stock.code}</span>
           <span style={{ color: "var(--color-text)", fontSize: 13 }}>{stock.name}</span>
           {thesis && (
-            <span style={badgeStyle(VIEW_COLORS[thesis.view].bg, VIEW_COLORS[thesis.view].fg)}>
-              {VIEW_LABELS[thesis.view]}
+            <span
+              style={badgeStyle(
+                withFallback(VIEW_COLORS, thesis.view, VIEW_COLORS.neutral).bg,
+                withFallback(VIEW_COLORS, thesis.view, VIEW_COLORS.neutral).fg,
+              )}
+            >
+              {withFallback(VIEW_LABELS, thesis.view, "不明")}
             </span>
           )}
           {thesis && (
             <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-              {CONFIDENCE_LABELS[thesis.confidence]}
+              {withFallback(CONFIDENCE_LABELS, thesis.confidence, "確信度不明")}
             </span>
           )}
         </div>
@@ -906,7 +944,7 @@ function StockRow({
                       {formatDate(a.analyzedAt)}
                     </span>
                     <span style={badgeStyle("var(--color-bg-input)", "var(--color-text-sub)")}>
-                      {ANALYSIS_TYPE_LABELS[a.analysisType]}
+                      {withFallback(ANALYSIS_TYPE_LABELS, a.analysisType, "その他")}
                     </span>
                   </div>
                   {a.conclusion && (

@@ -3,7 +3,7 @@
 // React に依存しない純粋な非同期関数として切り出し、ToolClient から呼ぶ。
 // これにより「/api/sync の 401 だけ専用文言にする」ような分岐をユニットテストできる。
 import type { MyStockItem } from "@/app/tools/my-stocks/types";
-import { HoldingsFetchError, type HoldingsWithSync } from "./data";
+import { HoldingsFetchError, isSessionExpiredSupabaseError, type HoldingsWithSync } from "./data";
 import type { StockNotesEarningsInfo } from "./earnings-types";
 import type { StockNoteAction, StockNoteAnalysis, StockNoteStock, StockNoteThesis } from "./types";
 
@@ -53,9 +53,14 @@ export type LoadResult =
  * 対象コードは stocks（分析済み銘柄）と holdings（保有銘柄）から決まるので、
  * それらの取得が終わるまでは何を渡せばよいか分からない。
  *
- * `/api/sync`（保有リスト）が 401 を返した場合（セッション切れ）は、
- * 一般的な取得失敗と区別できるよう `status: "unauthorized"` を返す。
- * それ以外の失敗（他テーブルのエラーや 401 以外の /api/sync エラー）は `status: "error"`。
+ * `/api/sync`（保有リスト）が 401 を返した場合（セッション切れ）、および
+ * `stock_notes_*`（Supabase直読み）がセッション切れ相当のエラー（`isSessionExpiredSupabaseError`、
+ * PostgRESTの `PGRST301` 等）を返した場合は、一般的な取得失敗と区別できるよう
+ * `status: "unauthorized"` を返す。両方を同じ扱いにするのは、呼び出し側
+ * （ToolClient.tsx）が stale-while-revalidate でキャッシュ表示を維持する設計のため、
+ * セッション切れの結果をうっかり「一般的な取得失敗（キャッシュ維持）」に倒すと、
+ * 無効なセッションに基づく古い表示を延々と見せ続けてしまうため。
+ * それ以外の失敗は `status: "error"`。
  *
  * 決算日（fetchEarnings）の失敗だけは特別扱い: ダッシュボード本体（保有だが未分析、等）は
  * 決算日が無くても表示できるため、失敗してもページ全体を `status: "error"` にはせず、
@@ -87,7 +92,7 @@ export async function loadDashboardData(fetchers: DashboardFetchers): Promise<Lo
       earnings,
     };
   } catch (e) {
-    if (e instanceof HoldingsFetchError && e.status === 401) {
+    if ((e instanceof HoldingsFetchError && e.status === 401) || isSessionExpiredSupabaseError(e)) {
       return {
         status: "unauthorized",
         message: "セッションが切れています。ログインし直してください。",

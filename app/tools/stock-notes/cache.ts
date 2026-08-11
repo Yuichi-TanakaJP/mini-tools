@@ -52,9 +52,29 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 /**
  * 保存されている値が期待する envelope の形かどうかを防御的に検証する。
- * フィールドの詳細な中身までは検証しない（配列であること程度）。想定外の形式は
- * 「壊れたキャッシュ」として扱い、呼び出し側は通常取得にフォールバックすれば十分なため。
+ * フィールドの詳細な中身（配列の各要素の形、enum相当のフィールドの値の妥当性等）までは
+ * 検証しない。過剰に厳格化するとキャッシュがヒットしにくくなり stale-while-revalidate の
+ * 効果が薄れるため、「読み出し側が配列/オブジェクトとして扱えるか」の構造レベルの検証に
+ * とどめる（例: `stocks` が配列であること）。ここを通過した後、個々の値（`view` /
+ * `confidence` / `category` 等の閉じた union）が想定外の場合は、キャッシュを丸ごと
+ * 捨てるのではなく描画側（`ToolClient.tsx`）で安全な既定値にフォールバックする方針にした
+ * （`logic.ts` の `withFallback`）。これは Supabase から直接取得した場合も同じ形の
+ * リスクがある（DBスキーマ変更・手動編集等で想定外の値が入りうる）ため、キャッシュ層
+ * だけで防御しても不十分だからである。
+ *
+ * ただし `earnings` はネストしたオブジェクトの参照（`earnings.earnings[code]` /
+ * `earnings.lastEarnings[code]`）がそのまま行われるため、`earnings` 自体・
+ * `earnings.earnings` ・`earnings.lastEarnings` がオブジェクトであることまでは検証する
+ * （例えば `earnings: {}` のような値を通すと、この2つのプロパティへのアクセスで
+ * 画面がクラッシュする）。このケースは「安全な既定へのフォールバック」では救えない
+ * （何が正しい既定か決められない構造的な破損のため）ので、キャッシュ全体を無効化する。
  */
+function isValidEarnings(value: unknown): boolean {
+  if (value === null) return true;
+  if (!isPlainObject(value)) return false;
+  return isPlainObject(value.earnings) && isPlainObject(value.lastEarnings);
+}
+
 function isValidEnvelope(value: unknown, userId: string): value is StockNotesCacheEnvelope {
   if (!isPlainObject(value)) return false;
   if (value.version !== CACHE_VERSION) return false;
@@ -67,7 +87,8 @@ function isValidEnvelope(value: unknown, userId: string): value is StockNotesCac
     Array.isArray(data.analyses) &&
     Array.isArray(data.theses) &&
     Array.isArray(data.actions) &&
-    Array.isArray(data.holdings)
+    Array.isArray(data.holdings) &&
+    isValidEarnings(data.earnings)
   );
 }
 

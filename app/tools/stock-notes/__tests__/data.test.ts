@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { HoldingsFetchError, fetchEarnings, fetchHoldings, normalizeLastEarnings } from "../data";
+import {
+  HoldingsFetchError,
+  fetchEarnings,
+  fetchHoldings,
+  isSessionExpiredSupabaseError,
+  normalizeLastEarnings,
+} from "../data";
 
 function makeFetchResponse(ok: boolean, status: number, body: unknown): Response {
   return {
@@ -158,5 +164,32 @@ describe("normalizeLastEarnings", () => {
     expect(normalizeLastEarnings(null)).toEqual({});
     expect(normalizeLastEarnings(undefined)).toEqual({});
     expect(normalizeLastEarnings("not-an-object")).toEqual({});
+  });
+});
+
+describe("isSessionExpiredSupabaseError", () => {
+  it("code が PGRST301（JWT expired）なら true", () => {
+    expect(isSessionExpiredSupabaseError({ code: "PGRST301", message: "JWT expired" })).toBe(true);
+  });
+
+  it("code が無くても message に jwt expired が含まれれば true（codeが欠落する環境への保険）", () => {
+    expect(isSessionExpiredSupabaseError({ message: "JWT expired" })).toBe(true);
+    expect(isSessionExpiredSupabaseError({ message: "jwt expired for user" })).toBe(true);
+  });
+
+  it("RLSで単に対象行が無い/権限が無いだけの一般的なPostgrestErrorはセッション切れと判定しない", () => {
+    expect(
+      isSessionExpiredSupabaseError({
+        code: "42501",
+        message: "permission denied for table stock_notes_stocks",
+      }),
+    ).toBe(false);
+  });
+
+  it("エラーではない値（null/undefined/文字列/Error以外）はfalse", () => {
+    expect(isSessionExpiredSupabaseError(null)).toBe(false);
+    expect(isSessionExpiredSupabaseError(undefined)).toBe(false);
+    expect(isSessionExpiredSupabaseError("boom")).toBe(false);
+    expect(isSessionExpiredSupabaseError(new Error("network error"))).toBe(false);
   });
 });
