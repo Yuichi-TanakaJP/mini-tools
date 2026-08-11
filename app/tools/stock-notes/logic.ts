@@ -358,6 +358,32 @@ export function countHoldingTabItems(holdings: MyStockItem[]): number {
 }
 
 /**
+ * ISO文字列を「HH:MM」（JST）表示に変換する。キャッシュの「最終更新」表示と、
+ * 再取得失敗時の案内文の両方で使う。不正な値・未設定は null（呼び出し側は時刻部分を省く）。
+ */
+export function formatClockTime(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleTimeString("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+/**
+ * stale-while-revalidate のバックグラウンド再取得（自動・手動どちらも）が失敗したときの案内文。
+ * 表示中のキャッシュ/前回取得データは消さずに維持する前提で、「これは何時時点の表示か」を伝える。
+ * fetchedAt が無い/不正な場合は時刻を省いた文言にフォールバックする。
+ */
+export function buildRevalidateFailureMessage(fetchedAt: string | null | undefined): string {
+  const time = formatClockTime(fetchedAt);
+  return time ? `最新の取得に失敗しました（表示は${time}時点）。` : "最新の取得に失敗しました。";
+}
+
+/**
  * 非同期取得の「世代（generation）」を管理する。
  * ユーザー切替やログアウトが連続したとき、古いリクエストの結果が新しい画面を
  * 上書きしないようにするためのガード。React に依存しない純粋なユーティリティ。

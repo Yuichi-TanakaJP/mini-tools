@@ -7,6 +7,7 @@ import {
   SYNC_STALE_DAYS,
   analysesForStock,
   buildAnalysisPrompt,
+  buildRevalidateFailureMessage,
   computeUnanalyzedHoldings,
   countHoldingTabItems,
   createLoadGuard,
@@ -14,6 +15,7 @@ import {
   daysSinceSync,
   daysUntil,
   earningsDisplay,
+  formatClockTime,
   formatMonthDay,
   freshnessLevel,
   freshnessLevelWithEarnings,
@@ -601,5 +603,39 @@ describe("createLoadGuard", () => {
     const token = guard.next();
     expect(guard.isCurrent(token)).toBe(true);
     expect(guard.isCurrent(token)).toBe(true);
+  });
+});
+
+describe("formatClockTime", () => {
+  it("ISO文字列をJSTのHH:MMに変換する", () => {
+    // 2026-08-11T03:05:00Z は JST 12:05
+    expect(formatClockTime("2026-08-11T03:05:00.000Z")).toBe("12:05");
+  });
+
+  it("null/undefinedはnull", () => {
+    expect(formatClockTime(null)).toBeNull();
+    expect(formatClockTime(undefined)).toBeNull();
+  });
+
+  it("不正な日付文字列はnull", () => {
+    expect(formatClockTime("not-a-date")).toBeNull();
+  });
+});
+
+describe("buildRevalidateFailureMessage", () => {
+  it("fetchedAtがあれば時刻入りの案内文になる", () => {
+    // 2026-08-11T03:05:00Z は JST 12:05
+    expect(buildRevalidateFailureMessage("2026-08-11T03:05:00.000Z")).toBe(
+      "最新の取得に失敗しました（表示は12:05時点）。",
+    );
+  });
+
+  it("fetchedAtが無ければ時刻を省いた案内文になる", () => {
+    expect(buildRevalidateFailureMessage(null)).toBe("最新の取得に失敗しました。");
+    expect(buildRevalidateFailureMessage(undefined)).toBe("最新の取得に失敗しました。");
+  });
+
+  it("fetchedAtが不正な値でも時刻を省いた案内文にフォールバックする", () => {
+    expect(buildRevalidateFailureMessage("not-a-date")).toBe("最新の取得に失敗しました。");
   });
 });

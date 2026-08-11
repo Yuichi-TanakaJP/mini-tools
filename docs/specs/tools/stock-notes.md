@@ -13,6 +13,8 @@
 
 ## 画面仕様
 
+画面最上部（目立たない位置）に、現在表示しているデータの取得時刻を「最終更新 12:05」のように表示し、隣に手動更新ボタン（「今すぐ更新」）を置く。裏で再取得中は「更新中…」に切り替わる。手動更新ボタンを押すとキャッシュの有無に関わらず即座に再取得する。詳細は「キャッシュ（stale-while-revalidate）」節を参照。
+
 ### 主な画面要素
 
 0. **保有リストの同期状態**（画面上部）: `/api/sync` の `my_stocks_items_v1` の最終同期日時（`updated_at`）を「保有リストの同期: 2026-06-21（52日前）」のように表示する。30日以上前の場合は注意表示＋`/account`（「この端末を保存」）への導線を出す。詳細は「保有リスト同期の注意表示」節を参照
@@ -64,6 +66,22 @@
 | unknown | 同期日時が無い（一度も同期していない）、または不正な値 | 「保有リストの同期日時を確認できません。…」＋`/account`導線（「30日以上前」とは言わない） |
 
 「未分析◯件」等の数字が古い、または確認できない保有リストに基づく可能性があることを伝える。理由の詳細は decision-log 参照。
+
+### キャッシュ（stale-while-revalidate）
+
+このツールは読み取り専用で、分析データ（`stock_notes_*`）は週に数回しか増えないため、開くたびに毎回全件取得する必要はない。`app/tools/stock-notes/cache.ts` が localStorage に TTL 15分のキャッシュを持つ。
+
+- 保存内容: `app/tools/stock-notes/load.ts` の `DashboardData`（銘柄・分析サマリー・見立て・アクション・保有リスト・保有リスト同期日時・決算情報）＋取得時刻（`fetchedAt`）＋スキーマバージョン。会話原文（`body`）は一覧取得に元々含まれないため、キャッシュにも含まれない
+- キーにログインユーザーIDを含める（`stock_notes_dashboard_cache_v1_<userId>`）。別アカウントのキャッシュは読めない
+- TTL は15分。分析は週に数回しか増えず、`/api/stock-notes/earnings` は既に `Cache-Control: max-age=300`（5分）でキャッシュ済みのため。根拠: `app/tools/stock-notes/cache.ts` の `CACHE_TTL_MS` コメント、decision-log
+- スキーマバージョン（`version: 1`）を持つ。過去に `lastEarnings` の形式変更でキャッシュ互換性の問題を起こしたことがあるため、`DashboardData` の形を変えたら version を上げて古いキャッシュを無効化する
+- 読み出しは防御的に行う。JSON parse 失敗・version不一致・userId不一致・形の不正・TTL超過のいずれでも例外を投げず `null` を返し、通常取得にフォールバックする。書き込み失敗（容量超過・プライベートモード等）も握りつぶす
+
+マウント時（ログイン確認直後）にまずキャッシュを読み、あれば即座に描画してから裏で再取得して差し替える（stale-while-revalidate、`ToolClient.tsx` の `startForUser`）。キャッシュが無ければ従来どおりローディング表示 → 取得（`loadData`）。裏の再取得（自動・手動更新ボタンとも `revalidateData` を使う）が失敗した場合はキャッシュ表示を維持し、「最新の取得に失敗しました（表示はHH:MM時点）」と伝える（キャッシュを消して真っ白にはしない）。ただし裏の再取得が401（セッション切れ）で失敗した場合は例外で、表示中のデータとローカルキャッシュを破棄してログイン画面へ切り替える（表示中のデータが無効なセッションのものになるため）。既存の取得世代ガード（`createLoadGuard`）は `loadData` / `revalidateData` の両方で使い、古いリクエストの結果で上書きしないようにする。
+
+ログアウト時（`onAuthStateChange` でセッションが null になったタイミング）は、表示中のデータのクリアに加えて、直前のユーザーのローカルキャッシュも `invalidateStockNotesCache(userId)` で削除する。同じ端末を他人が使う場合に前のユーザーの分析内容が残らないようにするため。
+
+将来この画面に銘柄登録・分類変更・アーカイブ等の書き込み機能を追加する場合、書き込み成功後に必ず `invalidateStockNotesCache(userId)` を呼ぶこと。呼び忘れると、TTL内は古いキャッシュがそのまま表示され続け「登録したのに画面に反映されない」不具合になる。詳細は decision-log 参照。
 
 ### 入力
 
@@ -141,6 +159,7 @@
 - [app/tools/stock-notes/page.tsx](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-notes/page.tsx)
 - [app/tools/stock-notes/ClientOnly.tsx](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-notes/ClientOnly.tsx)
 - [app/tools/stock-notes/ToolClient.tsx](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-notes/ToolClient.tsx)
+- [app/tools/stock-notes/cache.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-notes/cache.ts)
 - [app/tools/stock-notes/data.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-notes/data.ts)
 - [app/tools/stock-notes/load.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-notes/load.ts)
 - [app/tools/stock-notes/logic.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-notes/logic.ts)
