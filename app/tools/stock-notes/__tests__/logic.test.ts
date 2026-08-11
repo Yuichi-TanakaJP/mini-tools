@@ -6,6 +6,8 @@ import {
   analysesForStock,
   buildAnalysisPrompt,
   computeUnanalyzedHoldings,
+  countHoldingTabItems,
+  createLoadGuard,
   freshnessLevel,
   isOverdue,
   latestAnalyzedAt,
@@ -243,5 +245,57 @@ describe("isOverdue", () => {
   });
   it("期限未設定なら false", () => {
     expect(isOverdue(null)).toBe(false);
+  });
+});
+
+describe("countHoldingTabItems", () => {
+  it("tab='holding' の件数だけを数える", () => {
+    const holdings = [
+      makeHolding({ code: "1111", tab: "holding" }),
+      makeHolding({ code: "2222", tab: "holding" }),
+      makeHolding({ code: "3333", tab: "watch" }),
+    ];
+    expect(countHoldingTabItems(holdings)).toBe(2);
+  });
+
+  it("ウォッチのみの場合は0になる（holdings.length は1以上でも0件と判定できる）", () => {
+    const holdings = [makeHolding({ code: "9999", tab: "watch" })];
+    expect(holdings.length).toBeGreaterThan(0);
+    expect(countHoldingTabItems(holdings)).toBe(0);
+  });
+
+  it("空配列なら0", () => {
+    expect(countHoldingTabItems([])).toBe(0);
+  });
+});
+
+describe("createLoadGuard", () => {
+  it("最新のトークンだけ isCurrent が true になる", () => {
+    const guard = createLoadGuard();
+    const token1 = guard.next();
+    expect(guard.isCurrent(token1)).toBe(true);
+
+    const token2 = guard.next();
+    // token1 は古い世代になったので、その結果は破棄されるべき
+    expect(guard.isCurrent(token1)).toBe(false);
+    expect(guard.isCurrent(token2)).toBe(true);
+  });
+
+  it("invalidate() すると進行中のトークンも古い扱いになる（新しい世代は発行しない）", () => {
+    const guard = createLoadGuard();
+    const token1 = guard.next();
+    guard.invalidate();
+    expect(guard.isCurrent(token1)).toBe(false);
+
+    // invalidate 後に next() すれば新しい世代は改めて current になる
+    const token2 = guard.next();
+    expect(guard.isCurrent(token2)).toBe(true);
+  });
+
+  it("同じトークンで2回 isCurrent を呼んでも状態は変わらない（副作用なし）", () => {
+    const guard = createLoadGuard();
+    const token = guard.next();
+    expect(guard.isCurrent(token)).toBe(true);
+    expect(guard.isCurrent(token)).toBe(true);
   });
 });

@@ -1,18 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import TabBar from "@/app/tools/_shared/TabBar";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSyncConfigured } from "@/lib/supabase/config";
 import type { MyStockItem } from "@/app/tools/my-stocks/types";
 import { fetchAnalysisBody, fetchAnalyses, fetchHoldings, fetchOpenActions, fetchStocks, fetchTheses } from "./data";
+import { loadDashboardData } from "./load";
 import {
   analysesForStock,
   analysisCountForStock,
   buildAnalysisPrompt,
   computeUnanalyzedHoldings,
+  countHoldingTabItems,
+  createLoadGuard,
   freshnessLevel,
   isOverdue,
   latestAnalyzedAt,
@@ -29,7 +32,7 @@ import type {
   StockNoteThesis,
 } from "./types";
 
-type LoadState = "idle" | "loading" | "loaded" | "error";
+type LoadState = "idle" | "loading" | "loaded" | "unauthorized" | "error";
 
 const CATEGORY_LABELS: Record<StockNoteCategory, string> = {
   holding: "保有",
@@ -151,26 +154,49 @@ export default function ToolClient() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [bodies, setBodies] = useState<Record<string, string | "loading" | "error">>({});
 
+  // 取得の「世代」を管理するガード。ユーザー切替・ログアウトが連続したときに、
+  // 古いリクエストの結果が新しい画面を上書きしないようにする（詳細: logic.ts の createLoadGuard）。
+  const loadGuardRef = useRef(createLoadGuard());
+
+  const resetData = useCallback(() => {
+    setStocks([]);
+    setAnalyses([]);
+    setTheses([]);
+    setActions([]);
+    setHoldings([]);
+    setBodies({});
+    setExpandedStockId(null);
+    setLoadErrorMessage(null);
+    setLoadState("idle");
+  }, []);
+
   const loadData = useCallback(async () => {
     if (!supabase) return;
+    const token = loadGuardRef.current.next();
     setLoadState("loading");
     setLoadErrorMessage(null);
-    try {
-      const [stocksRes, analysesRes, thesesRes, actionsRes, holdingsRes] = await Promise.all([
-        fetchStocks(supabase),
-        fetchAnalyses(supabase),
-        fetchTheses(supabase),
-        fetchOpenActions(supabase),
-        fetchHoldings(),
-      ]);
-      setStocks(stocksRes);
-      setAnalyses(analysesRes);
-      setTheses(thesesRes);
-      setActions(actionsRes);
-      setHoldings(holdingsRes);
+    const result = await loadDashboardData({
+      fetchStocks: () => fetchStocks(supabase),
+      fetchAnalyses: () => fetchAnalyses(supabase),
+      fetchTheses: () => fetchTheses(supabase),
+      fetchOpenActions: () => fetchOpenActions(supabase),
+      fetchHoldings,
+    });
+    // 完了までの間により新しい取得が始まっていたら、この結果は古いので画面に反映しない。
+    if (!loadGuardRef.current.isCurrent(token)) return;
+
+    if (result.status === "ok") {
+      setStocks(result.stocks);
+      setAnalyses(result.analyses);
+      setTheses(result.theses);
+      setActions(result.actions);
+      setHoldings(result.holdings);
       setLoadState("loaded");
-    } catch (e) {
-      setLoadErrorMessage(e instanceof Error ? e.message : String(e));
+    } else if (result.status === "unauthorized") {
+      setLoadErrorMessage(result.message);
+      setLoadState("unauthorized");
+    } else {
+      setLoadErrorMessage(result.message);
       setLoadState("error");
     }
   }, [supabase]);
@@ -192,24 +218,40 @@ export default function ToolClient() {
       const nextEmail = data.user?.email ?? null;
       setEmail(nextEmail);
       setAuthReady(true);
-      if (nextEmail) loadData();
+      if (nextEmail) {
+        loadData();
+      } else {
+        loadGuardRef.current.invalidate();
+        resetData();
+      }
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       const nextEmail = session?.user?.email ?? null;
       setEmail(nextEmail);
-      if (nextEmail) loadData();
+      if (nextEmail) {
+        // ユーザー切替（別アカウントでの再ログイン含む）でも loadData 内で新しい世代を発行するため、
+        // 直前のユーザーの取得結果は自動的に無効化される。
+        loadData();
+      } else {
+        // ログアウト: 進行中の取得結果を無効化し、表示中のデータを即座にクリアする。
+        loadGuardRef.current.invalidate();
+        resetData();
+      }
     });
     return () => {
       active = false;
       sub.subscription.unsubscribe();
     };
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [supabase, loadData]);
+  }, [supabase, loadData, resetData]);
 
   const unanalyzedHoldings = useMemo(
     () => computeUnanalyzedHoldings(holdings, stocks, analyses),
     [holdings, stocks, analyses],
   );
+  // holdings.length ではなく tab='holding' の件数で判定する。
+  // ウォッチのみ登録されている場合に「保有銘柄はすべて分析済みです」と誤表示しないため。
+  const holdingTabCount = useMemo(() => countHoldingTabItems(holdings), [holdings]);
   const openActions = useMemo(() => sortOpenActions(actions), [actions]);
   const stockById = useMemo(() => new Map(stocks.map((s) => [s.id, s])), [stocks]);
   const filteredStocks = useMemo(
@@ -270,6 +312,15 @@ export default function ToolClient() {
               ログインする
             </Link>
           </div>
+        ) : loadState === "unauthorized" ? (
+          <div style={card}>
+            <p style={{ margin: "0 0 12px", fontSize: 14, color: "var(--color-danger, #dc2626)", lineHeight: 1.6 }}>
+              {loadErrorMessage ?? "セッションが切れています。ログインし直してください。"}
+            </p>
+            <Link href="/account" style={{ ...primaryBtn, display: "inline-block", textDecoration: "none" }}>
+              ログインし直す
+            </Link>
+          </div>
         ) : loadState === "error" ? (
           <div style={card}>
             <p style={{ margin: "0 0 10px", fontSize: 13, color: "var(--color-danger, #dc2626)" }}>
@@ -288,7 +339,7 @@ export default function ToolClient() {
             {/* 1. 未分析の保有銘柄 */}
             <section style={{ display: "grid", gap: 10 }}>
               <h2 style={sectionTitle}>保有だが未分析（{unanalyzedHoldings.length}件）</h2>
-              {holdings.length === 0 ? (
+              {holdingTabCount === 0 ? (
                 <p style={emptyText}>
                   保有銘柄が登録されていません。マイ銘柄リストで保有銘柄を登録すると、ここに未分析の銘柄が表示されます。
                 </p>

@@ -170,13 +170,32 @@ export async function fetchOpenActions(supabase: SupabaseClient): Promise<StockN
 }
 
 /**
+ * /api/sync の取得失敗を表すエラー。
+ * status を持たせ、呼び出し側で 401（未認証・セッション切れ）とそれ以外を区別できるようにする。
+ * これを投げずに空配列へフォールバックすると、「保有0件」と「取得失敗」が区別できなくなり、
+ * このツールの主目的（保有だが未分析の可視化）が静かに壊れるため、必ず throw する。
+ */
+export class HoldingsFetchError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "HoldingsFetchError";
+    this.status = status;
+  }
+}
+
+/**
  * 保有リストは my-stocks の正本（tool_data の my_stocks_items_v1）を
  * 既存の /api/sync 経由で読む。my-stocks の LocalStorage は直接読まない
- * （この端末とは限らないため）。未ログイン・未設定時は空配列を返す。
+ * （この端末とは限らないため）。
+ * 取得失敗（セッション切れ・サーバー障害など）は空配列にフォールバックせず throw する。
  */
 export async function fetchHoldings(): Promise<MyStockItem[]> {
   const res = await fetch("/api/sync", { method: "GET" });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    throw new HoldingsFetchError(res.status, `保有リストの取得に失敗しました（HTTP ${res.status}）`);
+  }
   const data = (await res.json()) as { items?: Array<{ key: string; value: unknown }> };
   const item = (data.items ?? []).find((it) => it.key === "my_stocks_items_v1");
   if (!item) return [];

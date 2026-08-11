@@ -143,3 +143,35 @@ export function isOverdue(dueDate: string | null, now: Date = new Date()): boole
   const due = new Date(dueDate).getTime();
   return Number.isFinite(due) && due < now.getTime();
 }
+
+/** tab='holding' の件数。空状態の判定に使う（ウォッチのみ登録時に「保有はすべて分析済み」と誤表示しないため）。 */
+export function countHoldingTabItems(holdings: MyStockItem[]): number {
+  return holdings.reduce((count, h) => (h.tab === "holding" ? count + 1 : count), 0);
+}
+
+/**
+ * 非同期取得の「世代（generation）」を管理する。
+ * ユーザー切替やログアウトが連続したとき、古いリクエストの結果が新しい画面を
+ * 上書きしないようにするためのガード。React に依存しない純粋なユーティリティ。
+ *
+ * 使い方: 取得を開始する直前に next() でトークンを取得し、取得完了時に
+ * isCurrent(token) が true のときだけ setState する。false なら結果を破棄する。
+ * ログアウトなど「進行中の取得を無効化したいが新しい取得は開始しない」場合は invalidate() を呼ぶ。
+ */
+export function createLoadGuard() {
+  let token = 0;
+  return {
+    next(): number {
+      token += 1;
+      return token;
+    },
+    isCurrent(candidate: number): boolean {
+      return candidate === token;
+    },
+    invalidate(): void {
+      token += 1;
+    },
+  };
+}
+
+export type LoadGuard = ReturnType<typeof createLoadGuard>;
