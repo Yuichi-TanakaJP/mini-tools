@@ -8,9 +8,11 @@ import { normalizeItems } from "@/app/tools/my-stocks/storage";
 import type { MyStockItem } from "@/app/tools/my-stocks/types";
 import type { EarningsFoldEntry, StockNotesEarningsInfo } from "./earnings-types";
 import type {
+  NewStockNoteInput,
   StockNoteAction,
   StockNoteAnalysis,
   StockNoteAnalysisBody,
+  StockNoteCategory,
   StockNoteStock,
   StockNoteThesis,
 } from "./types";
@@ -305,4 +307,128 @@ export async function fetchEarnings(codes: string[]): Promise<StockNotesEarnings
   }
   const raw = (await res.json()) as StockNotesEarningsInfo;
   return { ...raw, lastEarnings: normalizeLastEarnings(raw.lastEarnings) };
+}
+
+// ---------------------------------------------------------------------------
+// 書き込み（stock_notes_stocks のみ）。
+// - stock_notes_analyses / stock_notes_theses / stock_notes_actions への書き込みは行わない
+//   （分析はGPTの領域。詳細は decision-log 参照）
+// - user_id は呼び出し側（ToolClient.tsx）でログイン中のユーザーIDを必ず渡す
+//   （RLSの insert ポリシーが auth.uid() = user_id のため）
+// - 書き込み後の invalidateStockNotesCache 呼び出しは呼び出し側の責務（cache.ts 参照）
+// - 楽観的更新はしない。呼び出し側は「書き込み→再取得」の順で行う
+// ---------------------------------------------------------------------------
+
+/**
+ * Supabase（PostgREST）のエラーが「一意制約違反（重複コード）」を示しているかどうかを判定する。
+ * stock_notes_stocks には unique(user_id, code) があるため、事前チェック
+ * （isCodeAlreadyRegistered、logic.ts）をすり抜けた場合（他タブでの同時登録等）でも、
+ * DBレベルのエラーからユーザーに分かりやすいメッセージを出せるようにする。
+ * PostgreSQL の一意制約違反は SQLSTATE 23505。`code` が欠落する環境への保険として、
+ * message に "duplicate key" を含む場合もフォールバックで拾う
+ * （isSessionExpiredSupabaseError と同じ方針）。
+ */
+export function isDuplicateStockError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const err = error as { code?: unknown; message?: unknown };
+  if (err.code === "23505") return true;
+  return typeof err.message === "string" && /duplicate key/i.test(err.message);
+}
+
+/**
+ * 新規銘柄を登録する。category_changed_at は登録時刻で初期化する
+ * （「分類が変わった日」の起点を登録日にするため）。
+ * 呼び出し側は登録前に isCodeAlreadyRegistered（logic.ts）で事前チェックし、
+ * それでもDBの unique(user_id, code) 制約に引っかかった場合は isDuplicateStockError で判別する。
+ */
+export async function insertStock(
+  supabase: SupabaseClient,
+  userId: string,
+  input: NewStockNoteInput,
+): Promise<StockNoteStock> {
+  const nowIso = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("stock_notes_stocks")
+    .insert({
+      user_id: userId,
+      code: input.code.trim(),
+      name: input.name.trim(),
+      category: input.category,
+      category_changed_at: nowIso,
+    })
+    .select("id, code, name, category, category_changed_at, category_change_reason, created_at, updated_at")
+    .single<StockRow>();
+  if (error) throw error;
+  return {
+    id: data.id,
+    code: data.code,
+    name: data.name,
+    category: data.category,
+    categoryChangedAt: data.category_changed_at,
+    categoryChangeReason: data.category_change_reason,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}
+
+/**
+ * 分類を変更する（アーカイブへの変更も含む）。category_changed_at を更新時刻に更新し、
+ * 任意で category_change_reason を保存する。reason が undefined の場合は列に触れず、
+ * null を明示的に渡した場合は既存の理由をクリアする。
+ */
+export async function updateStockCategory(
+  supabase: SupabaseClient,
+  stockId: string,
+  category: StockNoteCategory,
+  reason?: string | null,
+): Promise<void> {
+  const update: Record<string, unknown> = {
+    category,
+    category_changed_at: new Date().toISOString(),
+  };
+  if (reason !== undefined) update.category_change_reason = reason;
+  const { error } = await supabase.from("stock_notes_stocks").update(update).eq("id", stockId);
+  if (error) throw error;
+}
+
+/**
+ * 銘柄を削除する。呼び出し側は必ず事前に canDeleteStock（logic.ts、分析0件のみ許可）で
+ * 判定してからこの関数を呼ぶこと。スキーマは on delete cascade のため、分析が1件でもある
+ * 銘柄を削除すると分析・見立て・アクションが全部消える（このツールでは絶対に避ける）。
+ */
+export async function deleteStockById(supabase: SupabaseClient, stockId: string): Promise<void> {
+  const { error } = await supabase.from("stock_notes_stocks").delete().eq("id", stockId);
+  if (error) throw error;
+}
+
+export type BulkImportResult = {
+  succeeded: string[];
+  failed: { code: string; name: string; message: string }[];
+};
+
+/**
+ * マイ銘柄リストの未登録の保有銘柄を、category='holding' でまとめて登録する。
+ * 1件ずつ順番に insertStock を呼び、失敗した銘柄があっても残りの登録は続行する
+ * （成功分は残し、失敗分だけ個別に報告する）。
+ */
+export async function bulkInsertHoldingsAsStocks(
+  supabase: SupabaseClient,
+  userId: string,
+  holdings: { code: string; name: string }[],
+): Promise<BulkImportResult> {
+  const succeeded: string[] = [];
+  const failed: BulkImportResult["failed"] = [];
+  for (const h of holdings) {
+    try {
+      await insertStock(supabase, userId, { code: h.code, name: h.name, category: "holding" });
+      succeeded.push(h.code);
+    } catch (e) {
+      failed.push({
+        code: h.code,
+        name: h.name,
+        message: isDuplicateStockError(e) ? "既に登録されています" : e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+  return { succeeded, failed };
 }

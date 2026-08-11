@@ -3,8 +3,8 @@
 ## 概要
 
 - URL: `/tools/stock-notes`
-- 分類: yutai（優待・保有）/ Supabase 直読み・読み取り専用
-- 主な用途: 別リポジトリ [stock-notes](https://github.com/Yuichi-TanakaJP/stock-notes)（カスタムGPTから記録する銘柄分析ツール）が Supabase に書き込んだ分析・見立て・アクションを俯瞰する。特に「保有しているのに分析記録が無い銘柄」をトップに出し、チャットでは表面化しない抜け漏れを可視化する
+- 分類: yutai（優待・保有）/ Supabase 直読み。`stock_notes_stocks`（追跡対象と分類の正本）のみ書き込み可
+- 主な用途: 別リポジトリ [stock-notes](https://github.com/Yuichi-TanakaJP/stock-notes)（カスタムGPTから記録する銘柄分析ツール）が Supabase に書き込んだ分析・見立て・アクションを俯瞰する。特に「次に何を確認すべきか（要対応）」をトップに出し、チャットでは表面化しない抜け漏れを可視化する。また、追跡対象銘柄（`stock_notes_stocks`）の登録・分類変更・アーカイブ・削除をこの画面から行える（分析していない銘柄も含めて GPT 側から見えるようにするための入口。詳細は decision-log 参照）
 
 ## 対象ユーザー
 
@@ -19,9 +19,42 @@
 
 0. **保有リストの同期状態**（画面上部）: `/api/sync` の `my_stocks_items_v1` の最終同期日時（`updated_at`）を「保有リストの同期: 2026-06-21（52日前）」のように表示する。30日以上前の場合は注意表示＋`/account`（「この端末を保存」）への導線を出す。詳細は「保有リスト同期の注意表示」節を参照
 1. **未分析の保有銘柄**（最上段）: `my-stocks` の保有銘柄のうち、stock-notes 側に銘柄登録が無い、または分析が0件の銘柄。**決算が近い順**（決算日判明分を日付昇順、未判明は後ろにコード順）に並べる。コード・銘柄名・保有数量（あれば）・次回決算日の表示（下記）と「分析用プロンプトをコピー」ボタン。決算が3日以内の銘柄は強調表示する
-2. **分析済み銘柄の一覧**: 分類タブ（保有 / ウォッチ / 新規調査 / アーカイブ）。行にコード・銘柄名・現在の見立て（強気/中立/弱気の色分け＋確信度）・最終分析日・鮮度バッジ・分析件数・未消化アクション数・次回決算日の表示（下記）。行をタップすると詳細を展開（アコーディオン）
+1.5. **マイ銘柄リストからの一括取り込みバナー**（タブの外）: `my_stocks_items_v1` の `tab === "holding"` のうち `stock_notes_stocks` に未登録のものが1件以上あるとき、「マイ銘柄リストに未登録の保有が N 件あります」と表示する。「まとめて登録」を押すと対象一覧（コード・銘柄名・保有数量）を展開表示し、確認したうえで「N件を『保有』としてまとめて登録」を押すと `category='holding'` で一括登録する。いきなり書き込まず、対象一覧を確認できる2段階にする。失敗した銘柄があれば個別にメッセージを表示し、成功分はそのまま登録された状態を保つ（詳細は「銘柄の登録・分類変更・アーカイブ・削除」節）
+2. **銘柄一覧**: 5つのタブ（**要対応** / 保有 / ウォッチ / 新規調査 / アーカイブ）。既定表示は「要対応」。各タブのラベルには件数を表示する（例: 「要対応 15」）。行にコード・銘柄名・現在の見立て（強気/中立/弱気の色分け＋確信度）・最終分析日・鮮度バッジ・分析件数・未消化アクション数・次回決算日の表示（下記）。行をタップすると詳細を展開（アコーディオン）。展開部の末尾に分類変更・削除の操作を置く。タブの右に「＋ 銘柄を登録」ボタンがあり、証券コード・銘柄名・分類を入力して新規登録できる（詳細は「銘柄の登録・分類変更・アーカイブ・削除」節）
 3. **アクション受信箱**: 未消化（`status='open'`）のアクションを期限昇順で表示。期限切れは強調表示
 4. **銘柄詳細**（一覧行の展開）: 現在の見立て（仮説・リスク・次回確認点・買い増し/撤退条件・as_of 日付）＋分析タイムライン（新しい順に結論・根拠・懸念・出典リンク）。会話原文（`body`）は「原文を表示」を押したときだけ個別取得する
+
+### 5タブ構成（要対応 / 保有 / ウォッチ / 新規調査 / アーカイブ）
+
+| タブ | 対象 | 並び順 |
+|---|---|---|
+| 要対応（既定） | アーカイブを除く全銘柄のうち、次のいずれかに該当するもの: (1) 分析0件 (2) 最終分析日より後に決算があった（決算またぎ、鮮度バッジの `post-earnings` 判定と同じ） (3) 期限切れ・期限間近（7日以内、`ACTION_DUE_SOON_DAYS`）の未消化アクションがある | 次回決算日が近い順（未判明は後ろ）→最終分析日の古い順（未分析が最上位） |
+| 保有 | `category = holding` | 最終分析日の古い順（未分析が最上位） |
+| ウォッチ | `category = watch` | 同上 |
+| 新規調査 | `category = research` | 同上 |
+| アーカイブ | `category = archived` | 同上 |
+
+判定・並び替えロジックは `app/tools/stock-notes/logic.ts` の `stocksForTab` / `computeActionRequiredStocks` /
+`sortActionRequiredStocks` / `sortStocksByLastAnalyzedAsc`（純関数、ユニットテスト済み）に切り出している。
+**アーカイブは要対応を含む他のどのタブにも一切出さない**（`computeActionRequiredStocks` はアーカイブを
+最初に除外する）。削除しなくても一覧から追い出せることがアーカイブの存在意義であるため。
+
+### 銘柄の登録・分類変更・アーカイブ・削除
+
+- **登録**: 「＋ 銘柄を登録」から証券コード・銘柄名・分類（保有/ウォッチ/新規調査。アーカイブは新規登録の選択肢に出さない）を入力して登録する。証券コードを入力すると、銘柄マスター（`app/api/stock-notes/stock-master/route.ts` 経由、`MARKET_INFO_API_BASE_URL` の `/stock-master/latest` を `my-stocks` と同じ方法で取得）から一致する銘柄名を自動補完する。マスターに無いコード（米国株等）は銘柄名欄を手入力すれば登録できる。既に登録済みのコードはクライアント側で事前チェックして登録させず、それをすり抜けた場合（`stock_notes_stocks` の `unique(user_id, code)` 制約違反）もエラーメッセージで案内する
+- **分類変更**: 一覧行を展開すると分類セレクトがあり、holding/watch/research/archived のいずれにも変更できる。変更すると `category_changed_at` を更新時刻に更新する
+- **アーカイブ**: 分類を `archived` に変更する操作と同じ。変更時に任意でアーカイブ理由を入力でき、入力があれば `category_change_reason` に保存する。**アーカイブが基本、削除は例外**という位置づけで、UI上は分類変更の一つとして提供する（専用の削除より優先して案内する）
+- **削除**: 一覧行の展開部に削除ボタンがある。**分析が1件でもある銘柄は削除できない**（ボタンを無効化し、「分析N件が連鎖削除されるため削除できません。アーカイブしてください」と表示する）。スキーマが `on delete cascade` のため、削除すると分析・見立て・アクションが全部消えてしまうことを防ぐための制限。削除できるのは分析0件の銘柄だけで、実行前に確認ダイアログ（`window.confirm`）を出す
+
+書き込み関数は `app/tools/stock-notes/data.ts` の `insertStock` / `updateStockCategory` /
+`deleteStockById` / `bulkInsertHoldingsAsStocks`。`user_id` はログイン中のユーザーIDを呼び出し側
+（`ToolClient.tsx`）から明示的に渡す（RLSの insert ポリシーが `auth.uid() = user_id` のため）。
+楽観的更新はしない。書き込み成功後は必ず `invalidateStockNotesCache(userId)` を呼んでキャッシュを
+破棄し、`revalidateData`（stale-while-revalidateの再取得関数）で再取得する。分類判定・削除可否・
+重複チェックは `app/tools/stock-notes/logic.ts` の純関数（`canDeleteStock` / `deleteBlockedReason` /
+`isCodeAlreadyRegistered` / `validateNewStockInput`）としてユニットテストしている。
+**`stock_notes_analyses` / `stock_notes_theses` への書き込みは一切行わない**（分析はGPTの領域）。
+詳細な経緯は decision-log 参照。
 
 ### 次回決算日の表示
 
@@ -88,11 +121,12 @@
 
 ### 入力
 
-- なし（読み取り専用）。「分析用プロンプトをコピー」はクリップボードへの書き込みのみで、Supabase への保存は行わない
+- 銘柄の登録（証券コード・銘柄名・分類）、分類変更・アーカイブ（分類・任意の理由）、削除（分析0件の銘柄のみ）、マイ銘柄リストからの一括取り込み（対象確認後に実行）。いずれも `stock_notes_stocks` への書き込みのみ
+- 「分析用プロンプトをコピー」はクリップボードへの書き込みのみで、Supabase への保存は行わない
 
 ### 出力
 
-- 上記4セクションの表示のみ
+- 上記のセクション表示、および `stock_notes_stocks` への書き込み結果（画面の再表示）
 
 ## データ仕様
 
@@ -107,7 +141,9 @@
 
 ### 保存先
 
-- なし（このツールは書き込みを行わない）
+- `stock_notes_stocks`（Supabase、RLS で本人の行のみ書き込み可）。登録・分類変更・アーカイブ・削除・一括取り込みで書き込む
+- `stock_notes_analyses` / `stock_notes_theses` / `stock_notes_actions` への書き込みは行わない（分析はGPTの領域）
+- `my_stocks_items_v1`（`tool_data`）への書き込みは行わない（`my-stocks` は無改修）
 
 ### fallback
 
@@ -117,6 +153,9 @@
 - ユーザー切替・ログアウトが短時間に連続しても、古いリクエストの結果で新しい画面を上書きしない（取得世代ガード。`app/tools/stock-notes/logic.ts` の `createLoadGuard`）。ログアウト時は表示中のデータを即座にクリアする
 - 次回決算日（`/api/stock-notes/earnings`）の取得失敗は、他の4テーブル・保有リストの取得失敗とは別扱いにする。ダッシュボード本体（保有だが未分析、等）は決算日が無くても表示できるため、`app/tools/stock-notes/load.ts` の `loadDashboardData` はこの失敗だけを個別に catch し、`earnings: null` としてページ自体は正常表示する。決算日の表示箇所だけ「決算情報を取得できませんでした」になる（部分表示するのはこのケースのみ）
 - `/api/stock-notes/earnings` は、当月分の月次JSON取得に失敗した場合はエラーレスポンス（502）を返す。当月以外（前月・翌月・翌々月）の月次JSON取得だけが一部失敗した場合は200のまま返すが、レスポンスに `complete: false` と `missingMonths`（取得できなかった月の一覧）を含める。呼び出し側はこれを見て、欠落した月にその銘柄の決算が入っていた可能性を「未判明」と誤解させないよう「取得できませんでした」寄りの表示にする
+- 銘柄マスター（`/api/stock-notes/stock-master`）の取得に失敗した場合、登録フォームの名称自動補完ができないだけで、名称欄を手入力すれば登録は続けられる（画面全体をエラーにしない）
+- 書き込み（登録・分類変更・アーカイブ・削除・一括取り込み）が失敗した場合は、画面をエラー表示に倒さず、フォーム内または `window.alert` でエラーメッセージを表示する（表示中の一覧データは維持する）。重複コードの登録は事前チェック（`isCodeAlreadyRegistered`）に加え、それをすり抜けた場合の DB エラー（`unique(user_id, code)` 違反、`isDuplicateStockError` で判定）も専用のメッセージで案内する
+- 分析が1件でもある銘柄の削除は、サーバーへのリクエスト自体を送らずクライアント側で防ぐ（削除ボタンを無効化）。`on delete cascade` によって分析・見立て・アクションが連鎖削除されることを避けるための安全策
 
 ## 状態・エラー表示
 
@@ -153,8 +192,8 @@
 
 - premium ではなく、mini-tools の通常ログイン（Supabase Auth）が必須
 - 未ログイン時はエラー画面にせず、`/account` のログイン導線を案内する（既存のクラウド同期ツールと同じ扱い）
-- ログイン済みユーザー本人の行だけが Supabase の RLS（`auth.uid() = user_id`）で見える
-- **読み取り専用**。この画面から `stock_notes_*` テーブルへの INSERT/UPDATE/DELETE は一切行わない
+- ログイン済みユーザー本人の行だけが Supabase の RLS（`auth.uid() = user_id`）で見える・書き込める
+- この画面から `stock_notes_stocks` への INSERT/UPDATE/DELETE ができる（登録・分類変更・アーカイブ・削除）。`stock_notes_analyses` / `stock_notes_theses` / `stock_notes_actions` への書き込みは一切行わない（読み取り専用のまま）
 - 検索エンジンには掲載しない（`noindex, nofollow`）
 
 ## 関連実装
@@ -169,7 +208,9 @@
 - [app/tools/stock-notes/earnings-logic.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-notes/earnings-logic.ts)
 - [app/tools/stock-notes/earnings-types.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-notes/earnings-types.ts)
 - [app/tools/stock-notes/types.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-notes/types.ts)
+- [app/tools/stock-notes/useStockNotesStockMaster.ts](/c:/Users/yutaz/dev/mini-tools/app/tools/stock-notes/useStockNotesStockMaster.ts)
 - [app/api/stock-notes/earnings/route.ts](/c:/Users/yutaz/dev/mini-tools/app/api/stock-notes/earnings/route.ts)
+- [app/api/stock-notes/stock-master/route.ts](/c:/Users/yutaz/dev/mini-tools/app/api/stock-notes/stock-master/route.ts)
 
 ## 関連 docs
 

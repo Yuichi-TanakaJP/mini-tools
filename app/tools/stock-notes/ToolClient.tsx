@@ -8,6 +8,8 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSyncConfigured } from "@/lib/supabase/config";
 import type { MyStockItem } from "@/app/tools/my-stocks/types";
 import {
+  bulkInsertHoldingsAsStocks,
+  deleteStockById,
   fetchAnalysisBody,
   fetchAnalyses,
   fetchEarnings,
@@ -15,23 +17,33 @@ import {
   fetchOpenActions,
   fetchStocks,
   fetchTheses,
+  insertStock,
+  isDuplicateStockError,
+  updateStockCategory,
+  type BulkImportResult,
 } from "./data";
 import type { StockNotesEarningsInfo } from "./earnings-types";
 import { invalidateStockNotesCache, readStockNotesCache, writeStockNotesCache } from "./cache";
 import { loadDashboardData, type DashboardData } from "./load";
+import { useStockNotesStockMaster } from "./useStockNotesStockMaster";
 import {
   analysesForStock,
   analysisCountForStock,
   buildAnalysisPrompt,
   buildRevalidateFailureMessage,
+  canDeleteStock,
   computeUnanalyzedHoldings,
   countHoldingTabItems,
+  countStocksForTab,
   createLoadGuard,
   daysSinceSync,
+  deleteBlockedReason,
   earningsDisplay,
+  extractUnregisteredHoldings,
   formatClockTime,
   formatMonthDay,
   freshnessLevelWithEarnings,
+  isCodeAlreadyRegistered,
   isOverdue,
   lastEarningsDisplay,
   latestAnalyzedAt,
@@ -39,10 +51,14 @@ import {
   selectLatestThesis,
   sortOpenActions,
   sortUnanalyzedHoldingsByEarnings,
+  stocksForTab,
+  STOCK_NOTES_TABS,
   SYNC_STALE_DAYS,
   syncStaleness,
+  validateNewStockInput,
   withFallback,
   type FreshnessLevelV2,
+  type StockNotesTab,
   type SyncStaleness,
 } from "./logic";
 import type {
@@ -61,12 +77,16 @@ const CATEGORY_LABELS: Record<StockNoteCategory, string> = {
   research: "新規調査",
   archived: "アーカイブ",
 };
-const CATEGORY_OPTIONS = [
-  CATEGORY_LABELS.holding,
-  CATEGORY_LABELS.watch,
-  CATEGORY_LABELS.research,
-  CATEGORY_LABELS.archived,
-] as const;
+const CATEGORY_SELECT_OPTIONS: StockNoteCategory[] = ["holding", "watch", "research", "archived"];
+
+/** 5タブ（要対応/保有/ウォッチ/新規調査/アーカイブ）のベースラベル。件数は都度付与する。 */
+const TAB_BASE_LABELS: Record<StockNotesTab, string> = {
+  "action-required": "要対応",
+  holding: CATEGORY_LABELS.holding,
+  watch: CATEGORY_LABELS.watch,
+  research: CATEGORY_LABELS.research,
+  archived: CATEGORY_LABELS.archived,
+};
 
 const VIEW_LABELS: Record<StockNoteThesis["view"], string> = {
   bullish: "強気",
@@ -196,10 +216,26 @@ export default function ToolClient() {
   const [isRevalidating, setIsRevalidating] = useState(false);
   const [revalidateError, setRevalidateError] = useState<string | null>(null);
 
-  const [categoryTab, setCategoryTab] = useState<StockNoteCategory>("holding");
+  const [categoryTab, setCategoryTab] = useState<StockNotesTab>("action-required");
   const [expandedStockId, setExpandedStockId] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [bodies, setBodies] = useState<Record<string, string | "loading" | "error">>({});
+
+  // 銘柄の登録・分類変更・アーカイブ・削除・一括取り込み（書き込み機能）。
+  // 楽観的更新はしない。書き込み成功後は invalidateStockNotesCache → revalidateData の順で必ず再取得する
+  // （呼び忘れると「登録したのに画面に出ない」不具合になる。詳細は decision-log 参照）。
+  const stockMaster = useStockNotesStockMaster();
+  const [showRegisterForm, setShowRegisterForm] = useState(false);
+  const [registerCode, setRegisterCode] = useState("");
+  const [registerName, setRegisterName] = useState("");
+  const [registerCategory, setRegisterCategory] = useState<StockNoteCategory>("watch");
+  const [registerSubmitting, setRegisterSubmitting] = useState(false);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  // 分類変更・アーカイブ・削除の書き込み中は対象銘柄のIDを保持し、行のボタンを無効化する。
+  const [rowBusyStockId, setRowBusyStockId] = useState<string | null>(null);
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [bulkImportSubmitting, setBulkImportSubmitting] = useState(false);
+  const [bulkImportResult, setBulkImportResult] = useState<BulkImportResult | null>(null);
 
   // 取得の「世代」を管理するガード。ユーザー切替・ログアウトが連続したときに、
   // 古いリクエストの結果が新しい画面を上書きしないようにする（詳細: logic.ts の createLoadGuard）。
@@ -366,9 +402,8 @@ export default function ToolClient() {
   // 「effectがstateを更新→その値に依存する別のeffectが発火してさらにstateを更新」という
   // cascading effectを避けるため、ログイン確認直後に同じeffect内でloadDataを呼ぶ。
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect -- AccountClient と同じ認証確認パターン。
-       ここでのstate更新は外部システム（Supabase auth）からの状態同期であり、
-       別effectへの連鎖ではなく同一effect内で完結させている。 */
+    // AccountClient と同じ認証確認パターン。ここでのstate更新は外部システム（Supabase auth）
+    // からの状態同期であり、別effectへの連鎖ではなく同一effect内で完結させている。
     if (!supabase) {
       setAuthReady(true);
       return;
@@ -442,7 +477,6 @@ export default function ToolClient() {
       active = false;
       sub.subscription.unsubscribe();
     };
-    /* eslint-enable react-hooks/set-state-in-effect */
   }, [supabase, loadData, revalidateData, resetData, applyDashboardData]);
 
   const unanalyzedHoldingsRaw = useMemo(
@@ -462,8 +496,22 @@ export default function ToolClient() {
   const openActions = useMemo(() => sortOpenActions(actions), [actions]);
   const stockById = useMemo(() => new Map(stocks.map((s) => [s.id, s])), [stocks]);
   const filteredStocks = useMemo(
-    () => stocks.filter((s) => s.category === categoryTab),
-    [stocks, categoryTab],
+    () => stocksForTab(categoryTab, stocks, analyses, actions, earnings),
+    [categoryTab, stocks, analyses, actions, earnings],
+  );
+  const tabCounts = useMemo(() => {
+    const map = {} as Record<StockNotesTab, number>;
+    for (const tab of STOCK_NOTES_TABS) {
+      map[tab] = countStocksForTab(tab, stocks, analyses, actions, earnings);
+    }
+    return map;
+  }, [stocks, analyses, actions, earnings]);
+  const tabLabel = useCallback((tab: StockNotesTab) => `${TAB_BASE_LABELS[tab]} ${tabCounts[tab]}`, [tabCounts]);
+  const tabOptions = useMemo(() => STOCK_NOTES_TABS.map(tabLabel), [tabLabel]);
+  // マイ銘柄リストの保有銘柄のうち stock_notes_stocks に未登録のもの（一括取り込みバナー対象）。
+  const unregisteredHoldings = useMemo(
+    () => extractUnregisteredHoldings(holdings, stocks),
+    [holdings, stocks],
   );
 
   async function copyPrompt(code: string, name: string) {
@@ -488,6 +536,115 @@ export default function ToolClient() {
     }
   }
 
+  /** 書き込み成功後に共通で行う後処理: キャッシュ破棄 → 裏で再取得（画面はキャッシュ表示を維持したまま更新）。 */
+  const refetchAfterWrite = useCallback(
+    async (uid: string) => {
+      invalidateStockNotesCache(uid);
+      await revalidateData(uid, dataUpdatedAt);
+    },
+    [revalidateData, dataUpdatedAt],
+  );
+
+  function handleRegisterCodeChange(value: string) {
+    setRegisterCode(value);
+    const hit = stockMaster.lookupByCode(value);
+    if (hit) setRegisterName(hit);
+  }
+
+  async function submitRegister() {
+    if (!supabase || !userId) return;
+    const trimmedCode = registerCode.trim();
+    const trimmedName = registerName.trim();
+    const validationError = validateNewStockInput(trimmedCode, trimmedName);
+    if (validationError) {
+      setRegisterError(validationError);
+      return;
+    }
+    if (isCodeAlreadyRegistered(stocks, trimmedCode)) {
+      setRegisterError("このコードは既に登録されています。");
+      return;
+    }
+    setRegisterSubmitting(true);
+    setRegisterError(null);
+    try {
+      await insertStock(supabase, userId, { code: trimmedCode, name: trimmedName, category: registerCategory });
+      setRegisterCode("");
+      setRegisterName("");
+      setShowRegisterForm(false);
+      await refetchAfterWrite(userId);
+    } catch (e) {
+      setRegisterError(
+        isDuplicateStockError(e) ? "このコードは既に登録されています。" : e instanceof Error ? e.message : "登録に失敗しました。",
+      );
+    } finally {
+      setRegisterSubmitting(false);
+    }
+  }
+
+  /**
+   * 分類を変更する。アーカイブへの変更時は任意の理由を window.prompt で受け取る
+   * （このツールにモーダル基盤が無いため、既存のクリップボードコピー等と同様に
+   * ブラウザ標準ダイアログで済ませる）。キャンセルした場合は変更しない。
+   */
+  async function handleCategoryChange(stock: StockNoteStock, nextCategory: StockNoteCategory) {
+    if (!supabase || !userId || nextCategory === stock.category) return;
+    let reason: string | undefined;
+    if (nextCategory === "archived") {
+      const input = window.prompt("アーカイブ理由（任意。空欄でも登録できます）", "");
+      if (input === null) return; // キャンセル
+      const trimmed = input.trim();
+      // 空欄なら category_change_reason 列には触れない（undefined。既存の理由を保持する）。
+      // 何か入力されていればそれで上書きする。
+      if (trimmed !== "") reason = trimmed;
+    }
+    setRowBusyStockId(stock.id);
+    try {
+      await updateStockCategory(supabase, stock.id, nextCategory, reason);
+      await refetchAfterWrite(userId);
+    } catch (e) {
+      window.alert(`分類の変更に失敗しました${e instanceof Error ? `（${e.message}）` : ""}`);
+    } finally {
+      setRowBusyStockId(null);
+    }
+  }
+
+  async function handleDeleteStock(stock: StockNoteStock) {
+    if (!supabase || !userId) return;
+    if (!canDeleteStock(stock, analyses)) return;
+    const confirmed = window.confirm(
+      `${stock.code} ${stock.name} を削除します。この操作は取り消せません。よろしいですか？`,
+    );
+    if (!confirmed) return;
+    setRowBusyStockId(stock.id);
+    try {
+      await deleteStockById(supabase, stock.id);
+      await refetchAfterWrite(userId);
+    } catch (e) {
+      window.alert(`削除に失敗しました${e instanceof Error ? `（${e.message}）` : ""}`);
+    } finally {
+      setRowBusyStockId(null);
+    }
+  }
+
+  async function runBulkImport() {
+    if (!supabase || !userId || unregisteredHoldings.length === 0) return;
+    setBulkImportSubmitting(true);
+    setBulkImportResult(null);
+    try {
+      const result = await bulkInsertHoldingsAsStocks(
+        supabase,
+        userId,
+        unregisteredHoldings.map((h) => ({ code: h.code, name: h.name })),
+      );
+      setBulkImportResult(result);
+      if (result.succeeded.length > 0) {
+        await refetchAfterWrite(userId);
+      }
+    } finally {
+      setBulkImportSubmitting(false);
+    }
+  }
+
   return (
     <main style={{ padding: "24px 16px 96px" }}>
       <section style={{ maxWidth: 760, margin: "0 auto", display: "grid", gap: 16, minWidth: 0 }}>
@@ -496,7 +653,7 @@ export default function ToolClient() {
             銘柄分析ダッシュボード
           </h1>
           <p style={{ fontSize: 13, color: "var(--color-text-sub)", margin: 0, lineHeight: 1.6 }}>
-            stock-notes（カスタムGPT）に記録した銘柄分析と、マイ銘柄リストの保有銘柄を突き合わせて表示します。読み取り専用で、分類変更や分析の追加はこの画面からはできません。
+            stock-notes（カスタムGPT）に記録した銘柄分析と、マイ銘柄リストの保有銘柄を突き合わせて表示します。銘柄の登録・分類変更・アーカイブはこの画面から行えます。分析・見立ての追加はこの画面からはできません（分析はGPTの領域です）。
           </p>
         </header>
 
@@ -688,17 +845,145 @@ export default function ToolClient() {
               )}
             </section>
 
-            {/* 2. 分析済み銘柄の一覧 */}
+            {/* マイ銘柄リストからの一括取り込みバナー（タブの外）。
+                いきなり書き込まず、対象一覧を確認してから「まとめて登録」する2段階にする。 */}
+            {unregisteredHoldings.length > 0 && (
+              <div style={{ ...card, borderColor: "var(--color-accent)" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                  <p style={{ margin: 0, fontSize: 13, color: "var(--color-text)", lineHeight: 1.6 }}>
+                    マイ銘柄リストに未登録の保有が{unregisteredHoldings.length}件あります。
+                  </p>
+                  <button type="button" onClick={() => setShowBulkImport((v) => !v)} style={subBtn}>
+                    {showBulkImport ? "閉じる" : "まとめて登録"}
+                  </button>
+                </div>
+                {showBulkImport && (
+                  <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                    <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 4 }}>
+                      {unregisteredHoldings.map((h) => (
+                        <li key={h.code} style={{ fontSize: 12, color: "var(--color-text-sub)" }}>
+                          {h.code} {h.name}
+                          {h.quantity != null && `（${h.quantity.toLocaleString("ja-JP")}株）`}
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      type="button"
+                      onClick={runBulkImport}
+                      disabled={bulkImportSubmitting}
+                      style={{ ...primaryBtn, opacity: bulkImportSubmitting ? 0.6 : 1, width: "fit-content" }}
+                    >
+                      {bulkImportSubmitting ? "登録中…" : `${unregisteredHoldings.length}件を「保有」としてまとめて登録`}
+                    </button>
+                    {bulkImportResult && (
+                      <div style={{ display: "grid", gap: 2 }}>
+                        {bulkImportResult.succeeded.length > 0 && (
+                          <p style={{ margin: 0, fontSize: 12, color: "var(--color-text-sub)" }}>
+                            {bulkImportResult.succeeded.length}件登録しました。
+                          </p>
+                        )}
+                        {bulkImportResult.failed.map((f) => (
+                          <p key={f.code} style={{ margin: 0, fontSize: 12, color: "var(--color-danger, #dc2626)" }}>
+                            {f.code} {f.name}: {f.message}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 2. 銘柄一覧（5タブ: 要対応/保有/ウォッチ/新規調査/アーカイブ） */}
             <section style={{ display: "grid", gap: 10 }}>
-              <h2 style={sectionTitle}>分析済み銘柄</h2>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                <h2 style={sectionTitle}>銘柄一覧</h2>
+                <button type="button" onClick={() => setShowRegisterForm((v) => !v)} style={subBtn}>
+                  {showRegisterForm ? "閉じる" : "＋ 銘柄を登録"}
+                </button>
+              </div>
+
+              {showRegisterForm && (
+                <div style={card}>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <label style={{ display: "grid", gap: 4 }}>
+                      <span style={{ fontSize: 12, color: "var(--color-text-sub)" }}>証券コード</span>
+                      <input
+                        type="text"
+                        value={registerCode}
+                        onChange={(e) => handleRegisterCodeChange(e.target.value)}
+                        placeholder="例: 7203"
+                        style={{
+                          padding: "8px 10px",
+                          borderRadius: 8,
+                          border: "1px solid var(--color-border-strong)",
+                          background: "var(--color-bg-input)",
+                          color: "var(--color-text)",
+                          fontSize: 13,
+                        }}
+                      />
+                    </label>
+                    <label style={{ display: "grid", gap: 4 }}>
+                      <span style={{ fontSize: 12, color: "var(--color-text-sub)" }}>
+                        銘柄名{stockMaster.ready && !stockMaster.error ? "（マスターから自動補完。米国株等は手入力）" : ""}
+                      </span>
+                      <input
+                        type="text"
+                        value={registerName}
+                        onChange={(e) => setRegisterName(e.target.value)}
+                        placeholder="例: トヨタ自動車"
+                        style={{
+                          padding: "8px 10px",
+                          borderRadius: 8,
+                          border: "1px solid var(--color-border-strong)",
+                          background: "var(--color-bg-input)",
+                          color: "var(--color-text)",
+                          fontSize: 13,
+                        }}
+                      />
+                    </label>
+                    <label style={{ display: "grid", gap: 4 }}>
+                      <span style={{ fontSize: 12, color: "var(--color-text-sub)" }}>分類</span>
+                      <select
+                        value={registerCategory}
+                        onChange={(e) => setRegisterCategory(e.target.value as StockNoteCategory)}
+                        style={{
+                          padding: "8px 10px",
+                          borderRadius: 8,
+                          border: "1px solid var(--color-border-strong)",
+                          background: "var(--color-bg-input)",
+                          color: "var(--color-text)",
+                          fontSize: 13,
+                        }}
+                      >
+                        {CATEGORY_SELECT_OPTIONS.filter((c) => c !== "archived").map((c) => (
+                          <option key={c} value={c}>
+                            {CATEGORY_LABELS[c]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {registerError && (
+                      <p style={{ margin: 0, fontSize: 12, color: "var(--color-danger, #dc2626)" }}>{registerError}</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={submitRegister}
+                      disabled={registerSubmitting}
+                      style={{ ...primaryBtn, opacity: registerSubmitting ? 0.6 : 1, width: "fit-content" }}
+                    >
+                      {registerSubmitting ? "登録中…" : "登録する"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <TabBar
-                options={CATEGORY_OPTIONS}
-                value={CATEGORY_LABELS[categoryTab]}
+                options={tabOptions}
+                value={tabLabel(categoryTab)}
                 onChange={(label) => {
-                  const entry = (Object.entries(CATEGORY_LABELS) as [StockNoteCategory, string][]).find(
-                    ([, v]) => v === label,
-                  );
-                  if (entry) setCategoryTab(entry[0]);
+                  const tab = STOCK_NOTES_TABS.find((t) => tabLabel(t) === label);
+                  if (tab) setCategoryTab(tab);
                 }}
               />
               {filteredStocks.length === 0 ? (
@@ -719,6 +1004,9 @@ export default function ToolClient() {
                       }
                       bodies={bodies}
                       onLoadBody={loadBody}
+                      busy={rowBusyStockId === stock.id}
+                      onCategoryChange={(next) => handleCategoryChange(stock, next)}
+                      onDelete={() => handleDeleteStock(stock)}
                     />
                   ))}
                 </ul>
@@ -806,6 +1094,9 @@ function StockRow({
   onToggle,
   bodies,
   onLoadBody,
+  busy,
+  onCategoryChange,
+  onDelete,
 }: {
   stock: StockNoteStock;
   analyses: StockNoteAnalysis[];
@@ -816,6 +1107,9 @@ function StockRow({
   onToggle: () => void;
   bodies: Record<string, string | "loading" | "error">;
   onLoadBody: (analysisId: string) => void;
+  busy: boolean;
+  onCategoryChange: (next: StockNoteCategory) => void;
+  onDelete: () => void;
 }) {
   const thesis = selectLatestThesis(theses, stock.id);
   const lastAnalyzed = latestAnalyzedAt(analyses, stock.id);
@@ -827,6 +1121,8 @@ function StockRow({
   const openActions = openActionCountForStock(actions, stock.id);
   const timeline = expanded ? analysesForStock(analyses, stock.id) : [];
   const earningsInfo = earningsDisplay(stock.code, earnings);
+  const canDelete = canDeleteStock(stock, analyses);
+  const deleteReason = deleteBlockedReason(stock, analyses);
   // 次回決算が未判明のときだけ前回決算を目立たせる（唯一の手がかりになるため）。
   const emphasizeLast = !earnings?.earnings[stock.code] && !earningsInfo.failed;
   const lastEarningsText = lastEarningsDisplay(stock.code, earnings, emphasizeLast);
@@ -1001,6 +1297,62 @@ function StockRow({
               ))
             )}
           </div>
+
+          {/* 分類変更・アーカイブ・削除。アーカイブが基本、削除は例外
+              （on delete cascade で分析・見立て・アクションが全部消えるため）。 */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+              flexWrap: "wrap",
+              paddingTop: 8,
+              borderTop: "1px solid var(--color-border)",
+            }}
+          >
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--color-text-sub)" }}>
+              分類
+              <select
+                value={stock.category}
+                disabled={busy}
+                onChange={(e) => onCategoryChange(e.target.value as StockNoteCategory)}
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: 8,
+                  border: "1px solid var(--color-border-strong)",
+                  background: "var(--color-bg-input)",
+                  color: "var(--color-text)",
+                  fontSize: 12,
+                }}
+              >
+                {CATEGORY_SELECT_OPTIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {CATEGORY_LABELS[c]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={busy || !canDelete}
+              title={deleteReason ?? undefined}
+              style={{
+                ...subBtn,
+                color: canDelete ? "var(--color-danger, #dc2626)" : "var(--color-text-muted)",
+                opacity: busy || !canDelete ? 0.5 : 1,
+                cursor: busy || !canDelete ? "not-allowed" : "pointer",
+              }}
+            >
+              {busy ? "処理中…" : "削除"}
+            </button>
+          </div>
+          {deleteReason && (
+            <p style={{ margin: 0, fontSize: 11, color: "var(--color-text-muted)", lineHeight: 1.5 }}>
+              {deleteReason}
+            </p>
+          )}
         </div>
       )}
     </li>
