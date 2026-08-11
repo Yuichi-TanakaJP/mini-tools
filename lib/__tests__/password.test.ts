@@ -88,4 +88,20 @@ describe("parseResetTokensFromUrl", () => {
   it("先頭の ? / # が無くても解釈できる", () => {
     expect(parseResetTokensFromUrl("code=abc123", "")).toEqual({ kind: "code", code: "abc123" });
   });
+
+  it("error は無いが error_code だけ付いている場合もエラーとして扱う", () => {
+    expect(parseResetTokensFromUrl("?error_code=otp_expired", "")).toEqual({
+      kind: "error",
+      errorCode: "otp_expired",
+      errorDescription: undefined,
+    });
+  });
+
+  it("error は無いが error_description だけ付いている場合もエラーとして扱う", () => {
+    expect(parseResetTokensFromUrl("", "#error_description=Email+link+is+invalid")).toEqual({
+      kind: "error",
+      errorCode: undefined,
+      errorDescription: "Email link is invalid",
+    });
+  });
 });

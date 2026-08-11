@@ -35,11 +35,18 @@ function toParams(raw: string, prefix: "?" | "#"): URLSearchParams {
 }
 
 function extractError(params: URLSearchParams): { errorCode?: string; errorDescription?: string } | null {
+  // Supabase は `error` に加えて、`error_code` / `error_description` だけを付けて
+  // リダイレクトすることもあるため、いずれか1つでもあればエラーとして扱う。
+  // `error` の有無だけで判定すると、その場合に "none" 扱いになってしまい、
+  // 「トークンが無いので直接アクセスしないでください」と誤表示され、URL のパラメータも
+  // 除去されずに残ってしまう。
   const error = params.get("error");
-  if (!error) return null;
+  const errorCode = params.get("error_code");
+  const errorDescription = params.get("error_description");
+  if (!error && !errorCode && !errorDescription) return null;
   return {
-    errorCode: params.get("error_code") ?? undefined,
-    errorDescription: params.get("error_description") ?? undefined,
+    errorCode: errorCode ?? undefined,
+    errorDescription: errorDescription ?? undefined,
   };
 }
 

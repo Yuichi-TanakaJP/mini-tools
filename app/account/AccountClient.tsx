@@ -65,6 +65,7 @@ export default function AccountClient() {
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotBusy, setForgotBusy] = useState(false);
   const [forgotMessage, setForgotMessage] = useState<string | null>(null);
+  const [forgotError, setForgotError] = useState<string | null>(null);
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -146,18 +147,28 @@ export default function AccountClient() {
     if (!supabase) return;
     setForgotBusy(true);
     setForgotMessage(null);
+    setForgotError(null);
     try {
-      await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+      // Supabase は「メールアドレスが存在しない」ケースでは意図的に error を返さない仕様
+      // （アカウント列挙対策）。一方、リダイレクトURL不許可・レート制限・通信失敗など
+      // 送信処理そのものが失敗したケースでは error（または例外）が返る。
+      // そのため error / 例外の有無だけを見て「送信できたか」を判定しても、
+      // メールアドレスの存在有無は漏れない。
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
         redirectTo: `${window.location.origin}/account/reset-password`,
       });
+      if (error) {
+        setForgotError("送信に失敗しました。しばらくしてからもう一度お試しください。");
+        return;
+      }
       track("action_clicked", { action: "auth_reset_password_request" });
-    } catch {
-      // ネットワークエラー等が起きても、メールアドレスの存在有無は画面に出さない（アカウント列挙防止）。
-    } finally {
       // 存在しないメールアドレスでも同じ文言にする（アカウント列挙防止）。
       setForgotMessage(
         "メールを送信しました。届いたリンクから新しいパスワードを設定してください。数分待っても届かない場合は迷惑メールフォルダもご確認ください。",
       );
+    } catch {
+      setForgotError("送信に失敗しました。しばらくしてからもう一度お試しください。");
+    } finally {
       setForgotBusy(false);
     }
   }
@@ -485,6 +496,11 @@ export default function AccountClient() {
                     リセットメールを送信
                   </button>
                 </div>
+                {forgotError && (
+                  <p style={{ fontSize: 13, color: "var(--color-danger, #dc2626)", margin: 0, lineHeight: 1.6 }}>
+                    {forgotError}
+                  </p>
+                )}
                 {forgotMessage && (
                   <p style={{ fontSize: 13, color: "var(--color-accent)", margin: 0, lineHeight: 1.6 }}>
                     {forgotMessage}

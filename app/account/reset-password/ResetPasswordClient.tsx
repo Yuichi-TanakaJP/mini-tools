@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSyncConfigured } from "@/lib/supabase/config";
 import { parseResetTokensFromUrl, validateNewPassword } from "@/lib/auth/password";
+import { resolveResetSession } from "@/lib/auth/reset-session";
 import { track } from "@/lib/analytics";
 
 const card: React.CSSProperties = {
@@ -75,84 +76,15 @@ export default function ResetPasswordClient() {
     async function establishSession() {
       const parsed = parseResetTokensFromUrl(window.location.search, window.location.hash);
 
-      // どの経路でセッションを確立しても、トークンを URL 履歴から消す（漏洩防止）。
-      const clearUrl = () => {
+      // URL にトークン（または error）が乗っている経路は、交換 API 呼び出しの結果を待たず
+      // 先に URL 履歴から消しておく（漏洩防止）。交換の成否判定自体は resolveResetSession に委ねる。
+      if (parsed.kind !== "none") {
         window.history.replaceState({}, "", window.location.pathname);
-      };
-
-      if (parsed.kind === "error") {
-        clearUrl();
-        if (!active) return;
-        if (parsed.errorCode === "otp_expired") {
-          setStage({ kind: "expired" });
-        } else {
-          setStage({
-            kind: "session-error",
-            message: parsed.errorDescription || "リンクが無効です。もう一度リセットを申請してください。",
-          });
-        }
-        return;
       }
 
-      if (parsed.kind === "code") {
-        const { error } = await supabase!.auth.exchangeCodeForSession(parsed.code);
-        clearUrl();
-        if (!active) return;
-        if (error) {
-          setStage(
-            /expired|invalid/i.test(error.message)
-              ? { kind: "expired" }
-              : { kind: "session-error", message: error.message },
-          );
-          return;
-        }
-        setStage({ kind: "ready" });
-        return;
-      }
-
-      if (parsed.kind === "token_hash") {
-        const { error } = await supabase!.auth.verifyOtp({
-          token_hash: parsed.tokenHash,
-          type: parsed.type as "recovery",
-        });
-        clearUrl();
-        if (!active) return;
-        if (error) {
-          setStage(
-            /expired|invalid/i.test(error.message)
-              ? { kind: "expired" }
-              : { kind: "session-error", message: error.message },
-          );
-          return;
-        }
-        setStage({ kind: "ready" });
-        return;
-      }
-
-      if (parsed.kind === "access_token") {
-        const { error } = await supabase!.auth.setSession({
-          access_token: parsed.accessToken,
-          refresh_token: parsed.refreshToken,
-        });
-        clearUrl();
-        if (!active) return;
-        if (error) {
-          setStage(
-            /expired|invalid/i.test(error.message)
-              ? { kind: "expired" }
-              : { kind: "session-error", message: error.message },
-          );
-          return;
-        }
-        setStage({ kind: "ready" });
-        return;
-      }
-
-      // トークンが URL に無い場合、detectSessionInUrl が既にセッションを確立しているかもしれない
-      // （@supabase/ssr のデフォルト挙動）ので、念のため既存セッションの有無を確認する。
-      const { data } = await supabase!.auth.getSession();
+      const outcome = await resolveResetSession(supabase!.auth, parsed);
       if (!active) return;
-      setStage(data.session ? { kind: "ready" } : { kind: "no-token" });
+      setStage(outcome);
     }
 
     establishSession();
