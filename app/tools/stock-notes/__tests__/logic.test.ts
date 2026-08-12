@@ -7,13 +7,12 @@ import {
   FRESHNESS_WARN_DAYS,
   STOCK_NOTES_TABS,
   SYNC_STALE_DAYS,
+  actionRequiredReasons,
   analysesForStock,
   buildAnalysisPrompt,
   buildRevalidateFailureMessage,
   canDeleteStock,
   computeActionRequiredStocks,
-  computeUnanalyzedHoldings,
-  countHoldingTabItems,
   countStocksForTab,
   createLoadGuard,
   daysSinceEarnings,
@@ -37,7 +36,6 @@ import {
   sortActionRequiredStocks,
   sortOpenActions,
   sortStocksByLastAnalyzedAsc,
-  sortUnanalyzedHoldingsByEarnings,
   stocksForTab,
   syncStaleness,
   validateNewStockInput,
@@ -194,31 +192,6 @@ describe("freshnessLevelWithEarnings", () => {
       const lastAnalyzedAt = "2026-08-05T14:00:00.000Z";
       expect(freshnessLevelWithEarnings(lastAnalyzedAt, "2026-08-05", laterNow)).toBe("post-earnings");
     });
-  });
-});
-
-describe("sortUnanalyzedHoldingsByEarnings", () => {
-  it("決算日が判明している銘柄を先頭に日付昇順で並べる", () => {
-    const holdings = [
-      { code: "1111", name: "A", quantity: null },
-      { code: "2222", name: "B", quantity: null },
-      { code: "3333", name: "C", quantity: null },
-    ];
-    const earnings = {
-      "3333": { date: "2026-08-20" },
-      "1111": { date: "2026-08-14" },
-    };
-    const result = sortUnanalyzedHoldingsByEarnings(holdings, earnings);
-    expect(result.map((h) => h.code)).toEqual(["1111", "3333", "2222"]);
-  });
-
-  it("未判明の銘柄同士はコード順で並べる", () => {
-    const holdings = [
-      { code: "9999", name: "Z", quantity: null },
-      { code: "1111", name: "A", quantity: null },
-    ];
-    const result = sortUnanalyzedHoldingsByEarnings(holdings, {});
-    expect(result.map((h) => h.code)).toEqual(["1111", "9999"]);
   });
 });
 
@@ -446,52 +419,6 @@ describe("syncStaleness / daysSinceSync", () => {
   });
 });
 
-describe("computeUnanalyzedHoldings", () => {
-  it("stock_notes に無い保有銘柄を抽出する", () => {
-    const holdings = [makeHolding({ code: "7203", name: "トヨタ自動車", quantity: 100 })];
-    const result = computeUnanalyzedHoldings(holdings, [], []);
-    expect(result).toEqual([{ code: "7203", name: "トヨタ自動車", quantity: 100 }]);
-  });
-
-  it("stock_notes にあるが分析が0件の保有銘柄を抽出する", () => {
-    const holdings = [makeHolding({ code: "7203", name: "トヨタ自動車", quantity: 100 })];
-    const stocks = [makeStock({ id: "s1", code: "7203" })];
-    const result = computeUnanalyzedHoldings(holdings, stocks, []);
-    expect(result).toEqual([{ code: "7203", name: "トヨタ自動車", quantity: 100 }]);
-  });
-
-  it("分析が1件以上あれば除外する", () => {
-    const holdings = [makeHolding({ code: "7203", name: "トヨタ自動車", quantity: 100 })];
-    const stocks = [makeStock({ id: "s1", code: "7203" })];
-    const analyses = [makeAnalysis({ stockId: "s1" })];
-    const result = computeUnanalyzedHoldings(holdings, stocks, analyses);
-    expect(result).toEqual([]);
-  });
-
-  it("watch タブは対象外", () => {
-    const holdings = [makeHolding({ code: "9999", tab: "watch" })];
-    expect(computeUnanalyzedHoldings(holdings, [], [])).toEqual([]);
-  });
-
-  it("同一銘柄が複数口座にあっても1件に集約する", () => {
-    const holdings = [
-      makeHolding({ id: "a", code: "7203", name: "トヨタ自動車", quantity: 100, accountType: "specific" }),
-      makeHolding({ id: "b", code: "7203", name: "トヨタ自動車", quantity: 200, accountType: "nisa-growth" }),
-    ];
-    const result = computeUnanalyzedHoldings(holdings, [], []);
-    expect(result).toHaveLength(1);
-  });
-
-  it("コード順にソートする", () => {
-    const holdings = [
-      makeHolding({ code: "9999", name: "Z" }),
-      makeHolding({ code: "1111", name: "A" }),
-    ];
-    const result = computeUnanalyzedHoldings(holdings, [], []);
-    expect(result.map((r) => r.code)).toEqual(["1111", "9999"]);
-  });
-});
-
 describe("buildAnalysisPrompt", () => {
   it("コードと銘柄名を含む日本語プロンプトを作る", () => {
     expect(buildAnalysisPrompt("7203", "トヨタ自動車")).toBe(
@@ -566,27 +493,6 @@ describe("isOverdue", () => {
   });
   it("期限未設定なら false", () => {
     expect(isOverdue(null)).toBe(false);
-  });
-});
-
-describe("countHoldingTabItems", () => {
-  it("tab='holding' の件数だけを数える", () => {
-    const holdings = [
-      makeHolding({ code: "1111", tab: "holding" }),
-      makeHolding({ code: "2222", tab: "holding" }),
-      makeHolding({ code: "3333", tab: "watch" }),
-    ];
-    expect(countHoldingTabItems(holdings)).toBe(2);
-  });
-
-  it("ウォッチのみの場合は0になる（holdings.length は1以上でも0件と判定できる）", () => {
-    const holdings = [makeHolding({ code: "9999", tab: "watch" })];
-    expect(holdings.length).toBeGreaterThan(0);
-    expect(countHoldingTabItems(holdings)).toBe(0);
-  });
-
-  it("空配列なら0", () => {
-    expect(countHoldingTabItems([])).toBe(0);
   });
 });
 
@@ -846,6 +752,74 @@ describe("computeActionRequiredStocks", () => {
   });
 });
 
+describe("actionRequiredReasons", () => {
+  const now = new Date("2026-08-11T00:00:00.000Z");
+
+  it("分析0件のみ: unanalyzed だけを返す", () => {
+    const stock = makeStock({ id: "s1", code: "0000" });
+    const result = actionRequiredReasons(stock, [], [], {}, now);
+    expect(result).toEqual([{ kind: "unanalyzed" }]);
+  });
+
+  it("決算またぎのみ: post-earnings だけを返す（決算日を持つ）", () => {
+    const stock = makeStock({ id: "s1", code: "0000" });
+    const analyses = [makeAnalysis({ stockId: "s1", analyzedAt: "2026-08-01T00:00:00.000Z" })];
+    const lastEarningsByCode = { "0000": { date: "2026-08-05", announcementType: "1Q", publishStatus: "発表済" } };
+    const result = actionRequiredReasons(stock, analyses, [], lastEarningsByCode, now);
+    expect(result).toEqual([{ kind: "post-earnings", earningsDate: "2026-08-05" }]);
+  });
+
+  it("期限切れのアクションのみ: overdue-action だけを返す", () => {
+    const stock = makeStock({ id: "s1", code: "0000" });
+    const analyses = [makeAnalysis({ stockId: "s1", analyzedAt: now.toISOString() })];
+    const actions = [makeAction({ stockId: "s1", dueDate: "2026-08-01", status: "open" })];
+    const result = actionRequiredReasons(stock, analyses, actions, {}, now);
+    expect(result).toEqual([{ kind: "overdue-action" }]);
+  });
+
+  it("期限間近（期限切れではない）のアクションのみ: action-due-soon だけを返す", () => {
+    const stock = makeStock({ id: "s1", code: "0000" });
+    const analyses = [makeAnalysis({ stockId: "s1", analyzedAt: now.toISOString() })];
+    const due = new Date(now.getTime() + (ACTION_DUE_SOON_DAYS - 1) * 86400000).toISOString();
+    const actions = [makeAction({ stockId: "s1", dueDate: due, status: "open" })];
+    const result = actionRequiredReasons(stock, analyses, actions, {}, now);
+    expect(result).toEqual([{ kind: "action-due-soon" }]);
+  });
+
+  it("未分析＋期限切れの組み合わせ: 両方のバッジを返す", () => {
+    const stock = makeStock({ id: "s1", code: "0000" });
+    const actions = [makeAction({ stockId: "s1", dueDate: "2026-08-01", status: "open" })];
+    const result = actionRequiredReasons(stock, [], actions, {}, now);
+    expect(result).toEqual([{ kind: "unanalyzed" }, { kind: "overdue-action" }]);
+  });
+
+  it("決算またぎ＋期限切れの組み合わせ: 両方のバッジを返す", () => {
+    const stock = makeStock({ id: "s1", code: "0000" });
+    const analyses = [makeAnalysis({ stockId: "s1", analyzedAt: "2026-08-01T00:00:00.000Z" })];
+    const lastEarningsByCode = { "0000": { date: "2026-08-05", announcementType: "1Q", publishStatus: "発表済" } };
+    const actions = [makeAction({ stockId: "s1", dueDate: "2026-08-01", status: "open" })];
+    const result = actionRequiredReasons(stock, analyses, actions, lastEarningsByCode, now);
+    expect(result).toEqual([
+      { kind: "post-earnings", earningsDate: "2026-08-05" },
+      { kind: "overdue-action" },
+    ]);
+  });
+
+  it("未分析と決算またぎは両立しない（分析が0件なら post-earnings 判定自体が成立しないため）", () => {
+    const stock = makeStock({ id: "s1", code: "0000" });
+    const lastEarningsByCode = { "0000": { date: "2026-08-05", announcementType: "1Q", publishStatus: "発表済" } };
+    const result = actionRequiredReasons(stock, [], [], lastEarningsByCode, now);
+    expect(result).toEqual([{ kind: "unanalyzed" }]);
+  });
+
+  it("該当条件が無ければ空配列", () => {
+    const stock = makeStock({ id: "s1", code: "0000" });
+    const analyses = [makeAnalysis({ stockId: "s1", analyzedAt: now.toISOString() })];
+    const result = actionRequiredReasons(stock, analyses, [], {}, now);
+    expect(result).toEqual([]);
+  });
+});
+
 describe("sortActionRequiredStocks", () => {
   it("次回決算日が近い順、未判明は後ろに並べる", () => {
     const stocks = [
@@ -869,6 +843,38 @@ describe("sortActionRequiredStocks", () => {
     const analyses = [makeAnalysis({ stockId: "analyzed", analyzedAt: "2026-01-01T00:00:00.000Z" })];
     const result = sortActionRequiredStocks(stocks, analyses, {});
     expect(result.map((s) => s.id)).toEqual(["unanalyzed", "analyzed"]);
+  });
+
+  it("保有（holding）を、決算日・最終分析日より優先して先頭に並べる", () => {
+    const stocks = [
+      makeStock({ id: "watch-near", code: "1111", category: "watch" }),
+      makeStock({ id: "holding-far", code: "2222", category: "holding" }),
+    ];
+    // watch-near の方が決算が近い・最終分析日も無い（本来なら先頭になる条件）が、
+    // holding-far は保有中なので holding-far が先頭に来るべき。
+    const nextEarningsByCode = {
+      "1111": { date: "2026-08-14", announcementType: "", publishStatus: "" },
+      "2222": { date: "2026-09-01", announcementType: "", publishStatus: "" },
+    };
+    const result = sortActionRequiredStocks(stocks, [], nextEarningsByCode);
+    expect(result.map((s) => s.id)).toEqual(["holding-far", "watch-near"]);
+  });
+
+  it("holding 同士・非holding同士では、それぞれのグループ内で決算日→最終分析日の順を維持する", () => {
+    const stocks = [
+      makeStock({ id: "holding-far", code: "1111", category: "holding" }),
+      makeStock({ id: "holding-near", code: "2222", category: "holding" }),
+      makeStock({ id: "watch-near", code: "3333", category: "watch" }),
+    ];
+    const nextEarningsByCode = {
+      "1111": { date: "2026-09-01", announcementType: "", publishStatus: "" },
+      "2222": { date: "2026-08-14", announcementType: "", publishStatus: "" },
+      "3333": { date: "2026-08-01", announcementType: "", publishStatus: "" },
+    };
+    const result = sortActionRequiredStocks(stocks, [], nextEarningsByCode);
+    // watch-near の決算日が一番近いが、holding グループが先に来た上で
+    // holding グループ内は決算日昇順（holding-near → holding-far）になる。
+    expect(result.map((s) => s.id)).toEqual(["holding-near", "holding-far", "watch-near"]);
   });
 });
 
@@ -938,7 +944,7 @@ describe("extractUnregisteredHoldings", () => {
     ]);
   });
 
-  it("stock_notes_stocks に既にある銘柄は対象外（分析0件でも対象外。computeUnanalyzedHoldingsとの違い）", () => {
+  it("stock_notes_stocks に既にある銘柄は対象外（分析0件でも対象外。分析0件の登録済み銘柄は「要対応」タブ側で扱う）", () => {
     const holdings = [makeHolding({ code: "7203" })];
     const stocks = [makeStock({ code: "7203" })];
     expect(extractUnregisteredHoldings(holdings, stocks)).toEqual([]);

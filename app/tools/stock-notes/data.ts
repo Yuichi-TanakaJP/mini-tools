@@ -205,7 +205,8 @@ export async function fetchOpenActions(supabase: SupabaseClient): Promise<StockN
  * /api/sync の取得失敗を表すエラー。
  * status を持たせ、呼び出し側で 401（未認証・セッション切れ）とそれ以外を区別できるようにする。
  * これを投げずに空配列へフォールバックすると、「保有0件」と「取得失敗」が区別できなくなり、
- * このツールの主目的（保有だが未分析の可視化）が静かに壊れるため、必ず throw する。
+ * このツールの主目的（要対応タブ・一括取り込みバナーでの未分析/未登録の可視化）が
+ * 静かに壊れるため、必ず throw する。
  */
 export class HoldingsFetchError extends Error {
   readonly status: number;

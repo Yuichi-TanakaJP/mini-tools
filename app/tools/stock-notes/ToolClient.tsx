@@ -28,13 +28,12 @@ import { invalidateStockNotesCache, readStockNotesCache, writeStockNotesCache } 
 import { loadDashboardData, type DashboardData } from "./load";
 import { useStockNotesStockMaster } from "./useStockNotesStockMaster";
 import {
+  actionRequiredReasons,
   analysesForStock,
   analysisCountForStock,
   buildAnalysisPrompt,
   buildRevalidateFailureMessage,
   canDeleteStock,
-  computeUnanalyzedHoldings,
-  countHoldingTabItems,
   countStocksForTab,
   createLoadGuard,
   daysSinceSync,
@@ -52,13 +51,13 @@ import {
   selectLatestThesis,
   shouldRefetchAfterBulkImport,
   sortOpenActions,
-  sortUnanalyzedHoldingsByEarnings,
   stocksForTab,
   STOCK_NOTES_TABS,
   SYNC_STALE_DAYS,
   syncStaleness,
   validateNewStockInput,
   withFallback,
+  type ActionRequiredReason,
   type FreshnessLevelV2,
   type StockNotesTab,
   type SyncStaleness,
@@ -503,20 +502,8 @@ export default function ToolClient() {
     };
   }, [supabase, loadData, revalidateData, resetData, applyDashboardData]);
 
-  const unanalyzedHoldingsRaw = useMemo(
-    () => computeUnanalyzedHoldings(holdings, stocks, analyses),
-    [holdings, stocks, analyses],
-  );
-  // 決算が近い順（判明している銘柄を先頭に日付昇順、未判明は後ろにコード順）に並べ替える。
-  const unanalyzedHoldings = useMemo(
-    () => sortUnanalyzedHoldingsByEarnings(unanalyzedHoldingsRaw, earnings?.earnings ?? {}),
-    [unanalyzedHoldingsRaw, earnings],
-  );
   const syncDaysAgo = useMemo(() => daysSinceSync(holdingsUpdatedAt), [holdingsUpdatedAt]);
   const syncState: SyncStaleness = useMemo(() => syncStaleness(holdingsUpdatedAt), [holdingsUpdatedAt]);
-  // holdings.length ではなく tab='holding' の件数で判定する。
-  // ウォッチのみ登録されている場合に「保有銘柄はすべて分析済みです」と誤表示しないため。
-  const holdingTabCount = useMemo(() => countHoldingTabItems(holdings), [holdings]);
   const openActions = useMemo(() => sortOpenActions(actions), [actions]);
   const stockById = useMemo(() => new Map(stocks.map((s) => [s.id, s])), [stocks]);
   const filteredStocks = useMemo(
@@ -838,78 +825,6 @@ export default function ToolClient() {
               )}
             </div>
 
-            {/* 1. 未分析の保有銘柄 */}
-            <section style={{ display: "grid", gap: 10 }}>
-              <h2 style={sectionTitle}>保有だが未分析（{unanalyzedHoldings.length}件）</h2>
-              {holdingTabCount === 0 ? (
-                <p style={emptyText}>
-                  保有銘柄が登録されていません。マイ銘柄リストで保有銘柄を登録すると、ここに未分析の銘柄が表示されます。
-                </p>
-              ) : unanalyzedHoldings.length === 0 ? (
-                <p style={emptyText}>保有銘柄はすべて分析済みです。</p>
-              ) : (
-                <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
-                  {unanalyzedHoldings.map((h) => {
-                    const earningsInfo = earningsDisplay(h.code, earnings);
-                    // 次回決算が未判明のときだけ前回決算を目立たせる（唯一の手がかりになるため）。
-                    const emphasizeLast = !earnings?.earnings[h.code] && !earningsInfo.failed;
-                    const lastText = lastEarningsDisplay(h.code, earnings, emphasizeLast);
-                    return (
-                      <li
-                        key={h.code}
-                        style={{
-                          ...card,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: 10,
-                          flexWrap: "wrap",
-                          borderColor: earningsInfo.soon ? "rgba(220,38,38,0.4)" : "var(--color-border)",
-                        }}
-                      >
-                        <div style={{ display: "grid", gap: 2, minWidth: 0 }}>
-                          <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-                            <span style={{ fontWeight: 900, color: "var(--color-text)", fontSize: 14 }}>
-                              {h.code}
-                            </span>
-                            <span style={{ color: "var(--color-text)", fontSize: 13 }}>{h.name}</span>
-                          </div>
-                          {h.quantity != null && (
-                            <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-                              {h.quantity.toLocaleString("ja-JP")}株
-                            </span>
-                          )}
-                          <span
-                            style={
-                              earningsInfo.soon
-                                ? dangerText
-                                : { fontSize: 11, color: "var(--color-text-muted)" }
-                            }
-                          >
-                            {earningsInfo.text}
-                          </span>
-                          {lastText && (
-                            <span
-                              style={
-                                emphasizeLast
-                                  ? { fontSize: 12, color: "var(--color-accent)", fontWeight: 800 }
-                                  : { fontSize: 11, color: "var(--color-text-muted)" }
-                              }
-                            >
-                              {lastText}
-                            </span>
-                          )}
-                        </div>
-                        <button type="button" onClick={() => copyPrompt(h.code, h.name)} style={subBtn}>
-                          {copiedCode === h.code ? "コピーしました" : "分析用プロンプトをコピー"}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </section>
-
             {/* マイ銘柄リストからの一括取り込みバナー（タブの外）。
                 いきなり書き込まず、対象一覧を確認してから「まとめて登録」する2段階にする。
                 対象一覧は openBulkImport で開いた時点の unregisteredHoldings をスナップショット
@@ -978,7 +893,7 @@ export default function ToolClient() {
               </div>
             )}
 
-            {/* 2. 銘柄一覧（5タブ: 要対応/保有/ウォッチ/新規調査/アーカイブ） */}
+            {/* 1. 銘柄一覧（5タブ: 要対応/保有/ウォッチ/新規調査/アーカイブ） */}
             <section style={{ display: "grid", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                 <h2 style={sectionTitle}>銘柄一覧</h2>
@@ -1091,13 +1006,18 @@ export default function ToolClient() {
                       busy={rowBusyStockId === stock.id}
                       onCategoryChange={(next) => handleCategoryChange(stock, next)}
                       onDelete={() => handleDeleteStock(stock)}
+                      showActionRequiredReasons={categoryTab === "action-required"}
+                      onCopyPrompt={
+                        categoryTab === "action-required" ? () => copyPrompt(stock.code, stock.name) : undefined
+                      }
+                      copied={copiedCode === stock.code}
                     />
                   ))}
                 </ul>
               )}
             </section>
 
-            {/* 3. アクション受信箱 */}
+            {/* 2. アクション受信箱 */}
             <section style={{ display: "grid", gap: 10 }}>
               <h2 style={sectionTitle}>アクション受信箱（{openActions.length}件）</h2>
               {openActions.length === 0 ? (
@@ -1168,6 +1088,53 @@ function FreshnessBadge({
   return <span style={badgeStyle(info.bg, info.fg)}>{label}</span>;
 }
 
+/**
+ * 「要対応」タブの理由バッジの配色。unanalyzed / post-earnings / overdue-action は
+ * FRESHNESS_COLORS の danger と同じ配色（要更新系はすべて赤で統一）、action-due-soon は
+ * warn と同じ配色（まだ期限切れではないが迫っている、という段階の違いを色で表す）。
+ */
+const REASON_BADGE_COLORS: Record<ActionRequiredReason["kind"], { bg: string; fg: string }> = {
+  unanalyzed: { bg: "rgba(220,38,38,0.14)", fg: "#dc2626" },
+  "post-earnings": { bg: "rgba(220,38,38,0.14)", fg: "#dc2626" },
+  "overdue-action": { bg: "rgba(220,38,38,0.14)", fg: "#dc2626" },
+  "action-due-soon": { bg: "rgba(217,119,6,0.14)", fg: "#d97706" },
+};
+
+function reasonBadgeLabel(reason: ActionRequiredReason): string {
+  switch (reason.kind) {
+    case "unanalyzed":
+      return "未分析";
+    case "post-earnings":
+      return `${formatMonthDay(reason.earningsDate)}の決算後`;
+    case "overdue-action":
+      return "期限切れ";
+    case "action-due-soon":
+      return "期限間近";
+  }
+}
+
+/**
+ * 「要対応」タブの行専用の理由バッジ群。なぜこの銘柄が要対応なのかを、該当する条件だけ
+ * 全て並べて示す（未分析／決算後未分析／期限切れ／期限間近は同時に複数該当しうる）。
+ * このタブでは既存の FreshnessBadge の代わりにこちらを表示する（役割の重複を避けるため。
+ * 詳細は decision-log 参照）。
+ */
+function ActionRequiredReasonBadges({ reasons }: { reasons: ActionRequiredReason[] }) {
+  if (reasons.length === 0) return null;
+  return (
+    <>
+      {reasons.map((reason, i) => {
+        const colors = REASON_BADGE_COLORS[reason.kind];
+        return (
+          <span key={`${reason.kind}-${i}`} style={badgeStyle(colors.bg, colors.fg)}>
+            {reasonBadgeLabel(reason)}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
 function StockRow({
   stock,
   analyses,
@@ -1181,6 +1148,9 @@ function StockRow({
   busy,
   onCategoryChange,
   onDelete,
+  showActionRequiredReasons,
+  onCopyPrompt,
+  copied,
 }: {
   stock: StockNoteStock;
   analyses: StockNoteAnalysis[];
@@ -1194,6 +1164,11 @@ function StockRow({
   busy: boolean;
   onCategoryChange: (next: StockNoteCategory) => void;
   onDelete: () => void;
+  /** 「要対応」タブで表示中かどうか。true のとき FreshnessBadge の代わりに理由バッジを出し、
+   *  「分析用プロンプトをコピー」ボタンも行に表示する（この2つは要対応タブ専用）。 */
+  showActionRequiredReasons: boolean;
+  onCopyPrompt?: () => void;
+  copied?: boolean;
 }) {
   const thesis = selectLatestThesis(theses, stock.id);
   const lastAnalyzed = latestAnalyzedAt(analyses, stock.id);
@@ -1201,6 +1176,9 @@ function StockRow({
   // 決算日が未判明の場合は従来どおり経過日数のみで判定する。
   const lastEarningsDate = earnings?.lastEarnings[stock.code]?.date ?? null;
   const level = freshnessLevelWithEarnings(lastAnalyzed, lastEarningsDate);
+  const reasons = showActionRequiredReasons
+    ? actionRequiredReasons(stock, analyses, actions, earnings?.lastEarnings ?? {})
+    : [];
   const analysisCount = analysisCountForStock(analyses, stock.id);
   const openActions = openActionCountForStock(actions, stock.id);
   const timeline = expanded ? analysesForStock(analyses, stock.id) : [];
@@ -1250,7 +1228,11 @@ function StockRow({
           <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
             最終分析 {formatDate(lastAnalyzed)}
           </span>
-          <FreshnessBadge level={level} lastEarningsDate={lastEarningsDate} />
+          {showActionRequiredReasons ? (
+            <ActionRequiredReasonBadges reasons={reasons} />
+          ) : (
+            <FreshnessBadge level={level} lastEarningsDate={lastEarningsDate} />
+          )}
           <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>分析{analysisCount}件</span>
           {openActions > 0 && (
             <span style={badgeStyle("var(--color-accent-sub)", "var(--color-accent)")}>
@@ -1275,6 +1257,17 @@ function StockRow({
           )}
         </div>
       </button>
+
+      {/* 「分析用プロンプトをコピー」は要対応タブの行にのみ表示する（旧・保有だが未分析セクションに
+          あったボタンをここへ移設した）。トグルボタンの中に別のボタンをネストできないため、
+          トグルボタンの外の兄弟要素として配置する。 */}
+      {onCopyPrompt && (
+        <div style={{ marginTop: 8 }}>
+          <button type="button" onClick={onCopyPrompt} style={subBtn}>
+            {copied ? "コピーしました" : "分析用プロンプトをコピー"}
+          </button>
+        </div>
+      )}
 
       {expanded && (
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--color-border)", display: "grid", gap: 12 }}>
