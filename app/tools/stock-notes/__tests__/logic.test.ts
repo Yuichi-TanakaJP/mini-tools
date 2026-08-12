@@ -786,6 +786,18 @@ describe("actionRequiredReasons", () => {
     expect(result).toEqual([{ kind: "action-due-soon" }]);
   });
 
+  it("期限切れと期限間近が別々のアクションとして存在する: 両方のバッジを返す", () => {
+    const stock = makeStock({ id: "s1", code: "0000" });
+    const analyses = [makeAnalysis({ stockId: "s1", analyzedAt: now.toISOString() })];
+    const dueSoon = new Date(now.getTime() + (ACTION_DUE_SOON_DAYS - 1) * 86400000).toISOString();
+    const actions = [
+      makeAction({ stockId: "s1", dueDate: "2026-08-01", status: "open" }),
+      makeAction({ stockId: "s1", dueDate: dueSoon, status: "open" }),
+    ];
+    const result = actionRequiredReasons(stock, analyses, actions, {}, now);
+    expect(result).toEqual([{ kind: "overdue-action" }, { kind: "action-due-soon" }]);
+  });
+
   it("未分析＋期限切れの組み合わせ: 両方のバッジを返す", () => {
     const stock = makeStock({ id: "s1", code: "0000" });
     const actions = [makeAction({ stockId: "s1", dueDate: "2026-08-01", status: "open" })];

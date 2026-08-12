@@ -469,9 +469,16 @@ export function actionRequiredReasons(
     }
   }
   const openDueActions = actions.filter((a) => a.stockId === stock.id && a.status === "open" && a.dueDate);
-  if (openDueActions.some((a) => isOverdue(a.dueDate, now))) {
+  // 「期限切れのアクション」と「期限が近いアクション」は別々に存在しうる（例: 1件は期限超過、
+  // もう1件は3日後）。理由バッジは該当するものをすべて出す方針なので、else if にしない。
+  // ただし hasUrgentOpenAction は期限超過も「期限が近い」に含めるため、期限切れの分を除いて判定する
+  // （1件しか無くそれが期限切れのとき、両方のバッジが出てしまうのを防ぐ）。
+  const overdueActions = openDueActions.filter((a) => isOverdue(a.dueDate, now));
+  const notOverdueActions = openDueActions.filter((a) => !isOverdue(a.dueDate, now));
+  if (overdueActions.length > 0) {
     reasons.push({ kind: "overdue-action" });
-  } else if (hasUrgentOpenAction(openDueActions, now)) {
+  }
+  if (hasUrgentOpenAction(notOverdueActions, now)) {
     reasons.push({ kind: "action-due-soon" });
   }
   return reasons;
