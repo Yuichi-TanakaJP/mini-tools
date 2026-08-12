@@ -19,6 +19,7 @@ import {
   fetchTheses,
   insertStock,
   isDuplicateStockError,
+  isForeignKeyViolationError,
   updateStockCategory,
   type BulkImportResult,
 } from "./data";
@@ -49,6 +50,7 @@ import {
   latestAnalyzedAt,
   openActionCountForStock,
   selectLatestThesis,
+  shouldRefetchAfterBulkImport,
   sortOpenActions,
   sortUnanalyzedHoldingsByEarnings,
   stocksForTab,
@@ -60,6 +62,7 @@ import {
   type FreshnessLevelV2,
   type StockNotesTab,
   type SyncStaleness,
+  type UnregisteredHolding,
 } from "./logic";
 import type {
   StockNoteAction,
@@ -236,6 +239,11 @@ export default function ToolClient() {
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [bulkImportSubmitting, setBulkImportSubmitting] = useState(false);
   const [bulkImportResult, setBulkImportResult] = useState<BulkImportResult | null>(null);
+  // 確認画面を開いた時点の対象一覧のスナップショット。unregisteredHoldings（最新の state）を
+  // そのまま確認・実行対象に使うと、確認を出した後に裏で再取得や保有リスト更新が起きて
+  // 一覧が変わった場合、ユーザーが確認した銘柄と違う銘柄を登録しうる。開いた時点で固定し、
+  // 閉じるまで unregisteredHoldings の変化を反映しない（詳細は decision-log 参照）。
+  const [bulkImportSnapshot, setBulkImportSnapshot] = useState<UnregisteredHolding[]>([]);
 
   // 取得の「世代」を管理するガード。ユーザー切替・ログアウトが連続したときに、
   // 古いリクエストの結果が新しい画面を上書きしないようにする（詳細: logic.ts の createLoadGuard）。
@@ -348,9 +356,18 @@ export default function ToolClient() {
    * 「最新の取得に失敗しました（表示は HH:MM時点）」の案内だけ出す。
    * ただし 401（セッション切れ）は例外: 表示中のデータが無効なセッションのものになるため、
    * ログイン画面へ切り替え、ローカルキャッシュも破棄する。
+   *
+   * authToken（省略可）: 書き込み後の再取得（refetchAfterWrite）専用の認証世代ガード。
+   * 書き込みハンドラが書き込み開始直前に authGuardRef.current.current() で記録した世代を
+   * 渡す。取得が完了した時点でこの世代が古くなっていたら（＝取得中にユーザーが切り替わった）、
+   * state 更新・キャッシュ保存を一切行わずに中止する。DBのINSERT/UPDATE/DELETE自体はRLSが
+   * 別ユーザーの行への書き込みを拒否するため守られているが、ここで中止しないと
+   * 「切替後のセッションで取得したデータを、切替前のユーザーIDのキャッシュキーへ保存する」
+   * というキャッシュのユーザー境界の破れが起きる。通常のマウント時再取得・手動更新ボタンは
+   * authToken を渡さない（呼び出し時点の uid は既に最新であり、この追加ガードは不要）。
    */
   const revalidateData = useCallback(
-    async (uid: string | null, referenceFetchedAt: string | null) => {
+    async (uid: string | null, referenceFetchedAt: string | null, authToken?: number) => {
       if (!supabase) return;
       const token = loadGuardRef.current.next();
       setIsRevalidating(true);
@@ -364,6 +381,13 @@ export default function ToolClient() {
         fetchEarnings,
       });
       if (!loadGuardRef.current.isCurrent(token)) return;
+      if (authToken !== undefined && !authGuardRef.current.isCurrent(authToken)) {
+        // 取得中にユーザーが切り替わった。この結果は別ユーザーのセッションで取得したものなので、
+        // state にもキャッシュにも一切反映しない（isRevalidating は解除しないままにするが、
+        // 新しいユーザーの loadData/startForUser が同期的に false へ倒すため残り続けない。
+        // loadGuardRef の世代不一致時と同じ設計方針）。
+        return;
+      }
       setIsRevalidating(false);
 
       if (result.status === "ok") {
@@ -536,11 +560,17 @@ export default function ToolClient() {
     }
   }
 
-  /** 書き込み成功後に共通で行う後処理: キャッシュ破棄 → 裏で再取得（画面はキャッシュ表示を維持したまま更新）。 */
+  /**
+   * 書き込み成功後に共通で行う後処理: キャッシュ破棄 → 裏で再取得（画面はキャッシュ表示を維持したまま更新）。
+   * authToken は書き込みハンドラが書き込み開始直前に authGuardRef.current.current() で記録した
+   * 認証世代。ここで再確認し、書き込み中にユーザーが切り替わっていたら再取得・キャッシュ破棄ごと
+   * 中止する（詳細は revalidateData の authToken パラメータのコメント参照）。
+   */
   const refetchAfterWrite = useCallback(
-    async (uid: string) => {
+    async (uid: string, authToken: number) => {
+      if (!authGuardRef.current.isCurrent(authToken)) return;
       invalidateStockNotesCache(uid);
-      await revalidateData(uid, dataUpdatedAt);
+      await revalidateData(uid, dataUpdatedAt, authToken);
     },
     [revalidateData, dataUpdatedAt],
   );
@@ -564,6 +594,8 @@ export default function ToolClient() {
       setRegisterError("このコードは既に登録されています。");
       return;
     }
+    // 書き込み開始直前の認証世代を記録する（refetchAfterWrite が完了後に再確認する）。
+    const authToken = authGuardRef.current.current();
     setRegisterSubmitting(true);
     setRegisterError(null);
     try {
@@ -571,7 +603,7 @@ export default function ToolClient() {
       setRegisterCode("");
       setRegisterName("");
       setShowRegisterForm(false);
-      await refetchAfterWrite(userId);
+      await refetchAfterWrite(userId, authToken);
     } catch (e) {
       setRegisterError(
         isDuplicateStockError(e) ? "このコードは既に登録されています。" : e instanceof Error ? e.message : "登録に失敗しました。",
@@ -597,10 +629,11 @@ export default function ToolClient() {
       // 何か入力されていればそれで上書きする。
       if (trimmed !== "") reason = trimmed;
     }
+    const authToken = authGuardRef.current.current();
     setRowBusyStockId(stock.id);
     try {
       await updateStockCategory(supabase, stock.id, nextCategory, reason);
-      await refetchAfterWrite(userId);
+      await refetchAfterWrite(userId, authToken);
     } catch (e) {
       window.alert(`分類の変更に失敗しました${e instanceof Error ? `（${e.message}）` : ""}`);
     } finally {
@@ -608,6 +641,13 @@ export default function ToolClient() {
     }
   }
 
+  /**
+   * 銘柄を削除する。canDeleteStock（logic.ts）はUX上の事前チェックにすぎず、正しさの担保は
+   * DB側の外部キー制約（restrict）にある。事前チェックをすり抜けた場合（表示中のキャッシュが
+   * 古く、実際には分析が増えているのに0件に見えていた等）でもDBが 23503 を返して拒否するため、
+   * ここでそれを検出し、生のPostgRESTエラーではなく「アーカイブしてください」という
+   * 次のアクションが分かる文言に変換する。
+   */
   async function handleDeleteStock(stock: StockNoteStock) {
     if (!supabase || !userId) return;
     if (!canDeleteStock(stock, analyses)) return;
@@ -615,30 +655,55 @@ export default function ToolClient() {
       `${stock.code} ${stock.name} を削除します。この操作は取り消せません。よろしいですか？`,
     );
     if (!confirmed) return;
+    const authToken = authGuardRef.current.current();
     setRowBusyStockId(stock.id);
     try {
       await deleteStockById(supabase, stock.id);
-      await refetchAfterWrite(userId);
+      await refetchAfterWrite(userId, authToken);
     } catch (e) {
-      window.alert(`削除に失敗しました${e instanceof Error ? `（${e.message}）` : ""}`);
+      const message = isForeignKeyViolationError(e)
+        ? "この銘柄には分析が残っているため削除できません。アーカイブしてください。"
+        : `削除に失敗しました${e instanceof Error ? `（${e.message}）` : ""}`;
+      window.alert(message);
     } finally {
       setRowBusyStockId(null);
     }
   }
 
+  /**
+   * 一括取り込みの確認画面を開く。この時点の unregisteredHoldings をスナップショットとして
+   * 固定する（開いた後に一覧が変わっても、ユーザーが確認した対象のまま登録するため）。
+   */
+  function openBulkImport() {
+    setBulkImportSnapshot(unregisteredHoldings);
+    setBulkImportResult(null);
+    setShowBulkImport(true);
+  }
+
+  /** 確認画面を閉じる。次回開いたときに古い結果・スナップショットが残らないようクリアする。 */
+  function closeBulkImport() {
+    setShowBulkImport(false);
+    setBulkImportSnapshot([]);
+    setBulkImportResult(null);
+  }
+
   async function runBulkImport() {
-    if (!supabase || !userId || unregisteredHoldings.length === 0) return;
+    if (!supabase || !userId || bulkImportSnapshot.length === 0) return;
+    const authToken = authGuardRef.current.current();
     setBulkImportSubmitting(true);
     setBulkImportResult(null);
     try {
       const result = await bulkInsertHoldingsAsStocks(
         supabase,
         userId,
-        unregisteredHoldings.map((h) => ({ code: h.code, name: h.name })),
+        bulkImportSnapshot.map((h) => ({ code: h.code, name: h.name })),
       );
       setBulkImportResult(result);
-      if (result.succeeded.length > 0) {
-        await refetchAfterWrite(userId);
+      // 成功が1件以上のときはもちろん、成功0件でも重複（23505、別タブ等で先に登録済み）だけで
+      // 終わった場合も再取得する。DBには既に反映されているのに古いキャッシュの「未登録」表示が
+      // 残ってしまうため（shouldRefetchAfterBulkImport、logic.ts）。
+      if (shouldRefetchAfterBulkImport(result)) {
+        await refetchAfterWrite(userId, authToken);
       }
     } finally {
       setBulkImportSubmitting(false);
@@ -846,21 +911,34 @@ export default function ToolClient() {
             </section>
 
             {/* マイ銘柄リストからの一括取り込みバナー（タブの外）。
-                いきなり書き込まず、対象一覧を確認してから「まとめて登録」する2段階にする。 */}
-            {unregisteredHoldings.length > 0 && (
+                いきなり書き込まず、対象一覧を確認してから「まとめて登録」する2段階にする。
+                対象一覧は openBulkImport で開いた時点の unregisteredHoldings をスナップショット
+                固定したもの（bulkImportSnapshot）を表示・登録に使う。開いた後に裏の再取得等で
+                unregisteredHoldings が変わっても、ユーザーが確認した対象のまま登録するため。
+                表示条件は unregisteredHoldings.length>0 だけでなく bulkImportResult の有無も見る:
+                全件成功すると unregisteredHoldings は即座に0件になるが、そこでバナーごと消すと
+                「実行したのに何も起きなかった」ように見えてしまうため、結果が残っている間は
+                バナー自体を表示し続け、閉じるまで成功件数を確認できるようにする。 */}
+            {(unregisteredHoldings.length > 0 || bulkImportResult !== null) && (
               <div style={{ ...card, borderColor: "var(--color-accent)" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                   <p style={{ margin: 0, fontSize: 13, color: "var(--color-text)", lineHeight: 1.6 }}>
-                    マイ銘柄リストに未登録の保有が{unregisteredHoldings.length}件あります。
+                    {unregisteredHoldings.length > 0
+                      ? `マイ銘柄リストに未登録の保有が${unregisteredHoldings.length}件あります。`
+                      : "一括登録が完了しました。"}
                   </p>
-                  <button type="button" onClick={() => setShowBulkImport((v) => !v)} style={subBtn}>
+                  <button
+                    type="button"
+                    onClick={() => (showBulkImport ? closeBulkImport() : openBulkImport())}
+                    style={subBtn}
+                  >
                     {showBulkImport ? "閉じる" : "まとめて登録"}
                   </button>
                 </div>
                 {showBulkImport && (
                   <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
                     <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 4 }}>
-                      {unregisteredHoldings.map((h) => (
+                      {bulkImportSnapshot.map((h) => (
                         <li key={h.code} style={{ fontSize: 12, color: "var(--color-text-sub)" }}>
                           {h.code} {h.name}
                           {h.quantity != null && `（${h.quantity.toLocaleString("ja-JP")}株）`}
@@ -870,10 +948,16 @@ export default function ToolClient() {
                     <button
                       type="button"
                       onClick={runBulkImport}
-                      disabled={bulkImportSubmitting}
-                      style={{ ...primaryBtn, opacity: bulkImportSubmitting ? 0.6 : 1, width: "fit-content" }}
+                      disabled={bulkImportSubmitting || bulkImportResult !== null}
+                      style={{
+                        ...primaryBtn,
+                        opacity: bulkImportSubmitting || bulkImportResult !== null ? 0.6 : 1,
+                        width: "fit-content",
+                      }}
                     >
-                      {bulkImportSubmitting ? "登録中…" : `${unregisteredHoldings.length}件を「保有」としてまとめて登録`}
+                      {bulkImportSubmitting
+                        ? "登録中…"
+                        : `${bulkImportSnapshot.length}件を「保有」としてまとめて登録`}
                     </button>
                     {bulkImportResult && (
                       <div style={{ display: "grid", gap: 2 }}>

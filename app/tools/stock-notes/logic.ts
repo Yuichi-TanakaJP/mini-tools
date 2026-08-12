@@ -416,6 +416,16 @@ export function createLoadGuard() {
       token += 1;
       return token;
     },
+    /**
+     * 現在のトークンを、世代を進めずに読む（peek）。
+     * 書き込み処理（登録・分類変更・削除・一括取り込み）が開始時点の認証世代を
+     * 記録しておき、書き込み完了後にユーザーが切り替わっていないかを確認する用途で使う
+     * （ToolClient.tsx の authGuardRef）。next() だと呼ぶだけで世代が進んでしまい
+     * 「開始時点の世代を記録する」という目的に合わないため、副作用の無い読み取りを別に用意した。
+     */
+    current(): number {
+      return token;
+    },
     isCurrent(candidate: number): boolean {
       return candidate === token;
     },
@@ -596,9 +606,21 @@ export function validateNewStockInput(code: string, name: string): string | null
 }
 
 /**
- * 分析が1件でもある銘柄は削除させない（on delete cascade で分析・見立て・アクションが
- * 全部消えるため）。削除できるのは分析0件の銘柄だけ。アーカイブが基本、削除は例外という
- * 位置づけの根拠。詳細は decision-log 参照。
+ * 分析が1件でもある銘柄は削除ボタンを無効化する。
+ *
+ * 正しさの担保はDB側にある: stock_notes_stocks -> stock_notes_analyses /
+ * stock_notes_theses の外部キーは restrict（stock-notes#15 で cascade から変更済み、
+ * 本番適用・実地検証済み）になっており、分析が残っている銘柄の削除はDBが確実に拒否する
+ * （PostgREST は 23503 を返す。data.ts の isForeignKeyViolationError で判定し、
+ * ユーザーに分かりやすいメッセージへ変換する）。
+ *
+ * この関数（クライアント側の事前チェック）は、あくまで「押す前に理由を伝える」ための
+ * UXでしかない。このダッシュボードは stale-while-revalidate（キャッシュを即座に表示し、
+ * 裏で再取得する）設計のため、画面に表示中の analyses が実際のDBより古い可能性がある
+ * （例: 別タブ・カスタムGPTで直近に分析が追加された）。その場合ここでは
+ * analysisCount === 0 に見えて削除ボタンが押せてしまうが、実際の削除は必ずDBの
+ * restrict制約に阻まれる。つまりこの関数だけでは分析の消失を防げず、単独ではデータ保護に
+ * ならない（保護しているのはあくまでDB側の制約）。
  */
 export function canDeleteStock(stock: StockNoteStock, analyses: StockNoteAnalysis[]): boolean {
   return analysisCountForStock(analyses, stock.id) === 0;
@@ -609,4 +631,18 @@ export function deleteBlockedReason(stock: StockNoteStock, analyses: StockNoteAn
   const count = analysisCountForStock(analyses, stock.id);
   if (count === 0) return null;
   return `分析${count}件が連鎖削除されるため削除できません。アーカイブしてください。`;
+}
+
+/**
+ * 一括取り込み後に再取得すべきかどうかを判定する。
+ * 成功が1件以上ある場合はもちろん再取得するが、成功が0件でも「重複（23505、他タブ等で
+ * 先に登録済みだった）」で終わった失敗が1件でもあれば再取得する。DBには既に登録済みで
+ * あるにもかかわらず、再取得しないと古いキャッシュの「未登録」表示が残ってしまうため。
+ * ネットワーク不調等の非重複エラーだけで全滅した場合はDB側に変化が無いため再取得しない。
+ */
+export function shouldRefetchAfterBulkImport(result: {
+  succeeded: string[];
+  failed: { duplicate: boolean }[];
+}): boolean {
+  return result.succeeded.length > 0 || result.failed.some((f) => f.duplicate);
 }

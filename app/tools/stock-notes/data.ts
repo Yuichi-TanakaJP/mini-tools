@@ -392,9 +392,33 @@ export async function updateStockCategory(
 }
 
 /**
- * 銘柄を削除する。呼び出し側は必ず事前に canDeleteStock（logic.ts、分析0件のみ許可）で
- * 判定してからこの関数を呼ぶこと。スキーマは on delete cascade のため、分析が1件でもある
- * 銘柄を削除すると分析・見立て・アクションが全部消える（このツールでは絶対に避ける）。
+ * Supabase（PostgREST）のエラーが「外部キー制約違反」を示しているかどうかを判定する。
+ *
+ * stock_notes_stocks -> stock_notes_analyses / stock_notes_theses の外部キーは
+ * restrict（stock-notes#15 で cascade から変更済み、本番適用・実地検証済み）になっており、
+ * 分析・見立てが残っている銘柄を削除しようとすると、DBが確実に削除を拒否する
+ * （クライアント側の事前チェック canDeleteStock は「押す前に理由を伝える」ためのUXでしか
+ * なく、正しさの担保はこのDB制約にある。詳細は logic.ts の canDeleteStock のコメント参照）。
+ * このとき生のPostgRESTエラー（例: "update or delete on table \"stock_notes_stocks\"
+ * violates foreign key constraint ..."）をそのまま見せず、利用者が次に何をすればよいか
+ * 分かる文言（「アーカイブしてください」）に変換するために使う。
+ * PostgreSQL の外部キー制約違反は SQLSTATE 23503。`code` が欠落する環境への保険として、
+ * message に "foreign key constraint" を含む場合もフォールバックで拾う
+ * （isDuplicateStockError / isSessionExpiredSupabaseError と同じ方針）。
+ */
+export function isForeignKeyViolationError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const err = error as { code?: unknown; message?: unknown };
+  if (err.code === "23503") return true;
+  return typeof err.message === "string" && /foreign key constraint/i.test(err.message);
+}
+
+/**
+ * 銘柄を削除する。呼び出し側は事前に canDeleteStock（logic.ts、分析0件のみ許可）で
+ * 判定してからこの関数を呼ぶことでUX上の無駄な失敗を避けるが、それはあくまで事前案内であり、
+ * 実際の安全性はDB側の外部キー制約（restrict）が担保する。分析が残っている銘柄を削除しようと
+ * すると、事前チェックをすり抜けた場合（キャッシュが古い等）でもDBが 23503 を返して拒否する。
+ * 呼び出し側は isForeignKeyViolationError でこれを判定し、利用者に分かりやすいメッセージを出すこと。
  */
 export async function deleteStockById(supabase: SupabaseClient, stockId: string): Promise<void> {
   const { error } = await supabase.from("stock_notes_stocks").delete().eq("id", stockId);
@@ -403,7 +427,7 @@ export async function deleteStockById(supabase: SupabaseClient, stockId: string)
 
 export type BulkImportResult = {
   succeeded: string[];
-  failed: { code: string; name: string; message: string }[];
+  failed: { code: string; name: string; message: string; duplicate: boolean }[];
 };
 
 /**
@@ -423,10 +447,12 @@ export async function bulkInsertHoldingsAsStocks(
       await insertStock(supabase, userId, { code: h.code, name: h.name, category: "holding" });
       succeeded.push(h.code);
     } catch (e) {
+      const duplicate = isDuplicateStockError(e);
       failed.push({
         code: h.code,
         name: h.name,
-        message: isDuplicateStockError(e) ? "既に登録されています" : e instanceof Error ? e.message : String(e),
+        message: duplicate ? "既に登録されています" : e instanceof Error ? e.message : String(e),
+        duplicate,
       });
     }
   }

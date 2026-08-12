@@ -8,6 +8,7 @@ import {
   fetchHoldings,
   insertStock,
   isDuplicateStockError,
+  isForeignKeyViolationError,
   isSessionExpiredSupabaseError,
   normalizeLastEarnings,
   updateStockCategory,
@@ -268,6 +269,31 @@ describe("isDuplicateStockError", () => {
   });
 });
 
+describe("isForeignKeyViolationError", () => {
+  it("code が 23503（外部キー制約違反）なら true（分析が残る銘柄の削除をDBが拒否したケース）", () => {
+    expect(
+      isForeignKeyViolationError({
+        code: "23503",
+        message: 'update or delete on table "stock_notes_stocks" violates foreign key constraint',
+      }),
+    ).toBe(true);
+  });
+
+  it("code が無くても message に foreign key constraint が含まれれば true", () => {
+    expect(isForeignKeyViolationError({ message: "violates foreign key constraint" })).toBe(true);
+  });
+
+  it("他のエラーコードは false", () => {
+    expect(isForeignKeyViolationError({ code: "23505", message: "duplicate key value" })).toBe(false);
+    expect(isForeignKeyViolationError({ code: "42501", message: "permission denied" })).toBe(false);
+  });
+
+  it("エラーではない値は false", () => {
+    expect(isForeignKeyViolationError(null)).toBe(false);
+    expect(isForeignKeyViolationError(undefined)).toBe(false);
+  });
+});
+
 describe("insertStock", () => {
   it("user_id・code・name・category・category_changed_at を付けて insert し、camelCase化して返す", async () => {
     let capturedTable = "";
@@ -390,7 +416,19 @@ describe("bulkInsertHoldingsAsStocks", () => {
 
     expect(callCount).toBe(2);
     expect(result.succeeded).toEqual(["7203"]);
-    expect(result.failed).toEqual([{ code: "9999", name: "重複銘柄", message: "既に登録されています" }]);
+    expect(result.failed).toEqual([
+      { code: "9999", name: "重複銘柄", message: "既に登録されています", duplicate: true },
+    ]);
+  });
+
+  it("重複以外の失敗は duplicate:false で報告する（再取得要否の判定 shouldRefetchAfterBulkImport で使う）", async () => {
+    const supabase = makeSupabaseMock({
+      insert: () => ({ data: null, error: new Error("permission denied") }),
+    });
+    const result = await bulkInsertHoldingsAsStocks(supabase, "user-1", [{ code: "7203", name: "トヨタ自動車" }]);
+    expect(result.failed).toEqual([
+      { code: "7203", name: "トヨタ自動車", message: "permission denied", duplicate: false },
+    ]);
   });
 
   it("全銘柄を category='holding' で登録する", async () => {

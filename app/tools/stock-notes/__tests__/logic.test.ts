@@ -33,6 +33,7 @@ import {
   lastEarningsDisplay,
   latestAnalyzedAt,
   selectLatestThesis,
+  shouldRefetchAfterBulkImport,
   sortActionRequiredStocks,
   sortOpenActions,
   sortStocksByLastAnalyzedAsc,
@@ -618,6 +619,16 @@ describe("createLoadGuard", () => {
     expect(guard.isCurrent(token)).toBe(true);
     expect(guard.isCurrent(token)).toBe(true);
   });
+
+  it("current() は世代を進めずに現在のトークンを読める（peek）", () => {
+    const guard = createLoadGuard();
+    expect(guard.current()).toBe(0);
+    const token1 = guard.next();
+    expect(guard.current()).toBe(token1);
+    // current() を何度呼んでも世代は変わらない
+    expect(guard.current()).toBe(token1);
+    expect(guard.isCurrent(token1)).toBe(true);
+  });
 });
 
 describe("formatClockTime", () => {
@@ -705,6 +716,58 @@ describe("createLoadGuard（stock-notes での回帰シナリオ）", () => {
     const loadToken = loadGuard.next();
     expect(loadGuard.isCurrent(revalidateToken)).toBe(false);
     expect(loadGuard.isCurrent(loadToken)).toBe(true);
+  });
+
+  it("シナリオ3: 書き込み（登録・分類変更・削除・一括取り込み）の開始時に current() で記録した世代は、完了前にユーザーが切り替わると古い扱いになる（refetchAfterWrite が中止すべきケース）", () => {
+    // ToolClient.tsx の書き込みハンドラは、書き込みを開始する直前に
+    // authGuardRef.current.current() で「今の認証世代」を記録し、書き込み（例: insertStock）が
+    // 完了した後に isCurrent(authToken) を確認してから再取得・キャッシュ保存を行う。
+    // ここでは「書き込み中にユーザーが切り替わった」状況を再現し、記録した世代が
+    // 古い扱いになる（＝再取得・キャッシュ保存を中止すべき）ことを確認する。
+    const authGuard = createLoadGuard();
+    // ユーザーAでログイン中。書き込み開始直前に世代を記録する。
+    const authTokenAtWriteStart = authGuard.current();
+    // 書き込み（await insertStock 等）が完了するまでの間に、ユーザーBへ切り替わった
+    // （onAuthStateChange が発火し、世代が進む）。
+    authGuard.next();
+    // 書き込み自体はDBのRLSにより拒否される想定だが（このガードの担当範囲外）、
+    // 仮に書き込みが成立していたとしても、この古い世代のままキャッシュへ保存してはいけない。
+    expect(authGuard.isCurrent(authTokenAtWriteStart)).toBe(false);
+  });
+
+  it("シナリオ3逆順: 書き込み完了までユーザーが切り替わらなければ、記録した世代のまま再取得・キャッシュ保存してよい", () => {
+    const authGuard = createLoadGuard();
+    const authTokenAtWriteStart = authGuard.current();
+    // 切替は起きない
+    expect(authGuard.isCurrent(authTokenAtWriteStart)).toBe(true);
+  });
+});
+
+describe("shouldRefetchAfterBulkImport", () => {
+  it("成功が1件以上あれば再取得する", () => {
+    expect(shouldRefetchAfterBulkImport({ succeeded: ["7203"], failed: [] })).toBe(true);
+  });
+
+  it("成功0件でも重複（duplicate:true）の失敗があれば再取得する（別タブで先に登録済みだったケース）", () => {
+    expect(
+      shouldRefetchAfterBulkImport({
+        succeeded: [],
+        failed: [{ duplicate: true }],
+      }),
+    ).toBe(true);
+  });
+
+  it("成功0件かつ重複でない失敗のみなら再取得しない（DB側に変化が無いため）", () => {
+    expect(
+      shouldRefetchAfterBulkImport({
+        succeeded: [],
+        failed: [{ duplicate: false }],
+      }),
+    ).toBe(false);
+  });
+
+  it("成功も失敗も無ければ再取得しない", () => {
+    expect(shouldRefetchAfterBulkImport({ succeeded: [], failed: [] })).toBe(false);
   });
 });
 
