@@ -75,43 +75,6 @@ export function freshnessLevelWithEarnings(
   return dayLevel;
 }
 
-export type UnanalyzedHolding = {
-  code: string;
-  name: string;
-  quantity: number | null;
-};
-
-/**
- * 保有銘柄（my-stocks の tab='holding'）のうち、
- * stock_notes_stocks に存在しない、または分析が0件の銘柄を抽出する。
- * 同一銘柄が複数口座で保有されている場合は1件に集約する。
- */
-export function computeUnanalyzedHoldings(
-  holdings: MyStockItem[],
-  stocks: StockNoteStock[],
-  analyses: StockNoteAnalysis[],
-): UnanalyzedHolding[] {
-  const stockByCode = new Map(stocks.map((s) => [s.code, s]));
-  const analysisCountByStockId = new Map<string, number>();
-  for (const a of analyses) {
-    analysisCountByStockId.set(a.stockId, (analysisCountByStockId.get(a.stockId) ?? 0) + 1);
-  }
-
-  const seen = new Set<string>();
-  const result: UnanalyzedHolding[] = [];
-  for (const h of holdings) {
-    if (h.tab !== "holding") continue;
-    if (seen.has(h.code)) continue;
-    seen.add(h.code);
-    const stock = stockByCode.get(h.code);
-    const hasAnalysis = stock ? (analysisCountByStockId.get(stock.id) ?? 0) > 0 : false;
-    if (!stock || !hasAnalysis) {
-      result.push({ code: h.code, name: h.name, quantity: h.quantity ?? null });
-    }
-  }
-  return result.sort((a, b) => a.code.localeCompare(b.code));
-}
-
 /** ChatGPT カスタムGPTへ貼るための短い分析プロンプト文を組み立てる。 */
 export function buildAnalysisPrompt(code: string, name: string): string {
   return `${code} ${name}について、直近の決算と現在の投資判断を整理して`;
@@ -183,28 +146,6 @@ export function isOverdue(dueDate: string | null, now: Date = new Date()): boole
   if (!dueDate) return false;
   const due = new Date(dueDate).getTime();
   return Number.isFinite(due) && due < now.getTime();
-}
-
-/**
- * 未分析の保有銘柄を「決算が近い順」に並べ替える。
- * 決算日が判明している銘柄を先頭に日付昇順、判明していない銘柄はその後ろにコード順で並べる。
- * @param earningsByCode 銘柄コード -> 次回決算日（YYYY-MM-DD）。判明していない銘柄はキーが無い。
- */
-export function sortUnanalyzedHoldingsByEarnings(
-  holdings: UnanalyzedHolding[],
-  earningsByCode: Record<string, { date: string }>,
-): UnanalyzedHolding[] {
-  return holdings.slice().sort((a, b) => {
-    const dateA = earningsByCode[a.code]?.date ?? null;
-    const dateB = earningsByCode[b.code]?.date ?? null;
-    if (dateA && dateB) {
-      if (dateA !== dateB) return dateA < dateB ? -1 : 1;
-      return a.code.localeCompare(b.code);
-    }
-    if (dateA && !dateB) return -1;
-    if (!dateA && dateB) return 1;
-    return a.code.localeCompare(b.code);
-  });
 }
 
 /**
@@ -353,11 +294,6 @@ export function daysSinceSync(updatedAt: string | null | undefined, now: Date = 
   return Math.max(days, 0);
 }
 
-/** tab='holding' の件数。空状態の判定に使う（ウォッチのみ登録時に「保有はすべて分析済み」と誤表示しないため）。 */
-export function countHoldingTabItems(holdings: MyStockItem[]): number {
-  return holdings.reduce((count, h) => (h.tab === "holding" ? count + 1 : count), 0);
-}
-
 /**
  * Record からキーで値を引くとき、キーが存在しなければ既定値にフォールバックする。
  *
@@ -496,6 +432,58 @@ export function computeActionRequiredStocks(
   });
 }
 
+/**
+ * 「要対応」タブの行に表示する理由バッジ。複数該当すれば全て返す。
+ * - unanalyzed: 分析0件（決算またぎ判定は分析が無いと成立しないため、この場合は post-earnings とは
+ *   同時に出ない。実データでも両立しない想定: 決算またぎは「最終分析日」の存在が前提のため）
+ * - post-earnings: 最終分析日より後に決算があった（決算またぎ）。ラベルに決算日を入れるため
+ *   earningsDate を持たせる
+ * - overdue-action: 未消化アクションのうち、期限が既に過ぎているものが1件以上ある
+ * - action-due-soon: 未消化アクションのうち、期限切れではないが ACTION_DUE_SOON_DAYS 以内に迫って
+ *   いるものが1件以上ある（hasUrgentOpenAction は期限切れ・期限間近の両方を1つの真偽値にまとめて
+ *   いるが、バッジでは「何が迫っているか」を区別して伝えたいため、ここで overdue と due-soon に
+ *   分けて判定する。要対応タブへの採用条件自体は従来どおり hasUrgentOpenAction 相当のまま変えない）
+ */
+export type ActionRequiredReason =
+  | { kind: "unanalyzed" }
+  | { kind: "post-earnings"; earningsDate: string }
+  | { kind: "overdue-action" }
+  | { kind: "action-due-soon" };
+
+export function actionRequiredReasons(
+  stock: StockNoteStock,
+  analyses: StockNoteAnalysis[],
+  actions: StockNoteAction[],
+  lastEarningsByCode: Record<string, EarningsFoldEntry>,
+  now: Date = new Date(),
+): ActionRequiredReason[] {
+  const reasons: ActionRequiredReason[] = [];
+  const count = analysisCountForStock(analyses, stock.id);
+  if (count === 0) {
+    reasons.push({ kind: "unanalyzed" });
+  } else {
+    const lastAnalyzed = latestAnalyzedAt(analyses, stock.id);
+    const lastEarningsDate = lastEarningsByCode[stock.code]?.date ?? null;
+    if (lastEarningsDate && freshnessLevelWithEarnings(lastAnalyzed, lastEarningsDate, now) === "post-earnings") {
+      reasons.push({ kind: "post-earnings", earningsDate: lastEarningsDate });
+    }
+  }
+  const openDueActions = actions.filter((a) => a.stockId === stock.id && a.status === "open" && a.dueDate);
+  // 「期限切れのアクション」と「期限が近いアクション」は別々に存在しうる（例: 1件は期限超過、
+  // もう1件は3日後）。理由バッジは該当するものをすべて出す方針なので、else if にしない。
+  // ただし hasUrgentOpenAction は期限超過も「期限が近い」に含めるため、期限切れの分を除いて判定する
+  // （1件しか無くそれが期限切れのとき、両方のバッジが出てしまうのを防ぐ）。
+  const overdueActions = openDueActions.filter((a) => isOverdue(a.dueDate, now));
+  const notOverdueActions = openDueActions.filter((a) => !isOverdue(a.dueDate, now));
+  if (overdueActions.length > 0) {
+    reasons.push({ kind: "overdue-action" });
+  }
+  if (hasUrgentOpenAction(notOverdueActions, now)) {
+    reasons.push({ kind: "action-due-soon" });
+  }
+  return reasons;
+}
+
 /** 最終分析日の古い順（未分析=nullが最上位）に並べる比較関数。 */
 function compareLastAnalyzedAsc(a: string | null, b: string | null): number {
   if (!a && !b) return 0;
@@ -504,13 +492,21 @@ function compareLastAnalyzedAsc(a: string | null, b: string | null): number {
   return new Date(a).getTime() - new Date(b).getTime();
 }
 
-/** 「要対応」タブの並び順: 次回決算日が近い順（未判明は後ろ）→最終分析日の古い順。 */
+/**
+ * 「要対応」タブの並び順: 保有中の銘柄を先頭に → 次回決算日が近い順（未判明は後ろ）
+ * → 最終分析日の古い順（未分析が最上位）。
+ * 保有銘柄は実際の建玉（capital at risk）があり、ウォッチ・新規調査より確認の優先度が高いため、
+ * 決算日・鮮度より先に holding かどうかで並べ替える。詳細: decision-log。
+ */
 export function sortActionRequiredStocks(
   stocks: StockNoteStock[],
   analyses: StockNoteAnalysis[],
   nextEarningsByCode: Record<string, EarningsFoldEntry>,
 ): StockNoteStock[] {
   return stocks.slice().sort((a, b) => {
+    const holdingRankA = a.category === "holding" ? 0 : 1;
+    const holdingRankB = b.category === "holding" ? 0 : 1;
+    if (holdingRankA !== holdingRankB) return holdingRankA - holdingRankB;
     const dateA = nextEarningsByCode[a.code]?.date ?? null;
     const dateB = nextEarningsByCode[b.code]?.date ?? null;
     if (dateA && dateB && dateA !== dateB) return dateA < dateB ? -1 : 1;
@@ -567,8 +563,9 @@ export type UnregisteredHolding = { code: string; name: string; quantity: number
 /**
  * マイ銘柄リストの保有銘柄（tab='holding'）のうち、stock_notes_stocks に未登録のものを抽出する。
  * 一括取り込みバナー（「マイ銘柄リストに未登録の保有が N 件あります」）の対象を求めるために使う。
- * computeUnanalyzedHoldings（分析0件も含む・銘柄登録の有無を問わない）とは異なり、
- * こちらは「stock_notes_stocks に行そのものが無い」ものだけを対象にする。
+ * 「stock_notes_stocks に行そのものが無い」ものだけを対象にする（登録済みだが分析0件の銘柄は
+ * 「要対応」タブ（computeActionRequiredStocks）側で扱うため、ここでは対象にしない。
+ * 詳細: docs/decision-log/2026-08-11-stock-notes-dashboard-design.md）。
  */
 export function extractUnregisteredHoldings(
   holdings: MyStockItem[],
