@@ -1,10 +1,11 @@
 // app/tools/stock-notes/logic.ts
 // 画面の外側で独立してテストできる純関数群（window / Supabase 非依存）。
 import type { MyStockItem } from "@/app/tools/my-stocks/types";
-import type { StockNotesEarningsInfo } from "./earnings-types";
+import type { EarningsFoldEntry, StockNotesEarningsInfo } from "./earnings-types";
 import type {
   StockNoteAction,
   StockNoteAnalysis,
+  StockNoteCategory,
   StockNoteStock,
   StockNoteThesis,
 } from "./types";
@@ -415,6 +416,16 @@ export function createLoadGuard() {
       token += 1;
       return token;
     },
+    /**
+     * 現在のトークンを、世代を進めずに読む（peek）。
+     * 書き込み処理（登録・分類変更・削除・一括取り込み）が開始時点の認証世代を
+     * 記録しておき、書き込み完了後にユーザーが切り替わっていないかを確認する用途で使う
+     * （ToolClient.tsx の authGuardRef）。next() だと呼ぶだけで世代が進んでしまい
+     * 「開始時点の世代を記録する」という目的に合わないため、副作用の無い読み取りを別に用意した。
+     */
+    current(): number {
+      return token;
+    },
     isCurrent(candidate: number): boolean {
       return candidate === token;
     },
@@ -425,3 +436,213 @@ export function createLoadGuard() {
 }
 
 export type LoadGuard = ReturnType<typeof createLoadGuard>;
+
+// ---------------------------------------------------------------------------
+// 5タブ構成（要対応 / 保有 / ウォッチ / 新規調査 / アーカイブ）・登録・分類変更・削除・
+// 一括取り込みのための純関数群。
+// 「書き込み可」への方針変更の経緯・タブ構成の意図は decision-log を参照。
+// ---------------------------------------------------------------------------
+
+export type StockNotesTab = "action-required" | StockNoteCategory;
+
+export const STOCK_NOTES_TABS: readonly StockNotesTab[] = [
+  "action-required",
+  "holding",
+  "watch",
+  "research",
+  "archived",
+];
+
+/**
+ * 未消化アクションの期限が「間近」とみなす日数。0（当日）〜この日数以内、または
+ * 既に期限切れなら「要対応」に含める。
+ */
+export const ACTION_DUE_SOON_DAYS = 7;
+
+/** 指定銘柄の open アクションのうち、期限切れ・期限間近（ACTION_DUE_SOON_DAYS以内）のものがあるか。 */
+export function hasUrgentOpenAction(stockActions: StockNoteAction[], now: Date = new Date()): boolean {
+  return stockActions.some((a) => {
+    if (a.status !== "open" || !a.dueDate) return false;
+    const due = new Date(a.dueDate).getTime();
+    if (!Number.isFinite(due)) return false;
+    const days = (due - now.getTime()) / (1000 * 60 * 60 * 24);
+    return days <= ACTION_DUE_SOON_DAYS;
+  });
+}
+
+/**
+ * 「要対応」タブの対象銘柄を判定する。アーカイブは対象外。
+ * 次のいずれかに該当する銘柄を対象にする:
+ * - 分析0件
+ * - 最終分析日より後に決算があった（決算またぎ、freshnessLevelWithEarnings が post-earnings）
+ * - 期限切れ・期限間近（ACTION_DUE_SOON_DAYS以内）の未消化アクションがある
+ */
+export function computeActionRequiredStocks(
+  stocks: StockNoteStock[],
+  analyses: StockNoteAnalysis[],
+  actions: StockNoteAction[],
+  lastEarningsByCode: Record<string, EarningsFoldEntry>,
+  now: Date = new Date(),
+): StockNoteStock[] {
+  return stocks.filter((s) => {
+    if (s.category === "archived") return false;
+    const count = analysisCountForStock(analyses, s.id);
+    if (count === 0) return true;
+    const lastAnalyzed = latestAnalyzedAt(analyses, s.id);
+    const lastEarningsDate = lastEarningsByCode[s.code]?.date ?? null;
+    if (freshnessLevelWithEarnings(lastAnalyzed, lastEarningsDate, now) === "post-earnings") return true;
+    const stockActions = actions.filter((a) => a.stockId === s.id);
+    return hasUrgentOpenAction(stockActions, now);
+  });
+}
+
+/** 最終分析日の古い順（未分析=nullが最上位）に並べる比較関数。 */
+function compareLastAnalyzedAsc(a: string | null, b: string | null): number {
+  if (!a && !b) return 0;
+  if (!a) return -1;
+  if (!b) return 1;
+  return new Date(a).getTime() - new Date(b).getTime();
+}
+
+/** 「要対応」タブの並び順: 次回決算日が近い順（未判明は後ろ）→最終分析日の古い順。 */
+export function sortActionRequiredStocks(
+  stocks: StockNoteStock[],
+  analyses: StockNoteAnalysis[],
+  nextEarningsByCode: Record<string, EarningsFoldEntry>,
+): StockNoteStock[] {
+  return stocks.slice().sort((a, b) => {
+    const dateA = nextEarningsByCode[a.code]?.date ?? null;
+    const dateB = nextEarningsByCode[b.code]?.date ?? null;
+    if (dateA && dateB && dateA !== dateB) return dateA < dateB ? -1 : 1;
+    if (dateA && !dateB) return -1;
+    if (!dateA && dateB) return 1;
+    return compareLastAnalyzedAsc(latestAnalyzedAt(analyses, a.id), latestAnalyzedAt(analyses, b.id));
+  });
+}
+
+/** 「保有／ウォッチ／新規調査／アーカイブ」タブの並び順: 最終分析日の古い順（未分析が最上位）。 */
+export function sortStocksByLastAnalyzedAsc(
+  stocks: StockNoteStock[],
+  analyses: StockNoteAnalysis[],
+): StockNoteStock[] {
+  return stocks
+    .slice()
+    .sort((a, b) => compareLastAnalyzedAsc(latestAnalyzedAt(analyses, a.id), latestAnalyzedAt(analyses, b.id)));
+}
+
+/**
+ * タブごとの表示対象・並び順をまとめて返す（ToolClient.tsx から呼ぶ入口）。
+ * 「要対応」はアーカイブを除く全カテゴリを横断して判定するため、他のタブとは別ロジックになる。
+ */
+export function stocksForTab(
+  tab: StockNotesTab,
+  stocks: StockNoteStock[],
+  analyses: StockNoteAnalysis[],
+  actions: StockNoteAction[],
+  earnings: StockNotesEarningsInfo | null,
+  now: Date = new Date(),
+): StockNoteStock[] {
+  if (tab === "action-required") {
+    const required = computeActionRequiredStocks(stocks, analyses, actions, earnings?.lastEarnings ?? {}, now);
+    return sortActionRequiredStocks(required, analyses, earnings?.earnings ?? {});
+  }
+  const filtered = stocks.filter((s) => s.category === tab);
+  return sortStocksByLastAnalyzedAsc(filtered, analyses);
+}
+
+/** タブごとの件数（ラベルの「要対応 15」のような表示に使う）。 */
+export function countStocksForTab(
+  tab: StockNotesTab,
+  stocks: StockNoteStock[],
+  analyses: StockNoteAnalysis[],
+  actions: StockNoteAction[],
+  earnings: StockNotesEarningsInfo | null,
+  now: Date = new Date(),
+): number {
+  return stocksForTab(tab, stocks, analyses, actions, earnings, now).length;
+}
+
+export type UnregisteredHolding = { code: string; name: string; quantity: number | null };
+
+/**
+ * マイ銘柄リストの保有銘柄（tab='holding'）のうち、stock_notes_stocks に未登録のものを抽出する。
+ * 一括取り込みバナー（「マイ銘柄リストに未登録の保有が N 件あります」）の対象を求めるために使う。
+ * computeUnanalyzedHoldings（分析0件も含む・銘柄登録の有無を問わない）とは異なり、
+ * こちらは「stock_notes_stocks に行そのものが無い」ものだけを対象にする。
+ */
+export function extractUnregisteredHoldings(
+  holdings: MyStockItem[],
+  stocks: StockNoteStock[],
+): UnregisteredHolding[] {
+  const registeredCodes = new Set(stocks.map((s) => s.code));
+  const seen = new Set<string>();
+  const result: UnregisteredHolding[] = [];
+  for (const h of holdings) {
+    if (h.tab !== "holding") continue;
+    if (registeredCodes.has(h.code) || seen.has(h.code)) continue;
+    seen.add(h.code);
+    result.push({ code: h.code, name: h.name, quantity: h.quantity ?? null });
+  }
+  return result.sort((a, b) => a.code.localeCompare(b.code));
+}
+
+/** 既に登録済みの証券コードかどうか（登録フォームの事前チェック用）。 */
+export function isCodeAlreadyRegistered(stocks: StockNoteStock[], code: string): boolean {
+  const normalized = code.trim();
+  if (!normalized) return false;
+  return stocks.some((s) => s.code === normalized);
+}
+
+/**
+ * 新規登録フォームの入力検証（クライアント側の事前チェック）。
+ * エラーが無ければ null、あればエラーメッセージ文字列を返す。
+ * 重複コードのチェックは呼び出し側で isCodeAlreadyRegistered と組み合わせて行う
+ * （stocks 一覧を都度渡すより関心を分離した方がテストしやすいため）。
+ */
+export function validateNewStockInput(code: string, name: string): string | null {
+  if (!code.trim()) return "証券コードを入力してください。";
+  if (!name.trim()) return "銘柄名を入力してください（マスターに無い場合は手入力してください）。";
+  return null;
+}
+
+/**
+ * 分析が1件でもある銘柄は削除ボタンを無効化する。
+ *
+ * 正しさの担保はDB側にある: stock_notes_stocks -> stock_notes_analyses /
+ * stock_notes_theses の外部キーは restrict（stock-notes#15 で cascade から変更済み、
+ * 本番適用・実地検証済み）になっており、分析が残っている銘柄の削除はDBが確実に拒否する
+ * （PostgREST は 23503 を返す。data.ts の isForeignKeyViolationError で判定し、
+ * ユーザーに分かりやすいメッセージへ変換する）。
+ *
+ * この関数（クライアント側の事前チェック）は、あくまで「押す前に理由を伝える」ための
+ * UXでしかない。このダッシュボードは stale-while-revalidate（キャッシュを即座に表示し、
+ * 裏で再取得する）設計のため、画面に表示中の analyses が実際のDBより古い可能性がある
+ * （例: 別タブ・カスタムGPTで直近に分析が追加された）。その場合ここでは
+ * analysisCount === 0 に見えて削除ボタンが押せてしまうが、実際の削除は必ずDBの
+ * restrict制約に阻まれる。つまりこの関数だけでは分析の消失を防げず、単独ではデータ保護に
+ * ならない（保護しているのはあくまでDB側の制約）。
+ */
+export function canDeleteStock(stock: StockNoteStock, analyses: StockNoteAnalysis[]): boolean {
+  return analysisCountForStock(analyses, stock.id) === 0;
+}
+
+/** 削除できない理由の説明文（UIでの無効化理由の表示に使う）。 */
+export function deleteBlockedReason(stock: StockNoteStock, analyses: StockNoteAnalysis[]): string | null {
+  const count = analysisCountForStock(analyses, stock.id);
+  if (count === 0) return null;
+  return `分析${count}件が連鎖削除されるため削除できません。アーカイブしてください。`;
+}
+
+/**
+ * 一括取り込み後に再取得すべきかどうかを判定する。
+ * 成功が1件以上ある場合はもちろん再取得するが、成功が0件でも「重複（23505、他タブ等で
+ * 先に登録済みだった）」で終わった失敗が1件でもあれば再取得する。DBには既に登録済みで
+ * あるにもかかわらず、再取得しないと古いキャッシュの「未登録」表示が残ってしまうため。
+ * ネットワーク不調等の非重複エラーだけで全滅した場合はDB側に変化が無いため再取得しない。
+ */
+export function shouldRefetchAfterBulkImport(result: {
+  succeeded: string[];
+  failed: { duplicate: boolean }[];
+}): boolean {
+  return result.succeeded.length > 0 || result.failed.some((f) => f.duplicate);
+}

@@ -8,6 +8,8 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSyncConfigured } from "@/lib/supabase/config";
 import type { MyStockItem } from "@/app/tools/my-stocks/types";
 import {
+  bulkInsertHoldingsAsStocks,
+  deleteStockById,
   fetchAnalysisBody,
   fetchAnalyses,
   fetchEarnings,
@@ -15,35 +17,52 @@ import {
   fetchOpenActions,
   fetchStocks,
   fetchTheses,
+  insertStock,
+  isDuplicateStockError,
+  isForeignKeyViolationError,
+  updateStockCategory,
+  type BulkImportResult,
 } from "./data";
 import type { StockNotesEarningsInfo } from "./earnings-types";
 import { invalidateStockNotesCache, readStockNotesCache, writeStockNotesCache } from "./cache";
 import { loadDashboardData, type DashboardData } from "./load";
+import { useStockNotesStockMaster } from "./useStockNotesStockMaster";
 import {
   analysesForStock,
   analysisCountForStock,
   buildAnalysisPrompt,
   buildRevalidateFailureMessage,
+  canDeleteStock,
   computeUnanalyzedHoldings,
   countHoldingTabItems,
+  countStocksForTab,
   createLoadGuard,
   daysSinceSync,
+  deleteBlockedReason,
   earningsDisplay,
+  extractUnregisteredHoldings,
   formatClockTime,
   formatMonthDay,
   freshnessLevelWithEarnings,
+  isCodeAlreadyRegistered,
   isOverdue,
   lastEarningsDisplay,
   latestAnalyzedAt,
   openActionCountForStock,
   selectLatestThesis,
+  shouldRefetchAfterBulkImport,
   sortOpenActions,
   sortUnanalyzedHoldingsByEarnings,
+  stocksForTab,
+  STOCK_NOTES_TABS,
   SYNC_STALE_DAYS,
   syncStaleness,
+  validateNewStockInput,
   withFallback,
   type FreshnessLevelV2,
+  type StockNotesTab,
   type SyncStaleness,
+  type UnregisteredHolding,
 } from "./logic";
 import type {
   StockNoteAction,
@@ -61,12 +80,16 @@ const CATEGORY_LABELS: Record<StockNoteCategory, string> = {
   research: "新規調査",
   archived: "アーカイブ",
 };
-const CATEGORY_OPTIONS = [
-  CATEGORY_LABELS.holding,
-  CATEGORY_LABELS.watch,
-  CATEGORY_LABELS.research,
-  CATEGORY_LABELS.archived,
-] as const;
+const CATEGORY_SELECT_OPTIONS: StockNoteCategory[] = ["holding", "watch", "research", "archived"];
+
+/** 5タブ（要対応/保有/ウォッチ/新規調査/アーカイブ）のベースラベル。件数は都度付与する。 */
+const TAB_BASE_LABELS: Record<StockNotesTab, string> = {
+  "action-required": "要対応",
+  holding: CATEGORY_LABELS.holding,
+  watch: CATEGORY_LABELS.watch,
+  research: CATEGORY_LABELS.research,
+  archived: CATEGORY_LABELS.archived,
+};
 
 const VIEW_LABELS: Record<StockNoteThesis["view"], string> = {
   bullish: "強気",
@@ -196,10 +219,31 @@ export default function ToolClient() {
   const [isRevalidating, setIsRevalidating] = useState(false);
   const [revalidateError, setRevalidateError] = useState<string | null>(null);
 
-  const [categoryTab, setCategoryTab] = useState<StockNoteCategory>("holding");
+  const [categoryTab, setCategoryTab] = useState<StockNotesTab>("action-required");
   const [expandedStockId, setExpandedStockId] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [bodies, setBodies] = useState<Record<string, string | "loading" | "error">>({});
+
+  // 銘柄の登録・分類変更・アーカイブ・削除・一括取り込み（書き込み機能）。
+  // 楽観的更新はしない。書き込み成功後は invalidateStockNotesCache → revalidateData の順で必ず再取得する
+  // （呼び忘れると「登録したのに画面に出ない」不具合になる。詳細は decision-log 参照）。
+  const stockMaster = useStockNotesStockMaster();
+  const [showRegisterForm, setShowRegisterForm] = useState(false);
+  const [registerCode, setRegisterCode] = useState("");
+  const [registerName, setRegisterName] = useState("");
+  const [registerCategory, setRegisterCategory] = useState<StockNoteCategory>("watch");
+  const [registerSubmitting, setRegisterSubmitting] = useState(false);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  // 分類変更・アーカイブ・削除の書き込み中は対象銘柄のIDを保持し、行のボタンを無効化する。
+  const [rowBusyStockId, setRowBusyStockId] = useState<string | null>(null);
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [bulkImportSubmitting, setBulkImportSubmitting] = useState(false);
+  const [bulkImportResult, setBulkImportResult] = useState<BulkImportResult | null>(null);
+  // 確認画面を開いた時点の対象一覧のスナップショット。unregisteredHoldings（最新の state）を
+  // そのまま確認・実行対象に使うと、確認を出した後に裏で再取得や保有リスト更新が起きて
+  // 一覧が変わった場合、ユーザーが確認した銘柄と違う銘柄を登録しうる。開いた時点で固定し、
+  // 閉じるまで unregisteredHoldings の変化を反映しない（詳細は decision-log 参照）。
+  const [bulkImportSnapshot, setBulkImportSnapshot] = useState<UnregisteredHolding[]>([]);
 
   // 取得の「世代」を管理するガード。ユーザー切替・ログアウトが連続したときに、
   // 古いリクエストの結果が新しい画面を上書きしないようにする（詳細: logic.ts の createLoadGuard）。
@@ -312,9 +356,18 @@ export default function ToolClient() {
    * 「最新の取得に失敗しました（表示は HH:MM時点）」の案内だけ出す。
    * ただし 401（セッション切れ）は例外: 表示中のデータが無効なセッションのものになるため、
    * ログイン画面へ切り替え、ローカルキャッシュも破棄する。
+   *
+   * authToken（省略可）: 書き込み後の再取得（refetchAfterWrite）専用の認証世代ガード。
+   * 書き込みハンドラが書き込み開始直前に authGuardRef.current.current() で記録した世代を
+   * 渡す。取得が完了した時点でこの世代が古くなっていたら（＝取得中にユーザーが切り替わった）、
+   * state 更新・キャッシュ保存を一切行わずに中止する。DBのINSERT/UPDATE/DELETE自体はRLSが
+   * 別ユーザーの行への書き込みを拒否するため守られているが、ここで中止しないと
+   * 「切替後のセッションで取得したデータを、切替前のユーザーIDのキャッシュキーへ保存する」
+   * というキャッシュのユーザー境界の破れが起きる。通常のマウント時再取得・手動更新ボタンは
+   * authToken を渡さない（呼び出し時点の uid は既に最新であり、この追加ガードは不要）。
    */
   const revalidateData = useCallback(
-    async (uid: string | null, referenceFetchedAt: string | null) => {
+    async (uid: string | null, referenceFetchedAt: string | null, authToken?: number) => {
       if (!supabase) return;
       const token = loadGuardRef.current.next();
       setIsRevalidating(true);
@@ -328,6 +381,13 @@ export default function ToolClient() {
         fetchEarnings,
       });
       if (!loadGuardRef.current.isCurrent(token)) return;
+      if (authToken !== undefined && !authGuardRef.current.isCurrent(authToken)) {
+        // 取得中にユーザーが切り替わった。この結果は別ユーザーのセッションで取得したものなので、
+        // state にもキャッシュにも一切反映しない（isRevalidating は解除しないままにするが、
+        // 新しいユーザーの loadData/startForUser が同期的に false へ倒すため残り続けない。
+        // loadGuardRef の世代不一致時と同じ設計方針）。
+        return;
+      }
       setIsRevalidating(false);
 
       if (result.status === "ok") {
@@ -366,9 +426,8 @@ export default function ToolClient() {
   // 「effectがstateを更新→その値に依存する別のeffectが発火してさらにstateを更新」という
   // cascading effectを避けるため、ログイン確認直後に同じeffect内でloadDataを呼ぶ。
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect -- AccountClient と同じ認証確認パターン。
-       ここでのstate更新は外部システム（Supabase auth）からの状態同期であり、
-       別effectへの連鎖ではなく同一effect内で完結させている。 */
+    // AccountClient と同じ認証確認パターン。ここでのstate更新は外部システム（Supabase auth）
+    // からの状態同期であり、別effectへの連鎖ではなく同一effect内で完結させている。
     if (!supabase) {
       setAuthReady(true);
       return;
@@ -442,7 +501,6 @@ export default function ToolClient() {
       active = false;
       sub.subscription.unsubscribe();
     };
-    /* eslint-enable react-hooks/set-state-in-effect */
   }, [supabase, loadData, revalidateData, resetData, applyDashboardData]);
 
   const unanalyzedHoldingsRaw = useMemo(
@@ -462,8 +520,22 @@ export default function ToolClient() {
   const openActions = useMemo(() => sortOpenActions(actions), [actions]);
   const stockById = useMemo(() => new Map(stocks.map((s) => [s.id, s])), [stocks]);
   const filteredStocks = useMemo(
-    () => stocks.filter((s) => s.category === categoryTab),
-    [stocks, categoryTab],
+    () => stocksForTab(categoryTab, stocks, analyses, actions, earnings),
+    [categoryTab, stocks, analyses, actions, earnings],
+  );
+  const tabCounts = useMemo(() => {
+    const map = {} as Record<StockNotesTab, number>;
+    for (const tab of STOCK_NOTES_TABS) {
+      map[tab] = countStocksForTab(tab, stocks, analyses, actions, earnings);
+    }
+    return map;
+  }, [stocks, analyses, actions, earnings]);
+  const tabLabel = useCallback((tab: StockNotesTab) => `${TAB_BASE_LABELS[tab]} ${tabCounts[tab]}`, [tabCounts]);
+  const tabOptions = useMemo(() => STOCK_NOTES_TABS.map(tabLabel), [tabLabel]);
+  // マイ銘柄リストの保有銘柄のうち stock_notes_stocks に未登録のもの（一括取り込みバナー対象）。
+  const unregisteredHoldings = useMemo(
+    () => extractUnregisteredHoldings(holdings, stocks),
+    [holdings, stocks],
   );
 
   async function copyPrompt(code: string, name: string) {
@@ -488,6 +560,156 @@ export default function ToolClient() {
     }
   }
 
+  /**
+   * 書き込み成功後に共通で行う後処理: キャッシュ破棄 → 裏で再取得（画面はキャッシュ表示を維持したまま更新）。
+   * authToken は書き込みハンドラが書き込み開始直前に authGuardRef.current.current() で記録した
+   * 認証世代。ここで再確認し、書き込み中にユーザーが切り替わっていたら再取得・キャッシュ破棄ごと
+   * 中止する（詳細は revalidateData の authToken パラメータのコメント参照）。
+   */
+  const refetchAfterWrite = useCallback(
+    async (uid: string, authToken: number) => {
+      if (!authGuardRef.current.isCurrent(authToken)) return;
+      invalidateStockNotesCache(uid);
+      await revalidateData(uid, dataUpdatedAt, authToken);
+    },
+    [revalidateData, dataUpdatedAt],
+  );
+
+  function handleRegisterCodeChange(value: string) {
+    setRegisterCode(value);
+    const hit = stockMaster.lookupByCode(value);
+    if (hit) setRegisterName(hit);
+  }
+
+  async function submitRegister() {
+    if (!supabase || !userId) return;
+    const trimmedCode = registerCode.trim();
+    const trimmedName = registerName.trim();
+    const validationError = validateNewStockInput(trimmedCode, trimmedName);
+    if (validationError) {
+      setRegisterError(validationError);
+      return;
+    }
+    if (isCodeAlreadyRegistered(stocks, trimmedCode)) {
+      setRegisterError("このコードは既に登録されています。");
+      return;
+    }
+    // 書き込み開始直前の認証世代を記録する（refetchAfterWrite が完了後に再確認する）。
+    const authToken = authGuardRef.current.current();
+    setRegisterSubmitting(true);
+    setRegisterError(null);
+    try {
+      await insertStock(supabase, userId, { code: trimmedCode, name: trimmedName, category: registerCategory });
+      setRegisterCode("");
+      setRegisterName("");
+      setShowRegisterForm(false);
+      await refetchAfterWrite(userId, authToken);
+    } catch (e) {
+      setRegisterError(
+        isDuplicateStockError(e) ? "このコードは既に登録されています。" : e instanceof Error ? e.message : "登録に失敗しました。",
+      );
+    } finally {
+      setRegisterSubmitting(false);
+    }
+  }
+
+  /**
+   * 分類を変更する。アーカイブへの変更時は任意の理由を window.prompt で受け取る
+   * （このツールにモーダル基盤が無いため、既存のクリップボードコピー等と同様に
+   * ブラウザ標準ダイアログで済ませる）。キャンセルした場合は変更しない。
+   */
+  async function handleCategoryChange(stock: StockNoteStock, nextCategory: StockNoteCategory) {
+    if (!supabase || !userId || nextCategory === stock.category) return;
+    let reason: string | undefined;
+    if (nextCategory === "archived") {
+      const input = window.prompt("アーカイブ理由（任意。空欄でも登録できます）", "");
+      if (input === null) return; // キャンセル
+      const trimmed = input.trim();
+      // 空欄なら category_change_reason 列には触れない（undefined。既存の理由を保持する）。
+      // 何か入力されていればそれで上書きする。
+      if (trimmed !== "") reason = trimmed;
+    }
+    const authToken = authGuardRef.current.current();
+    setRowBusyStockId(stock.id);
+    try {
+      await updateStockCategory(supabase, stock.id, nextCategory, reason);
+      await refetchAfterWrite(userId, authToken);
+    } catch (e) {
+      window.alert(`分類の変更に失敗しました${e instanceof Error ? `（${e.message}）` : ""}`);
+    } finally {
+      setRowBusyStockId(null);
+    }
+  }
+
+  /**
+   * 銘柄を削除する。canDeleteStock（logic.ts）はUX上の事前チェックにすぎず、正しさの担保は
+   * DB側の外部キー制約（restrict）にある。事前チェックをすり抜けた場合（表示中のキャッシュが
+   * 古く、実際には分析が増えているのに0件に見えていた等）でもDBが 23503 を返して拒否するため、
+   * ここでそれを検出し、生のPostgRESTエラーではなく「アーカイブしてください」という
+   * 次のアクションが分かる文言に変換する。
+   */
+  async function handleDeleteStock(stock: StockNoteStock) {
+    if (!supabase || !userId) return;
+    if (!canDeleteStock(stock, analyses)) return;
+    const confirmed = window.confirm(
+      `${stock.code} ${stock.name} を削除します。この操作は取り消せません。よろしいですか？`,
+    );
+    if (!confirmed) return;
+    const authToken = authGuardRef.current.current();
+    setRowBusyStockId(stock.id);
+    try {
+      await deleteStockById(supabase, stock.id);
+      await refetchAfterWrite(userId, authToken);
+    } catch (e) {
+      const message = isForeignKeyViolationError(e)
+        ? "この銘柄には分析が残っているため削除できません。アーカイブしてください。"
+        : `削除に失敗しました${e instanceof Error ? `（${e.message}）` : ""}`;
+      window.alert(message);
+    } finally {
+      setRowBusyStockId(null);
+    }
+  }
+
+  /**
+   * 一括取り込みの確認画面を開く。この時点の unregisteredHoldings をスナップショットとして
+   * 固定する（開いた後に一覧が変わっても、ユーザーが確認した対象のまま登録するため）。
+   */
+  function openBulkImport() {
+    setBulkImportSnapshot(unregisteredHoldings);
+    setBulkImportResult(null);
+    setShowBulkImport(true);
+  }
+
+  /** 確認画面を閉じる。次回開いたときに古い結果・スナップショットが残らないようクリアする。 */
+  function closeBulkImport() {
+    setShowBulkImport(false);
+    setBulkImportSnapshot([]);
+    setBulkImportResult(null);
+  }
+
+  async function runBulkImport() {
+    if (!supabase || !userId || bulkImportSnapshot.length === 0) return;
+    const authToken = authGuardRef.current.current();
+    setBulkImportSubmitting(true);
+    setBulkImportResult(null);
+    try {
+      const result = await bulkInsertHoldingsAsStocks(
+        supabase,
+        userId,
+        bulkImportSnapshot.map((h) => ({ code: h.code, name: h.name })),
+      );
+      setBulkImportResult(result);
+      // 成功が1件以上のときはもちろん、成功0件でも重複（23505、別タブ等で先に登録済み）だけで
+      // 終わった場合も再取得する。DBには既に反映されているのに古いキャッシュの「未登録」表示が
+      // 残ってしまうため（shouldRefetchAfterBulkImport、logic.ts）。
+      if (shouldRefetchAfterBulkImport(result)) {
+        await refetchAfterWrite(userId, authToken);
+      }
+    } finally {
+      setBulkImportSubmitting(false);
+    }
+  }
+
   return (
     <main style={{ padding: "24px 16px 96px" }}>
       <section style={{ maxWidth: 760, margin: "0 auto", display: "grid", gap: 16, minWidth: 0 }}>
@@ -496,7 +718,7 @@ export default function ToolClient() {
             銘柄分析ダッシュボード
           </h1>
           <p style={{ fontSize: 13, color: "var(--color-text-sub)", margin: 0, lineHeight: 1.6 }}>
-            stock-notes（カスタムGPT）に記録した銘柄分析と、マイ銘柄リストの保有銘柄を突き合わせて表示します。読み取り専用で、分類変更や分析の追加はこの画面からはできません。
+            stock-notes（カスタムGPT）に記録した銘柄分析と、マイ銘柄リストの保有銘柄を突き合わせて表示します。銘柄の登録・分類変更・アーカイブはこの画面から行えます。分析・見立ての追加はこの画面からはできません（分析はGPTの領域です）。
           </p>
         </header>
 
@@ -688,17 +910,164 @@ export default function ToolClient() {
               )}
             </section>
 
-            {/* 2. 分析済み銘柄の一覧 */}
+            {/* マイ銘柄リストからの一括取り込みバナー（タブの外）。
+                いきなり書き込まず、対象一覧を確認してから「まとめて登録」する2段階にする。
+                対象一覧は openBulkImport で開いた時点の unregisteredHoldings をスナップショット
+                固定したもの（bulkImportSnapshot）を表示・登録に使う。開いた後に裏の再取得等で
+                unregisteredHoldings が変わっても、ユーザーが確認した対象のまま登録するため。
+                表示条件は unregisteredHoldings.length>0 だけでなく bulkImportResult の有無も見る:
+                全件成功すると unregisteredHoldings は即座に0件になるが、そこでバナーごと消すと
+                「実行したのに何も起きなかった」ように見えてしまうため、結果が残っている間は
+                バナー自体を表示し続け、閉じるまで成功件数を確認できるようにする。 */}
+            {(unregisteredHoldings.length > 0 || bulkImportResult !== null) && (
+              <div style={{ ...card, borderColor: "var(--color-accent)" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                  <p style={{ margin: 0, fontSize: 13, color: "var(--color-text)", lineHeight: 1.6 }}>
+                    {unregisteredHoldings.length > 0
+                      ? `マイ銘柄リストに未登録の保有が${unregisteredHoldings.length}件あります。`
+                      : "一括登録が完了しました。"}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => (showBulkImport ? closeBulkImport() : openBulkImport())}
+                    style={subBtn}
+                  >
+                    {showBulkImport ? "閉じる" : "まとめて登録"}
+                  </button>
+                </div>
+                {showBulkImport && (
+                  <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                    <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 4 }}>
+                      {bulkImportSnapshot.map((h) => (
+                        <li key={h.code} style={{ fontSize: 12, color: "var(--color-text-sub)" }}>
+                          {h.code} {h.name}
+                          {h.quantity != null && `（${h.quantity.toLocaleString("ja-JP")}株）`}
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      type="button"
+                      onClick={runBulkImport}
+                      disabled={bulkImportSubmitting || bulkImportResult !== null}
+                      style={{
+                        ...primaryBtn,
+                        opacity: bulkImportSubmitting || bulkImportResult !== null ? 0.6 : 1,
+                        width: "fit-content",
+                      }}
+                    >
+                      {bulkImportSubmitting
+                        ? "登録中…"
+                        : `${bulkImportSnapshot.length}件を「保有」としてまとめて登録`}
+                    </button>
+                    {bulkImportResult && (
+                      <div style={{ display: "grid", gap: 2 }}>
+                        {bulkImportResult.succeeded.length > 0 && (
+                          <p style={{ margin: 0, fontSize: 12, color: "var(--color-text-sub)" }}>
+                            {bulkImportResult.succeeded.length}件登録しました。
+                          </p>
+                        )}
+                        {bulkImportResult.failed.map((f) => (
+                          <p key={f.code} style={{ margin: 0, fontSize: 12, color: "var(--color-danger, #dc2626)" }}>
+                            {f.code} {f.name}: {f.message}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 2. 銘柄一覧（5タブ: 要対応/保有/ウォッチ/新規調査/アーカイブ） */}
             <section style={{ display: "grid", gap: 10 }}>
-              <h2 style={sectionTitle}>分析済み銘柄</h2>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                <h2 style={sectionTitle}>銘柄一覧</h2>
+                <button type="button" onClick={() => setShowRegisterForm((v) => !v)} style={subBtn}>
+                  {showRegisterForm ? "閉じる" : "＋ 銘柄を登録"}
+                </button>
+              </div>
+
+              {showRegisterForm && (
+                <div style={card}>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <label style={{ display: "grid", gap: 4 }}>
+                      <span style={{ fontSize: 12, color: "var(--color-text-sub)" }}>証券コード</span>
+                      <input
+                        type="text"
+                        value={registerCode}
+                        onChange={(e) => handleRegisterCodeChange(e.target.value)}
+                        placeholder="例: 7203"
+                        style={{
+                          padding: "8px 10px",
+                          borderRadius: 8,
+                          border: "1px solid var(--color-border-strong)",
+                          background: "var(--color-bg-input)",
+                          color: "var(--color-text)",
+                          fontSize: 13,
+                        }}
+                      />
+                    </label>
+                    <label style={{ display: "grid", gap: 4 }}>
+                      <span style={{ fontSize: 12, color: "var(--color-text-sub)" }}>
+                        銘柄名{stockMaster.ready && !stockMaster.error ? "（マスターから自動補完。米国株等は手入力）" : ""}
+                      </span>
+                      <input
+                        type="text"
+                        value={registerName}
+                        onChange={(e) => setRegisterName(e.target.value)}
+                        placeholder="例: トヨタ自動車"
+                        style={{
+                          padding: "8px 10px",
+                          borderRadius: 8,
+                          border: "1px solid var(--color-border-strong)",
+                          background: "var(--color-bg-input)",
+                          color: "var(--color-text)",
+                          fontSize: 13,
+                        }}
+                      />
+                    </label>
+                    <label style={{ display: "grid", gap: 4 }}>
+                      <span style={{ fontSize: 12, color: "var(--color-text-sub)" }}>分類</span>
+                      <select
+                        value={registerCategory}
+                        onChange={(e) => setRegisterCategory(e.target.value as StockNoteCategory)}
+                        style={{
+                          padding: "8px 10px",
+                          borderRadius: 8,
+                          border: "1px solid var(--color-border-strong)",
+                          background: "var(--color-bg-input)",
+                          color: "var(--color-text)",
+                          fontSize: 13,
+                        }}
+                      >
+                        {CATEGORY_SELECT_OPTIONS.filter((c) => c !== "archived").map((c) => (
+                          <option key={c} value={c}>
+                            {CATEGORY_LABELS[c]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {registerError && (
+                      <p style={{ margin: 0, fontSize: 12, color: "var(--color-danger, #dc2626)" }}>{registerError}</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={submitRegister}
+                      disabled={registerSubmitting}
+                      style={{ ...primaryBtn, opacity: registerSubmitting ? 0.6 : 1, width: "fit-content" }}
+                    >
+                      {registerSubmitting ? "登録中…" : "登録する"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <TabBar
-                options={CATEGORY_OPTIONS}
-                value={CATEGORY_LABELS[categoryTab]}
+                options={tabOptions}
+                value={tabLabel(categoryTab)}
                 onChange={(label) => {
-                  const entry = (Object.entries(CATEGORY_LABELS) as [StockNoteCategory, string][]).find(
-                    ([, v]) => v === label,
-                  );
-                  if (entry) setCategoryTab(entry[0]);
+                  const tab = STOCK_NOTES_TABS.find((t) => tabLabel(t) === label);
+                  if (tab) setCategoryTab(tab);
                 }}
               />
               {filteredStocks.length === 0 ? (
@@ -719,6 +1088,9 @@ export default function ToolClient() {
                       }
                       bodies={bodies}
                       onLoadBody={loadBody}
+                      busy={rowBusyStockId === stock.id}
+                      onCategoryChange={(next) => handleCategoryChange(stock, next)}
+                      onDelete={() => handleDeleteStock(stock)}
                     />
                   ))}
                 </ul>
@@ -806,6 +1178,9 @@ function StockRow({
   onToggle,
   bodies,
   onLoadBody,
+  busy,
+  onCategoryChange,
+  onDelete,
 }: {
   stock: StockNoteStock;
   analyses: StockNoteAnalysis[];
@@ -816,6 +1191,9 @@ function StockRow({
   onToggle: () => void;
   bodies: Record<string, string | "loading" | "error">;
   onLoadBody: (analysisId: string) => void;
+  busy: boolean;
+  onCategoryChange: (next: StockNoteCategory) => void;
+  onDelete: () => void;
 }) {
   const thesis = selectLatestThesis(theses, stock.id);
   const lastAnalyzed = latestAnalyzedAt(analyses, stock.id);
@@ -827,6 +1205,8 @@ function StockRow({
   const openActions = openActionCountForStock(actions, stock.id);
   const timeline = expanded ? analysesForStock(analyses, stock.id) : [];
   const earningsInfo = earningsDisplay(stock.code, earnings);
+  const canDelete = canDeleteStock(stock, analyses);
+  const deleteReason = deleteBlockedReason(stock, analyses);
   // 次回決算が未判明のときだけ前回決算を目立たせる（唯一の手がかりになるため）。
   const emphasizeLast = !earnings?.earnings[stock.code] && !earningsInfo.failed;
   const lastEarningsText = lastEarningsDisplay(stock.code, earnings, emphasizeLast);
@@ -1001,6 +1381,62 @@ function StockRow({
               ))
             )}
           </div>
+
+          {/* 分類変更・アーカイブ・削除。アーカイブが基本、削除は例外
+              （on delete cascade で分析・見立て・アクションが全部消えるため）。 */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+              flexWrap: "wrap",
+              paddingTop: 8,
+              borderTop: "1px solid var(--color-border)",
+            }}
+          >
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--color-text-sub)" }}>
+              分類
+              <select
+                value={stock.category}
+                disabled={busy}
+                onChange={(e) => onCategoryChange(e.target.value as StockNoteCategory)}
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: 8,
+                  border: "1px solid var(--color-border-strong)",
+                  background: "var(--color-bg-input)",
+                  color: "var(--color-text)",
+                  fontSize: 12,
+                }}
+              >
+                {CATEGORY_SELECT_OPTIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {CATEGORY_LABELS[c]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={busy || !canDelete}
+              title={deleteReason ?? undefined}
+              style={{
+                ...subBtn,
+                color: canDelete ? "var(--color-danger, #dc2626)" : "var(--color-text-muted)",
+                opacity: busy || !canDelete ? 0.5 : 1,
+                cursor: busy || !canDelete ? "not-allowed" : "pointer",
+              }}
+            >
+              {busy ? "処理中…" : "削除"}
+            </button>
+          </div>
+          {deleteReason && (
+            <p style={{ margin: 0, fontSize: 11, color: "var(--color-text-muted)", lineHeight: 1.5 }}>
+              {deleteReason}
+            </p>
+          )}
         </div>
       )}
     </li>

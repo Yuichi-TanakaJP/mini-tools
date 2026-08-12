@@ -1,11 +1,67 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   HoldingsFetchError,
+  bulkInsertHoldingsAsStocks,
+  deleteStockById,
   fetchEarnings,
   fetchHoldings,
+  insertStock,
+  isDuplicateStockError,
+  isForeignKeyViolationError,
   isSessionExpiredSupabaseError,
   normalizeLastEarnings,
+  updateStockCategory,
 } from "../data";
+
+/**
+ * 最小限の Supabase クライアントモック。
+ * insertStock は .from().insert().select().single() を、
+ * updateStockCategory は .from().update().eq() を、
+ * deleteStockById は .from().delete().eq() を呼ぶ。
+ * 呼び出しごとの挙動は各テストで注入する関数（handlers）に委譲する。
+ */
+function makeSupabaseMock(handlers: {
+  insert?: (table: string, values: Record<string, unknown>) => { data: unknown; error: unknown };
+  update?: (table: string, values: Record<string, unknown>, id: string) => { error: unknown };
+  delete?: (table: string, id: string) => { error: unknown };
+}): SupabaseClient {
+  const client = {
+    from(table: string) {
+      return {
+        insert(values: Record<string, unknown>) {
+          return {
+            select() {
+              return {
+                single() {
+                  const result = handlers.insert?.(table, values) ?? { data: null, error: new Error("not mocked") };
+                  return Promise.resolve(result);
+                },
+              };
+            },
+          };
+        },
+        update(values: Record<string, unknown>) {
+          return {
+            eq(_column: string, id: string) {
+              const result = handlers.update?.(table, values, id) ?? { error: new Error("not mocked") };
+              return Promise.resolve(result);
+            },
+          };
+        },
+        delete() {
+          return {
+            eq(_column: string, id: string) {
+              const result = handlers.delete?.(table, id) ?? { error: new Error("not mocked") };
+              return Promise.resolve(result);
+            },
+          };
+        },
+      };
+    },
+  };
+  return client as unknown as SupabaseClient;
+}
 
 function makeFetchResponse(ok: boolean, status: number, body: unknown): Response {
   return {
@@ -191,5 +247,211 @@ describe("isSessionExpiredSupabaseError", () => {
     expect(isSessionExpiredSupabaseError(undefined)).toBe(false);
     expect(isSessionExpiredSupabaseError("boom")).toBe(false);
     expect(isSessionExpiredSupabaseError(new Error("network error"))).toBe(false);
+  });
+});
+
+describe("isDuplicateStockError", () => {
+  it("code が 23505（一意制約違反）なら true", () => {
+    expect(isDuplicateStockError({ code: "23505", message: "duplicate key value" })).toBe(true);
+  });
+
+  it("code が無くても message に duplicate key が含まれれば true", () => {
+    expect(isDuplicateStockError({ message: "duplicate key value violates unique constraint" })).toBe(true);
+  });
+
+  it("他のエラーコードは false", () => {
+    expect(isDuplicateStockError({ code: "42501", message: "permission denied" })).toBe(false);
+  });
+
+  it("エラーではない値は false", () => {
+    expect(isDuplicateStockError(null)).toBe(false);
+    expect(isDuplicateStockError(undefined)).toBe(false);
+  });
+});
+
+describe("isForeignKeyViolationError", () => {
+  it("code が 23503（外部キー制約違反）なら true（分析が残る銘柄の削除をDBが拒否したケース）", () => {
+    expect(
+      isForeignKeyViolationError({
+        code: "23503",
+        message: 'update or delete on table "stock_notes_stocks" violates foreign key constraint',
+      }),
+    ).toBe(true);
+  });
+
+  it("code が無くても message に foreign key constraint が含まれれば true", () => {
+    expect(isForeignKeyViolationError({ message: "violates foreign key constraint" })).toBe(true);
+  });
+
+  it("他のエラーコードは false", () => {
+    expect(isForeignKeyViolationError({ code: "23505", message: "duplicate key value" })).toBe(false);
+    expect(isForeignKeyViolationError({ code: "42501", message: "permission denied" })).toBe(false);
+  });
+
+  it("エラーではない値は false", () => {
+    expect(isForeignKeyViolationError(null)).toBe(false);
+    expect(isForeignKeyViolationError(undefined)).toBe(false);
+  });
+});
+
+describe("insertStock", () => {
+  it("user_id・code・name・category・category_changed_at を付けて insert し、camelCase化して返す", async () => {
+    let capturedTable = "";
+    let capturedValues: Record<string, unknown> = {};
+    const supabase = makeSupabaseMock({
+      insert: (table, values) => {
+        capturedTable = table;
+        capturedValues = values;
+        return {
+          data: {
+            id: "new-id",
+            code: values.code,
+            name: values.name,
+            category: values.category,
+            category_changed_at: values.category_changed_at,
+            category_change_reason: null,
+            created_at: "2026-08-11T00:00:00.000Z",
+            updated_at: "2026-08-11T00:00:00.000Z",
+          },
+          error: null,
+        };
+      },
+    });
+
+    const result = await insertStock(supabase, "user-1", { code: " 7203 ", name: " トヨタ自動車 ", category: "watch" });
+
+    expect(capturedTable).toBe("stock_notes_stocks");
+    expect(capturedValues.user_id).toBe("user-1");
+    expect(capturedValues.code).toBe("7203");
+    expect(capturedValues.name).toBe("トヨタ自動車");
+    expect(capturedValues.category).toBe("watch");
+    expect(typeof capturedValues.category_changed_at).toBe("string");
+    expect(result).toMatchObject({ id: "new-id", code: "7203", name: "トヨタ自動車", category: "watch" });
+  });
+
+  it("エラー時は throw する", async () => {
+    const supabase = makeSupabaseMock({
+      insert: () => ({ data: null, error: { code: "23505", message: "duplicate key value" } }),
+    });
+    await expect(
+      insertStock(supabase, "user-1", { code: "7203", name: "トヨタ自動車", category: "watch" }),
+    ).rejects.toMatchObject({ code: "23505" });
+  });
+});
+
+describe("updateStockCategory", () => {
+  it("category と category_changed_at を更新する（reason省略時はcategory_change_reasonに触れない）", async () => {
+    let captured: Record<string, unknown> = {};
+    const supabase = makeSupabaseMock({
+      update: (_table, values) => {
+        captured = values;
+        return { error: null };
+      },
+    });
+    await updateStockCategory(supabase, "stock-1", "archived");
+    expect(captured.category).toBe("archived");
+    expect(typeof captured.category_changed_at).toBe("string");
+    expect("category_change_reason" in captured).toBe(false);
+  });
+
+  it("reason を渡すと category_change_reason も更新する", async () => {
+    let captured: Record<string, unknown> = {};
+    const supabase = makeSupabaseMock({
+      update: (_table, values) => {
+        captured = values;
+        return { error: null };
+      },
+    });
+    await updateStockCategory(supabase, "stock-1", "archived", "決算後に一旦様子見");
+    expect(captured.category_change_reason).toBe("決算後に一旦様子見");
+  });
+
+  it("エラー時は throw する", async () => {
+    const supabase = makeSupabaseMock({ update: () => ({ error: new Error("boom") }) });
+    await expect(updateStockCategory(supabase, "stock-1", "archived")).rejects.toThrow("boom");
+  });
+});
+
+describe("deleteStockById", () => {
+  it("成功時は何も返さない", async () => {
+    const supabase = makeSupabaseMock({ delete: () => ({ error: null }) });
+    await expect(deleteStockById(supabase, "stock-1")).resolves.toBeUndefined();
+  });
+
+  it("エラー時は throw する", async () => {
+    const supabase = makeSupabaseMock({ delete: () => ({ error: new Error("boom") }) });
+    await expect(deleteStockById(supabase, "stock-1")).rejects.toThrow("boom");
+  });
+});
+
+describe("bulkInsertHoldingsAsStocks", () => {
+  it("成功分は succeeded に、失敗分は failed に個別で入る（失敗があっても残りは続行する）", async () => {
+    let callCount = 0;
+    const supabase = makeSupabaseMock({
+      insert: (_table, values) => {
+        callCount += 1;
+        if (values.code === "9999") {
+          return { data: null, error: { code: "23505", message: "duplicate key value" } };
+        }
+        return {
+          data: {
+            id: `id-${values.code}`,
+            code: values.code,
+            name: values.name,
+            category: values.category,
+            category_changed_at: values.category_changed_at,
+            category_change_reason: null,
+            created_at: "",
+            updated_at: "",
+          },
+          error: null,
+        };
+      },
+    });
+
+    const result = await bulkInsertHoldingsAsStocks(supabase, "user-1", [
+      { code: "7203", name: "トヨタ自動車" },
+      { code: "9999", name: "重複銘柄" },
+    ]);
+
+    expect(callCount).toBe(2);
+    expect(result.succeeded).toEqual(["7203"]);
+    expect(result.failed).toEqual([
+      { code: "9999", name: "重複銘柄", message: "既に登録されています", duplicate: true },
+    ]);
+  });
+
+  it("重複以外の失敗は duplicate:false で報告する（再取得要否の判定 shouldRefetchAfterBulkImport で使う）", async () => {
+    const supabase = makeSupabaseMock({
+      insert: () => ({ data: null, error: new Error("permission denied") }),
+    });
+    const result = await bulkInsertHoldingsAsStocks(supabase, "user-1", [{ code: "7203", name: "トヨタ自動車" }]);
+    expect(result.failed).toEqual([
+      { code: "7203", name: "トヨタ自動車", message: "permission denied", duplicate: false },
+    ]);
+  });
+
+  it("全銘柄を category='holding' で登録する", async () => {
+    const capturedCategories: unknown[] = [];
+    const supabase = makeSupabaseMock({
+      insert: (_table, values) => {
+        capturedCategories.push(values.category);
+        return {
+          data: {
+            id: "id",
+            code: values.code,
+            name: values.name,
+            category: values.category,
+            category_changed_at: values.category_changed_at,
+            category_change_reason: null,
+            created_at: "",
+            updated_at: "",
+          },
+          error: null,
+        };
+      },
+    });
+    await bulkInsertHoldingsAsStocks(supabase, "user-1", [{ code: "7203", name: "トヨタ自動車" }]);
+    expect(capturedCategories).toEqual(["holding"]);
   });
 });

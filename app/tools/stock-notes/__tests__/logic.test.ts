@@ -2,31 +2,45 @@ import { describe, expect, it } from "vitest";
 import type { MyStockItem } from "@/app/tools/my-stocks/types";
 import type { StockNotesEarningsInfo } from "../earnings-types";
 import {
+  ACTION_DUE_SOON_DAYS,
   FRESHNESS_DANGER_DAYS,
   FRESHNESS_WARN_DAYS,
+  STOCK_NOTES_TABS,
   SYNC_STALE_DAYS,
   analysesForStock,
   buildAnalysisPrompt,
   buildRevalidateFailureMessage,
+  canDeleteStock,
+  computeActionRequiredStocks,
   computeUnanalyzedHoldings,
   countHoldingTabItems,
+  countStocksForTab,
   createLoadGuard,
   daysSinceEarnings,
   daysSinceSync,
   daysUntil,
+  deleteBlockedReason,
   earningsDisplay,
+  extractUnregisteredHoldings,
   formatClockTime,
   formatMonthDay,
   freshnessLevel,
   freshnessLevelWithEarnings,
+  hasUrgentOpenAction,
+  isCodeAlreadyRegistered,
   isEarningsSoon,
   isOverdue,
   lastEarningsDisplay,
   latestAnalyzedAt,
   selectLatestThesis,
+  shouldRefetchAfterBulkImport,
+  sortActionRequiredStocks,
   sortOpenActions,
+  sortStocksByLastAnalyzedAsc,
   sortUnanalyzedHoldingsByEarnings,
+  stocksForTab,
   syncStaleness,
+  validateNewStockInput,
   withFallback,
 } from "../logic";
 import type { StockNoteAction, StockNoteAnalysis, StockNoteStock, StockNoteThesis } from "../types";
@@ -605,6 +619,16 @@ describe("createLoadGuard", () => {
     expect(guard.isCurrent(token)).toBe(true);
     expect(guard.isCurrent(token)).toBe(true);
   });
+
+  it("current() は世代を進めずに現在のトークンを読める（peek）", () => {
+    const guard = createLoadGuard();
+    expect(guard.current()).toBe(0);
+    const token1 = guard.next();
+    expect(guard.current()).toBe(token1);
+    // current() を何度呼んでも世代は変わらない
+    expect(guard.current()).toBe(token1);
+    expect(guard.isCurrent(token1)).toBe(true);
+  });
 });
 
 describe("formatClockTime", () => {
@@ -692,5 +716,302 @@ describe("createLoadGuard（stock-notes での回帰シナリオ）", () => {
     const loadToken = loadGuard.next();
     expect(loadGuard.isCurrent(revalidateToken)).toBe(false);
     expect(loadGuard.isCurrent(loadToken)).toBe(true);
+  });
+
+  it("シナリオ3: 書き込み（登録・分類変更・削除・一括取り込み）の開始時に current() で記録した世代は、完了前にユーザーが切り替わると古い扱いになる（refetchAfterWrite が中止すべきケース）", () => {
+    // ToolClient.tsx の書き込みハンドラは、書き込みを開始する直前に
+    // authGuardRef.current.current() で「今の認証世代」を記録し、書き込み（例: insertStock）が
+    // 完了した後に isCurrent(authToken) を確認してから再取得・キャッシュ保存を行う。
+    // ここでは「書き込み中にユーザーが切り替わった」状況を再現し、記録した世代が
+    // 古い扱いになる（＝再取得・キャッシュ保存を中止すべき）ことを確認する。
+    const authGuard = createLoadGuard();
+    // ユーザーAでログイン中。書き込み開始直前に世代を記録する。
+    const authTokenAtWriteStart = authGuard.current();
+    // 書き込み（await insertStock 等）が完了するまでの間に、ユーザーBへ切り替わった
+    // （onAuthStateChange が発火し、世代が進む）。
+    authGuard.next();
+    // 書き込み自体はDBのRLSにより拒否される想定だが（このガードの担当範囲外）、
+    // 仮に書き込みが成立していたとしても、この古い世代のままキャッシュへ保存してはいけない。
+    expect(authGuard.isCurrent(authTokenAtWriteStart)).toBe(false);
+  });
+
+  it("シナリオ3逆順: 書き込み完了までユーザーが切り替わらなければ、記録した世代のまま再取得・キャッシュ保存してよい", () => {
+    const authGuard = createLoadGuard();
+    const authTokenAtWriteStart = authGuard.current();
+    // 切替は起きない
+    expect(authGuard.isCurrent(authTokenAtWriteStart)).toBe(true);
+  });
+});
+
+describe("shouldRefetchAfterBulkImport", () => {
+  it("成功が1件以上あれば再取得する", () => {
+    expect(shouldRefetchAfterBulkImport({ succeeded: ["7203"], failed: [] })).toBe(true);
+  });
+
+  it("成功0件でも重複（duplicate:true）の失敗があれば再取得する（別タブで先に登録済みだったケース）", () => {
+    expect(
+      shouldRefetchAfterBulkImport({
+        succeeded: [],
+        failed: [{ duplicate: true }],
+      }),
+    ).toBe(true);
+  });
+
+  it("成功0件かつ重複でない失敗のみなら再取得しない（DB側に変化が無いため）", () => {
+    expect(
+      shouldRefetchAfterBulkImport({
+        succeeded: [],
+        failed: [{ duplicate: false }],
+      }),
+    ).toBe(false);
+  });
+
+  it("成功も失敗も無ければ再取得しない", () => {
+    expect(shouldRefetchAfterBulkImport({ succeeded: [], failed: [] })).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 5タブ構成（要対応/保有/ウォッチ/新規調査/アーカイブ）・登録・分類変更・削除・
+// 一括取り込みの純関数群。
+// ---------------------------------------------------------------------------
+
+describe("hasUrgentOpenAction", () => {
+  const now = new Date("2026-08-11T00:00:00.000Z");
+
+  it("期限切れの open アクションがあれば true", () => {
+    const actions = [makeAction({ dueDate: "2026-01-01", status: "open" })];
+    expect(hasUrgentOpenAction(actions, now)).toBe(true);
+  });
+
+  it(`期限が${ACTION_DUE_SOON_DAYS}日以内なら true`, () => {
+    const due = new Date(now.getTime() + (ACTION_DUE_SOON_DAYS - 1) * 86400000).toISOString();
+    const actions = [makeAction({ dueDate: due, status: "open" })];
+    expect(hasUrgentOpenAction(actions, now)).toBe(true);
+  });
+
+  it(`期限が${ACTION_DUE_SOON_DAYS}日超先なら false`, () => {
+    const due = new Date(now.getTime() + (ACTION_DUE_SOON_DAYS + 5) * 86400000).toISOString();
+    const actions = [makeAction({ dueDate: due, status: "open" })];
+    expect(hasUrgentOpenAction(actions, now)).toBe(false);
+  });
+
+  it("done/dismissed は対象外", () => {
+    const actions = [makeAction({ dueDate: "2026-01-01", status: "done" })];
+    expect(hasUrgentOpenAction(actions, now)).toBe(false);
+  });
+
+  it("期限未設定は対象外", () => {
+    const actions = [makeAction({ dueDate: null, status: "open" })];
+    expect(hasUrgentOpenAction(actions, now)).toBe(false);
+  });
+});
+
+describe("computeActionRequiredStocks", () => {
+  const now = new Date("2026-08-11T00:00:00.000Z");
+
+  it("分析0件の銘柄は要対応（アーカイブ以外）", () => {
+    const stocks = [makeStock({ id: "s1", category: "watch" })];
+    const result = computeActionRequiredStocks(stocks, [], [], {}, now);
+    expect(result.map((s) => s.id)).toEqual(["s1"]);
+  });
+
+  it("分析0件でもアーカイブは対象外", () => {
+    const stocks = [makeStock({ id: "s1", category: "archived" })];
+    const result = computeActionRequiredStocks(stocks, [], [], {}, now);
+    expect(result).toEqual([]);
+  });
+
+  it("決算またぎ（post-earnings）の銘柄は要対応", () => {
+    const stocks = [makeStock({ id: "s1", category: "holding" })];
+    const analyses = [makeAnalysis({ stockId: "s1", analyzedAt: "2026-08-01T00:00:00.000Z" })];
+    const lastEarningsByCode = { "0000": { date: "2026-08-05", announcementType: "1Q", publishStatus: "発表済" } };
+    const result = computeActionRequiredStocks(stocks, analyses, [], lastEarningsByCode, now);
+    expect(result.map((s) => s.id)).toEqual(["s1"]);
+  });
+
+  it("期限切れ・期限間近の未消化アクションがある銘柄は要対応", () => {
+    const stocks = [makeStock({ id: "s1", category: "holding" })];
+    const analyses = [makeAnalysis({ stockId: "s1", analyzedAt: now.toISOString() })];
+    const actions = [makeAction({ stockId: "s1", dueDate: "2026-08-01", status: "open" })];
+    const result = computeActionRequiredStocks(stocks, analyses, actions, {}, now);
+    expect(result.map((s) => s.id)).toEqual(["s1"]);
+  });
+
+  it("分析があり決算またぎでもなく緊急アクションも無ければ要対応にならない", () => {
+    const stocks = [makeStock({ id: "s1", category: "holding" })];
+    const analyses = [makeAnalysis({ stockId: "s1", analyzedAt: now.toISOString() })];
+    const result = computeActionRequiredStocks(stocks, analyses, [], {}, now);
+    expect(result).toEqual([]);
+  });
+});
+
+describe("sortActionRequiredStocks", () => {
+  it("次回決算日が近い順、未判明は後ろに並べる", () => {
+    const stocks = [
+      makeStock({ id: "no-earnings", code: "9999" }),
+      makeStock({ id: "far", code: "2222" }),
+      makeStock({ id: "near", code: "1111" }),
+    ];
+    const nextEarningsByCode = {
+      "2222": { date: "2026-09-01", announcementType: "", publishStatus: "" },
+      "1111": { date: "2026-08-14", announcementType: "", publishStatus: "" },
+    };
+    const result = sortActionRequiredStocks(stocks, [], nextEarningsByCode);
+    expect(result.map((s) => s.id)).toEqual(["near", "far", "no-earnings"]);
+  });
+
+  it("決算日が同じ（未判明同士含む）場合は最終分析日の古い順（未分析が最上位）", () => {
+    const stocks = [
+      makeStock({ id: "analyzed", code: "1111" }),
+      makeStock({ id: "unanalyzed", code: "2222" }),
+    ];
+    const analyses = [makeAnalysis({ stockId: "analyzed", analyzedAt: "2026-01-01T00:00:00.000Z" })];
+    const result = sortActionRequiredStocks(stocks, analyses, {});
+    expect(result.map((s) => s.id)).toEqual(["unanalyzed", "analyzed"]);
+  });
+});
+
+describe("sortStocksByLastAnalyzedAsc", () => {
+  it("最終分析日の古い順に並べ、未分析（null）を最上位にする", () => {
+    const stocks = [
+      makeStock({ id: "new", code: "1111" }),
+      makeStock({ id: "unanalyzed", code: "2222" }),
+      makeStock({ id: "old", code: "3333" }),
+    ];
+    const analyses = [
+      makeAnalysis({ stockId: "new", analyzedAt: "2026-08-01T00:00:00.000Z" }),
+      makeAnalysis({ stockId: "old", analyzedAt: "2026-01-01T00:00:00.000Z" }),
+    ];
+    const result = sortStocksByLastAnalyzedAsc(stocks, analyses);
+    expect(result.map((s) => s.id)).toEqual(["unanalyzed", "old", "new"]);
+  });
+});
+
+describe("stocksForTab / countStocksForTab", () => {
+  const now = new Date("2026-08-11T00:00:00.000Z");
+  const stocks = [
+    makeStock({ id: "unanalyzed-holding", code: "1111", category: "holding" }),
+    makeStock({ id: "analyzed-watch", code: "2222", category: "watch" }),
+    makeStock({ id: "archived", code: "3333", category: "archived" }),
+  ];
+  const analyses = [makeAnalysis({ stockId: "analyzed-watch", analyzedAt: now.toISOString() })];
+
+  it("action-required タブはアーカイブを除く要対応銘柄だけを返す", () => {
+    const result = stocksForTab("action-required", stocks, analyses, [], null, now);
+    expect(result.map((s) => s.id)).toEqual(["unanalyzed-holding"]);
+  });
+
+  it("アーカイブは他のどのタブにも一切出ない（action-required除外の確認）", () => {
+    for (const tab of STOCK_NOTES_TABS) {
+      const result = stocksForTab(tab, stocks, analyses, [], null, now);
+      if (tab !== "archived") {
+        expect(result.some((s) => s.id === "archived")).toBe(false);
+      }
+    }
+  });
+
+  it("archived タブはカテゴリが archived の銘柄だけを返す", () => {
+    const result = stocksForTab("archived", stocks, analyses, [], null, now);
+    expect(result.map((s) => s.id)).toEqual(["archived"]);
+  });
+
+  it("holding タブはカテゴリが holding の銘柄だけを返す", () => {
+    const result = stocksForTab("holding", stocks, analyses, [], null, now);
+    expect(result.map((s) => s.id)).toEqual(["unanalyzed-holding"]);
+  });
+
+  it("countStocksForTab は stocksForTab の件数と一致する", () => {
+    for (const tab of STOCK_NOTES_TABS) {
+      expect(countStocksForTab(tab, stocks, analyses, [], null, now)).toBe(
+        stocksForTab(tab, stocks, analyses, [], null, now).length,
+      );
+    }
+  });
+});
+
+describe("extractUnregisteredHoldings", () => {
+  it("stock_notes_stocks に無い保有銘柄（tab='holding'）を抽出する", () => {
+    const holdings = [makeHolding({ code: "7203", name: "トヨタ自動車", quantity: 100 })];
+    expect(extractUnregisteredHoldings(holdings, [])).toEqual([
+      { code: "7203", name: "トヨタ自動車", quantity: 100 },
+    ]);
+  });
+
+  it("stock_notes_stocks に既にある銘柄は対象外（分析0件でも対象外。computeUnanalyzedHoldingsとの違い）", () => {
+    const holdings = [makeHolding({ code: "7203" })];
+    const stocks = [makeStock({ code: "7203" })];
+    expect(extractUnregisteredHoldings(holdings, stocks)).toEqual([]);
+  });
+
+  it("watch タブは対象外", () => {
+    const holdings = [makeHolding({ code: "9999", tab: "watch" })];
+    expect(extractUnregisteredHoldings(holdings, [])).toEqual([]);
+  });
+
+  it("同一銘柄が複数口座にあっても1件に集約し、コード順で返す", () => {
+    const holdings = [
+      makeHolding({ id: "a", code: "9999", name: "Z" }),
+      makeHolding({ id: "b", code: "9999", name: "Z" }),
+      makeHolding({ id: "c", code: "1111", name: "A" }),
+    ];
+    const result = extractUnregisteredHoldings(holdings, []);
+    expect(result.map((r) => r.code)).toEqual(["1111", "9999"]);
+  });
+});
+
+describe("isCodeAlreadyRegistered", () => {
+  it("既に登録済みのコードなら true", () => {
+    const stocks = [makeStock({ code: "7203" })];
+    expect(isCodeAlreadyRegistered(stocks, "7203")).toBe(true);
+  });
+
+  it("未登録のコードなら false", () => {
+    expect(isCodeAlreadyRegistered([makeStock({ code: "7203" })], "9999")).toBe(false);
+  });
+
+  it("前後の空白は無視して比較する", () => {
+    const stocks = [makeStock({ code: "7203" })];
+    expect(isCodeAlreadyRegistered(stocks, " 7203 ")).toBe(true);
+  });
+});
+
+describe("validateNewStockInput", () => {
+  it("コード・名前が両方あればエラー無し", () => {
+    expect(validateNewStockInput("7203", "トヨタ自動車")).toBeNull();
+  });
+
+  it("コードが空ならエラー", () => {
+    expect(validateNewStockInput("", "トヨタ自動車")).not.toBeNull();
+    expect(validateNewStockInput("   ", "トヨタ自動車")).not.toBeNull();
+  });
+
+  it("名前が空ならエラー", () => {
+    expect(validateNewStockInput("7203", "")).not.toBeNull();
+    expect(validateNewStockInput("7203", "   ")).not.toBeNull();
+  });
+});
+
+describe("canDeleteStock / deleteBlockedReason", () => {
+  it("分析0件なら削除できる", () => {
+    const stock = makeStock({ id: "s1" });
+    expect(canDeleteStock(stock, [])).toBe(true);
+    expect(deleteBlockedReason(stock, [])).toBeNull();
+  });
+
+  it("分析が1件でもあれば削除できない（cascade削除を防ぐ）", () => {
+    const stock = makeStock({ id: "s1" });
+    const analyses = [makeAnalysis({ stockId: "s1" })];
+    expect(canDeleteStock(stock, analyses)).toBe(false);
+    expect(deleteBlockedReason(stock, analyses)).toContain("1件");
+  });
+
+  it("分析が複数件あれば件数を理由文言に含める", () => {
+    const stock = makeStock({ id: "s1" });
+    const analyses = [
+      makeAnalysis({ id: "a1", stockId: "s1" }),
+      makeAnalysis({ id: "a2", stockId: "s1" }),
+    ];
+    expect(deleteBlockedReason(stock, analyses)).toContain("2件");
   });
 });

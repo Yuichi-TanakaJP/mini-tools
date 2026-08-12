@@ -1,7 +1,9 @@
 // app/tools/stock-notes/types.ts
-// stock-notes（別リポジトリ）が Supabase に書き込んでいるテーブルの読み取り専用の型。
+// stock-notes（別リポジトリ）が Supabase に書き込んでいるテーブルの型。
 // 正本のスキーマは stock-notes リポの supabase/schema.sql。
-// このツールは読み取り専用のため INSERT/UPDATE/DELETE 用の型は持たない。
+// このツールは stock_notes_stocks（追跡対象と分類の正本）にだけ書き込む。
+// stock_notes_analyses / stock_notes_theses / stock_notes_actions への
+// INSERT/UPDATE/DELETE は行わない（分析はGPTの領域。詳細は decision-log 参照）。
 
 export type StockNoteCategory = "holding" | "watch" | "research" | "archived";
 
@@ -75,6 +77,13 @@ export type StockNoteAction = {
   dueDate: string | null;
   status: StockNoteActionStatus;
   createdAt: string;
+};
+
+/** 新規銘柄登録の入力（stock_notes_stocks への INSERT 用）。 */
+export type NewStockNoteInput = {
+  code: string;
+  name: string;
+  category: StockNoteCategory;
 };
 
 /** ダッシュボードが1回のロードで保持するデータ一式。 */
