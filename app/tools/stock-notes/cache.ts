@@ -15,6 +15,7 @@
 //   ・TTL超過のいずれでも例外を投げず null を返し、呼び出し側は通常取得にフォールバックする。
 // - 書き込み失敗（localStorage の容量超過・プライベートモード等）も握りつぶす。
 import type { DashboardData } from "./load";
+import type { StockNotesManifest } from "./delta";
 
 const CACHE_KEY_PREFIX = "stock_notes_dashboard_cache_v1_";
 const CACHE_VERSION = 1;
@@ -35,11 +36,14 @@ type StockNotesCacheEnvelope = {
   /** このキャッシュを保存した時刻（ISO文字列）。TTL判定と「最終更新 HH:MM」表示の両方に使う。 */
   fetchedAt: string;
   data: CachedStockNotesData;
+  /** 差分API用。旧キャッシュには無くても読み込める。 */
+  manifest?: StockNotesManifest;
 };
 
 export type ReadCacheResult = {
   data: CachedStockNotesData;
   fetchedAt: string;
+  manifest: StockNotesManifest | null;
 };
 
 function cacheKey(userId: string): string {
@@ -48,6 +52,15 @@ function cacheKey(userId: string): string {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isValidManifest(value: unknown): value is StockNotesManifest {
+  if (!isPlainObject(value)) return false;
+  if (Object.keys(value).length > 2_000) return false;
+  return Object.entries(value).every(
+    ([stockId, revision]) =>
+      stockId.length > 0 && stockId.length <= 128 && typeof revision === "string" && revision.length > 0,
+  );
 }
 
 /**
@@ -80,6 +93,7 @@ function isValidEnvelope(value: unknown, userId: string): value is StockNotesCac
   if (value.version !== CACHE_VERSION) return false;
   if (value.userId !== userId) return false;
   if (typeof value.fetchedAt !== "string") return false;
+  if (value.manifest !== undefined && !isValidManifest(value.manifest)) return false;
   if (!isPlainObject(value.data)) return false;
   const data = value.data;
   return (
@@ -112,7 +126,7 @@ export function readStockNotesCache(userId: string, now: number = Date.now()): R
     const fetchedAtMs = new Date(parsed.fetchedAt).getTime();
     if (!Number.isFinite(fetchedAtMs)) return null;
     if (now - fetchedAtMs > CACHE_TTL_MS) return null;
-    return { data: parsed.data, fetchedAt: parsed.fetchedAt };
+    return { data: parsed.data, fetchedAt: parsed.fetchedAt, manifest: parsed.manifest ?? null };
   } catch {
     return null;
   }
@@ -122,7 +136,12 @@ export function readStockNotesCache(userId: string, now: number = Date.now()): R
  * キャッシュを書く。容量超過・プライベートモード等での失敗は握りつぶし、
  * 通常動作（キャッシュ無しの都度取得）を継続させる。
  */
-export function writeStockNotesCache(userId: string, data: CachedStockNotesData, now: number = Date.now()): void {
+export function writeStockNotesCache(
+  userId: string,
+  data: CachedStockNotesData,
+  now: number = Date.now(),
+  manifest?: StockNotesManifest,
+): void {
   if (typeof window === "undefined") return;
   try {
     const envelope: StockNotesCacheEnvelope = {
@@ -130,6 +149,7 @@ export function writeStockNotesCache(userId: string, data: CachedStockNotesData,
       userId,
       fetchedAt: new Date(now).toISOString(),
       data,
+      ...(manifest ? { manifest } : {}),
     };
     window.localStorage.setItem(cacheKey(userId), JSON.stringify(envelope));
   } catch {

@@ -15,6 +15,7 @@ import {
   fetchEarnings,
   fetchHoldings,
   fetchOpenActions,
+  fetchStockNotesDelta,
   fetchStocks,
   fetchTheses,
   insertStock,
@@ -25,6 +26,7 @@ import {
 } from "./data";
 import type { StockNotesEarningsInfo } from "./earnings-types";
 import { invalidateStockNotesCache, readStockNotesCache, writeStockNotesCache } from "./cache";
+import type { StockNotesManifest } from "./delta";
 import { loadDashboardData, type DashboardData } from "./load";
 import { useStockNotesStockMaster } from "./useStockNotesStockMaster";
 import {
@@ -189,6 +191,16 @@ function formatDate(iso: string | null): string {
   return d.toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" });
 }
 
+const EMPTY_DASHBOARD_DATA: DashboardData = {
+  stocks: [],
+  analyses: [],
+  theses: [],
+  actions: [],
+  holdings: [],
+  holdingsUpdatedAt: null,
+  earnings: null,
+};
+
 export default function ToolClient() {
   const configured = isSyncConfigured();
   const [supabase] = useState<SupabaseClient | null>(() =>
@@ -263,8 +275,12 @@ export default function ToolClient() {
   // 発火するたびにも世代を進める。getUser() の結果を適用する前に世代が変わっていないか
   // 確認し、変わっていれば（＝より新しい認証イベントを先に処理済み）その結果は捨てる。
   const authGuardRef = useRef(createLoadGuard());
+  const dashboardDataRef = useRef<DashboardData>(EMPTY_DASHBOARD_DATA);
+  const stockNotesManifestRef = useRef<StockNotesManifest | null>(null);
 
   const resetData = useCallback(() => {
+    dashboardDataRef.current = EMPTY_DASHBOARD_DATA;
+    stockNotesManifestRef.current = null;
     setStocks([]);
     setAnalyses([]);
     setTheses([]);
@@ -281,7 +297,10 @@ export default function ToolClient() {
     setRevalidateError(null);
   }, []);
 
-  const applyDashboardData = useCallback((data: DashboardData, fetchedAt: string) => {
+  const applyDashboardData = useCallback(
+    (data: DashboardData, fetchedAt: string, manifest: StockNotesManifest | null = null) => {
+      dashboardDataRef.current = data;
+      stockNotesManifestRef.current = manifest;
     setStocks(data.stocks);
     setAnalyses(data.analyses);
     setTheses(data.theses);
@@ -290,7 +309,36 @@ export default function ToolClient() {
     setHoldingsUpdatedAt(data.holdingsUpdatedAt);
     setEarnings(data.earnings);
     setDataUpdatedAt(fetchedAt);
-  }, []);
+    },
+    [],
+  );
+
+  /**
+   * 差分APIを優先し、APIが未デプロイ・一時障害などの場合は既存のSupabase直接取得へ戻す。
+   * 差分APIが401を返した場合は、loadDashboardDataがunauthorizedを返すためフォールバックしない。
+   */
+  const loadDashboard = useCallback(
+    async (baseData: DashboardData | null, knownManifest: StockNotesManifest | null) => {
+      if (!supabase) return { status: "error" as const, message: "Supabase client is not available" };
+      const commonFetchers = {
+        fetchStocks: () => fetchStocks(supabase),
+        fetchAnalyses: () => fetchAnalyses(supabase),
+        fetchTheses: () => fetchTheses(supabase),
+        fetchOpenActions: () => fetchOpenActions(supabase),
+        fetchHoldings,
+        fetchEarnings,
+      };
+      const deltaResult = await loadDashboardData({
+        ...commonFetchers,
+        fetchStockNotesDelta,
+        baseData: baseData ?? undefined,
+        knownManifest,
+      });
+      if (deltaResult.status !== "error") return deltaResult;
+      return loadDashboardData(commonFetchers);
+    },
+    [supabase],
+  );
 
   /**
    * 通常（フォアグラウンド）のロード。キャッシュが無いとき・エラー後の「再読み込み」で使う。
@@ -311,14 +359,7 @@ export default function ToolClient() {
       // 触れないと解除されない、という不具合があった）。ここで同期的に false にしておくことで、
       // どちらが先に解決しても最終的に正しい状態に収束する。
       setIsRevalidating(false);
-      const result = await loadDashboardData({
-        fetchStocks: () => fetchStocks(supabase),
-        fetchAnalyses: () => fetchAnalyses(supabase),
-        fetchTheses: () => fetchTheses(supabase),
-        fetchOpenActions: () => fetchOpenActions(supabase),
-        fetchHoldings,
-        fetchEarnings,
-      });
+      const result = await loadDashboard(null, null);
       // 完了までの間により新しい取得が始まっていたら、この結果は古いので画面に反映しない。
       if (!loadGuardRef.current.isCurrent(token)) return;
 
@@ -333,9 +374,9 @@ export default function ToolClient() {
           holdingsUpdatedAt: result.holdingsUpdatedAt,
           earnings: result.earnings,
         };
-        applyDashboardData(data, fetchedAtIso);
+        applyDashboardData(data, fetchedAtIso, result.stockNotesManifest ?? null);
         setLoadState("loaded");
-        if (uid) writeStockNotesCache(uid, data);
+        if (uid) writeStockNotesCache(uid, data, Date.now(), result.stockNotesManifest);
       } else if (result.status === "unauthorized") {
         if (uid) invalidateStockNotesCache(uid);
         setLoadErrorMessage(result.message);
@@ -345,7 +386,7 @@ export default function ToolClient() {
         setLoadState("error");
       }
     },
-    [supabase, applyDashboardData],
+    [supabase, applyDashboardData, loadDashboard],
   );
 
   /**
@@ -366,19 +407,17 @@ export default function ToolClient() {
    * authToken を渡さない（呼び出し時点の uid は既に最新であり、この追加ガードは不要）。
    */
   const revalidateData = useCallback(
-    async (uid: string | null, referenceFetchedAt: string | null, authToken?: number) => {
+    async (
+      uid: string | null,
+      referenceFetchedAt: string | null,
+      authToken?: number,
+      knownManifest?: StockNotesManifest | null,
+    ) => {
       if (!supabase) return;
       const token = loadGuardRef.current.next();
       setIsRevalidating(true);
       setRevalidateError(null);
-      const result = await loadDashboardData({
-        fetchStocks: () => fetchStocks(supabase),
-        fetchAnalyses: () => fetchAnalyses(supabase),
-        fetchTheses: () => fetchTheses(supabase),
-        fetchOpenActions: () => fetchOpenActions(supabase),
-        fetchHoldings,
-        fetchEarnings,
-      });
+      const result = await loadDashboard(dashboardDataRef.current, knownManifest ?? null);
       if (!loadGuardRef.current.isCurrent(token)) return;
       if (authToken !== undefined && !authGuardRef.current.isCurrent(authToken)) {
         // 取得中にユーザーが切り替わった。この結果は別ユーザーのセッションで取得したものなので、
@@ -400,10 +439,10 @@ export default function ToolClient() {
           holdingsUpdatedAt: result.holdingsUpdatedAt,
           earnings: result.earnings,
         };
-        applyDashboardData(data, fetchedAtIso);
+        applyDashboardData(data, fetchedAtIso, result.stockNotesManifest ?? null);
         setLoadState("loaded");
         setLoadErrorMessage(null);
-        if (uid) writeStockNotesCache(uid, data);
+        if (uid) writeStockNotesCache(uid, data, Date.now(), result.stockNotesManifest);
         return;
       }
 
@@ -418,7 +457,7 @@ export default function ToolClient() {
       // ネットワーク不調・サーバーエラー等の一般的な失敗はキャッシュ/前回表示を維持する。
       setRevalidateError(buildRevalidateFailureMessage(referenceFetchedAt));
     },
-    [supabase, applyDashboardData, resetData],
+    [supabase, applyDashboardData, loadDashboard, resetData],
   );
 
   // 認証確認とログイン中のデータ読み込みを1つのeffectにまとめる。
@@ -438,10 +477,10 @@ export default function ToolClient() {
     const startForUser = (uid: string) => {
       const cached = readStockNotesCache(uid);
       if (cached) {
-        applyDashboardData(cached.data, cached.fetchedAt);
+        applyDashboardData(cached.data, cached.fetchedAt, cached.manifest);
         setLoadState("loaded");
         setLoadErrorMessage(null);
-        revalidateData(uid, cached.fetchedAt);
+        revalidateData(uid, cached.fetchedAt, undefined, cached.manifest);
       } else {
         loadData(uid);
       }
@@ -557,7 +596,7 @@ export default function ToolClient() {
     async (uid: string, authToken: number) => {
       if (!authGuardRef.current.isCurrent(authToken)) return;
       invalidateStockNotesCache(uid);
-      await revalidateData(uid, dataUpdatedAt, authToken);
+      await revalidateData(uid, dataUpdatedAt, authToken, stockNotesManifestRef.current);
     },
     [revalidateData, dataUpdatedAt],
   );
@@ -772,7 +811,7 @@ export default function ToolClient() {
               </span>
               <button
                 type="button"
-                onClick={() => revalidateData(userId, dataUpdatedAt)}
+                onClick={() => revalidateData(userId, dataUpdatedAt, undefined, stockNotesManifestRef.current)}
                 disabled={isRevalidating}
                 style={{ ...subBtn, opacity: isRevalidating ? 0.6 : 1 }}
               >

@@ -3,7 +3,13 @@
 // React に依存しない純粋な非同期関数として切り出し、ToolClient から呼ぶ。
 // これにより「/api/sync の 401 だけ専用文言にする」ような分岐をユニットテストできる。
 import type { MyStockItem } from "@/app/tools/my-stocks/types";
-import { HoldingsFetchError, isSessionExpiredSupabaseError, type HoldingsWithSync } from "./data";
+import {
+  HoldingsFetchError,
+  isSessionExpiredSupabaseError,
+  StockNotesDeltaFetchError,
+  type HoldingsWithSync,
+} from "./data";
+import { mergeStockNotesDelta, type StockNotesDelta, type StockNotesManifest } from "./delta";
 import type { StockNotesEarningsInfo } from "./earnings-types";
 import type { StockNoteAction, StockNoteAnalysis, StockNoteStock, StockNoteThesis } from "./types";
 
@@ -20,6 +26,15 @@ export type DashboardFetchers = {
    * 失敗はダッシュボード全体を失敗させない（下記 loadDashboardData のコメント参照）。
    */
   fetchEarnings: (codes: string[]) => Promise<StockNotesEarningsInfo>;
+  /**
+   * 任意。指定すると、4テーブルの全件取得ではなく銘柄単位の差分APIを使う。
+   * API障害時は呼び出し側が従来のfetchersへフォールバックする。
+   */
+  fetchStockNotesDelta?: (knownManifest: StockNotesManifest | null) => Promise<StockNotesDelta>;
+  /** 差分適用の土台。キャッシュ表示中の再検証時だけ渡す。 */
+  baseData?: DashboardData;
+  /** baseDataに対応するmanifest。無い場合は差分APIから全銘柄を受け取る。 */
+  knownManifest?: StockNotesManifest | null;
 };
 
 export type DashboardData = {
@@ -39,7 +54,7 @@ export type DashboardData = {
 };
 
 export type LoadResult =
-  | ({ status: "ok" } & DashboardData)
+  | ({ status: "ok" } & DashboardData & { stockNotesManifest?: StockNotesManifest })
   | { status: "unauthorized"; message: string }
   | { status: "error"; message: string };
 
@@ -68,6 +83,38 @@ export type LoadResult =
  */
 export async function loadDashboardData(fetchers: DashboardFetchers): Promise<LoadResult> {
   try {
+    if (fetchers.fetchStockNotesDelta) {
+      const [delta, holdingsResult] = await Promise.all([
+        fetchers.fetchStockNotesDelta(fetchers.knownManifest ?? null),
+        fetchers.fetchHoldings(),
+      ]);
+      const baseData =
+        fetchers.baseData ??
+        ({
+          stocks: [],
+          analyses: [],
+          theses: [],
+          actions: [],
+          holdings: [],
+          holdingsUpdatedAt: null,
+          earnings: null,
+        } satisfies DashboardData);
+      const stockNotesData = mergeStockNotesDelta(baseData, delta, fetchers.knownManifest == null);
+      const codes = Array.from(
+        new Set([...stockNotesData.stocks.map((s) => s.code), ...holdingsResult.holdings.map((h) => h.code)]),
+      );
+      const earnings = codes.length > 0 ? await fetchers.fetchEarnings(codes).catch(() => null) : null;
+
+      return {
+        status: "ok",
+        ...stockNotesData,
+        holdings: holdingsResult.holdings,
+        holdingsUpdatedAt: holdingsResult.updatedAt,
+        earnings,
+        stockNotesManifest: delta.currentManifest,
+      };
+    }
+
     const [stocks, analyses, theses, actions, holdingsResult] = await Promise.all([
       fetchers.fetchStocks(),
       fetchers.fetchAnalyses(),
@@ -92,7 +139,11 @@ export async function loadDashboardData(fetchers: DashboardFetchers): Promise<Lo
       earnings,
     };
   } catch (e) {
-    if ((e instanceof HoldingsFetchError && e.status === 401) || isSessionExpiredSupabaseError(e)) {
+    if (
+      (e instanceof HoldingsFetchError && e.status === 401) ||
+      (e instanceof StockNotesDeltaFetchError && e.status === 401) ||
+      isSessionExpiredSupabaseError(e)
+    ) {
       return {
         status: "unauthorized",
         message: "セッションが切れています。ログインし直してください。",

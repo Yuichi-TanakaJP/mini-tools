@@ -56,6 +56,13 @@ describe("stock-notes cache", () => {
     expect(result).not.toBeNull();
     expect(result?.data.stocks).toHaveLength(1);
     expect(result?.fetchedAt).toBe(new Date(now).toISOString());
+    expect(result?.manifest).toBeNull();
+  });
+
+  it("差分API用manifestをキャッシュと一緒に往復できる", () => {
+    const now = Date.now();
+    writeStockNotesCache("user-1", emptyData, now, { s1: "rev-1" });
+    expect(readStockNotesCache("user-1", now + 1000)?.manifest).toEqual({ s1: "rev-1" });
   });
 
   it("別の userId では読めない（別アカウントのデータ混入防止）", () => {
