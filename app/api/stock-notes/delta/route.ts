@@ -227,6 +227,7 @@ export async function POST(request: Request) {
       supabase
         .from("stock_notes_actions")
         .select("id, stock_id, action_type, title, detail, trigger_condition, due_date, status, created_at")
+        .eq("status", "open")
         .returns<ActionRow[]>(),
     ]);
 
