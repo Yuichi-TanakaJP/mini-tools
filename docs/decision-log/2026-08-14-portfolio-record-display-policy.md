@@ -1,5 +1,10 @@
 # 2026-08-14 ポートフォリオの「表示・記録・方針」構成
 
+> **更新:** この判断は、実データ表示の初期基盤としては有効だが、製品全体の情報設計・運用・
+> 完成条件としては不十分だった。2026-08-15以降は
+> [ChatGPT起点の意思決定ワークスペース](./2026-08-15-portfolio-chat-first-operating-model.md) と
+> [実装計画](../plans/portfolio-decision-workspace-plan.md) を優先する。
+
 ## 背景
 
 stock-notes側に、証券会社CSVを口座別ポジションと不変スナップショットとして保存する基盤を追加した。
@@ -29,8 +34,11 @@ stock-notes APIのBearerトークンをブラウザへ渡さず、既存のmini-
 
 ## 残課題
 
-- 方針reviewの作成・編集・確定UI
-- stock-notes側review APIとMiniTools側の保存導線
+- portfolio context API
+- ChatGPTでの取得・相談・保存・確定のE2E
+- 意思決定中心の画面構成
+- portfolio actionとreview差分
+- 銘柄ダッシュボードとの双方向連携
 - CSV取込後の実データを使った本番UAT
 
 ## 関連
