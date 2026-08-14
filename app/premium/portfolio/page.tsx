@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import PortfolioDashboard from "./PortfolioDashboard";
-import { loadPortfolio } from "./data";
+import PortfolioWorkspace from "./PortfolioWorkspace";
+import { loadPortfolio, portfolioAuthRequired } from "./data";
 import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
+import { isSyncConfigured } from "@/lib/supabase/config";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Portfolio Dashboard | mini-tools premium",
@@ -22,14 +24,14 @@ export default async function PremiumPortfolioPage() {
     redirect(`/premium/login?next=${encodeURIComponent("/premium/portfolio")}`);
   }
 
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Tokyo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-
-  const { holdings, events } = await loadPortfolio();
+  let portfolio = portfolioAuthRequired();
+  if (isSyncConfigured()) {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    portfolio = user ? await loadPortfolio(supabase) : portfolioAuthRequired();
+  }
 
   return (
     <main style={{ padding: "28px 16px 72px" }}>
@@ -59,7 +61,7 @@ export default async function PremiumPortfolioPage() {
           </Link>
         </nav>
 
-        <PortfolioDashboard holdings={holdings} events={events} today={today} />
+        <PortfolioWorkspace data={portfolio} />
       </section>
     </main>
   );
