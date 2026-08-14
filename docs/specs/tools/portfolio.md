@@ -1,10 +1,14 @@
 # ポートフォリオ 仕様
 
+> **実装状態:** 2026-08-15時点の画面は、最新snapshotと保存済みreviewを読むPhase 0版である。
+> ポートフォリオ意思決定プラットフォームの完成品ではない。目標運用とUIの実装順序は
+> [ポートフォリオ意思決定ワークスペース実装計画](../../plans/portfolio-decision-workspace-plan.md) を参照する。
+
 ## 概要
 
 - URL: `/premium/portfolio`
 - 分類: Premium / 投資管理
-- 主な用途: 保有状況を「表示・記録・方針」の3つの視点で確認する
+- 現行Phase 0の主な用途: 保有状況を「表示・記録・方針」の3つの視点で確認する
 
 ## 対象ユーザー
 
@@ -20,13 +24,27 @@
 
 ### 入力
 
-- 現段階では画面からの編集入力は持たない。CSV取込はstock-notesの認証付きAPIを使用する
+- 現段階では画面からの編集入力は持たない
+- CSV取込はstock-notesの認証付きAPIを使用する
+- 目標仕様でも主入力はMiniToolsのフォームではなく、ChatGPTとの相談とする
+- ChatGPTが全体contextを取得し、ユーザー確認後にreview/actionを保存する経路は未実装
 
 ### 出力
 
 - 株式・投資信託を商品単位で表示する
 - 口座別の同一商品は「表示」では集約し、「記録」では分けて表示する
 - 金額が未取得の場合は `—` とし、0円とは区別する
+
+### 現段階でできないこと
+
+- ChatGPTがportfolio全体の判断材料を一括取得する
+- 全体の弱み、不足する役割、集中リスクを表示する
+- 新規資金の順位、配分、待機資金、見送り理由を表示する
+- snapshotとreviewの鮮度差を判定する
+- 前回reviewとの差分を表示する
+- 銘柄ダッシュボードとportfolio方針を往復する
+
+これらは「後からあると便利」な拡張ではなく、実装計画上の完成条件である。
 
 ## データ仕様
 
@@ -41,7 +59,8 @@
 ### 保存先
 
 - mini-toolsはポートフォリオデータを書き込まない
-- 方針を保存するAPI・編集UIは後続段階で追加する
+- 方針の主保存経路はChatGPTからstock-notes APIとする
+- MiniToolsの編集UIはMVPの必須要件にしない
 
 ### fallback
 
@@ -74,3 +93,5 @@
 
 - UAT: [ポートフォリオ UAT](../../uat/portfolio.md)
 - Decision Log: [ポートフォリオの「表示・記録・方針」構成](../../decision-log/2026-08-14-portfolio-record-display-policy.md)
+- Decision Log: [ChatGPT起点の意思決定ワークスペース](../../decision-log/2026-08-15-portfolio-chat-first-operating-model.md)
+- Plan: [ポートフォリオ意思決定ワークスペース実装計画](../../plans/portfolio-decision-workspace-plan.md)

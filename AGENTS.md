@@ -32,6 +32,21 @@
 - 初回応答では、正規化したヘッダーを先頭に短く明示してから作業を進める。
 - 日本語の簡略形式でもよいが、会話一覧で判別しやすくするため、`repo` / `type` / `target` / `action` が分かる形を優先する。
 
+## ポートフォリオ意思決定ワークスペースの作業（must）
+
+`/premium/portfolio`、銘柄ダッシュボードとのportfolio連携、関連データ取得・UI・UATを
+始める前に、必ず次を読む。
+
+- `docs/plans/portfolio-decision-workspace-plan.md` — MiniTools側の実行計画
+- `docs/specs/tools/portfolio.md` — 現在実装済みの仕様と未完成範囲
+- stock-notes `docs/portfolio-platform-plan.md` / `docs/portfolio-plan-checklist.md` — クロスリポジトリ正本と適合確認
+
+作業開始時に対象Phaseと今回満たす受入条件を明示し、PR本文にも記載する。単なる保有表、
+グラフ、読み取り画面を、意思決定ワークスペースの完成として扱わない。
+
+正本計画と異なるスコープ縮小、Phase移動、完成条件変更は、理由と影響をdocsへ記録し、
+ユーザーの明示確認を得るまで実施しない。
+
 ## 1. 作業開始
 
 ```powershell

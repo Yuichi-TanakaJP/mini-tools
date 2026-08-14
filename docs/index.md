@@ -13,6 +13,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 - [2026-08-11 銘柄分析ダッシュボード（stock-notes連携）の設計判断](./decision-log/2026-08-11-stock-notes-dashboard-design.md)
 - [2026-08-13 銘柄分析ダッシュボードの銘柄単位差分同期](./decision-log/2026-08-13-stock-notes-delta-sync.md)
 - [2026-08-14 ポートフォリオの「表示・記録・方針」構成](./decision-log/2026-08-14-portfolio-record-display-policy.md)
+- [2026-08-15 ポートフォリオはChatGPT起点の意思決定ワークスペースとする](./decision-log/2026-08-15-portfolio-chat-first-operating-model.md)
 - [2026-08-07 優待取得時に次回権利月を固定する](./decision-log/2026-08-07-yutai-acquired-entitlement-lock.md)
 
 設計・方針・トレードオフの判断理由を記録します。
