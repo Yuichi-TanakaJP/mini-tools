@@ -12,6 +12,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 - [2026-08-11 パスワードのリセット・変更機能の追加](./decision-log/2026-08-11-password-reset-and-change.md)
 - [2026-08-11 銘柄分析ダッシュボード（stock-notes連携）の設計判断](./decision-log/2026-08-11-stock-notes-dashboard-design.md)
 - [2026-08-13 銘柄分析ダッシュボードの銘柄単位差分同期](./decision-log/2026-08-13-stock-notes-delta-sync.md)
+- [2026-08-14 ポートフォリオの「表示・記録・方針」構成](./decision-log/2026-08-14-portfolio-record-display-policy.md)
 - [2026-08-07 優待取得時に次回権利月を固定する](./decision-log/2026-08-07-yutai-acquired-entitlement-lock.md)
 
 設計・方針・トレードオフの判断理由を記録します。
@@ -129,6 +130,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
   - [投資主体別売買動向 仕様](./specs/tools/investor-flow.md)
   - [ペンギンシューター 仕様](./specs/tools/penguin-shooter.md)
   - [ルーティン一覧 仕様](./specs/tools/routines.md)
+  - [ポートフォリオ 仕様](./specs/tools/portfolio.md)
 - [横断仕様インデックス](./specs/cross-cutting/index.md)
   - [mini-tools システム構成概要](./specs/cross-cutting/system-architecture-overview.md)
   - [React Server / Client 責任境界](./specs/cross-cutting/react-server-client-boundaries.md)

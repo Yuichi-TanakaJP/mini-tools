@@ -23,6 +23,7 @@ PR マージ後・リリース前に「何を確認すれば OK か」をツー�
 | 銘柄分析ダッシュボード | `/tools/stock-notes` | Supabase（読み取り専用）、要ログイン | [stock-notes.md](./stock-notes.md) |
 | アカウント（パスワードのリセット・変更） | `/account`, `/account/reset-password` | Supabase Auth | [password-reset.md](./password-reset.md) |
 | ペンギンシューター | `/tools/penguin-shooter` | なし（初期版はメモリ上のゲーム状態のみ） | [penguin-shooter.md](./penguin-shooter.md) |
+| ポートフォリオ | `/premium/portfolio` | Supabase（RLS付き読み取り）、Premium + Supabase Auth | [portfolio.md](./portfolio.md) |
 
 ## 確認環境
 
