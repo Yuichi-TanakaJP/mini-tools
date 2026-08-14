@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeItems } from "@/app/tools/my-stocks/storage";
 import type { MyStockItem } from "@/app/tools/my-stocks/types";
 import type { EarningsFoldEntry, StockNotesEarningsInfo } from "./earnings-types";
+import { parseStockNotesDelta, type StockNotesDelta, type StockNotesManifest } from "./delta";
 import type {
   NewStockNoteInput,
   StockNoteAction,
@@ -308,6 +309,35 @@ export async function fetchEarnings(codes: string[]): Promise<StockNotesEarnings
   }
   const raw = (await res.json()) as StockNotesEarningsInfo;
   return { ...raw, lastEarnings: normalizeLastEarnings(raw.lastEarnings) };
+}
+
+/** 差分APIのHTTPエラー。401はセッション切れとして通常の取得失敗と区別する。 */
+export class StockNotesDeltaFetchError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "StockNotesDeltaFetchError";
+    this.status = status;
+  }
+}
+
+/**
+ * 銘柄単位のmanifestをサーバーへ渡し、変更銘柄だけを取得する。
+ * knownManifest が null の場合は、差分APIが現在の全銘柄を返して初回キャッシュを作る。
+ */
+export async function fetchStockNotesDelta(
+  knownManifest: StockNotesManifest | null,
+): Promise<StockNotesDelta> {
+  const res = await fetch("/api/stock-notes/delta", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ knownManifest }),
+  });
+  if (!res.ok) {
+    throw new StockNotesDeltaFetchError(res.status, `銘柄差分の取得に失敗しました（HTTP ${res.status}）`);
+  }
+  return parseStockNotesDelta((await res.json()) as unknown);
 }
 
 // ---------------------------------------------------------------------------

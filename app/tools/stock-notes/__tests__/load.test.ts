@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HoldingsFetchError } from "../data";
+import type { StockNotesDelta } from "../delta";
 import { loadDashboardData } from "../load";
 
 const emptyEarnings = {
@@ -21,6 +22,74 @@ const emptyOkFetchers = {
 };
 
 describe("loadDashboardData", () => {
+  it("manifestが指定された場合は差分APIを使い、変更銘柄をキャッシュへ反映する", async () => {
+    let fullFetchCalled = false;
+    const delta: StockNotesDelta = {
+      version: 1,
+      complete: true,
+      currentManifest: { s1: "rev-2" },
+      changedStocks: [
+        {
+          stock: {
+            id: "s1",
+            code: "7203",
+            name: "トヨタ",
+            category: "holding",
+            categoryChangedAt: null,
+            categoryChangeReason: null,
+            createdAt: "2026-08-01T00:00:00.000Z",
+            updatedAt: "2026-08-13T00:00:00.000Z",
+          },
+          analyses: [],
+          theses: [],
+          actions: [],
+          revision: "rev-2",
+        },
+      ],
+      deletedStockIds: [],
+    };
+    const result = await loadDashboardData({
+      ...emptyOkFetchers,
+      fetchStocks: async () => {
+        fullFetchCalled = true;
+        return [];
+      },
+      fetchStockNotesDelta: async (knownManifest) => {
+        expect(knownManifest).toEqual({ s1: "rev-1" });
+        return delta;
+      },
+      knownManifest: { s1: "rev-1" },
+      baseData: {
+        ...emptyOkFetchers,
+        stocks: [
+          {
+            id: "s1",
+            code: "7203",
+            name: "旧トヨタ",
+            category: "holding",
+            categoryChangedAt: null,
+            categoryChangeReason: null,
+            createdAt: "2026-08-01T00:00:00.000Z",
+            updatedAt: "2026-08-01T00:00:00.000Z",
+          },
+        ],
+        analyses: [],
+        theses: [],
+        actions: [],
+        holdings: [],
+        holdingsUpdatedAt: null,
+        earnings: null,
+      },
+    });
+
+    expect(fullFetchCalled).toBe(false);
+    expect(result.status).toBe("ok");
+    if (result.status === "ok") {
+      expect(result.stocks[0].name).toBe("トヨタ");
+      expect(result.stockNotesManifest).toEqual({ s1: "rev-2" });
+    }
+  });
+
   it("全部成功したら status: ok で結果を返す", async () => {
     const result = await loadDashboardData({
       ...emptyOkFetchers,
