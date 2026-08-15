@@ -3032,11 +3032,12 @@ export default function ToolClient() {
                       <span>Mode {gameMode}</span>
                       <span>Small {currentSubStage.globalNumber}/{CLEAR_TARGET}</span>
                     </div>
-                    <div style={styles.hudLine}>
-                      <span>Score {score}</span>
-                      <span>Coin {coins}</span>
-                      <span>Weapon {WEAPON_DEFINITIONS[selectedWeapon].shortLabel}</span>
-                    </div>
+                  <div style={styles.hudLine}>
+                    <span>Score {score}</span>
+                    <span>Coin {coins}</span>
+                    <span>Weapon {WEAPON_DEFINITIONS[selectedWeapon].shortLabel}</span>
+                    <span style={styles.hudHint}>ARROWS / SPACE / B</span>
+                  </div>
                   </div>
                   <div
                     style={{
@@ -3317,11 +3318,14 @@ export default function ToolClient() {
               style={{
                 ...styles.touchPanel,
                 ...(isMobileLayout ? styles.touchPanelMobile : {}),
-                ...(isGameActive ? styles.touchPanelActive : {}),
+                ...(isGameActive && isMobileLayout ? styles.touchPanelActive : {}),
+                ...(isGameActive && !isMobileLayout ? styles.touchPanelDesktopHidden : {}),
               }}
             >
-              <div style={styles.touchTitle}>スマホ操作</div>
-              <div style={styles.touchWeaponHeader}>
+              <div style={{ ...styles.touchTitle, ...(isGameActive ? styles.touchCompactLabel : {}) }}>
+                スマホ操作
+              </div>
+              <div style={{ ...styles.touchWeaponHeader, ...(isGameActive ? styles.touchCompactLabel : {}) }}>
                 <span>Weapon: {WEAPON_DEFINITIONS[selectedWeapon].shortLabel}</span>
                 <span>数字キー 1〜6 / タップで切替</span>
               </div>
@@ -3864,7 +3868,7 @@ const styles: Record<string, CSSProperties> = {
     padding: 8,
   },
   gameCardActive: {
-    overflow: "hidden",
+    overflow: "visible",
   },
   gameCardHidden: {
     display: "none",
@@ -4046,6 +4050,11 @@ const styles: Record<string, CSSProperties> = {
     display: "flex",
     flexWrap: "wrap",
     gap: "3px 10px",
+  },
+  hudHint: {
+    color: "#bae6fd",
+    fontSize: 9,
+    letterSpacing: 0.4,
   },
   lifeHud: {
     position: "absolute",
@@ -5010,16 +5019,18 @@ const styles: Record<string, CSSProperties> = {
     padding: 10,
   },
   touchPanelActive: {
-    position: "absolute",
-    left: 12,
-    right: 12,
-    bottom: 12,
-    zIndex: 60,
-    marginTop: 0,
-    marginBottom: 0,
+    marginTop: 8,
+    marginBottom: 8,
+    padding: 8,
     background: "rgba(248, 250, 252, 0.9)",
     backdropFilter: "blur(12px)",
     boxShadow: "0 12px 28px rgba(15, 23, 42, 0.2)",
+  },
+  touchPanelDesktopHidden: {
+    display: "none",
+  },
+  touchCompactLabel: {
+    display: "none",
   },
   touchTitle: {
     marginBottom: 10,
