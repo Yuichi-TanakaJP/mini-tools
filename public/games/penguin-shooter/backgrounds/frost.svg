@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 820" role="img" aria-label="frost stage background">
+  <defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#082f49"/><stop offset=".55" stop-color="#155e75"/><stop offset="1" stop-color="#cffafe"/></linearGradient></defs>
+  <rect width="720" height="820" fill="url(#sky)"/>
+  <g fill="#e0f2fe" opacity=".72"><circle cx="90" cy="140" r="3"/><circle cx="260" cy="90" r="2"/><circle cx="512" cy="172" r="3"/><circle cx="642" cy="112" r="2"/></g>
+  <path d="M0 580 120 430l110 120 130-190 120 150 120-130 120 180v260H0Z" fill="#bae6fd" opacity=".55"/>
+  <path d="M0 672 145 548l92 76 115-136 124 122 110-86 134 118v178H0Z" fill="#164e63" opacity=".88"/>
+  <path d="M0 746h720v74H0Z" fill="#e0f2fe" opacity=".35"/>
+  <path d="M0 790c160-28 270 24 380-4s230-12 340 4v30H0Z" fill="#ecfeff" opacity=".68"/>
+</svg>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 820" role="img" aria-label="black hole stage background">
+  <defs><radialGradient id="void"><stop stop-color="#020617"/><stop offset=".4" stop-color="#1e1b4b"/><stop offset=".68" stop-color="#7c3aed"/><stop offset="1" stop-color="#111827"/></radialGradient></defs>
+  <rect width="720" height="820" fill="#020617"/>
+  <ellipse cx="360" cy="340" rx="260" ry="190" fill="url(#void)" opacity=".9"/>
+  <g fill="none" stroke="#a78bfa" opacity=".55"><ellipse cx="360" cy="340" rx="250" ry="82" stroke-width="16" transform="rotate(-18 360 340)"/><ellipse cx="360" cy="340" rx="210" ry="62" stroke-width="8" transform="rotate(28 360 340)"/></g>
+  <g fill="#e9d5ff"><circle cx="80" cy="168" r="3"/><circle cx="192" cy="92" r="2"/><circle cx="612" cy="148" r="3"/><circle cx="658" cy="370" r="2"/><circle cx="94" cy="504" r="2"/></g>
+  <path d="M0 650c132-92 236 26 368-50 118-68 226 6 352-52v272H0Z" fill="#1e1b4b" opacity=".92"/>
+  <path d="M0 782c148-40 272 24 400-8 124-31 216-3 320 12v34H0Z" fill="#312e81"/>
+</svg>

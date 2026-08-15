@@ -4,7 +4,7 @@
 
 - URL: `/tools/penguin-shooter`
 - 分類: おまけゲーム tool
-- 主な用途: 宇宙船 Shuty に乗った Pen を操作し、100小ステージを進みながら Shoot の救出と世界平和を目指すミニシューティングゲーム
+- 主な用途: 宇宙船 Shuty に乗った Pen を操作し、10大ステージ・100小ステージを進みながら Shoot の救出と世界平和を目指すミニシューティングゲーム
 
 ## 対象ユーザー
 
@@ -69,33 +69,40 @@
 - タイトルは「ペンギンシューター」
 - URL は `/tools/penguin-shooter`
 - 既存の `/tools/penguin-rabbit-shooter` は残す
-- 5大ステージ x 20小ステージ、合計100小ステージの進行を持つ
-- 大ステージは「町 / 国 / 月 / 火星 / 異次元」のテーマ背景を持つ
-- 各大ステージの10小ステージ目と20小ステージ目にボスを出す
+- 10大ステージ x 10小ステージ、合計100小ステージの進行を持つ
+- 大ステージは「町 / 王国 / 氷海 / 砂漠 / 雲上都市 / 月 / 火星 / 機械惑星 / ブラックホール / 異次元」のテーマ背景を持つ
+- 各大ステージの5小ステージ目に中間ボス、10小ステージ目にステージボスを出す
 - 異次元ステージを突破すると Shoot 救出クリアになる
 - ライフ最大値は10として扱う
 - 背景は `public/games/penguin-shooter/backgrounds/` のSVGアセットを使う
 - BGM / 効果音は Web Audio API の生成音で導入し、今後ファイル音源へ差し替えられる構成にする
 - ミュート状態は LocalStorage に保存する
 - 100小ステージの構造は `app/tools/penguin-shooter/stageData.ts` に持つ
-- 10小ステージ目を中間ボス、20小ステージ目をステージボスとして扱う
+- 武器定義は `WEAPON_DEFINITIONS` と `WEAPON_ORDER` に集約する
+- ステージボスSVGは `public/games/penguin-shooter/bosses/` に置き、`BossDefinition.assetPath` から表示する
+- 5小ステージ目を中間ボス、10小ステージ目をステージボスとして扱う
 - 10小ステージクリア後は2人プレイ解放状態をUIに表示する
 - ボスは大ステージごとに個別定義し、名前、HP、スコア、報酬、攻撃ラベル、速度補正、横移動補正を持つ
 - 2人プレイと進捗保存は2026-05-09時点で凍結し、再開条件が決まるまで実装対象から外す
 
 ### 豪華版の目標仕様
 
-- 5つの大ステージを持つ
+- 10個の大ステージを持つ
 
 | 大ステージ | イメージ | 役割 |
 |---|---|---|
 | 1 | 町 | 冒険開始、基本操作、最初の敵 |
-| 2 | 国 | 敵編成の増加、攻撃パターン追加 |
-| 3 | 月 | 低重力・宇宙感の強化、中盤の山場 |
-| 4 | 火星 | 高難度化、ボス演出強化 |
-| 5 | 異次元 | 最終決戦、Shoot 救出、世界平和 |
+| 2 | 緑の王国 | 3-Way導入 |
+| 3 | 氷海 | 氷弾と回避 |
+| 4 | 砂漠 | Rainbow Laser導入 |
+| 5 | 雲上都市 | 中盤の速度上昇 |
+| 6 | 月 | Snack Missile導入 |
+| 7 | 火星 | Fridge Beam導入 |
+| 8 | 機械惑星 | Lucky Coin Cannon導入 |
+| 9 | ブラックホール | 高密度弾幕 |
+| 10 | 異次元 | 最終決戦、Shoot 救出、世界平和 |
 
-- 各大ステージは20小ステージを含む
+- 各大ステージは10小ステージを含む
 - 合計100小ステージ構成にする
 - 各大ステージに中間ボスとステージボスを置く
 - 異次元のステージボスを倒すと Shoot を救出し、世界が平和になる
@@ -132,7 +139,15 @@
   - 単発または連射の基本ショット
 - 3-Way Spread Shot:
   - 強化武器
-  - コイン獲得やステージ進行で解放する
+  - Stage 2到達で解放する
+- Rainbow Laser:
+  - Stage 4到達で解放する高威力ショット
+- Snack Missile:
+  - Stage 6到達で解放する2方向ショット
+- Fridge Beam:
+  - Stage 7到達で解放する低速ビーム
+- Lucky Coin Cannon:
+  - Stage 8到達で解放するコイン消費型高威力ショット
 - ボム:
   - 1回だけ使える全画面クリア系の特殊武器
   - 初期版では「もう、どうにでもなれボム」の名称を使ってよい
@@ -174,8 +189,13 @@
 - 現在の背景アセットは以下を使う
   - `public/games/penguin-shooter/backgrounds/town.svg`
   - `public/games/penguin-shooter/backgrounds/country.svg`
+  - `public/games/penguin-shooter/backgrounds/frost.svg`
+  - `public/games/penguin-shooter/backgrounds/desert.svg`
+  - `public/games/penguin-shooter/backgrounds/cloud.svg`
   - `public/games/penguin-shooter/backgrounds/moon.svg`
   - `public/games/penguin-shooter/backgrounds/mars.svg`
+  - `public/games/penguin-shooter/backgrounds/machine.svg`
+  - `public/games/penguin-shooter/backgrounds/blackhole.svg`
   - `public/games/penguin-shooter/backgrounds/dimension.svg`
 - 現在のBGM / 効果音は外部音声ファイルを持たず、ユーザー操作後に Web Audio API で生成する
 - 将来ファイル音源に置き換える場合は `public/games/penguin-shooter/audio/` 配下を候補にする
@@ -195,7 +215,7 @@
   - BGM生成音の基準周波数
   - 中間ボス名
   - ステージボス名
-  - 20小ステージ設定
+  - 10小ステージ設定
 - 小ステージ:
   - 大ステージ内番号
   - 全体通し番号
@@ -212,6 +232,7 @@
   - 攻撃ラベル
   - 武器ラベル
   - 専用ビジュアル種別
+  - ステージボスSVGアセットパス
   - 速度補正
   - 横移動補正
   - 攻撃パターン（ステージ別）

@@ -19,6 +19,7 @@ const smokeCases: SmokeCase[] = [
   { slug: "topix33", path: "/tools/topix33", heading: /TOPIX33|業種/ },
   { slug: "nikkei-contribution", path: "/tools/nikkei-contribution", heading: /日経225寄与度|寄与度/ },
   { slug: "us-stock-ranking", path: "/tools/us-stock-ranking", heading: /米国株ランキング|値上がり率|値上り率/ },
+  { slug: "penguin-shooter", path: "/tools/penguin-shooter", heading: /ペンギンシューター/ },
 ];
 
 async function persistArtifact(slug: string, name: string, body: string) {

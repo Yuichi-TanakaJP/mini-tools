@@ -67,7 +67,7 @@
 |---|---|---|---|
 | `standard` | 初期 | 高速の直線弾1発 | なし |
 | `spread-3` | Stage 2 | 左右へ広がる3発 | 1発あたりの威力は標準 |
-| `rainbow-laser` | Stage 4 | 短い貫通レーザー | 発射間隔が長い |
+| `rainbow-laser` | Stage 4 | 高威力の光線 | 発射間隔が長い |
 | `snack-missile` | Stage 6 | 近い敵を追尾するミサイル | 弾速が遅い |
 | `fridge-beam` | Stage 7 | 敵を一定時間減速 | ダメージが低い |
 | `coin-cannon` | Stage 8 | 高威力の直線弾 | 発射時にコイン1枚消費 |
