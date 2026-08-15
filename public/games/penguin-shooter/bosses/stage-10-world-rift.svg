@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" role="img" aria-labelledby="title desc">
+  <title id="title">ワールドリフト</title>
+  <desc id="desc">機械兵器ではなく生きた次元裂け目として現れる異次元の最終ボス</desc>
+  <defs>
+    <radialGradient id="eye"><stop stop-color="#fff"/><stop offset=".3" stop-color="#f0abfc"/><stop offset=".62" stop-color="#c026d3"/><stop offset="1" stop-color="#312e81"/></radialGradient>
+    <linearGradient id="wing" x1="0" x2="1"><stop stop-color="#312e81"/><stop offset=".55" stop-color="#9333ea"/><stop offset="1" stop-color="#f0abfc"/></linearGradient>
+  </defs>
+  <g stroke="#2e1065" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M111 25C86 7 62 13 50 37c20-8 31 3 33 20-35-17-61-4-68 25 24-14 45-3 58 17-34 2-49 24-39 48 13-18 34-22 57-8Z" fill="url(#wing)"/>
+    <path d="M129 25c19-24 48-25 66-5-22-2-31 12-28 29 28-21 57-13 70 13-26-9-44 7-51 29 34-6 55 11 54 37-17-14-39-13-59 3Z" fill="url(#wing)"/>
+    <path d="M120 19c29 30 37 64 23 101l-23 48-29-43c-19-35-10-75 29-106Z" fill="#581c87"/>
+    <path d="M120 39c21 24 24 50 10 76l-10 18-14-18c-17-25-12-52 14-76Z" fill="url(#eye)"/>
+    <ellipse cx="120" cy="83" rx="12" ry="27" fill="#09090b"/>
+    <circle cx="124" cy="72" r="5" fill="#fff" stroke="none"/>
+    <path d="M91 126c-21 7-31 24-25 42m77-42c23 4 39 20 40 41M73 105c-25-4-43 8-50 29m164-39c22-9 42-1 51 16" fill="none" stroke="#e879f9" stroke-width="8"/>
+    <g fill="#f5d0fe"><path d="m54 29 8-20 8 20-8 18Zm137 3 10-25 10 25-10 19ZM24 108l6-16 7 16-7 14Zm185 27 8-20 8 20-8 17Z"/></g>
+  </g>
+</svg>

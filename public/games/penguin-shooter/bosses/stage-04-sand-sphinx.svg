@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" role="img" aria-labelledby="title desc">
+  <title id="title">砂漠スフィンクス</title>
+  <desc id="desc">黄金の翼と王冠を持つ砂漠遺跡ステージのボス</desc>
+  <defs><radialGradient id="core"><stop stop-color="#fef3c7"/><stop offset=".4" stop-color="#f59e0b"/><stop offset="1" stop-color="#92400e"/></radialGradient></defs>
+  <g stroke="#422006" stroke-width="5" stroke-linejoin="round">
+    <path d="m120 12 33 42H87Z" fill="#fbbf24"/><path d="m120 26 11 20h-22Z" fill="#0f766e"/>
+    <path d="M72 52h96l23 42-31 51H80L49 94Z" fill="#d97706"/>
+    <path d="M76 63 25 47l27 64 31 9m81-57 51-16-27 64-31 9" fill="#f59e0b"/>
+    <path d="m33 58 37 14-16 13Zm174 0-37 14 16 13Z" fill="#0f766e"/>
+    <circle cx="120" cy="98" r="35" fill="#78350f"/><circle cx="120" cy="98" r="23" fill="url(#core)"/>
+    <path d="M120 75v46m-19-23h38" stroke="#fff7ed" stroke-width="4"/>
+    <path d="M77 133h86l-19 35h-48Z" fill="#b45309"/>
+    <circle cx="58" cy="103" r="12" fill="#1c1917"/><circle cx="182" cy="103" r="12" fill="#1c1917"/>
+  </g>
+</svg>

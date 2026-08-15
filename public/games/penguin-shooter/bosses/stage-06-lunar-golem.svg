@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" role="img" aria-labelledby="title desc">
+  <title id="title">月面コアゴーレム</title>
+  <desc id="desc">月岩装甲と衛星を備えた月面ステージのボス</desc>
+  <defs><radialGradient id="core"><stop stop-color="#fff"/><stop offset=".35" stop-color="#60a5fa"/><stop offset="1" stop-color="#1e3a8a"/></radialGradient></defs>
+  <g stroke="#1e293b" stroke-width="5" stroke-linejoin="round">
+    <path d="M70 45 95 19h50l25 26 25 27-14 70-36 24H95l-36-24-14-70Z" fill="#94a3b8"/>
+    <path d="m60 58-36 20 9 48 37 16m110-84 36 20-9 48-37 16" fill="#64748b"/>
+    <path d="M82 40 103 22h34l21 18-12 18H94Z" fill="#cbd5e1"/>
+    <circle cx="120" cy="99" r="38" fill="#334155"/><circle cx="120" cy="99" r="24" fill="url(#core)"/>
+    <circle cx="120" cy="99" r="12" fill="#dbeafe"/>
+    <g fill="#475569" stroke-width="3"><circle cx="80" cy="73" r="8"/><circle cx="161" cy="70" r="6"/><circle cx="83" cy="133" r="5"/><circle cx="158" cy="132" r="9"/></g>
+    <circle cx="29" cy="42" r="10" fill="#cbd5e1"/><circle cx="211" cy="35" r="7" fill="#94a3b8"/>
+  </g>
+</svg>

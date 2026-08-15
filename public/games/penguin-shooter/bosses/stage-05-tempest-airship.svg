@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" role="img" aria-labelledby="title desc">
+  <title id="title">雲上都市戦艦</title>
+  <desc id="desc">雲と雷をまとった雲上都市ステージの空中戦艦</desc>
+  <defs><radialGradient id="core"><stop stop-color="#faf5ff"/><stop offset=".35" stop-color="#c084fc"/><stop offset="1" stop-color="#6d28d9"/></radialGradient></defs>
+  <g stroke="#312e81" stroke-width="5" stroke-linejoin="round">
+    <path d="M81 56V32h16V18h46v14h16v24" fill="#e2e8f0"/>
+    <path d="M54 55h132l22 49-35 41H67l-35-41Z" fill="#cbd5e1"/>
+    <path d="M45 75 15 91l39 18m141-34 30 16-39 18" fill="#a78bfa"/>
+    <path d="M27 91 12 116l22-4-6 24 31-32m154-13 15 25-22-4 6 24-31-32" fill="#fde047"/>
+    <circle cx="120" cy="98" r="34" fill="#4c1d95"/><circle cx="120" cy="98" r="22" fill="url(#core)"/>
+    <path d="m120 76-12 24h13l-8 23 25-31h-14l8-16Z" fill="#fef08a" stroke-width="3"/>
+    <path d="M73 142h94l-25 25H98Z" fill="#64748b"/>
+    <circle cx="61" cy="105" r="13" fill="#475569"/><circle cx="179" cy="105" r="13" fill="#475569"/>
+  </g>
+</svg>

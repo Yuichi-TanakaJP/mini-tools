@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" role="img" aria-labelledby="title desc">
+  <title id="title">スクラップ要塞</title>
+  <desc id="desc">廃材の装甲とクレーンを組み合わせた町ステージのボス</desc>
+  <defs><radialGradient id="core"><stop stop-color="#e0f2fe"/><stop offset=".35" stop-color="#22d3ee"/><stop offset="1" stop-color="#155e75"/></radialGradient></defs>
+  <g stroke="#172033" stroke-width="5" stroke-linejoin="round">
+    <path d="M59 49 40 21h18l17 22m106 6 19-28h-18l-17 22" fill="none"/>
+    <path d="M45 58 24 70v52l30 12 16-18h100l16 18 30-12V70l-21-12-26-24H71Z" fill="#64748b"/>
+    <path d="m58 59 17-25h90l17 25-20 83H78Z" fill="#0f766e"/>
+    <path d="M79 42h82l-9 22H88Z" fill="#b45309"/>
+    <path d="M91 33v-18h16v18m26 0V15h16v18" fill="#78716c"/>
+    <circle cx="120" cy="95" r="31" fill="#164e63"/><circle cx="120" cy="95" r="21" fill="url(#core)"/>
+    <path d="m105 80 30 30m0-30-30 30" fill="none" stroke="#ecfeff" stroke-width="4"/>
+    <circle cx="42" cy="94" r="16" fill="#1e293b"/><circle cx="198" cy="94" r="16" fill="#1e293b"/>
+    <path d="M82 142h76l-17 24h-42Z" fill="#475569"/>
+  </g>
+  <g fill="#f59e0b"><circle cx="69" cy="68" r="4"/><circle cx="171" cy="68" r="4"/><circle cx="82" cy="128" r="4"/><circle cx="158" cy="128" r="4"/></g>
+</svg>
