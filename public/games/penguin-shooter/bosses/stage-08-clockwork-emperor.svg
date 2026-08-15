@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" role="img" aria-labelledby="title desc">
+  <title id="title">クロックワーク皇帝</title>
+  <desc id="desc">歯車と時計砲台で構成された機械惑星ステージのボス</desc>
+  <defs><radialGradient id="core"><stop stop-color="#ecfeff"/><stop offset=".35" stop-color="#2dd4bf"/><stop offset="1" stop-color="#134e4a"/></radialGradient></defs>
+  <g stroke="#422006" stroke-width="5" stroke-linejoin="round">
+    <path d="m91 42 10-24 19 13 19-13 10 24" fill="#fbbf24"/>
+    <path d="M53 53h134l18 80-34 30H69l-34-30Z" fill="#a16207"/>
+    <path d="M66 61h108l12 68-29 23H83l-29-23Z" fill="#0f766e"/>
+    <circle cx="60" cy="89" r="23" fill="#d97706"/><circle cx="180" cy="89" r="23" fill="#d97706"/>
+    <g fill="#fef3c7" stroke-width="3"><circle cx="60" cy="89" r="13"/><circle cx="180" cy="89" r="13"/></g>
+    <path d="M60 89V78m0 11 8 6m112-6V76m0 13-9 7" fill="none" stroke="#422006" stroke-width="4"/>
+    <circle cx="120" cy="108" r="36" fill="#713f12"/><circle cx="120" cy="108" r="23" fill="url(#core)"/>
+    <path d="M120 89v19l13 8" fill="none" stroke="#ecfeff" stroke-width="4"/>
+    <g fill="#fbbf24"><path d="m82 44 9-15 8 17Zm76 0-9-15-8 17ZM91 159l8-18 11 18Zm58 0-8-18-11 18Z"/></g>
+  </g>
+</svg>

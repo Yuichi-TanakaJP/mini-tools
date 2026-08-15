@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" role="img" aria-labelledby="title desc">
+  <title id="title">緑の王国城塞</title>
+  <desc id="desc">城壁と旗を備えた緑の王国ステージのボス</desc>
+  <defs><radialGradient id="core"><stop stop-color="#f7fee7"/><stop offset=".35" stop-color="#a3e635"/><stop offset="1" stop-color="#166534"/></radialGradient></defs>
+  <g stroke="#18342b" stroke-width="5" stroke-linejoin="round">
+    <path d="M56 52V22h16v14h18V17h18v19h24V17h18v19h18V22h16v30" fill="#15803d"/>
+    <path d="M46 51h148v80l-25 22H71l-25-22Z" fill="#166534"/>
+    <path d="M65 59h110v76H65Z" fill="#047857"/>
+    <path d="m56 28-18-9v22l18-6m128-7 18-9v22l-18-6" fill="#facc15"/>
+    <path d="M23 73h38v51H23Zm156 0h38v51h-38Z" fill="#14532d"/>
+    <circle cx="120" cy="95" r="33" fill="#064e3b"/><circle cx="120" cy="95" r="22" fill="url(#core)"/>
+    <path d="m120 69 8 16 18 3-13 13 3 18-16-8-16 8 3-18-13-13 18-3Z" fill="#ecfccb" stroke-width="3"/>
+    <path d="M33 88h20v22H33Zm154 0h20v22h-20Z" fill="#fbbf24"/>
+    <path d="M91 151h58l-12 18h-34Z" fill="#92400e"/>
+  </g>
+</svg>

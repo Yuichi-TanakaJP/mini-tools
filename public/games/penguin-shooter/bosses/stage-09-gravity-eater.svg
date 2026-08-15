@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" role="img" aria-labelledby="title desc">
+  <title id="title">ブラックホール・イーター</title>
+  <desc id="desc">重力リングと浮遊砲を操るブラックホールステージのボス</desc>
+  <defs><radialGradient id="void"><stop stop-color="#000"/><stop offset=".45" stop-color="#312e81"/><stop offset=".72" stop-color="#7c3aed"/><stop offset="1" stop-color="#c4b5fd"/></radialGradient></defs>
+  <g stroke="#1e1b4b" stroke-width="5" stroke-linejoin="round">
+    <path d="M75 48 48 24l8 49-35 20 43 8-10 44 35-29m76-68 27-24-8 49 35 20-43 8 10 44-35-29" fill="#312e81"/>
+    <path d="M73 47h94l28 51-31 52H76L45 98Z" fill="#3730a3"/>
+    <circle cx="120" cy="99" r="49" fill="#111827"/><circle cx="120" cy="99" r="36" fill="url(#void)"/>
+    <circle cx="120" cy="99" r="14" fill="#020617"/>
+    <path d="M83 77c23-22 60-26 83-5M74 117c28 27 76 30 101 0" fill="none" stroke="#a78bfa" stroke-width="6"/>
+    <g fill="#8b5cf6"><circle cx="32" cy="44" r="10"/><circle cx="211" cy="47" r="8"/><circle cx="25" cy="144" r="7"/><circle cx="215" cy="140" r="11"/></g>
+  </g>
+</svg>

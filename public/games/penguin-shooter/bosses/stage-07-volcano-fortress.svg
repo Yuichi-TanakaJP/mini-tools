@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" role="img" aria-labelledby="title desc">
+  <title id="title">火星火山要塞</title>
+  <desc id="desc">噴火炉と重砲を備えた火星ステージのボス</desc>
+  <defs><radialGradient id="core"><stop stop-color="#fff7ed"/><stop offset=".35" stop-color="#fb923c"/><stop offset="1" stop-color="#991b1b"/></radialGradient></defs>
+  <g stroke="#431407" stroke-width="5" stroke-linejoin="round">
+    <path d="m91 58 12-44h34l12 44" fill="#7c2d12"/><path d="M108 15h24l8 24-20-8-20 8Z" fill="#ef4444"/>
+    <path d="M51 58h138l19 69-38 28H70l-38-28Z" fill="#57534e"/>
+    <path d="M33 82h42v46H33Zm132 0h42v46h-42Z" fill="#292524"/>
+    <g fill="#1c1917"><circle cx="49" cy="94" r="10"/><circle cx="49" cy="118" r="10"/><circle cx="191" cy="94" r="10"/><circle cx="191" cy="118" r="10"/></g>
+    <circle cx="120" cy="102" r="38" fill="#7f1d1d"/><circle cx="120" cy="102" r="24" fill="url(#core)"/>
+    <path d="m120 80 14 20-8 20-6-9-6 9-8-20Z" fill="#fef3c7" stroke-width="3"/>
+    <path d="M85 153h70l-10 17H95Z" fill="#ea580c"/>
+    <path d="M105 7c-5-9 6-10 2-18m28 18c5-9-6-10-2-18" fill="none" stroke="#78716c" stroke-width="7"/>
+  </g>
+</svg>
