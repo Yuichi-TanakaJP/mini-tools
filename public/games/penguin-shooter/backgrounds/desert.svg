@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 820" role="img" aria-label="desert stage background">
+  <defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#451a03"/><stop offset=".5" stop-color="#b45309"/><stop offset="1" stop-color="#fde68a"/></linearGradient></defs>
+  <rect width="720" height="820" fill="url(#sky)"/>
+  <circle cx="584" cy="122" r="58" fill="#fde68a" opacity=".72"/>
+  <path d="M0 580c128-115 225 48 352-62 138-120 220 38 368-70v372H0Z" fill="#92400e" opacity=".75"/>
+  <path d="M0 668c128-88 238 20 356-50 148-88 235 38 364-34v236H0Z" fill="#451a03" opacity=".9"/>
+  <g fill="#f59e0b" opacity=".55"><path d="M102 472h24v148h-24Z"/><path d="m78 474 36-54 36 54Z"/><path d="M580 454h24v152h-24Z"/><path d="m556 456 36-54 36 54Z"/></g>
+  <path d="M0 758c174-42 282 38 412-4 112-36 194-22 308 7v59H0Z" fill="#fbbf24" opacity=".65"/>
+</svg>

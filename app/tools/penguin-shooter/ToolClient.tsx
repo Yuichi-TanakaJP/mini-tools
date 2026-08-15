@@ -8,6 +8,8 @@ import {
   MAX_LIVES,
   STAGE_DEFINITIONS,
   TWO_PLAYER_UNLOCK_STAGE,
+  WEAPON_DEFINITIONS,
+  WEAPON_ORDER,
   getBossDefinition,
   getStageDefinition,
   getStageGoal,
@@ -18,6 +20,7 @@ import type {
   BossDefinition,
   StageDefinition,
   StageId,
+  WeaponId,
 } from "./stageData";
 
 const WIDTH = 720;
@@ -46,6 +49,8 @@ type Bullet = {
   y: number;
   vx: number;
   vy: number;
+  damage: number;
+  weapon: WeaponId;
 };
 
 type EnemyBullet = {
@@ -189,6 +194,36 @@ const STAGE_VISUALS: Record<StageId, StageVisualTheme> = {
     foreground:
       "repeating-linear-gradient(95deg, rgba(187, 247, 208, 0.34) 0 2px, transparent 3px 34px), linear-gradient(180deg, rgba(15, 23, 42, 0), rgba(20, 83, 45, 0.72))",
   },
+  frost: {
+    atmosphere:
+      "linear-gradient(180deg, rgba(103, 232, 249, 0.22), rgba(15, 23, 42, 0)), radial-gradient(circle at 72% 18%, rgba(224, 242, 254, 0.28), transparent 20%)",
+    distant:
+      "linear-gradient(165deg, transparent 0 42%, rgba(186, 230, 253, 0.56) 43% 58%, transparent 59%), linear-gradient(195deg, transparent 0 46%, rgba(125, 211, 252, 0.48) 47% 62%, transparent 63%)",
+    midground:
+      "repeating-linear-gradient(160deg, rgba(224, 242, 254, 0.26) 0 3px, transparent 4px 32px), linear-gradient(180deg, rgba(8, 47, 73, 0), rgba(8, 47, 73, 0.76))",
+    foreground:
+      "linear-gradient(180deg, rgba(15, 23, 42, 0), rgba(8, 47, 73, 0.82)), repeating-linear-gradient(90deg, rgba(224, 242, 254, 0.2) 0 2px, transparent 3px 42px)",
+  },
+  desert: {
+    atmosphere:
+      "linear-gradient(180deg, rgba(251, 191, 36, 0.2), rgba(15, 23, 42, 0)), radial-gradient(circle at 76% 17%, rgba(254, 240, 138, 0.28), transparent 20%)",
+    distant:
+      "radial-gradient(ellipse at 18% 100%, rgba(146, 64, 14, 0.76) 0 20%, transparent 21%), radial-gradient(ellipse at 66% 100%, rgba(180, 83, 9, 0.72) 0 28%, transparent 29%)",
+    midground:
+      "linear-gradient(90deg, rgba(120, 53, 15, 0.72) 0 18%, transparent 18% 30%, rgba(180, 83, 9, 0.7) 30% 54%, transparent 54% 67%, rgba(120, 53, 15, 0.72) 67% 100%)",
+    foreground:
+      "repeating-linear-gradient(100deg, rgba(254, 240, 138, 0.24) 0 2px, transparent 3px 28px), linear-gradient(180deg, rgba(15, 23, 42, 0), rgba(69, 26, 3, 0.82))",
+  },
+  cloud: {
+    atmosphere:
+      "linear-gradient(180deg, rgba(192, 132, 252, 0.22), rgba(15, 23, 42, 0)), radial-gradient(circle at 22% 20%, rgba(245, 243, 255, 0.26), transparent 18%)",
+    distant:
+      "radial-gradient(ellipse at 14% 100%, rgba(196, 181, 253, 0.62) 0 18%, transparent 19%), radial-gradient(ellipse at 58% 100%, rgba(139, 92, 246, 0.64) 0 25%, transparent 26%), radial-gradient(ellipse at 92% 100%, rgba(221, 214, 254, 0.55) 0 18%, transparent 19%)",
+    midground:
+      "linear-gradient(90deg, rgba(49, 46, 129, 0.74) 0 22%, transparent 22% 34%, rgba(109, 40, 217, 0.64) 34% 55%, transparent 55% 69%, rgba(49, 46, 129, 0.74) 69% 100%)",
+    foreground:
+      "repeating-linear-gradient(95deg, rgba(245, 243, 255, 0.3) 0 2px, transparent 3px 36px), linear-gradient(180deg, rgba(15, 23, 42, 0), rgba(49, 46, 129, 0.8))",
+  },
   moon: {
     atmosphere:
       "linear-gradient(180deg, rgba(203, 213, 225, 0.14), rgba(15, 23, 42, 0)), radial-gradient(circle at 26% 20%, rgba(226, 232, 240, 0.28), transparent 16%)",
@@ -208,6 +243,26 @@ const STAGE_VISUALS: Record<StageId, StageVisualTheme> = {
       "repeating-linear-gradient(8deg, rgba(251, 146, 60, 0.18) 0 3px, transparent 4px 34px), linear-gradient(90deg, rgba(154, 52, 18, 0.7) 0 28%, transparent 28% 44%, rgba(124, 45, 18, 0.72) 44% 75%, transparent 75% 100%)",
     foreground:
       "repeating-linear-gradient(100deg, rgba(253, 186, 116, 0.24) 0 2px, transparent 3px 26px), linear-gradient(180deg, rgba(15, 23, 42, 0), rgba(67, 20, 7, 0.76))",
+  },
+  machine: {
+    atmosphere:
+      "linear-gradient(180deg, rgba(45, 212, 191, 0.18), rgba(15, 23, 42, 0)), radial-gradient(circle at 68% 14%, rgba(204, 251, 241, 0.2), transparent 18%)",
+    distant:
+      "repeating-radial-gradient(circle at 18% 90%, transparent 0 18px, rgba(45, 212, 191, 0.26) 19px 24px, transparent 25px 48px), linear-gradient(180deg, rgba(15, 23, 42, 0), rgba(6, 78, 59, 0.6))",
+    midground:
+      "linear-gradient(90deg, rgba(15, 118, 110, 0.72) 0 16%, transparent 16% 28%, rgba(19, 78, 74, 0.78) 28% 48%, transparent 48% 60%, rgba(15, 118, 110, 0.72) 60% 100%)",
+    foreground:
+      "repeating-linear-gradient(90deg, rgba(45, 212, 191, 0.24) 0 2px, transparent 3px 34px), linear-gradient(180deg, rgba(15, 23, 42, 0), rgba(4, 47, 46, 0.86))",
+  },
+  blackhole: {
+    atmosphere:
+      "linear-gradient(180deg, rgba(167, 139, 250, 0.2), rgba(2, 6, 23, 0)), radial-gradient(circle at 52% 24%, rgba(124, 58, 237, 0.28), transparent 24%)",
+    distant:
+      "conic-gradient(from 40deg at 50% 100%, rgba(124, 58, 237, 0.36), transparent 16%, rgba(167, 139, 250, 0.22) 32%, transparent 54%, rgba(49, 46, 129, 0.34) 72%, transparent)",
+    midground:
+      "repeating-radial-gradient(ellipse at 50% 84%, transparent 0 22px, rgba(167, 139, 250, 0.18) 23px 27px, transparent 28px 52px)",
+    foreground:
+      "radial-gradient(ellipse at 50% 100%, rgba(124, 58, 237, 0.36), transparent 58%), linear-gradient(180deg, rgba(2, 6, 23, 0), rgba(17, 24, 39, 0.9))",
   },
   dimension: {
     atmosphere:
@@ -259,8 +314,13 @@ function getObstacleLabel(stageId: StageId, destructible: boolean) {
   const labels: Record<StageId, { destructible: string; solid: string }> = {
     town: { destructible: "🚧", solid: "🏢" },
     country: { destructible: "🪵", solid: "🪨" },
+    frost: { destructible: "🧊", solid: "❄️" },
+    desert: { destructible: "🏺", solid: "🪨" },
+    cloud: { destructible: "☁️", solid: "⚡" },
     moon: { destructible: "🪐", solid: "🌑" },
     mars: { destructible: "🌋", solid: "🪨" },
+    machine: { destructible: "⚙️", solid: "🔩" },
+    blackhole: { destructible: "🌀", solid: "🌑" },
     dimension: { destructible: "🔮", solid: "⬛" },
   };
   return destructible ? labels[stageId].destructible : labels[stageId].solid;
@@ -471,7 +531,15 @@ function EnemyView({ enemy }: { enemy: Enemy }) {
             ...(isStageBoss ? styles.stageBossRing : {}),
           }}
         />
-        {isStageBoss ? (
+        {isStageBoss && enemy.boss?.assetPath ? (
+          <span
+            aria-hidden
+            style={{
+              ...styles.stageBossSvg,
+              backgroundImage: `url("${enemy.boss.assetPath}")`,
+            }}
+          />
+        ) : isStageBoss ? (
           <>
             <span style={styles.stageBossWeaponLeft} />
             <span style={styles.stageBossWeaponRight} />
@@ -486,31 +554,35 @@ function EnemyView({ enemy }: { enemy: Enemy }) {
             <span style={styles.midBossCore} />
           </>
         )}
-        <span style={isStageBoss ? styles.stageBossBeam : styles.bossBeam} />
-        <span
-          style={{
-            ...styles.bossName,
-            ...(isStageBoss ? styles.stageBossName : {}),
-          }}
-        >
-          {bossName}
-        </span>
-        <span
-          style={{
-            ...styles.bossAttack,
-            ...(isStageBoss ? styles.stageBossAttack : {}),
-          }}
-        >
-          {attackLabel} / {weaponLabel}
-        </span>
-        <span
-          style={{
-            ...styles.bossHp,
-            ...(isStageBoss ? styles.stageBossHp : {}),
-          }}
-        >
-          <span style={{ ...styles.bossHpFill, width: `${hpPercent}%` }} />
-        </span>
+        {!isStageBoss || !enemy.boss?.assetPath ? (
+          <>
+            <span style={isStageBoss ? styles.stageBossBeam : styles.bossBeam} />
+            <span
+              style={{
+                ...styles.bossName,
+                ...(isStageBoss ? styles.stageBossName : {}),
+              }}
+            >
+              {bossName}
+            </span>
+            <span
+              style={{
+                ...styles.bossAttack,
+                ...(isStageBoss ? styles.stageBossAttack : {}),
+              }}
+            >
+              {attackLabel} / {weaponLabel}
+            </span>
+            <span
+              style={{
+                ...styles.bossHp,
+                ...(isStageBoss ? styles.stageBossHp : {}),
+              }}
+            >
+              <span style={{ ...styles.bossHpFill, width: `${hpPercent}%` }} />
+            </span>
+          </>
+        ) : null}
       </div>
     );
   }
@@ -634,7 +706,7 @@ export default function ToolClient() {
   const [rescued, setRescued] = useState(0);
   const [stage, setStage] = useState(1);
   const [stageProgress, setStageProgress] = useState(0);
-  const [weaponLevel, setWeaponLevel] = useState(1);
+  const [selectedWeapon, setSelectedWeapon] = useState<WeaponId>("standard");
   const [bombs, setBombs] = useState(1);
   const [message, setMessage] = useState("Shuty、発進準備OK");
   const [boardScale, setBoardScale] = useState(1);
@@ -697,23 +769,29 @@ export default function ToolClient() {
   const rescuedRef = useRef(0);
   const stageRef = useRef(1);
   const stageProgressRef = useRef(0);
-  const weaponLevelRef = useRef(1);
+  const selectedWeaponRef = useRef<WeaponId>("standard");
   const bombsRef = useRef(1);
 
   const isPlaying = gameState === "playing";
-  const powered = weaponLevel >= 2;
+  const powered = selectedWeapon !== "standard";
   const isMobileLayout = viewportWidth > 0 && viewportWidth < 768;
   const rescueProgress = Math.min(100, Math.round((rescued / CLEAR_TARGET) * 100));
   const currentStage = getStageDefinition(stage);
   const currentSubStage = getSubStage(stage, stageProgress);
   const currentStageGoal = currentStage.smallStages.length;
   const twoPlayerUnlocked = rescued >= TWO_PLAYER_UNLOCK_STAGE;
+  const availableWeapons = WEAPON_ORDER.filter(
+    (weaponId) => currentStage.number >= WEAPON_DEFINITIONS[weaponId].unlockStage,
+  );
   const stageTheme = currentStage;
   const visualTheme = STAGE_VISUALS[stageTheme.id];
   const boardBackground = `linear-gradient(180deg, rgba(15, 23, 42, 0.22), rgba(15, 23, 42, 0.1)), url("${stageTheme.background}")`;
   const stageProgressPercent = Math.min(
     100,
     Math.round((stageProgress / currentStageGoal) * 100),
+  );
+  const visibleBoss = enemies.find(
+    (enemy) => enemy.kind === "boss" && enemy.boss,
   );
 
   const syncPlayer = useCallback((next: Player) => {
@@ -955,20 +1033,53 @@ export default function ToolClient() {
     [gameState, startBgm, stopBgm],
   );
 
+  const selectWeapon = useCallback((weaponId: WeaponId) => {
+    const definition = WEAPON_DEFINITIONS[weaponId];
+    if (stageRef.current < definition.unlockStage) {
+      setMessage(`Stage ${definition.unlockStage} で${definition.label}解放`);
+      return;
+    }
+    selectedWeaponRef.current = weaponId;
+    setSelectedWeapon(weaponId);
+    setMessage(`${definition.label} を装備`);
+  }, []);
+
   const fire = useCallback(() => {
     const current = playerRef.current;
+    const weaponId = selectedWeaponRef.current;
+    const definition = WEAPON_DEFINITIONS[weaponId];
+    if (definition.cost > 0) {
+      if (coinsRef.current < definition.cost) {
+        setMessage(`コインが足りません（${definition.cost}枚必要）`);
+        return;
+      }
+      coinsRef.current -= definition.cost;
+      setCoins(coinsRef.current);
+    }
     const base = {
       x: current.x + PLAYER_SIZE / 2 - BULLET_WIDTH / 2,
       y: current.y + 14,
+      damage: definition.damage,
+      weapon: weaponId,
     };
+    const createBullet = (vx: number, vy: number) => ({
+      id: bulletIdRef.current++,
+      ...base,
+      vx,
+      vy,
+    });
     const nextBullets =
-      weaponLevelRef.current >= 2
-        ? [
-            { id: bulletIdRef.current++, ...base, vx: 0, vy: -11 },
-            { id: bulletIdRef.current++, ...base, vx: -3, vy: -10 },
-            { id: bulletIdRef.current++, ...base, vx: 3, vy: -10 },
-          ]
-        : [{ id: bulletIdRef.current++, ...base, vx: 0, vy: -11 }];
+      weaponId === "spread-3"
+        ? [createBullet(0, -11), createBullet(-3, -10), createBullet(3, -10)]
+        : weaponId === "snack-missile"
+          ? [createBullet(-2.2, -7.2), createBullet(2.2, -7.2)]
+          : weaponId === "fridge-beam"
+            ? [createBullet(0, -9)]
+            : weaponId === "rainbow-laser"
+              ? [createBullet(0, -13)]
+              : weaponId === "coin-cannon"
+                ? [createBullet(0, -14)]
+                : [createBullet(0, -11)];
     syncBullets([...bulletsRef.current, ...nextBullets]);
     playSfx("shoot");
   }, [playSfx, syncBullets]);
@@ -1140,7 +1251,7 @@ export default function ToolClient() {
     rescuedRef.current = 0;
     stageRef.current = 1;
     stageProgressRef.current = 0;
-    weaponLevelRef.current = 1;
+    selectedWeaponRef.current = "standard";
     bombsRef.current = 1;
 
     setPlayer(initialPlayer);
@@ -1162,7 +1273,7 @@ export default function ToolClient() {
     setRescued(0);
     setStage(1);
     setStageProgress(0);
-    setWeaponLevel(1);
+    setSelectedWeapon("standard");
     setBombs(1);
     setMessage("Shoot救出ミッション、開始！");
   }, [resetControls]);
@@ -1247,12 +1358,16 @@ export default function ToolClient() {
       const isSpace =
         event.key === " " || event.key === "Spacebar" || event.code === "Space";
       const isBomb = event.key.toLowerCase() === "b";
+      const weaponIndex = /^[1-6]$/.test(event.key)
+        ? Number(event.key) - 1
+        : -1;
       if (
         ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(
           event.key,
         ) ||
         isSpace ||
-        isBomb
+        isBomb ||
+        weaponIndex >= 0
       ) {
         event.preventDefault();
       }
@@ -1265,6 +1380,9 @@ export default function ToolClient() {
         startOpening();
       }
       if (isBomb && gameState === "playing") triggerBomb();
+      if (weaponIndex >= 0 && gameState === "playing") {
+        selectWeapon(WEAPON_ORDER[weaponIndex]);
+      }
     };
 
     const onKeyUp = (event: KeyboardEvent) => {
@@ -1289,6 +1407,7 @@ export default function ToolClient() {
   }, [
     gameState,
     resetControls,
+    selectWeapon,
     setControlPressed,
     startOpening,
     triggerBomb,
@@ -1324,7 +1443,11 @@ export default function ToolClient() {
       };
       syncPlayer(nextPlayer);
 
-      if ((keys[" "] || keys.Space || keys.Spacebar) && fireTickRef.current > 9) {
+      const fireCooldown = WEAPON_DEFINITIONS[selectedWeaponRef.current].cooldown;
+      if (
+        (keys[" "] || keys.Space || keys.Spacebar) &&
+        fireTickRef.current >= fireCooldown
+      ) {
         fireTickRef.current = 0;
         fire();
       }
@@ -1445,11 +1568,41 @@ export default function ToolClient() {
       );
 
       const movedBullets = bulletsRef.current
-        .map((bullet) => ({
-          ...bullet,
-          x: bullet.x + bullet.vx,
-          y: bullet.y + bullet.vy,
-        }))
+        .map((bullet) => {
+          if (bullet.weapon !== "snack-missile") {
+            return {
+              ...bullet,
+              x: bullet.x + bullet.vx,
+              y: bullet.y + bullet.vy,
+            };
+          }
+          const target = enemiesRef.current
+            .filter((enemy) => enemy.y > -100)
+            .sort(
+              (left, right) =>
+                Math.abs(left.x - bullet.x) + Math.abs(left.y - bullet.y) -
+                (Math.abs(right.x - bullet.x) + Math.abs(right.y - bullet.y)),
+            )[0];
+          if (!target) {
+            return {
+              ...bullet,
+              x: bullet.x + bullet.vx,
+              y: bullet.y + bullet.vy,
+            };
+          }
+          const targetSize = getEnemySize(target);
+          const dx = target.x + targetSize.width / 2 - bullet.x;
+          const dy = target.y + targetSize.height / 2 - bullet.y;
+          const length = Math.hypot(dx, dy) || 1;
+          const speed = Math.max(5, Math.hypot(bullet.vx, bullet.vy));
+          return {
+            ...bullet,
+            vx: (dx / length) * speed,
+            vy: (dy / length) * speed,
+            x: bullet.x + (dx / length) * speed,
+            y: bullet.y + (dy / length) * speed,
+          };
+        })
         .filter((bullet) => bullet.y > -30 && bullet.x > -30 && bullet.x < WIDTH + 30);
       const usedBullets = new Set<number>();
       const spawnedEnemyBullets: EnemyBullet[] = [];
@@ -1680,7 +1833,14 @@ export default function ToolClient() {
           );
           if (!hit) continue;
           usedBullets.add(bullet.id);
-          updatedEnemy = { ...updatedEnemy, hp: updatedEnemy.hp - 1 };
+          updatedEnemy = {
+            ...updatedEnemy,
+            hp: updatedEnemy.hp - Math.max(1, bullet.damage),
+            freezeRemaining:
+              bullet.weapon === "fridge-beam"
+                ? Math.max(updatedEnemy.freezeRemaining ?? 0, 75)
+                : updatedEnemy.freezeRemaining,
+          };
           if (updatedEnemy.hp <= 0) {
             destroyed = true;
             scoreGain += updatedEnemy.boss?.score ?? 120;
@@ -1768,7 +1928,7 @@ export default function ToolClient() {
           if (updatedObstacle.destructible) {
             updatedObstacle = {
               ...updatedObstacle,
-              hp: updatedObstacle.hp - 1,
+              hp: updatedObstacle.hp - Math.max(1, bullet.damage),
             };
             if (updatedObstacle.hp <= 0) {
               destroyed = true;
@@ -2094,11 +2254,6 @@ export default function ToolClient() {
         playSfx("coin");
         coinsRef.current += coinGain;
         setCoins(coinsRef.current);
-        if (coinsRef.current >= 6 && weaponLevelRef.current === 1) {
-          weaponLevelRef.current = 2;
-          setWeaponLevel(2);
-          setMessage("3-Way Spread Shot 解放！");
-        }
       }
 
       if (playerHit) {
@@ -2146,9 +2301,21 @@ export default function ToolClient() {
         previousSubStageRef.current = advancedSubStage.globalNumber;
         setMessage(
           stageRef.current === FINAL_STAGE
-            ? "最終ステージ！捕獲UFOを追い詰めよう"
+            ? "最終ステージ！ワールドリフトを追い詰めよう"
             : `Stage ${stageRef.current} 到達。Maro-kunが補給中！`,
         );
+        const unlockedWeapon = WEAPON_ORDER.find(
+          (weaponId) =>
+            WEAPON_DEFINITIONS[weaponId].unlockStage === stageRef.current,
+        );
+        if (unlockedWeapon) {
+          const unlockedDefinition = WEAPON_DEFINITIONS[unlockedWeapon];
+          setMessage(`${unlockedDefinition.label} 解放！`);
+          if (stageRef.current === 2 && selectedWeaponRef.current === "standard") {
+            selectedWeaponRef.current = unlockedWeapon;
+            setSelectedWeapon(unlockedWeapon);
+          }
+        }
         if (stageRef.current === 3 && bombsRef.current === 0) {
           bombsRef.current = 1;
           setBombs(1);
@@ -2204,9 +2371,9 @@ export default function ToolClient() {
           : "ペンギンシューター";
     const text =
       gameState === "cleared"
-        ? "PenとShutyが5ステージを突破。Shootを無事に救出しました。"
+            ? "PenとShutyが10ステージを突破。Shootを無事に救出しました。"
         : gameState === "gameover"
-          ? "コインで3-Wayを早めに解放すると救出しやすくなります。"
+          ? "ステージごとに解放される武器を切り替えて、救出ルートを切り開こう。"
           : "10秒オープニングから始まる、Shoot救出ミッション。";
 
     return (
@@ -2233,7 +2400,7 @@ export default function ToolClient() {
           <h1 style={styles.title}>ペンギンシューター</h1>
           <p style={styles.lead}>
             宇宙船Shutyに乗ったPenを操作して、捕まったShootを助けよう。
-            コインを集めると3-Wayショットへ強化されます。
+            10ステージを進み、解放された武器を切り替えて戦います。
           </p>
         </section>
 
@@ -2252,8 +2419,8 @@ export default function ToolClient() {
             <section style={styles.card}>
               <div style={styles.cardTitle}>Mission</div>
               <p style={styles.cardText}>
-                5つの大ステージ、全100小ステージを進み、最後の捕獲UFOを倒すとShoot救出。
-                Bキーまたはボムボタンで1回だけ全画面ボムを使えます。
+                10の大ステージ、全100小ステージを進み、最後のワールドリフトを倒すとShoot救出。
+                Bキーまたはボムボタンで全画面ボムを使えます。
               </p>
               <div style={styles.statusList}>
                 <div style={styles.statusRow}>
@@ -2282,7 +2449,7 @@ export default function ToolClient() {
                 </div>
                 <div style={styles.statusRow}>
                   <span>Weapon</span>
-                  <strong>{weaponLevel >= 2 ? "3-Way" : "Standard"}</strong>
+                  <strong>{WEAPON_DEFINITIONS[selectedWeapon].shortLabel}</strong>
                 </div>
                 <div style={styles.statusRow}>
                   <span>Bomb</span>
@@ -2297,6 +2464,36 @@ export default function ToolClient() {
                   <strong>{twoPlayerUnlocked ? "Unlocked" : `${rescued}/${TWO_PLAYER_UNLOCK_STAGE}`}</strong>
                 </div>
               </div>
+              <section style={styles.weaponCard} aria-label="武器選択">
+                <div style={styles.weaponCardTitle}>Weapon Loadout</div>
+                <div style={styles.weaponGrid}>
+                  {WEAPON_ORDER.map((weaponId, index) => {
+                    const definition = WEAPON_DEFINITIONS[weaponId];
+                    const unlocked = availableWeapons.includes(weaponId);
+                    const selected = selectedWeapon === weaponId;
+                    return (
+                      <button
+                        key={weaponId}
+                        type="button"
+                        aria-label={`${index + 1}: ${definition.label}`}
+                        aria-pressed={selected}
+                        disabled={!unlocked}
+                        onClick={() => selectWeapon(weaponId)}
+                        style={{
+                          ...styles.weaponButton,
+                          ...(selected ? styles.weaponButtonSelected : {}),
+                          ...(!unlocked ? styles.weaponButtonLocked : {}),
+                        }}
+                      >
+                        <span>{index + 1}. {definition.shortLabel}</span>
+                        <small style={styles.weaponButtonSmall}>
+                          {unlocked ? definition.description : `Stage ${definition.unlockStage}`}
+                        </small>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
               <button
                 type="button"
                 onClick={gameState === "playing" ? triggerBomb : startOpening}
@@ -2351,8 +2548,8 @@ export default function ToolClient() {
                 <span>
                   Maro-kun:{" "}
                   {stage >= 3
-                    ? "補給OK。焦ったらボムだよ。"
-                    : "コインを6枚集めると武器が広がるよ。"}
+                    ? "補給OK。状況に合わせて武器を切り替えてね。"
+                    : "Stage 2で3-Wayショットが解放されるよ。"}
                 </span>
               </div>
             </section>
@@ -2417,7 +2614,7 @@ export default function ToolClient() {
                   <div style={styles.hud}>
                     Stage {stage}/{FINAL_STAGE} {currentStage.label} / Small{" "}
                     {currentSubStage.globalNumber}/{CLEAR_TARGET} / Score {score} /
-                    Life {lives} / Coin {coins}
+                    Life {lives} / Coin {coins} / Weapon {WEAPON_DEFINITIONS[selectedWeapon].shortLabel}
                     {barrierActiveFrames > 0
                       ? ` / 🛡️ ${Math.ceil(barrierActiveFrames / 60)}s`
                       : barrierCooldownFrames > 0
@@ -2433,10 +2630,38 @@ export default function ToolClient() {
                     <span>STAGE {stage}</span>
                     <strong>
                       {stage === FINAL_STAGE
-                        ? `${stageTheme.label} / Capture UFO`
+                        ? `${stageTheme.label} / FINAL BOSS`
                         : `${currentSubStage.label} ${stageProgress}/${currentStageGoal}`}
                     </strong>
                   </div>
+                  {visibleBoss?.boss ? (
+                    <div style={styles.bossBanner} aria-live="polite">
+                      <div style={styles.bossBannerTitle}>
+                        {visibleBoss.checkpoint === "stage" && stage === FINAL_STAGE
+                          ? "FINAL BOSS"
+                          : visibleBoss.checkpoint === "stage"
+                            ? "STAGE BOSS"
+                            : "MID BOSS"}
+                        <strong>{visibleBoss.boss.name}</strong>
+                      </div>
+                      <div style={styles.bossBannerMeta}>
+                        <span>
+                          {visibleBoss.boss.attackLabel} / {visibleBoss.boss.weaponLabel}
+                        </span>
+                        <strong>
+                          HP {Math.max(0, Math.round((visibleBoss.hp / Math.max(1, visibleBoss.maxHp)) * 100))}%
+                        </strong>
+                      </div>
+                      <div style={styles.bossBannerMeter}>
+                        <span
+                          style={{
+                            ...styles.bossBannerMeterFill,
+                            width: `${Math.max(0, (visibleBoss.hp / Math.max(1, visibleBoss.maxHp)) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
 
                   {subStageFlash ? (
                     <div
@@ -2480,7 +2705,21 @@ export default function ToolClient() {
                   {bullets.map((bullet) => (
                     <div
                       key={bullet.id}
-                      style={{ ...styles.bullet, left: bullet.x, top: bullet.y }}
+                      aria-label={`${WEAPON_DEFINITIONS[bullet.weapon].label}の弾`}
+                      style={{
+                        ...styles.bullet,
+                        ...(bullet.weapon === "rainbow-laser"
+                          ? styles.bulletLaser
+                          : bullet.weapon === "snack-missile"
+                            ? styles.bulletMissile
+                            : bullet.weapon === "fridge-beam"
+                              ? styles.bulletBeam
+                              : bullet.weapon === "coin-cannon"
+                                ? styles.bulletCannon
+                                : {}),
+                        left: bullet.x,
+                        top: bullet.y,
+                      }}
                     />
                   ))}
 
@@ -2620,6 +2859,40 @@ export default function ToolClient() {
 
             <div style={styles.touchPanel}>
               <div style={styles.touchTitle}>スマホ操作</div>
+              <div style={styles.touchWeaponHeader}>
+                <span>Weapon: {WEAPON_DEFINITIONS[selectedWeapon].shortLabel}</span>
+                <span>数字キー 1〜6 / タップで切替</span>
+              </div>
+              <div
+                style={{
+                  ...styles.touchWeaponRow,
+                  ...(viewportWidth >= 430 ? styles.touchWeaponWrap : {}),
+                }}
+              >
+                {WEAPON_ORDER.map((weaponId, index) => {
+                  const definition = WEAPON_DEFINITIONS[weaponId];
+                  const unlocked = availableWeapons.includes(weaponId);
+                  return (
+                    <button
+                      key={weaponId}
+                      type="button"
+                      aria-label={`${index + 1}: ${definition.label}`}
+                      aria-pressed={selectedWeapon === weaponId}
+                      disabled={!unlocked}
+                      onClick={() => selectWeapon(weaponId)}
+                      style={{
+                        ...styles.touchWeaponButton,
+                        ...(selectedWeapon === weaponId
+                          ? styles.touchWeaponSelected
+                          : {}),
+                        ...(!unlocked ? styles.touchWeaponLocked : {}),
+                      }}
+                    >
+                      {index + 1} {definition.shortLabel}
+                    </button>
+                  );
+                })}
+              </div>
               <div style={styles.touchGrid}>
                 <div style={styles.dpadGrid}>
                   <span />
@@ -2807,6 +3080,48 @@ const styles: Record<string, CSSProperties> = {
     gap: 12,
     fontSize: 13,
     color: "#cbd5e1",
+  },
+  weaponCard: {
+    marginTop: 16,
+    paddingTop: 14,
+    borderTop: "1px solid rgba(226, 232, 240, 0.16)",
+  },
+  weaponCardTitle: {
+    marginBottom: 8,
+    color: "#fef08a",
+    fontSize: 12,
+    fontWeight: 900,
+    letterSpacing: 0.8,
+  },
+  weaponGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 6,
+  },
+  weaponButton: {
+    minHeight: 46,
+    padding: "6px 7px",
+    border: "1px solid rgba(125, 211, 252, 0.25)",
+    borderRadius: 7,
+    background: "rgba(30, 41, 59, 0.88)",
+    color: "#e0f2fe",
+    textAlign: "left",
+    cursor: "pointer",
+  },
+  weaponButtonSelected: {
+    borderColor: "#facc15",
+    background: "rgba(14, 116, 144, 0.72)",
+    boxShadow: "0 0 14px rgba(250, 204, 21, 0.28)",
+  },
+  weaponButtonLocked: {
+    opacity: 0.42,
+    cursor: "not-allowed",
+  },
+  weaponButtonSmall: {
+    display: "block",
+    marginTop: 3,
+    color: "#94a3b8",
+    fontSize: 10,
   },
   primaryButton: {
     width: "100%",
@@ -3048,6 +3363,53 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 900,
     boxShadow: "0 8px 18px rgba(15, 23, 42, 0.12)",
   },
+  bossBanner: {
+    position: "absolute",
+    left: "50%",
+    top: 76,
+    zIndex: 25,
+    width: "min(460px, calc(100% - 28px))",
+    transform: "translateX(-50%)",
+    padding: "8px 12px",
+    borderRadius: 10,
+    border: "1px solid rgba(251, 113, 133, 0.55)",
+    background: "rgba(15, 23, 42, 0.78)",
+    color: "#f8fafc",
+    boxShadow: "0 0 24px rgba(251, 113, 133, 0.2)",
+    backdropFilter: "blur(8px)",
+  },
+  bossBannerTitle: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 8,
+    color: "#fda4af",
+    fontSize: 10,
+    fontWeight: 900,
+    letterSpacing: 0.8,
+  },
+  bossBannerMeta: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 8,
+    marginTop: 3,
+    color: "#e2e8f0",
+    fontSize: 10,
+    fontWeight: 800,
+  },
+  bossBannerMeter: {
+    height: 6,
+    marginTop: 5,
+    overflow: "hidden",
+    borderRadius: 999,
+    background: "rgba(148, 163, 184, 0.35)",
+  },
+  bossBannerMeterFill: {
+    display: "block",
+    height: "100%",
+    borderRadius: 999,
+    background: "linear-gradient(90deg, #22c55e, #facc15, #fb7185)",
+    transition: "width 0.12s ease",
+  },
   subStageFlash: {
     position: "absolute",
     left: "50%",
@@ -3132,6 +3494,34 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: "999px 999px 4px 4px",
     background: "linear-gradient(180deg, #fef08a, #22d3ee)",
     boxShadow: "0 0 14px rgba(250, 204, 21, 0.82)",
+  },
+  bulletLaser: {
+    width: 14,
+    height: 30,
+    borderRadius: 999,
+    background: "linear-gradient(180deg, #fef08a, #f0abfc, #22d3ee)",
+    boxShadow: "0 0 18px rgba(240, 171, 252, 0.92)",
+  },
+  bulletMissile: {
+    width: 12,
+    height: 22,
+    borderRadius: "9px 9px 3px 3px",
+    background: "linear-gradient(180deg, #fef3c7, #fb7185, #7c3aed)",
+    boxShadow: "0 0 14px rgba(251, 113, 133, 0.82)",
+  },
+  bulletBeam: {
+    width: 16,
+    height: 26,
+    borderRadius: "999px 999px 4px 4px",
+    background: "linear-gradient(180deg, #ecfeff, #67e8f9, #0891b2)",
+    boxShadow: "0 0 18px rgba(103, 232, 249, 0.9)",
+  },
+  bulletCannon: {
+    width: 18,
+    height: 32,
+    borderRadius: 999,
+    background: "linear-gradient(180deg, #fff7ed, #f59e0b, #b45309)",
+    boxShadow: "0 0 20px rgba(245, 158, 11, 0.95)",
   },
   enemyBullet: {
     position: "absolute",
@@ -3223,6 +3613,15 @@ const styles: Record<string, CSSProperties> = {
     animation: "penguinShooterStageBossHover 2.2s ease-in-out infinite",
     filter:
       "drop-shadow(0 16px 18px rgba(2, 6, 23, 0.5)) drop-shadow(0 0 22px rgba(250, 204, 21, 0.22))",
+  },
+  stageBossSvg: {
+    position: "absolute",
+    inset: 0,
+    zIndex: 3,
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+    backgroundSize: "100% 100%",
+    filter: "drop-shadow(0 0 16px rgba(125, 211, 252, 0.58))",
   },
   bossAura: {
     position: "absolute",
@@ -3858,6 +4257,46 @@ const styles: Record<string, CSSProperties> = {
     color: "#64748b",
     fontSize: 12,
     fontWeight: 900,
+  },
+  touchWeaponHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 6,
+    color: "#475569",
+    fontSize: 11,
+    fontWeight: 800,
+  },
+  touchWeaponRow: {
+    display: "flex",
+    gap: 6,
+    overflowX: "auto",
+    paddingBottom: 8,
+    scrollbarWidth: "thin",
+  },
+  touchWeaponWrap: {
+    flexWrap: "wrap",
+    overflowX: "visible",
+  },
+  touchWeaponButton: {
+    flex: "0 0 auto",
+    minHeight: 38,
+    padding: "0 10px",
+    borderRadius: 999,
+    border: "1px solid rgba(14, 116, 144, 0.22)",
+    background: "#ffffff",
+    color: "#0f172a",
+    fontSize: 12,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  touchWeaponSelected: {
+    borderColor: "#0e7490",
+    background: "#cffafe",
+    boxShadow: "0 0 0 2px rgba(14, 116, 144, 0.12)",
+  },
+  touchWeaponLocked: {
+    opacity: 0.42,
   },
   touchGrid: {
     display: "flex",

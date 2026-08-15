@@ -8,6 +8,8 @@
 | [月100円マネタイズ計画](./month-100-yen-monetization-plan.md) | 月100円収益化検証の全体計画 |
 | [月100円プロジェクト進捗チェックリスト](./month-100-yen-progress-checklist.md) | 月100円検証の進捗確認リスト |
 | [ペンギンシューター新ゲーム作成計画](./penguin-shooter-new-game-plan.md) | PDF企画書をベースにした新規ゲーム tool の段階実装計画 |
+| [ペンギンシューター 10大ステージ・武器拡張実装計画](./penguin-shooter-10-stage-expansion-plan.md) | 10大ステージ化、武器追加、ボスSVG接続の実装計画 |
+| [ペンギンシューター UI設計](./penguin-shooter-ui-design.md) | 10ステージ・武器拡張版のHUD、ボス帯、操作パネル設計 |
 | [プロジェクト継続・撤退判断基準](./project-continuation-criteria.md) | 継続、撤退、凍結の判断基準 |
 | [株価ランキング外部データ移行計画](./stock-ranking-external-data-migration-plan.md) | stock-ranking の外部データ公開移行計画 |
 | [yutai-expiry カメラ画像認識計画](./yutai-expiry-image-capture-plan.md) | 優待券をカメラ撮影し Gemini で自動入力する段階実装計画 |

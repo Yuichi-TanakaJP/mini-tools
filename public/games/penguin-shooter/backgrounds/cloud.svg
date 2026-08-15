@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 820" role="img" aria-label="cloud city stage background">
+  <defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#1e1b4b"/><stop offset=".5" stop-color="#6d28d9"/><stop offset="1" stop-color="#e9d5ff"/></linearGradient></defs>
+  <rect width="720" height="820" fill="url(#sky)"/>
+  <g fill="#f5f3ff" opacity=".48"><ellipse cx="130" cy="330" rx="150" ry="48"/><ellipse cx="560" cy="300" rx="190" ry="56"/><ellipse cx="360" cy="470" rx="210" ry="52"/></g>
+  <g fill="#c4b5fd" opacity=".8"><path d="M62 636h80l18-170 48 170h70l22-236 54 236h68l32-152 45 152h112v184H62Z"/><path d="m32 638 80-34 76 34-76 34Zm528 0 72-40 84 40-84 40Z"/></g>
+  <g stroke="#fef08a" stroke-width="5" opacity=".65"><path d="M88 164 70 224m18-60 22 48m520-83-19 60m19-60 22 50"/></g>
+  <path d="M0 774c132-40 216 24 344-5 141-32 232-20 376 9v42H0Z" fill="#312e81" opacity=".9"/>
+</svg>
