@@ -38,6 +38,7 @@ const OPENING_MS = 10_000;
 const STAR_COUNT = 56;
 const MUTE_STORAGE_KEY = "penguin-shooter-muted";
 const BOSS_RESERVED_Y = 188;
+const MID_BOSS_ENTRY_Y = -120;
 const MOBILE_PAGE_BOTTOM_PADDING = 128;
 const DESKTOP_BOARD_MAX_SCALE = 1.12;
 
@@ -1734,7 +1735,12 @@ export default function ToolClient() {
           {
             id: enemyIdRef.current++,
             x: startX,
-            y: kind === "boss" ? (isStageBoss ? BOSS_RESERVED_Y : 142) : -76,
+            y:
+              kind === "boss"
+                ? isStageBoss
+                  ? BOSS_RESERVED_Y
+                  : MID_BOSS_ENTRY_Y
+                : -76,
             anchorX: isStageBoss ? startX : undefined,
             phase: isStageBoss ? createRandom(seedRef) * Math.PI * 2 : undefined,
             speed:
@@ -2932,36 +2938,45 @@ export default function ToolClient() {
                         : "🛡️ Ready"}
                   </span>
                 </div>
-                {visibleBoss?.boss ? (
-                  <div style={styles.mobileBossBand} aria-live="polite">
-                    <div style={styles.mobileBossBandTitle}>
-                      <span>
-                        {visibleBoss.checkpoint === "stage" && stage === FINAL_STAGE
-                          ? "FINAL BOSS"
-                          : visibleBoss.checkpoint === "stage"
-                            ? "STAGE BOSS"
-                            : "MID BOSS"}
-                      </span>
-                      <strong>{visibleBoss.boss.name}</strong>
-                    </div>
-                    <div style={styles.mobileBossBandMeta}>
-                      <span>
-                        {visibleBoss.boss.attackLabel} / {visibleBoss.boss.weaponLabel}
-                      </span>
-                      <strong>
-                        HP {Math.max(0, Math.round((visibleBoss.hp / Math.max(1, visibleBoss.maxHp)) * 100))}%
-                      </strong>
-                    </div>
-                    <div style={styles.bossBannerMeter}>
-                      <span
-                        style={{
-                          ...styles.bossBannerMeterFill,
-                          width: `${Math.max(0, (visibleBoss.hp / Math.max(1, visibleBoss.maxHp)) * 100)}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                ) : null}
+                <div
+                  style={{
+                    ...styles.mobileBossBand,
+                    ...(visibleBoss?.boss ? {} : styles.mobileBossBandPlaceholder),
+                  }}
+                  aria-live="polite"
+                  aria-hidden={!visibleBoss?.boss}
+                >
+                  {visibleBoss?.boss ? (
+                    <>
+                      <div style={styles.mobileBossBandTitle}>
+                        <span>
+                          {visibleBoss.checkpoint === "stage" && stage === FINAL_STAGE
+                            ? "FINAL BOSS"
+                            : visibleBoss.checkpoint === "stage"
+                              ? "STAGE BOSS"
+                              : "MID BOSS"}
+                        </span>
+                        <strong>{visibleBoss.boss.name}</strong>
+                      </div>
+                      <div style={styles.mobileBossBandMeta}>
+                        <span>
+                          {visibleBoss.boss.attackLabel} / {visibleBoss.boss.weaponLabel}
+                        </span>
+                        <strong>
+                          HP {Math.max(0, Math.round((visibleBoss.hp / Math.max(1, visibleBoss.maxHp)) * 100))}%
+                        </strong>
+                      </div>
+                      <div style={styles.bossBannerMeter}>
+                        <span
+                          style={{
+                            ...styles.bossBannerMeterFill,
+                            width: `${Math.max(0, (visibleBoss.hp / Math.max(1, visibleBoss.maxHp)) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </>
+                  ) : null}
+                </div>
               </div>
             ) : null}
             <div ref={viewportRef} style={styles.viewport}>
@@ -3912,9 +3927,13 @@ const styles: Record<string, CSSProperties> = {
   mobileBossBand: {
     display: "grid",
     gap: 4,
+    minHeight: 58,
     paddingTop: 7,
     borderTop: "1px solid rgba(251, 113, 133, 0.5)",
     color: "#f8fafc",
+  },
+  mobileBossBandPlaceholder: {
+    visibility: "hidden",
   },
   mobileBossBandTitle: {
     display: "flex",
