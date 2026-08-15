@@ -759,6 +759,103 @@ function Joystick({
   );
 }
 
+function ProgressGraph({
+  stage,
+  stageProgressPercent,
+  completedStages,
+  rescued,
+}: {
+  stage: number;
+  stageProgressPercent: number;
+  completedStages: number;
+  rescued: number;
+}) {
+  const chartWidth = 360;
+  const chartHeight = 126;
+  const padding = { top: 14, right: 14, bottom: 26, left: 18 };
+  const plotWidth = chartWidth - padding.left - padding.right;
+  const plotHeight = chartHeight - padding.top - padding.bottom;
+  const values = STAGE_DEFINITIONS.map((definition) => {
+    if (definition.number <= completedStages) return 1;
+    if (definition.number === stage) return clamp(stageProgressPercent / 100, 0, 1);
+    return 0;
+  });
+  const points = values.map((value, index) => ({
+    x: padding.left + (index / (values.length - 1)) * plotWidth,
+    y: padding.top + (1 - value) * plotHeight,
+    value,
+    stage: index + 1,
+  }));
+  const linePath = points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
+  const lastPoint = points[points.length - 1];
+  const areaPath = `${linePath} L ${lastPoint?.x ?? chartWidth - padding.right} ${padding.top + plotHeight} L ${points[0]?.x ?? padding.left} ${padding.top + plotHeight} Z`;
+
+  return (
+    <section style={styles.graphCard} aria-label="10ステージ進捗グラフ">
+      <div style={styles.graphHeader}>
+        <div>
+          <span style={styles.graphEyebrow}>MISSION PROGRESS</span>
+          <strong style={styles.graphTitle}>救出ルート</strong>
+        </div>
+        <span style={styles.graphSummary}>{rescued}/{CLEAR_TARGET} rescued</span>
+      </div>
+      <svg
+        role="img"
+        aria-label={`Stage ${stage}、救出進捗 ${rescued}/${CLEAR_TARGET}`}
+        viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+        style={styles.progressGraph}
+      >
+        {[0, 0.5, 1].map((value) => {
+          const y = padding.top + (1 - value) * plotHeight;
+          return (
+            <line
+              key={value}
+              x1={padding.left}
+              x2={chartWidth - padding.right}
+              y1={y}
+              y2={y}
+              stroke="rgba(148, 163, 184, 0.24)"
+              strokeDasharray="3 4"
+            />
+          );
+        })}
+        <path d={areaPath} fill="url(#penguin-progress-fill)" opacity="0.28" />
+        <path d={linePath} fill="none" stroke="#0e7490" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        {points.map((point) => {
+          const completed = point.value >= 1;
+          const current = point.stage === stage;
+          return (
+            <g key={point.stage}>
+              <circle
+                cx={point.x}
+                cy={point.y}
+                r={current ? 6 : 4}
+                fill={completed ? "#22c55e" : current ? "#facc15" : "#cbd5e1"}
+                stroke="#f8fafc"
+                strokeWidth="2"
+              />
+              <text x={point.x} y={chartHeight - 8} textAnchor="middle" style={styles.graphLabel}>
+                {point.stage}
+              </text>
+            </g>
+          );
+        })}
+        <defs>
+          <linearGradient id="penguin-progress-fill" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#22c55e" />
+            <stop offset="100%" stopColor="#22d3ee" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <div style={styles.graphLegend}>
+        <span><i style={{ ...styles.graphLegendDot, background: "#22c55e" }} />完了</span>
+        <span><i style={{ ...styles.graphLegendDot, background: "#facc15" }} />現在</span>
+        <span><i style={{ ...styles.graphLegendDot, background: "#cbd5e1" }} />未到達</span>
+      </div>
+    </section>
+  );
+}
+
 export default function ToolClient() {
   const [gameState, setGameState] = useState<GameState>("idle");
   const [openingProgress, setOpeningProgress] = useState(0);
@@ -857,11 +954,14 @@ export default function ToolClient() {
   const isPlaying = gameState === "playing";
   const powered = selectedWeapon !== "standard";
   const isMobileLayout = viewportWidth > 0 && viewportWidth < 768;
+  const isGameActive = gameState === "playing" || gameState === "opening";
+  const isResultState = gameState === "cleared" || gameState === "gameover";
   const rescueProgress = Math.min(100, Math.round((rescued / CLEAR_TARGET) * 100));
   const currentStage = getStageDefinition(stage);
   const currentSubStage = getSubStage(stage, stageProgress);
   const currentGameMode = GAME_MODE_DEFINITIONS[gameMode];
   const currentStageGoal = currentStage.smallStages.length;
+  const completedGraphStages = gameState === "cleared" ? FINAL_STAGE : Math.max(0, stage - 1);
   const twoPlayerUnlocked = rescued >= TWO_PLAYER_UNLOCK_STAGE;
   const availableWeapons = WEAPON_ORDER.filter(
     (weaponId) => currentStage.number >= WEAPON_DEFINITIONS[weaponId].unlockStage,
@@ -1426,7 +1526,7 @@ export default function ToolClient() {
         const heightLimit =
           nextViewportWidth < 768
             ? Math.max(340, Math.min(500, window.innerHeight * 0.54))
-            : Math.max(560, Math.min(760, window.innerHeight * 0.88));
+            : Math.max(560, Math.min(760, window.innerHeight * (isGameActive ? 0.82 : 0.88)));
         setBoardScale(
           Math.min(
             nextViewportWidth < 768 ? 1 : DESKTOP_BOARD_MAX_SCALE,
@@ -1449,7 +1549,7 @@ export default function ToolClient() {
       observer?.disconnect();
       window.removeEventListener("resize", resize);
     };
-  }, []);
+  }, [isGameActive]);
 
   useEffect(() => {
     const storedMuted = window.localStorage.getItem(MUTE_STORAGE_KEY) === "1";
@@ -2541,13 +2641,14 @@ export default function ToolClient() {
       style={{
         ...styles.page,
         ...(isMobileLayout ? styles.pageMobile : {}),
+        ...(isGameActive ? styles.pageActive : {}),
       }}
     >
       <div style={styles.shell}>
-        <section style={styles.header}>
+        <section style={{ ...styles.header, ...(isGameActive ? styles.headerActive : {}) }}>
           <span style={styles.eyebrow}>New bonus game</span>
           <h1 style={styles.title}>ペンギンシューター</h1>
-          <p style={styles.lead}>
+          <p style={{ ...styles.lead, ...(isGameActive ? styles.leadActive : {}) }}>
             宇宙船Shutyに乗ったPenを操作して、捕まったShootを助けよう。
             10ステージを進み、解放された武器を切り替えて戦います。
           </p>
@@ -2557,15 +2658,55 @@ export default function ToolClient() {
           style={{
             ...styles.layout,
             ...(isMobileLayout ? styles.layoutMobile : {}),
+            ...(!isGameActive ? styles.layoutState : styles.layoutActive),
           }}
         >
           <aside
             style={{
               ...styles.side,
               ...(isMobileLayout ? styles.sideMobile : {}),
+              ...(!isGameActive ? styles.sideState : styles.sideHidden),
             }}
           >
-            <section style={styles.card}>
+            {isResultState ? (
+              <>
+                <section style={styles.resultCard} aria-label="ミッション結果">
+                  <span style={styles.resultEyebrow}>
+                    {gameState === "cleared" ? "MISSION COMPLETE" : "MISSION REPORT"}
+                  </span>
+                  <div style={styles.resultIcon}>{gameState === "cleared" ? "🐧🤝😾" : "🐧🚀"}</div>
+                  <h2 style={styles.resultTitle}>
+                    {gameState === "cleared" ? "Shoot救出成功！" : "救出ルートを再構築"}
+                  </h2>
+                  <p style={styles.resultText}>
+                    {gameState === "cleared"
+                      ? "10ステージを突破しました。今回の救出結果を確認できます。"
+                      : "到達ステージとスコアを確認して、もう一度挑戦できます。"}
+                  </p>
+                  <div style={styles.resultStats}>
+                    <div style={styles.resultStatsItem}><span>Score</span><strong>{score}</strong></div>
+                    <div style={styles.resultStatsItem}><span>Stage</span><strong>{stage}/{FINAL_STAGE}</strong></div>
+                    <div style={styles.resultStatsItem}><span>Rescue</span><strong>{rescued}/{CLEAR_TARGET}</strong></div>
+                    <div style={styles.resultStatsItem}><span>Life</span><strong>{lives}/{MAX_LIVES}</strong></div>
+                  </div>
+                  <button type="button" onClick={startOpening} style={styles.primaryButton}>
+                    リトライ
+                  </button>
+                </section>
+                <ProgressGraph
+                  stage={stage}
+                  stageProgressPercent={stageProgressPercent}
+                  completedStages={completedGraphStages}
+                  rescued={rescued}
+                />
+              </>
+            ) : null}
+            <section
+              style={{
+                ...styles.card,
+                ...(isResultState ? styles.hiddenPanel : {}),
+              }}
+            >
               <div style={styles.cardTitle}>Mission</div>
               <p style={styles.cardText}>
                 10の大ステージ、全100小ステージを進み、最後のワールドリフトを倒すとShoot救出。
@@ -2693,7 +2834,12 @@ export default function ToolClient() {
               </button>
             </section>
 
-            <section style={styles.progressCard}>
+            <section
+              style={{
+                ...styles.progressCard,
+                ...(isResultState ? styles.hiddenPanel : {}),
+              }}
+            >
               <div style={styles.bossPanel}>
                 <span>Mid Boss: {currentStage.bosses.mid.name}</span>
                 <strong>{currentStage.bosses.mid.attackLabel}</strong>
@@ -2732,12 +2878,21 @@ export default function ToolClient() {
                 </span>
               </div>
             </section>
+            {!isResultState ? (
+              <ProgressGraph
+                stage={stage}
+                stageProgressPercent={stageProgressPercent}
+                completedStages={completedGraphStages}
+                rescued={rescued}
+              />
+            ) : null}
           </aside>
 
           <section
             style={{
               ...styles.gameCard,
               ...(isMobileLayout ? styles.gameCardMobile : {}),
+              ...(isGameActive ? styles.gameCardActive : styles.gameCardHidden),
             }}
           >
             {isMobileLayout ? (
@@ -2877,11 +3032,12 @@ export default function ToolClient() {
                       <span>Mode {gameMode}</span>
                       <span>Small {currentSubStage.globalNumber}/{CLEAR_TARGET}</span>
                     </div>
-                    <div style={styles.hudLine}>
-                      <span>Score {score}</span>
-                      <span>Coin {coins}</span>
-                      <span>Weapon {WEAPON_DEFINITIONS[selectedWeapon].shortLabel}</span>
-                    </div>
+                  <div style={styles.hudLine}>
+                    <span>Score {score}</span>
+                    <span>Coin {coins}</span>
+                    <span>Weapon {WEAPON_DEFINITIONS[selectedWeapon].shortLabel}</span>
+                    <span style={styles.hudHint}>ARROWS / SPACE / B</span>
+                  </div>
                   </div>
                   <div
                     style={{
@@ -3162,10 +3318,14 @@ export default function ToolClient() {
               style={{
                 ...styles.touchPanel,
                 ...(isMobileLayout ? styles.touchPanelMobile : {}),
+                ...(isGameActive && isMobileLayout ? styles.touchPanelActive : {}),
+                ...(isGameActive && !isMobileLayout ? styles.touchPanelDesktopHidden : {}),
               }}
             >
-              <div style={styles.touchTitle}>スマホ操作</div>
-              <div style={styles.touchWeaponHeader}>
+              <div style={{ ...styles.touchTitle, ...(isGameActive ? styles.touchCompactLabel : {}) }}>
+                スマホ操作
+              </div>
+              <div style={{ ...styles.touchWeaponHeader, ...(isGameActive ? styles.touchCompactLabel : {}) }}>
                 <span>Weapon: {WEAPON_DEFINITIONS[selectedWeapon].shortLabel}</span>
                 <span>数字キー 1〜6 / タップで切替</span>
               </div>
@@ -3291,6 +3451,10 @@ const styles: Record<string, CSSProperties> = {
   pageMobile: {
     padding: `22px 12px ${MOBILE_PAGE_BOTTOM_PADDING}px`,
   },
+  pageActive: {
+    minHeight: 0,
+    padding: "10px 12px 12px",
+  },
   shell: {
     width: "100%",
     maxWidth: 1180,
@@ -3298,6 +3462,9 @@ const styles: Record<string, CSSProperties> = {
   },
   header: {
     marginBottom: 18,
+  },
+  headerActive: {
+    display: "none",
   },
   eyebrow: {
     display: "inline-flex",
@@ -3322,6 +3489,9 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 14,
     lineHeight: 1.7,
   },
+  leadActive: {
+    display: "none",
+  },
   layout: {
     display: "grid",
     gap: 18,
@@ -3331,10 +3501,24 @@ const styles: Record<string, CSSProperties> = {
     gridTemplateColumns: "minmax(0, 1fr)",
     gap: 12,
   },
+  layoutState: {
+    gridTemplateColumns: "minmax(0, 1fr)",
+  },
+  layoutActive: {
+    gridTemplateColumns: "minmax(0, 1fr)",
+  },
   side: {
     display: "flex",
     flexDirection: "column",
     gap: 12,
+  },
+  sideState: {
+    width: "100%",
+    maxWidth: 860,
+    margin: "0 auto",
+  },
+  sideHidden: {
+    display: "none",
   },
   sideMobile: {
     order: 2,
@@ -3484,6 +3668,115 @@ const styles: Record<string, CSSProperties> = {
     opacity: 0.52,
     cursor: "not-allowed",
   },
+  hiddenPanel: {
+    display: "none",
+  },
+  resultCard: {
+    borderRadius: 14,
+    border: "1px solid rgba(15, 23, 42, 0.1)",
+    background: "linear-gradient(145deg, #0f172a, #164e63)",
+    color: "#f8fafc",
+    padding: "24px clamp(18px, 4vw, 42px)",
+    boxShadow: "0 20px 44px rgba(15, 23, 42, 0.2)",
+  },
+  resultEyebrow: {
+    color: "#67e8f9",
+    fontSize: 11,
+    fontWeight: 900,
+    letterSpacing: 1.5,
+  },
+  resultIcon: {
+    marginTop: 14,
+    fontSize: 34,
+  },
+  resultTitle: {
+    margin: "8px 0 6px",
+    fontSize: "clamp(24px, 4vw, 34px)",
+    lineHeight: 1.15,
+  },
+  resultText: {
+    maxWidth: 560,
+    margin: 0,
+    color: "#cbd5e1",
+    fontSize: 13,
+    lineHeight: 1.6,
+  },
+  resultStats: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: 8,
+    marginTop: 20,
+  },
+  resultStat: {
+    display: "grid",
+    gap: 4,
+  },
+  resultStatsItem: {
+    display: "grid",
+    gap: 4,
+    padding: "10px 11px",
+    borderRadius: 9,
+    background: "rgba(255, 255, 255, 0.08)",
+  },
+  graphCard: {
+    borderRadius: 12,
+    border: "1px solid rgba(14, 116, 144, 0.18)",
+    background: "rgba(255, 255, 255, 0.88)",
+    padding: "14px 16px 12px",
+    boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)",
+  },
+  graphHeader: {
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  graphEyebrow: {
+    display: "block",
+    color: "#0e7490",
+    fontSize: 10,
+    fontWeight: 900,
+    letterSpacing: 1.1,
+  },
+  graphTitle: {
+    display: "block",
+    marginTop: 3,
+    color: "#0f172a",
+    fontSize: 18,
+  },
+  graphSummary: {
+    color: "#475569",
+    fontSize: 11,
+    fontWeight: 800,
+    whiteSpace: "nowrap",
+  },
+  progressGraph: {
+    display: "block",
+    width: "100%",
+    height: "auto",
+    marginTop: 8,
+    overflow: "visible",
+  },
+  graphLabel: {
+    fill: "#64748b",
+    fontSize: 9,
+    fontWeight: 800,
+  },
+  graphLegend: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "6px 12px",
+    color: "#64748b",
+    fontSize: 10,
+    fontWeight: 800,
+  },
+  graphLegendDot: {
+    display: "inline-block",
+    width: 7,
+    height: 7,
+    marginRight: 4,
+    borderRadius: 999,
+  },
   progressCard: {
     borderRadius: 8,
     border: "1px solid rgba(14, 116, 144, 0.16)",
@@ -3562,6 +3855,7 @@ const styles: Record<string, CSSProperties> = {
     lineHeight: 1,
   },
   gameCard: {
+    position: "relative",
     minWidth: 0,
     borderRadius: 8,
     border: "1px solid rgba(15, 23, 42, 0.08)",
@@ -3572,6 +3866,12 @@ const styles: Record<string, CSSProperties> = {
   gameCardMobile: {
     order: 1,
     padding: 8,
+  },
+  gameCardActive: {
+    overflow: "visible",
+  },
+  gameCardHidden: {
+    display: "none",
   },
   mobileStatusBar: {
     display: "grid",
@@ -3750,6 +4050,11 @@ const styles: Record<string, CSSProperties> = {
     display: "flex",
     flexWrap: "wrap",
     gap: "3px 10px",
+  },
+  hudHint: {
+    color: "#bae6fd",
+    fontSize: 9,
+    letterSpacing: 0.4,
   },
   lifeHud: {
     position: "absolute",
@@ -4712,6 +5017,20 @@ const styles: Record<string, CSSProperties> = {
   touchPanelMobile: {
     marginBottom: 20,
     padding: 10,
+  },
+  touchPanelActive: {
+    marginTop: 8,
+    marginBottom: 8,
+    padding: 8,
+    background: "rgba(248, 250, 252, 0.9)",
+    backdropFilter: "blur(12px)",
+    boxShadow: "0 12px 28px rgba(15, 23, 42, 0.2)",
+  },
+  touchPanelDesktopHidden: {
+    display: "none",
+  },
+  touchCompactLabel: {
+    display: "none",
   },
   touchTitle: {
     marginBottom: 10,
