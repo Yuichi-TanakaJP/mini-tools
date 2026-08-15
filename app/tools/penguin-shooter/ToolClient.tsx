@@ -5,12 +5,14 @@ import type { CSSProperties } from "react";
 import {
   CLEAR_TARGET,
   FINAL_STAGE,
+  GAME_MODE_DEFINITIONS,
   MAX_LIVES,
   STAGE_DEFINITIONS,
   TWO_PLAYER_UNLOCK_STAGE,
   WEAPON_DEFINITIONS,
   WEAPON_ORDER,
   getBossDefinition,
+  getGameModeDefinition,
   getStageDefinition,
   getStageGoal,
   getSubStage,
@@ -18,6 +20,7 @@ import {
 import type {
   BossCheckpoint,
   BossDefinition,
+  GameMode,
   StageDefinition,
   StageId,
   WeaponId,
@@ -36,6 +39,7 @@ const STAR_COUNT = 56;
 const MUTE_STORAGE_KEY = "penguin-shooter-muted";
 const BOSS_RESERVED_Y = 188;
 const MOBILE_PAGE_BOTTOM_PADDING = 128;
+const DESKTOP_BOARD_MAX_SCALE = 1.12;
 
 type GameState = "idle" | "opening" | "playing" | "cleared" | "gameover";
 
@@ -291,6 +295,9 @@ const getEnemySize = (enemy: Pick<Enemy, "kind" | "checkpoint">) =>
     width: ENEMY_SIZE,
     height: ENEMY_SIZE,
   };
+
+const getBossHpKey = (stageNumber: number, checkpoint: BossCheckpoint) =>
+  `${stageNumber}:${checkpoint}`;
 
 function pseudoRandom(seed: number) {
   const value = Math.sin(seed * 12.9898) * 43758.5453;
@@ -682,6 +689,76 @@ function TouchButton({
   );
 }
 
+function Joystick({
+  compact,
+  onDirectionChange,
+}: {
+  compact: boolean;
+  onDirectionChange: (directions: {
+    up: boolean;
+    down: boolean;
+    left: boolean;
+    right: boolean;
+  }) => void;
+}) {
+  const padRef = useRef<HTMLDivElement>(null);
+  const originRef = useRef<{ x: number; y: number } | null>(null);
+  const [knob, setKnob] = useState({ x: 0, y: 0 });
+  const threshold = compact ? 14 : 18;
+  const knobRange = compact ? 30 : 42;
+
+  const release = () => {
+    originRef.current = null;
+    setKnob({ x: 0, y: 0 });
+    onDirectionChange({ up: false, down: false, left: false, right: false });
+  };
+
+  return (
+    <div
+      ref={padRef}
+      role="application"
+      aria-label="移動スティック"
+      style={{
+        ...styles.joystick,
+        ...(compact ? styles.joystickCompact : {}),
+      }}
+      onPointerDown={(event) => {
+        padRef.current?.setPointerCapture(event.pointerId);
+        originRef.current = { x: event.clientX, y: event.clientY };
+        setKnob({ x: 0, y: 0 });
+      }}
+      onPointerMove={(event) => {
+        if (!originRef.current) return;
+        const dx = event.clientX - originRef.current.x;
+        const dy = event.clientY - originRef.current.y;
+        const distance = Math.hypot(dx, dy);
+        const angle = Math.atan2(dy, dx);
+        const radius = Math.min(distance, knobRange);
+        setKnob({ x: Math.cos(angle) * radius, y: Math.sin(angle) * radius });
+        onDirectionChange({
+          up: dy < -threshold,
+          down: dy > threshold,
+          left: dx < -threshold,
+          right: dx > threshold,
+        });
+      }}
+      onPointerUp={release}
+      onPointerCancel={release}
+      onLostPointerCapture={release}
+    >
+      <span style={styles.joystickHint}>DRAG</span>
+      <span
+        aria-hidden
+        style={{
+          ...styles.joystickKnob,
+          ...(compact ? styles.joystickKnobCompact : {}),
+          transform: `translate(${knob.x}px, ${knob.y}px)`,
+        }}
+      />
+    </div>
+  );
+}
+
 export default function ToolClient() {
   const [gameState, setGameState] = useState<GameState>("idle");
   const [openingProgress, setOpeningProgress] = useState(0);
@@ -708,6 +785,7 @@ export default function ToolClient() {
   const [rescued, setRescued] = useState(0);
   const [stage, setStage] = useState(1);
   const [stageProgress, setStageProgress] = useState(0);
+  const [gameMode, setGameMode] = useState<GameMode>(3);
   const [selectedWeapon, setSelectedWeapon] = useState<WeaponId>("standard");
   const [bombs, setBombs] = useState(1);
   const [message, setMessage] = useState("Shuty、発進準備OK");
@@ -771,6 +849,8 @@ export default function ToolClient() {
   const rescuedRef = useRef(0);
   const stageRef = useRef(1);
   const stageProgressRef = useRef(0);
+  const gameModeRef = useRef<GameMode>(3);
+  const bossHpRef = useRef<Record<string, number>>({});
   const selectedWeaponRef = useRef<WeaponId>("standard");
   const bombsRef = useRef(1);
 
@@ -780,6 +860,7 @@ export default function ToolClient() {
   const rescueProgress = Math.min(100, Math.round((rescued / CLEAR_TARGET) * 100));
   const currentStage = getStageDefinition(stage);
   const currentSubStage = getSubStage(stage, stageProgress);
+  const currentGameMode = GAME_MODE_DEFINITIONS[gameMode];
   const currentStageGoal = currentStage.smallStages.length;
   const twoPlayerUnlocked = rescued >= TWO_PLAYER_UNLOCK_STAGE;
   const availableWeapons = WEAPON_ORDER.filter(
@@ -885,6 +966,7 @@ export default function ToolClient() {
 
   const markBossCleared = useCallback((enemy: Enemy) => {
     if (enemy.kind !== "boss" || !enemy.checkpoint) return;
+    delete bossHpRef.current[getBossHpKey(stageRef.current, enemy.checkpoint)];
     const current = bossMarkersRef.current[stageRef.current] ?? {
       mid: false,
       stage: false,
@@ -1045,6 +1127,19 @@ export default function ToolClient() {
     setSelectedWeapon(weaponId);
     setMessage(`${definition.label} を装備`);
   }, []);
+
+  const selectGameMode = useCallback(
+    (mode: GameMode) => {
+      if (gameState === "playing" || gameState === "opening") {
+        setMessage("ゲームモードはプレイ開始前に選択してください");
+        return;
+      }
+      gameModeRef.current = mode;
+      setGameMode(mode);
+      setMessage(`Mode ${mode} ${GAME_MODE_DEFINITIONS[mode].label} を選択`);
+    },
+    [gameState],
+  );
 
   const fire = useCallback(() => {
     const current = playerRef.current;
@@ -1224,6 +1319,7 @@ export default function ToolClient() {
     burstIdRef.current = 1;
     seedRef.current = 20260507;
     bossMarkersRef.current = {};
+    bossHpRef.current = {};
     previousSubStageRef.current = getSubStage(1, 0).globalNumber;
     previousStageRef.current = 1;
     setSubStageFlash(null);
@@ -1330,8 +1426,14 @@ export default function ToolClient() {
         const heightLimit =
           nextViewportWidth < 768
             ? Math.max(340, Math.min(500, window.innerHeight * 0.54))
-            : Math.max(360, window.innerHeight * 0.64);
-        setBoardScale(Math.min(1, rect.width / WIDTH, heightLimit / HEIGHT));
+            : Math.max(560, Math.min(760, window.innerHeight * 0.88));
+        setBoardScale(
+          Math.min(
+            nextViewportWidth < 768 ? 1 : DESKTOP_BOARD_MAX_SCALE,
+            rect.width / WIDTH,
+            heightLimit / HEIGHT,
+          ),
+        );
       });
     };
     const observer =
@@ -1467,10 +1569,13 @@ export default function ToolClient() {
         stageRef.current,
         stageProgressRef.current,
       );
-      const spawnInterval = activeSubStage.spawnInterval;
+      const modeDefinition = getGameModeDefinition(gameModeRef.current);
+      const spawnInterval = Math.max(
+        18,
+        Math.round(activeSubStage.spawnInterval * modeDefinition.spawnIntervalMultiplier),
+      );
       obstacleTickRef.current += 1;
       if (spawnTickRef.current >= spawnInterval) {
-        spawnTickRef.current = 0;
         const bossAlreadyVisible = enemiesRef.current.some(
           (enemy) => enemy.kind === "boss",
         );
@@ -1482,6 +1587,14 @@ export default function ToolClient() {
           ? getBossDefinition(stageRef.current, checkpoint)
           : undefined;
         const kind = checkpoint && !bossAlreadyVisible ? "boss" : "scout";
+        const scoutCount = enemiesRef.current.filter(
+          (enemy) => enemy.kind === "scout",
+        ).length;
+        const canSpawn = kind === "boss" || scoutCount < modeDefinition.maxEnemies;
+        if (!canSpawn) {
+          spawnTickRef.current = spawnInterval;
+        } else {
+          spawnTickRef.current = 0;
         const isStageBoss = kind === "boss" && checkpoint === "stage";
         const enemySize =
           kind === "boss" ? getBossSize(checkpoint) : {
@@ -1496,6 +1609,22 @@ export default function ToolClient() {
         if (kind === "boss" && boss) {
           setMessage(`${boss.name} 出現！ ${boss.attackLabel} / ${boss.weaponLabel}`);
           playSfx("stage");
+        }
+        const bossMaxHp =
+          kind === "boss" && boss
+            ? Math.max(1, Math.round(boss.hp * modeDefinition.bossHpMultiplier))
+            : modeDefinition.enemyHp;
+        const bossKey =
+          kind === "boss" && checkpoint
+            ? getBossHpKey(stageRef.current, checkpoint)
+            : undefined;
+        const storedBossHp = bossKey ? bossHpRef.current[bossKey] : undefined;
+        const initialHp =
+          kind === "boss" && boss
+            ? Math.min(bossMaxHp, Math.max(1, storedBossHp ?? bossMaxHp))
+            : modeDefinition.enemyHp;
+        if (bossKey && storedBossHp === undefined) {
+          bossHpRef.current[bossKey] = initialHp;
         }
         syncEnemies([
           ...enemiesRef.current,
@@ -1521,8 +1650,8 @@ export default function ToolClient() {
                 ? 18 + stageRef.current * 2
                 : (createRandom(seedRef) - 0.5) *
                   (kind === "boss" && boss ? boss.driftScale : 1.5),
-            hp: kind === "boss" && boss ? boss.hp : 1,
-            maxHp: kind === "boss" && boss ? boss.hp : 1,
+            hp: initialHp,
+            maxHp: bossMaxHp,
             kind,
             checkpoint: kind === "boss" ? checkpoint : undefined,
             boss: kind === "boss" ? boss : undefined,
@@ -1533,6 +1662,7 @@ export default function ToolClient() {
             burstRemaining: 0,
           },
         ]);
+        }
       }
       if (
         obstacleTickRef.current >= Math.max(52, spawnInterval + 18) &&
@@ -1889,6 +2019,11 @@ export default function ToolClient() {
         }
 
         if (destroyed) continue;
+
+        if (updatedEnemy.kind === "boss" && updatedEnemy.checkpoint) {
+          bossHpRef.current[getBossHpKey(stageRef.current, updatedEnemy.checkpoint)] =
+            clamp(updatedEnemy.hp, 1, updatedEnemy.maxHp);
+        }
 
         const hitsPlayer = rectsHit(
           { x: nextPlayer.x + 8, y: nextPlayer.y + 8, width: PLAYER_SIZE - 16, height: PLAYER_SIZE - 16 },
@@ -2471,6 +2606,10 @@ export default function ToolClient() {
                   <strong>{isMuted ? "Muted" : audioReady ? "On" : "Ready"}</strong>
                 </div>
                 <div style={styles.statusRow}>
+                  <span>Mode</span>
+                  <strong>{gameMode} · {currentGameMode.label}</strong>
+                </div>
+                <div style={styles.statusRow}>
                   <span>2P</span>
                   <strong>{twoPlayerUnlocked ? "Unlocked" : `${rescued}/${TWO_PLAYER_UNLOCK_STAGE}`}</strong>
                 </div>
@@ -2504,6 +2643,32 @@ export default function ToolClient() {
                     );
                   })}
                 </div>
+              </section>
+              <section style={styles.modeCard} aria-label="ゲームモード選択">
+                <div style={styles.modeCardHeader}>
+                  <span>Game Mode</span>
+                  <strong>{gameMode} · {currentGameMode.label}</strong>
+                </div>
+                <div style={styles.modeGrid}>
+                  {Object.values(GAME_MODE_DEFINITIONS).map((mode) => (
+                    <button
+                      key={mode.mode}
+                      type="button"
+                      aria-label={`Mode ${mode.mode}: ${mode.description}`}
+                      aria-pressed={gameMode === mode.mode}
+                      disabled={gameState === "playing" || gameState === "opening"}
+                      onClick={() => selectGameMode(mode.mode)}
+                      style={{
+                        ...styles.modeButton,
+                        ...(gameMode === mode.mode ? styles.modeButtonSelected : {}),
+                      }}
+                    >
+                      <span>{mode.mode}</span>
+                      <small>{mode.label}</small>
+                    </button>
+                  ))}
+                </div>
+                <p style={styles.modeDescription}>{currentGameMode.description}</p>
               </section>
               <button
                 type="button"
@@ -2576,6 +2741,7 @@ export default function ToolClient() {
               <div style={styles.mobileStatusBar} aria-label="モバイルゲーム状況">
                 <div style={styles.mobileStatusLine}>
                   <strong>STAGE {stage}/{FINAL_STAGE} {currentStage.label}</strong>
+                  <strong>MODE {gameMode}</strong>
                   <span>SMALL {currentSubStage.globalNumber}/{CLEAR_TARGET}</span>
                   <span>SCORE {score}</span>
                   <span>🪙 {coins}</span>
@@ -2641,7 +2807,13 @@ export default function ToolClient() {
               </div>
             ) : null}
             <div ref={viewportRef} style={styles.viewport}>
-              <div style={{ ...styles.scaler, height: HEIGHT * boardScale }}>
+              <div
+                style={{
+                  ...styles.scaler,
+                  width: WIDTH * boardScale,
+                  height: HEIGHT * boardScale,
+                }}
+              >
                 <div
                   style={{
                     ...styles.board,
@@ -2699,6 +2871,7 @@ export default function ToolClient() {
                   >
                     <div style={styles.hudLine}>
                       <span>Stage {stage}/{FINAL_STAGE} {currentStage.label}</span>
+                      <span>Mode {gameMode}</span>
                       <span>Small {currentSubStage.globalNumber}/{CLEAR_TARGET}</span>
                     </div>
                     <div style={styles.hudLine}>
@@ -3024,34 +3197,15 @@ export default function ToolClient() {
                 })}
               </div>
               <div style={styles.touchGrid}>
-                <div style={styles.dpadGrid}>
-                  <span />
-                  <TouchButton
-                    label="↑"
-                    onPressChange={(pressed) =>
-                      setControlPressed("ArrowUp", pressed)
-                    }
-                  />
-                  <span />
-                  <TouchButton
-                    label="←"
-                    onPressChange={(pressed) =>
-                      setControlPressed("ArrowLeft", pressed)
-                    }
-                  />
-                  <TouchButton
-                    label="↓"
-                    onPressChange={(pressed) =>
-                      setControlPressed("ArrowDown", pressed)
-                    }
-                  />
-                  <TouchButton
-                    label="→"
-                    onPressChange={(pressed) =>
-                      setControlPressed("ArrowRight", pressed)
-                    }
-                  />
-                </div>
+                <Joystick
+                  compact={isMobileLayout}
+                  onDirectionChange={(directions) => {
+                    setControlPressed("ArrowUp", directions.up);
+                    setControlPressed("ArrowDown", directions.down);
+                    setControlPressed("ArrowLeft", directions.left);
+                    setControlPressed("ArrowRight", directions.right);
+                  }}
+                />
                 <div style={styles.actionGrid}>
                   <TouchButton
                     label="発射"
@@ -3132,7 +3286,7 @@ const styles: Record<string, CSSProperties> = {
       "radial-gradient(900px 360px at 12% 0%, rgba(34, 211, 238, 0.12), transparent 60%), linear-gradient(180deg, #f8fafc, #e0f2fe)",
   },
   pageMobile: {
-    paddingBottom: MOBILE_PAGE_BOTTOM_PADDING,
+    padding: `22px 12px ${MOBILE_PAGE_BOTTOM_PADDING}px`,
   },
   shell: {
     width: "100%",
@@ -3168,7 +3322,7 @@ const styles: Record<string, CSSProperties> = {
   layout: {
     display: "grid",
     gap: 18,
-    gridTemplateColumns: "minmax(260px, 320px) minmax(0, 1fr)",
+    gridTemplateColumns: "minmax(240px, 280px) minmax(0, 1fr)",
   },
   layoutMobile: {
     gridTemplateColumns: "minmax(0, 1fr)",
@@ -3242,7 +3396,7 @@ const styles: Record<string, CSSProperties> = {
     cursor: "pointer",
   },
   weaponButtonSelected: {
-    borderColor: "#facc15",
+    border: "1px solid #facc15",
     background: "rgba(14, 116, 144, 0.72)",
     boxShadow: "0 0 14px rgba(250, 204, 21, 0.28)",
   },
@@ -3255,6 +3409,49 @@ const styles: Record<string, CSSProperties> = {
     marginTop: 3,
     color: "#94a3b8",
     fontSize: 10,
+  },
+  modeCard: {
+    marginTop: 16,
+    paddingTop: 14,
+    borderTop: "1px solid rgba(226, 232, 240, 0.16)",
+  },
+  modeCardHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 8,
+    color: "#e0f2fe",
+    fontSize: 12,
+    fontWeight: 900,
+  },
+  modeGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+    gap: 5,
+  },
+  modeButton: {
+    minHeight: 42,
+    padding: "4px 2px",
+    border: "1px solid rgba(125, 211, 252, 0.25)",
+    borderRadius: 7,
+    background: "rgba(30, 41, 59, 0.72)",
+    color: "#cbd5e1",
+    fontSize: 12,
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+  modeButtonSelected: {
+    border: "1px solid #22d3ee",
+    background: "rgba(14, 116, 144, 0.88)",
+    color: "#ecfeff",
+    boxShadow: "0 0 14px rgba(34, 211, 238, 0.24)",
+  },
+  modeDescription: {
+    margin: "6px 0 0",
+    color: "#94a3b8",
+    fontSize: 10,
+    lineHeight: 1.35,
   },
   primaryButton: {
     width: "100%",
@@ -3441,7 +3638,7 @@ const styles: Record<string, CSSProperties> = {
   },
   scaler: {
     width: "100%",
-    maxWidth: WIDTH,
+    maxWidth: "100%",
     margin: "0 auto",
     position: "relative",
   },
@@ -3568,7 +3765,7 @@ const styles: Record<string, CSSProperties> = {
     backdropFilter: "blur(8px)",
   },
   lifeHudDanger: {
-    borderColor: "rgba(254, 240, 138, 0.9)",
+    border: "1px solid rgba(254, 240, 138, 0.9)",
     background: "rgba(127, 29, 29, 0.92)",
     boxShadow: "0 0 24px rgba(250, 204, 21, 0.36)",
   },
@@ -4565,11 +4762,51 @@ const styles: Record<string, CSSProperties> = {
     maxWidth: 420,
     margin: "0 auto",
   },
-  dpadGrid: {
+  joystick: {
     flex: 1,
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: 8,
+    minWidth: 0,
+    height: 132,
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 22,
+    border: "1px solid rgba(14, 116, 144, 0.2)",
+    background:
+      "radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.22), rgba(240, 249, 255, 0.96) 54%)",
+    boxShadow: "inset 0 0 0 10px rgba(255, 255, 255, 0.35), 0 8px 18px rgba(15, 23, 42, 0.08)",
+    touchAction: "none",
+    userSelect: "none",
+    WebkitUserSelect: "none",
+  },
+  joystickCompact: {
+    height: 108,
+    borderRadius: 18,
+  },
+  joystickHint: {
+    position: "absolute",
+    top: 8,
+    left: "50%",
+    transform: "translateX(-50%)",
+    color: "#0e7490",
+    fontSize: 9,
+    fontWeight: 900,
+    letterSpacing: 1.2,
+    pointerEvents: "none",
+  },
+  joystickKnob: {
+    width: 52,
+    height: 52,
+    borderRadius: 999,
+    border: "2px solid rgba(14, 116, 144, 0.42)",
+    background: "rgba(255, 255, 255, 0.96)",
+    boxShadow: "0 4px 14px rgba(15, 23, 42, 0.22), 0 0 0 6px rgba(34, 211, 238, 0.1)",
+    pointerEvents: "none",
+    transition: "transform 0.08s ease-out",
+  },
+  joystickKnobCompact: {
+    width: 44,
+    height: 44,
   },
   actionGrid: {
     width: "clamp(76px, 28%, 118px)",

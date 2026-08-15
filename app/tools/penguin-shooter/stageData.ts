@@ -96,6 +96,69 @@ export type WeaponId =
   | "fridge-beam"
   | "coin-cannon";
 
+export type GameMode = 1 | 2 | 3 | 4 | 5;
+
+export type GameModeDefinition = {
+  mode: GameMode;
+  label: string;
+  description: string;
+  spawnIntervalMultiplier: number;
+  maxEnemies: number;
+  enemyHp: number;
+  bossHpMultiplier: number;
+};
+
+export const GAME_MODE_DEFINITIONS: Record<GameMode, GameModeDefinition> = {
+  1: {
+    mode: 1,
+    label: "EASY",
+    description: "敵少なめ・HP少なめ",
+    spawnIntervalMultiplier: 1.8,
+    maxEnemies: 2,
+    enemyHp: 1,
+    bossHpMultiplier: 0.65,
+  },
+  2: {
+    mode: 2,
+    label: "LIGHT",
+    description: "軽めの標準",
+    spawnIntervalMultiplier: 1.35,
+    maxEnemies: 3,
+    enemyHp: 1,
+    bossHpMultiplier: 0.8,
+  },
+  3: {
+    mode: 3,
+    label: "NORMAL",
+    description: "標準バランス",
+    spawnIntervalMultiplier: 1,
+    maxEnemies: 4,
+    enemyHp: 2,
+    bossHpMultiplier: 1,
+  },
+  4: {
+    mode: 4,
+    label: "HARD",
+    description: "敵多め・HP多め",
+    spawnIntervalMultiplier: 0.74,
+    maxEnemies: 5,
+    enemyHp: 2,
+    bossHpMultiplier: 1.2,
+  },
+  5: {
+    mode: 5,
+    label: "CHAOS",
+    description: "敵最大・高HP",
+    spawnIntervalMultiplier: 0.52,
+    maxEnemies: 7,
+    enemyHp: 3,
+    bossHpMultiplier: 1.45,
+  },
+};
+
+export const getGameModeDefinition = (mode: number) =>
+  GAME_MODE_DEFINITIONS[Math.min(5, Math.max(1, Math.round(mode))) as GameMode];
+
 export type WeaponDefinition = {
   id: WeaponId;
   label: string;
