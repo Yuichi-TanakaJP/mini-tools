@@ -1322,12 +1322,13 @@ export default function ToolClient() {
     let rafId = 0;
     const resize = () => {
       window.cancelAnimationFrame(rafId);
-      setViewportWidth(window.innerWidth);
+      const nextViewportWidth = window.innerWidth;
+      setViewportWidth(nextViewportWidth);
       rafId = window.requestAnimationFrame(() => {
         const rect = viewportRef.current?.getBoundingClientRect();
         if (!rect) return;
         const heightLimit =
-          window.innerWidth < 768
+          nextViewportWidth < 768
             ? Math.max(340, Math.min(500, window.innerHeight * 0.54))
             : Math.max(360, window.innerHeight * 0.64);
         setBoardScale(Math.min(1, rect.width / WIDTH, heightLimit / HEIGHT));
@@ -2599,6 +2600,13 @@ export default function ToolClient() {
                     ))}
                   </span>
                   <span>Weapon: {WEAPON_DEFINITIONS[selectedWeapon].shortLabel}</span>
+                  <span style={styles.mobileStatusBarrier}>
+                    {barrierActiveFrames > 0
+                      ? `🛡️ ${Math.ceil(barrierActiveFrames / 60)}s`
+                      : barrierCooldownFrames > 0
+                        ? `🛡️ CD ${Math.ceil(barrierCooldownFrames / 60)}s`
+                        : "🛡️ Ready"}
+                  </span>
                 </div>
                 {visibleBoss?.boss ? (
                   <div style={styles.mobileBossBand} aria-live="polite">
@@ -3396,6 +3404,10 @@ const styles: Record<string, CSSProperties> = {
   },
   mobileStatusLifeDanger: {
     color: "#fef08a",
+  },
+  mobileStatusBarrier: {
+    color: "#bae6fd",
+    fontWeight: 800,
   },
   mobileBossBand: {
     display: "grid",
