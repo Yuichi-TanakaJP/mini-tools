@@ -34,6 +34,8 @@ const OBSTACLE_SIZE = 52;
 const OPENING_MS = 10_000;
 const STAR_COUNT = 56;
 const MUTE_STORAGE_KEY = "penguin-shooter-muted";
+const BOSS_RESERVED_Y = 188;
+const MOBILE_PAGE_BOTTOM_PADDING = 128;
 
 type GameState = "idle" | "opening" | "playing" | "cleared" | "gameover";
 
@@ -1320,11 +1322,15 @@ export default function ToolClient() {
     let rafId = 0;
     const resize = () => {
       window.cancelAnimationFrame(rafId);
-      setViewportWidth(window.innerWidth);
+      const nextViewportWidth = window.innerWidth;
+      setViewportWidth(nextViewportWidth);
       rafId = window.requestAnimationFrame(() => {
         const rect = viewportRef.current?.getBoundingClientRect();
         if (!rect) return;
-        const heightLimit = Math.max(360, window.innerHeight * 0.64);
+        const heightLimit =
+          nextViewportWidth < 768
+            ? Math.max(340, Math.min(500, window.innerHeight * 0.54))
+            : Math.max(360, window.innerHeight * 0.64);
         setBoardScale(Math.min(1, rect.width / WIDTH, heightLimit / HEIGHT));
       });
     };
@@ -1496,7 +1502,7 @@ export default function ToolClient() {
           {
             id: enemyIdRef.current++,
             x: startX,
-            y: isStageBoss ? 36 : -76,
+            y: kind === "boss" ? (isStageBoss ? BOSS_RESERVED_Y : 142) : -76,
             anchorX: isStageBoss ? startX : undefined,
             phase: isStageBoss ? createRandom(seedRef) * Math.PI * 2 : undefined,
             speed:
@@ -2393,7 +2399,12 @@ export default function ToolClient() {
   }, [gameState, startOpening]);
 
   return (
-    <main style={styles.page}>
+    <main
+      style={{
+        ...styles.page,
+        ...(isMobileLayout ? styles.pageMobile : {}),
+      }}
+    >
       <div style={styles.shell}>
         <section style={styles.header}>
           <span style={styles.eyebrow}>New bonus game</span>
@@ -2561,6 +2572,74 @@ export default function ToolClient() {
               ...(isMobileLayout ? styles.gameCardMobile : {}),
             }}
           >
+            {isMobileLayout ? (
+              <div style={styles.mobileStatusBar} aria-label="モバイルゲーム状況">
+                <div style={styles.mobileStatusLine}>
+                  <strong>STAGE {stage}/{FINAL_STAGE} {currentStage.label}</strong>
+                  <span>SMALL {currentSubStage.globalNumber}/{CLEAR_TARGET}</span>
+                  <span>SCORE {score}</span>
+                  <span>🪙 {coins}</span>
+                </div>
+                <div
+                  style={{
+                    ...styles.mobileStatusLife,
+                    ...(lives <= 3 ? styles.mobileStatusLifeDanger : {}),
+                  }}
+                  aria-live="polite"
+                >
+                  <strong>❤️ LIFE {lives}/{MAX_LIVES}</strong>
+                  <span style={styles.lifePips} aria-hidden>
+                    {Array.from({ length: MAX_LIVES }, (_, index) => (
+                      <span
+                        key={index}
+                        style={{
+                          ...styles.lifePip,
+                          ...(index < lives ? styles.lifePipAlive : styles.lifePipLost),
+                        }}
+                      />
+                    ))}
+                  </span>
+                  <span>Weapon: {WEAPON_DEFINITIONS[selectedWeapon].shortLabel}</span>
+                  <span style={styles.mobileStatusBarrier}>
+                    {barrierActiveFrames > 0
+                      ? `🛡️ ${Math.ceil(barrierActiveFrames / 60)}s`
+                      : barrierCooldownFrames > 0
+                        ? `🛡️ CD ${Math.ceil(barrierCooldownFrames / 60)}s`
+                        : "🛡️ Ready"}
+                  </span>
+                </div>
+                {visibleBoss?.boss ? (
+                  <div style={styles.mobileBossBand} aria-live="polite">
+                    <div style={styles.mobileBossBandTitle}>
+                      <span>
+                        {visibleBoss.checkpoint === "stage" && stage === FINAL_STAGE
+                          ? "FINAL BOSS"
+                          : visibleBoss.checkpoint === "stage"
+                            ? "STAGE BOSS"
+                            : "MID BOSS"}
+                      </span>
+                      <strong>{visibleBoss.boss.name}</strong>
+                    </div>
+                    <div style={styles.mobileBossBandMeta}>
+                      <span>
+                        {visibleBoss.boss.attackLabel} / {visibleBoss.boss.weaponLabel}
+                      </span>
+                      <strong>
+                        HP {Math.max(0, Math.round((visibleBoss.hp / Math.max(1, visibleBoss.maxHp)) * 100))}%
+                      </strong>
+                    </div>
+                    <div style={styles.bossBannerMeter}>
+                      <span
+                        style={{
+                          ...styles.bossBannerMeterFill,
+                          width: `${Math.max(0, (visibleBoss.hp / Math.max(1, visibleBoss.maxHp)) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div ref={viewportRef} style={styles.viewport}>
               <div style={{ ...styles.scaler, height: HEIGHT * boardScale }}>
                 <div
@@ -2611,19 +2690,59 @@ export default function ToolClient() {
                     />
                   ))}
 
-                  <div style={styles.hud}>
-                    Stage {stage}/{FINAL_STAGE} {currentStage.label} / Small{" "}
-                    {currentSubStage.globalNumber}/{CLEAR_TARGET} / Score {score} /
-                    Life {lives} / Coin {coins} / Weapon {WEAPON_DEFINITIONS[selectedWeapon].shortLabel}
-                    {barrierActiveFrames > 0
-                      ? ` / 🛡️ ${Math.ceil(barrierActiveFrames / 60)}s`
-                      : barrierCooldownFrames > 0
-                        ? ` / 🛡️ CD ${Math.ceil(barrierCooldownFrames / 60)}s`
-                        : ""}
+                  <div
+                    style={{
+                      ...styles.hud,
+                      ...(isMobileLayout ? styles.boardHudHiddenMobile : {}),
+                    }}
+                    aria-label="ゲーム進行状況"
+                  >
+                    <div style={styles.hudLine}>
+                      <span>Stage {stage}/{FINAL_STAGE} {currentStage.label}</span>
+                      <span>Small {currentSubStage.globalNumber}/{CLEAR_TARGET}</span>
+                    </div>
+                    <div style={styles.hudLine}>
+                      <span>Score {score}</span>
+                      <span>Coin {coins}</span>
+                      <span>Weapon {WEAPON_DEFINITIONS[selectedWeapon].shortLabel}</span>
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      ...styles.lifeHud,
+                      ...(isMobileLayout ? styles.boardHudHiddenMobile : {}),
+                      ...(lives <= 3 ? styles.lifeHudDanger : {}),
+                    }}
+                    aria-live="polite"
+                    aria-label={`ライフ ${lives}/${MAX_LIVES}`}
+                  >
+                    <div style={styles.lifeHudHeader}>
+                      <span>LIFE</span>
+                      <strong>{lives}/{MAX_LIVES}</strong>
+                    </div>
+                    <div style={styles.lifePips} aria-hidden>
+                      {Array.from({ length: MAX_LIVES }, (_, index) => (
+                        <span
+                          key={index}
+                          style={{
+                            ...styles.lifePip,
+                            ...(index < lives ? styles.lifePipAlive : styles.lifePipLost),
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <span style={styles.lifeHudBarrier}>
+                      {barrierActiveFrames > 0
+                        ? `🛡️ ${Math.ceil(barrierActiveFrames / 60)}s`
+                        : barrierCooldownFrames > 0
+                          ? `🛡️ CD ${Math.ceil(barrierCooldownFrames / 60)}s`
+                          : "🛡️ Ready"}
+                    </span>
                   </div>
                   <div
                     style={{
                       ...styles.stageBanner,
+                      ...(isMobileLayout ? styles.boardHudHiddenMobile : {}),
                       boxShadow: `0 0 22px ${stageTheme.accent}66`,
                     }}
                   >
@@ -2635,7 +2754,13 @@ export default function ToolClient() {
                     </strong>
                   </div>
                   {visibleBoss?.boss ? (
-                    <div style={styles.bossBanner} aria-live="polite">
+                    <div
+                      style={{
+                        ...styles.bossBanner,
+                        ...(isMobileLayout ? styles.boardHudHiddenMobile : {}),
+                      }}
+                      aria-live="polite"
+                    >
                       <div style={styles.bossBannerTitle}>
                         {visibleBoss.checkpoint === "stage" && stage === FINAL_STAGE
                           ? "FINAL BOSS"
@@ -2857,7 +2982,12 @@ export default function ToolClient() {
               </div>
             </div>
 
-            <div style={styles.touchPanel}>
+            <div
+              style={{
+                ...styles.touchPanel,
+                ...(isMobileLayout ? styles.touchPanelMobile : {}),
+              }}
+            >
               <div style={styles.touchTitle}>スマホ操作</div>
               <div style={styles.touchWeaponHeader}>
                 <span>Weapon: {WEAPON_DEFINITIONS[selectedWeapon].shortLabel}</span>
@@ -3000,6 +3130,9 @@ const styles: Record<string, CSSProperties> = {
     padding: "22px 12px 56px",
     background:
       "radial-gradient(900px 360px at 12% 0%, rgba(34, 211, 238, 0.12), transparent 60%), linear-gradient(180deg, #f8fafc, #e0f2fe)",
+  },
+  pageMobile: {
+    paddingBottom: MOBILE_PAGE_BOTTOM_PADDING,
   },
   shell: {
     width: "100%",
@@ -3240,6 +3373,68 @@ const styles: Record<string, CSSProperties> = {
     order: 1,
     padding: 8,
   },
+  mobileStatusBar: {
+    display: "grid",
+    gap: 7,
+    marginBottom: 8,
+    padding: "10px 11px",
+    borderRadius: 10,
+    background: "#0f172a",
+    color: "#e0f2fe",
+    boxShadow: "0 10px 22px rgba(15, 23, 42, 0.18)",
+  },
+  mobileStatusLine: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: "4px 10px",
+    fontSize: 11,
+    lineHeight: 1.3,
+  },
+  mobileStatusLife: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 7,
+    paddingTop: 7,
+    borderTop: "1px solid rgba(248, 113, 113, 0.35)",
+    color: "#fecaca",
+    fontSize: 11,
+    lineHeight: 1.3,
+  },
+  mobileStatusLifeDanger: {
+    color: "#fef08a",
+  },
+  mobileStatusBarrier: {
+    color: "#bae6fd",
+    fontWeight: 800,
+  },
+  mobileBossBand: {
+    display: "grid",
+    gap: 4,
+    paddingTop: 7,
+    borderTop: "1px solid rgba(251, 113, 133, 0.5)",
+    color: "#f8fafc",
+  },
+  mobileBossBandTitle: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 8,
+    color: "#fda4af",
+    fontSize: 11,
+    fontWeight: 900,
+  },
+  mobileBossBandMeta: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 8,
+    color: "#e2e8f0",
+    fontSize: 10,
+    fontWeight: 800,
+  },
+  boardHudHiddenMobile: {
+    display: "none",
+  },
   viewport: {
     width: "100%",
     overflow: "hidden",
@@ -3339,12 +3534,74 @@ const styles: Record<string, CSSProperties> = {
     left: 14,
     top: 14,
     zIndex: 25,
+    display: "grid",
+    gap: 4,
+    width: 286,
+    maxWidth: "calc(100% - 180px)",
     padding: "9px 12px",
     borderRadius: 8,
     background: "rgba(15, 23, 42, 0.62)",
     color: "#e0f2fe",
-    fontSize: 13,
+    fontSize: 11,
+    lineHeight: 1.25,
     backdropFilter: "blur(8px)",
+  },
+  hudLine: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "3px 10px",
+  },
+  lifeHud: {
+    position: "absolute",
+    left: 14,
+    top: 62,
+    zIndex: 25,
+    display: "grid",
+    gap: 4,
+    width: 154,
+    padding: "7px 10px",
+    borderRadius: 9,
+    border: "1px solid rgba(248, 113, 113, 0.52)",
+    background: "rgba(69, 10, 10, 0.82)",
+    color: "#fee2e2",
+    boxShadow: "0 0 18px rgba(248, 113, 113, 0.18)",
+    backdropFilter: "blur(8px)",
+  },
+  lifeHudDanger: {
+    borderColor: "rgba(254, 240, 138, 0.9)",
+    background: "rgba(127, 29, 29, 0.92)",
+    boxShadow: "0 0 24px rgba(250, 204, 21, 0.36)",
+  },
+  lifeHudHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    fontSize: 12,
+    fontWeight: 900,
+    letterSpacing: 0.8,
+  },
+  lifePips: {
+    display: "flex",
+    gap: 3,
+    minHeight: 8,
+  },
+  lifePip: {
+    width: 10,
+    height: 7,
+    borderRadius: 999,
+    border: "1px solid rgba(254, 226, 226, 0.44)",
+  },
+  lifePipAlive: {
+    background: "#fb7185",
+    boxShadow: "0 0 8px rgba(251, 113, 133, 0.72)",
+  },
+  lifePipLost: {
+    background: "rgba(30, 41, 59, 0.8)",
+  },
+  lifeHudBarrier: {
+    color: "#fecaca",
+    fontSize: 10,
+    fontWeight: 800,
   },
   stageBanner: {
     position: "absolute",
@@ -3366,7 +3623,7 @@ const styles: Record<string, CSSProperties> = {
   bossBanner: {
     position: "absolute",
     left: "50%",
-    top: 76,
+    top: 86,
     zIndex: 25,
     width: "min(460px, calc(100% - 28px))",
     transform: "translateX(-50%)",
@@ -4251,6 +4508,10 @@ const styles: Record<string, CSSProperties> = {
     border: "1px solid rgba(15, 23, 42, 0.08)",
     background: "rgba(248, 250, 252, 0.92)",
     padding: 12,
+  },
+  touchPanelMobile: {
+    marginBottom: 20,
+    padding: 10,
   },
   touchTitle: {
     marginBottom: 10,
