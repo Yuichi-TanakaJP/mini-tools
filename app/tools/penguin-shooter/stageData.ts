@@ -132,8 +132,8 @@ export const GAME_MODE_DEFINITIONS: Record<GameMode, GameModeDefinition> = {
     label: "NORMAL",
     description: "標準バランス",
     spawnIntervalMultiplier: 1,
-    maxEnemies: 4,
-    enemyHp: 2,
+    maxEnemies: 0,
+    enemyHp: 1,
     bossHpMultiplier: 1,
   },
   4: {

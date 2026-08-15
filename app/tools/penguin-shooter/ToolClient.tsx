@@ -1590,7 +1590,10 @@ export default function ToolClient() {
         const scoutCount = enemiesRef.current.filter(
           (enemy) => enemy.kind === "scout",
         ).length;
-        const canSpawn = kind === "boss" || scoutCount < modeDefinition.maxEnemies;
+        const atEnemyLimit =
+          modeDefinition.maxEnemies > 0 &&
+          scoutCount >= modeDefinition.maxEnemies;
+        const canSpawn = kind === "boss" || !atEnemyLimit;
         if (!canSpawn) {
           spawnTickRef.current = spawnInterval;
         } else {

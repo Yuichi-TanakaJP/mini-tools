@@ -70,8 +70,8 @@ describe("penguin shooter stage data", () => {
   it("scales game modes from light to chaos", () => {
     const modes = Object.values(GAME_MODE_DEFINITIONS);
     expect(modes).toHaveLength(5);
-    expect(modes.map((mode) => mode.maxEnemies)).toEqual([2, 3, 4, 5, 7]);
-    expect(modes.map((mode) => mode.enemyHp)).toEqual([1, 1, 2, 2, 3]);
+    expect(modes.map((mode) => mode.maxEnemies)).toEqual([2, 3, 0, 5, 7]);
+    expect(modes.map((mode) => mode.enemyHp)).toEqual([1, 1, 1, 2, 3]);
     expect(modes.map((mode) => mode.bossHpMultiplier)).toEqual([
       0.65,
       0.8,
