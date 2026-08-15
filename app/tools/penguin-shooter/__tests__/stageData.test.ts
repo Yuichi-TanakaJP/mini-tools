@@ -51,4 +51,18 @@ describe("penguin shooter stage data", () => {
     ]);
     expect(getSubStage(10, 0).globalNumber).toBe(91);
   });
+
+  it("keeps boss HP strong and increasing by stage", () => {
+    const midBossHp = STAGE_DEFINITIONS.map((stage) => stage.bosses.mid.hp);
+    const stageBossHp = STAGE_DEFINITIONS.map((stage) => stage.bosses.stage.hp);
+    expect(midBossHp[0]).toBeGreaterThanOrEqual(30);
+    expect(stageBossHp[0]).toBeGreaterThanOrEqual(80);
+    expect(midBossHp.every((hp, index) => index === 0 || hp > midBossHp[index - 1])).toBe(
+      true,
+    );
+    expect(
+      stageBossHp.every((hp, index) => index === 0 || hp > stageBossHp[index - 1]),
+    ).toBe(true);
+    expect(stageBossHp[stageBossHp.length - 1]).toBe(600);
+  });
 });

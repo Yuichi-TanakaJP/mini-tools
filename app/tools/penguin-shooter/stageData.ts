@@ -219,7 +219,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       mid: {
         checkpoint: "mid",
         name: "スクラップUFO",
-        hp: 8,
+        hp: 30,
         score: 600,
         rewardCoins: 3,
         attackLabel: "ジグザグ突進",
@@ -232,7 +232,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       stage: {
         checkpoint: "stage",
         name: "スクラップ要塞",
-        hp: 14,
+        hp: 80,
         score: 900,
         rewardCoins: 5,
         attackLabel: "クレーンゲート砲",
@@ -258,7 +258,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       mid: {
         checkpoint: "mid",
         name: "キャラバンUFO",
-        hp: 12,
+        hp: 38,
         score: 760,
         rewardCoins: 4,
         attackLabel: "横流れ隊列",
@@ -271,7 +271,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       stage: {
         checkpoint: "stage",
         name: "緑の王国城塞",
-        hp: 18,
+        hp: 110,
         score: 1100,
         rewardCoins: 6,
         attackLabel: "城壁バリア",
@@ -297,7 +297,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       mid: {
         checkpoint: "mid",
         name: "フロストドローン",
-        hp: 15,
+        hp: 48,
         score: 920,
         rewardCoins: 5,
         attackLabel: "氷柱リング",
@@ -310,7 +310,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       stage: {
         checkpoint: "stage",
         name: "氷海クラーケン",
-        hp: 22,
+        hp: 150,
         score: 1320,
         rewardCoins: 7,
         attackLabel: "低温触手波",
@@ -336,7 +336,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       mid: {
         checkpoint: "mid",
         name: "ダストスフィンクス",
-        hp: 18,
+        hp: 58,
         score: 1100,
         rewardCoins: 6,
         attackLabel: "砂嵐レーザー",
@@ -349,7 +349,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       stage: {
         checkpoint: "stage",
         name: "砂漠スフィンクス",
-        hp: 25,
+        hp: 190,
         score: 1540,
         rewardCoins: 8,
         attackLabel: "黄金翼の審判",
@@ -375,7 +375,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       mid: {
         checkpoint: "mid",
         name: "サンダーバルーン",
-        hp: 20,
+        hp: 68,
         score: 1260,
         rewardCoins: 7,
         attackLabel: "落雷ステップ",
@@ -388,7 +388,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       stage: {
         checkpoint: "stage",
         name: "雲上都市戦艦",
-        hp: 30,
+        hp: 230,
         score: 1760,
         rewardCoins: 9,
         attackLabel: "テンペスト放電",
@@ -414,7 +414,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       mid: {
         checkpoint: "mid",
         name: "クレーターUFO",
-        hp: 22,
+        hp: 80,
         score: 1420,
         rewardCoins: 7,
         attackLabel: "低重力ホバー",
@@ -427,7 +427,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       stage: {
         checkpoint: "stage",
         name: "月面コアゴーレム",
-        hp: 34,
+        hp: 280,
         score: 1980,
         rewardCoins: 10,
         attackLabel: "衛星破砕リング",
@@ -453,7 +453,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       mid: {
         checkpoint: "mid",
         name: "ダストUFO",
-        hp: 24,
+        hp: 92,
         score: 1560,
         rewardCoins: 8,
         attackLabel: "ツインレーザー",
@@ -466,7 +466,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       stage: {
         checkpoint: "stage",
         name: "火星火山要塞",
-        hp: 38,
+        hp: 340,
         score: 2240,
         rewardCoins: 11,
         attackLabel: "火星噴流",
@@ -498,7 +498,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       mid: {
         checkpoint: "mid",
         name: "ギアハンター",
-        hp: 28,
+        hp: 108,
         score: 1740,
         rewardCoins: 9,
         attackLabel: "交互砲撃",
@@ -511,7 +511,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       stage: {
         checkpoint: "stage",
         name: "クロックワーク皇帝",
-        hp: 44,
+        hp: 400,
         score: 2520,
         rewardCoins: 12,
         attackLabel: "時間差バースト",
@@ -537,7 +537,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       mid: {
         checkpoint: "mid",
         name: "グラビティドローン",
-        hp: 32,
+        hp: 126,
         score: 1960,
         rewardCoins: 10,
         attackLabel: "重力リング",
@@ -550,7 +550,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       stage: {
         checkpoint: "stage",
         name: "ブラックホール・イーター",
-        hp: 52,
+        hp: 480,
         score: 2860,
         rewardCoins: 13,
         attackLabel: "重力崩壊スイープ",
@@ -576,7 +576,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       mid: {
         checkpoint: "mid",
         name: "ミラーUFO",
-        hp: 38,
+        hp: 150,
         score: 2240,
         rewardCoins: 12,
         attackLabel: "反転誘導弾",
@@ -589,7 +589,7 @@ export const STAGE_DEFINITIONS: StageDefinition[] = [
       stage: {
         checkpoint: "stage",
         name: "ワールドリフト",
-        hp: 70,
+        hp: 600,
         score: 4200,
         rewardCoins: 16,
         attackLabel: "次元裂け目の脈動",
