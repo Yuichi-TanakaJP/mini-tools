@@ -1,7 +1,7 @@
 import type { PortfolioData } from "./types";
 
 export type PortfolioDbCheckSummary = {
-  loadState: "auth_required" | "empty" | "loaded";
+  loadState: "auth_required" | "empty" | "no_ready_snapshot" | "loaded";
   source: PortfolioData["source"];
   portfolioId: string | null;
   portfolioName: string | null;
@@ -22,9 +22,16 @@ export type PortfolioDbCheckSummary = {
 export function summarizePortfolioDbResult(data: PortfolioData): PortfolioDbCheckSummary {
   const instrumentIds = new Set(data.positions.map((position) => position.identifier));
   const accountIds = new Set(data.positions.map((position) => position.accountName));
+  const loadState = data.authState === "required"
+    ? "auth_required"
+    : data.source === "server"
+      ? "loaded"
+      : data.snapshots.length > 0
+        ? "no_ready_snapshot"
+        : "empty";
 
   return {
-    loadState: data.authState === "required" ? "auth_required" : data.source === "empty" ? "empty" : "loaded",
+    loadState,
     source: data.source,
     portfolioId: data.portfolio.id,
     portfolioName: data.portfolio.name,

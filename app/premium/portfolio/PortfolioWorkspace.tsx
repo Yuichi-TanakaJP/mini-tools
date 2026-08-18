@@ -205,12 +205,14 @@ function DbValue({ children, muted = false }: { children: React.ReactNode; muted
   return <span style={{ color: muted ? "var(--color-text-muted)" : "var(--color-text-sub)", wordBreak: "break-word" }}>{children}</span>;
 }
 
-function DbStatus({ state }: { state: "auth_required" | "empty" | "loaded" }) {
-  const label = state === "loaded" ? "読み込み済み" : state === "empty" ? "未取込" : "認証が必要";
+function DbStatus({ state }: { state: "auth_required" | "empty" | "no_ready_snapshot" | "loaded" }) {
+  const label = state === "loaded" ? "読み込み済み" : state === "empty" ? "未取込" : state === "no_ready_snapshot" ? "ready snapshotなし" : "認証が必要";
   const colors = state === "loaded"
     ? { background: "#dcfce7", color: "#166534" }
     : state === "empty"
       ? { background: "#fef3c7", color: "#92400e" }
+      : state === "no_ready_snapshot"
+        ? { background: "#fef3c7", color: "#92400e" }
       : { background: "#fee2e2", color: "#991b1b" };
   return <span style={{ borderRadius: 999, padding: "4px 9px", background: colors.background, color: colors.color, fontSize: 12, fontWeight: 900 }}>{label}</span>;
 }
@@ -218,7 +220,7 @@ function DbStatus({ state }: { state: "auth_required" | "empty" | "loaded" }) {
 function DbCheckView({ data }: { data: PortfolioData }) {
   const summary = useMemo(() => summarizePortfolioDbResult(data), [data]);
   const rows = [
-    ["portfolio", summary.portfolioId ?? "—", summary.portfolioName ?? "未作成"],
+    ["portfolio", summary.portfolioId ? 1 : 0, summary.portfolioName ?? "未作成"],
     ["portfolio_snapshots", summary.snapshotCount, summary.currentSnapshotId ? `current: ${summary.currentSnapshotId}` : "ready snapshotなし"],
     ["portfolio_positions", summary.positionCount, `${summary.instrumentCount}商品 / ${summary.accountCount}口座`],
     ["portfolio_reviews", summary.reviewCount, summary.reviewId ?? "reviewなし"],

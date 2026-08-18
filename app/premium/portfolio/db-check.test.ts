@@ -50,4 +50,17 @@ describe("summarizePortfolioDbResult", () => {
 
     expect(summary.loadState).toBe("auth_required");
   });
+
+  it("import履歴はあるがready snapshotがない状態を区別する", () => {
+    const summary = summarizePortfolioDbResult({
+      ...baseData,
+      snapshots: [{ ...baseData.snapshots[0], status: "failed" }],
+      currentSnapshot: null,
+      positions: [],
+      review: null,
+      source: "empty",
+    });
+
+    expect(summary.loadState).toBe("no_ready_snapshot");
+  });
 });
