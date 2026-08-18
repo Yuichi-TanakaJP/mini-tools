@@ -207,13 +207,12 @@ function DbValue({ children, muted = false }: { children: React.ReactNode; muted
 
 function DbStatus({ state }: { state: "auth_required" | "empty" | "no_ready_snapshot" | "loaded" }) {
   const label = state === "loaded" ? "読み込み済み" : state === "empty" ? "未取込" : state === "no_ready_snapshot" ? "ready snapshotなし" : "認証が必要";
-  const colors = state === "loaded"
-    ? { background: "#dcfce7", color: "#166534" }
-    : state === "empty"
-      ? { background: "#fef3c7", color: "#92400e" }
-      : state === "no_ready_snapshot"
-        ? { background: "#fef3c7", color: "#92400e" }
-      : { background: "#fee2e2", color: "#991b1b" };
+  const colors = {
+    loaded: { background: "#dcfce7", color: "#166534" },
+    empty: { background: "#fef3c7", color: "#92400e" },
+    no_ready_snapshot: { background: "#fef3c7", color: "#92400e" },
+    auth_required: { background: "#fee2e2", color: "#991b1b" },
+  }[state];
   return <span style={{ borderRadius: 999, padding: "4px 9px", background: colors.background, color: colors.color, fontSize: 12, fontWeight: 900 }}>{label}</span>;
 }
 
@@ -288,14 +287,6 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
   const totalPnl = sumNullable(data.positions.map((position) => position.unrealizedPnl));
   const pnlRate = totalCost && totalPnl !== null ? (totalPnl / totalCost) * 100 : null;
 
-  if (data.authState === "required") {
-    return (
-      <Section title="Supabaseログインが必要です">
-        <EmptyState>このポートフォリオはSupabaseのログインユーザー単位で表示します。先に <a href="/account">アカウント</a> へログインしてください。</EmptyState>
-      </Section>
-    );
-  }
-
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <section style={{ background: "#102033", color: "#fff", borderRadius: 12, padding: "22px 20px", display: "grid", gap: 12 }}>
@@ -318,7 +309,11 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
         </div>
       </section>
 
-      {data.source === "empty" ? (
+      {data.authState === "required" ? (
+        <Section title="Supabaseログインが必要です">
+          <EmptyState>このポートフォリオはSupabaseのログインユーザー単位で表示します。先に <a href="/account">アカウント</a> へログインしてください。DB確認タブでは認証状態を確認できます。</EmptyState>
+        </Section>
+      ) : data.source === "empty" ? (
         <Section title="ポートフォリオデータはまだありません">
           <EmptyState>証券会社CSVをstock-notesの取込APIへ送ると、ここに最新スナップショットが表示されます。既存のmy-stocksデータはこの画面へ自動コピーせず、取込履歴を正本として管理します。</EmptyState>
         </Section>
