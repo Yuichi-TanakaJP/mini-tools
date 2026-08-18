@@ -20,8 +20,8 @@ export type PortfolioDbCheckSummary = {
 };
 
 export function summarizePortfolioDbResult(data: PortfolioData): PortfolioDbCheckSummary {
-  const instrumentIds = new Set(data.positions.map((position) => position.identifier));
-  const accountIds = new Set(data.positions.map((position) => position.accountName));
+  const instrumentIds = new Set(data.positions.map((position) => position.instrumentId));
+  const accountIds = new Set(data.positions.map((position) => position.accountId));
   const loadState = data.authState === "required"
     ? "auth_required"
     : data.source === "server"

@@ -319,6 +319,10 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
         </Section>
       ) : null}
 
+      {data.authState === "required" ? (
+        tab === "db" ? <DbCheckView data={data} /> : null
+      ) : (
+        <>
       {tab === "overview" ? (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
@@ -367,6 +371,8 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
       ) : null}
 
       {tab === "db" ? <DbCheckView data={data} /> : null}
+        </>
+      )}
     </div>
   );
 }

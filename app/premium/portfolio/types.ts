@@ -16,6 +16,8 @@ export type PortfolioSnapshot = {
 
 export type PortfolioPosition = {
   id: string;
+  accountId: string;
+  instrumentId: string;
   assetType: string;
   identifier: string;
   name: string;

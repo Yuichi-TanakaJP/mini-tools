@@ -184,6 +184,8 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     return [
       {
         id: row.id,
+        accountId: row.account_id,
+        instrumentId: row.instrument_id,
         assetType: instrument.asset_type,
         identifier: instrument.identifier,
         name: instrument.name,
