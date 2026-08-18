@@ -2,13 +2,15 @@
 
 import { useMemo, useState } from "react";
 import type { PortfolioData, PortfolioPosition, PortfolioReviewItem } from "./types";
+import { summarizePortfolioDbResult } from "./db-check";
 
-type Tab = "overview" | "record" | "policy";
+type Tab = "overview" | "record" | "policy" | "db";
 
 const tabLabels: Record<Tab, string> = {
   overview: "表示",
   record: "記録",
   policy: "方針",
+  db: "DB確認",
 };
 
 const accountLabels: Record<string, string> = {
@@ -199,6 +201,83 @@ function PolicyItem({ item }: { item: PortfolioReviewItem }) {
   );
 }
 
+function DbValue({ children, muted = false }: { children: React.ReactNode; muted?: boolean }) {
+  return <span style={{ color: muted ? "var(--color-text-muted)" : "var(--color-text-sub)", wordBreak: "break-word" }}>{children}</span>;
+}
+
+function DbStatus({ state }: { state: "auth_required" | "empty" | "loaded" }) {
+  const label = state === "loaded" ? "読み込み済み" : state === "empty" ? "未取込" : "認証が必要";
+  const colors = state === "loaded"
+    ? { background: "#dcfce7", color: "#166534" }
+    : state === "empty"
+      ? { background: "#fef3c7", color: "#92400e" }
+      : { background: "#fee2e2", color: "#991b1b" };
+  return <span style={{ borderRadius: 999, padding: "4px 9px", background: colors.background, color: colors.color, fontSize: 12, fontWeight: 900 }}>{label}</span>;
+}
+
+function DbCheckView({ data }: { data: PortfolioData }) {
+  const summary = useMemo(() => summarizePortfolioDbResult(data), [data]);
+  const rows = [
+    ["portfolio", summary.portfolioId ?? "—", summary.portfolioName ?? "未作成"],
+    ["portfolio_snapshots", summary.snapshotCount, summary.currentSnapshotId ? `current: ${summary.currentSnapshotId}` : "ready snapshotなし"],
+    ["portfolio_positions", summary.positionCount, `${summary.instrumentCount}商品 / ${summary.accountCount}口座`],
+    ["portfolio_reviews", summary.reviewCount, summary.reviewId ?? "reviewなし"],
+    ["portfolio_review_items", summary.reviewItemCount, summary.reviewStatus ?? "reviewなし"],
+  ] as const;
+
+  return (
+    <>
+      <Section title="DB読み取り結果">
+        <div style={{ display: "grid", gap: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <DbStatus state={summary.loadState} />
+            <span style={{ color: "var(--color-text-muted)", fontSize: 12 }}>Supabaseから取得した値の確認用。画面からDBへの保存・更新は行いません。</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+            <Metric label="portfolio" value={summary.portfolioId ? "1件" : "0件"} sub={summary.portfolioName ?? "未作成"} />
+            <Metric label="ready snapshot" value={summary.currentSnapshotId ? "1件" : "0件"} sub={summary.currentSnapshotStatus ?? "なし"} />
+            <Metric label="position" value={`${summary.positionCount}件`} sub={`${summary.instrumentCount}商品`} />
+            <Metric label="review item" value={`${summary.reviewItemCount}件`} sub={summary.reviewStatus === "finalized" ? "確定review" : summary.reviewStatus === "draft" ? "下書きreview" : "reviewなし"} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8, fontSize: 13 }}>
+            <div><strong>portfolio ID</strong><br /><DbValue muted={!summary.portfolioId}>{summary.portfolioId ?? "—"}</DbValue></div>
+            <div><strong>最新snapshot ID</strong><br /><DbValue muted={!summary.currentSnapshotId}>{summary.currentSnapshotId ?? "—"}</DbValue></div>
+            <div><strong>review ID</strong><br /><DbValue muted={!summary.reviewId}>{summary.reviewId ?? "—"}</DbValue></div>
+            <div><strong>基準日</strong><br /><DbValue muted={!summary.currentSnapshotAsOf}>{formatDateTime(summary.currentSnapshotAsOf)}</DbValue></div>
+          </div>
+        </div>
+      </Section>
+
+      <Section title="テーブル別の確認結果">
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", minWidth: 620, borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ textAlign: "left", color: "var(--color-text-muted)", fontSize: 11 }}>
+                <th style={{ padding: "8px 7px", borderBottom: "1px solid var(--color-border)" }}>対象</th>
+                <th style={{ padding: "8px 7px", borderBottom: "1px solid var(--color-border)" }}>件数</th>
+                <th style={{ padding: "8px 7px", borderBottom: "1px solid var(--color-border)" }}>補足</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(([table, count, note]) => (
+                <tr key={table}>
+                  <td style={{ padding: "10px 7px", borderBottom: "1px solid var(--color-border)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{table}</td>
+                  <td style={{ padding: "10px 7px", borderBottom: "1px solid var(--color-border)", fontWeight: 900 }}>{count}</td>
+                  <td style={{ padding: "10px 7px", borderBottom: "1px solid var(--color-border)", color: "var(--color-text-sub)" }}>{note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
+      <Section title="DBから読み取った最新ポジション">
+        {data.currentSnapshot ? <PositionTable positions={data.positions} /> : <EmptyState>ready状態のスナップショットがないため、ポジション明細は表示していません。</EmptyState>}
+      </Section>
+    </>
+  );
+}
+
 export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
   const [tab, setTab] = useState<Tab>("overview");
   const grouped = useMemo(() => groupPositions(data.positions), [data.positions]);
@@ -221,7 +300,7 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <div>
             <div style={{ color: "#93c5fd", fontSize: 12, fontWeight: 800 }}>Portfolio</div>
-            <h1 style={{ margin: "7px 0 0", fontSize: 30 }}>表示・記録・方針</h1>
+            <h1 style={{ margin: "7px 0 0", fontSize: 30 }}>ポートフォリオ</h1>
           </div>
           <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 12, textAlign: "right" }}>
             <div>{data.portfolio.name ?? "ポートフォリオ未作成"}</div>
@@ -289,6 +368,8 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
           {!data.review ? <EmptyState>方針レビューはまだありません。全保有銘柄の役割・現状判断・買い増し条件・優先順位をレビューとして保存すると、ここに表示します。</EmptyState> : <div style={{ display: "grid", gap: 14 }}><div><h3 style={{ margin: 0, fontSize: 18 }}>{data.review.title}</h3><div style={{ marginTop: 5, color: "var(--color-text-muted)", fontSize: 12 }}>{formatDateTime(data.review.asOf)} / {data.review.status === "finalized" ? "確定" : "下書き"}</div></div>{data.review.newCapitalAmount !== null ? <div style={{ fontWeight: 800 }}>想定新規資金: {formatYen(data.review.newCapitalAmount)}</div> : null}{data.review.summary ? <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.7, color: "var(--color-text-sub)" }}>{data.review.summary}</div> : null}{data.review.allocationPolicy ? <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.7, color: "var(--color-text-sub)" }}><strong>全体方針</strong><br />{data.review.allocationPolicy}</div> : null}{data.review.items.length === 0 ? <EmptyState>銘柄別の方針項目はまだありません。</EmptyState> : <ol style={{ display: "grid", gap: 9, margin: 0, padding: 0, listStyle: "none" }}>{data.review.items.slice().sort((a, b) => (a.priorityRank ?? 999) - (b.priorityRank ?? 999)).map((item) => <PolicyItem key={item.id} item={item} />)}</ol>}</div>}
         </Section>
       ) : null}
+
+      {tab === "db" ? <DbCheckView data={data} /> : null}
     </div>
   );
 }
