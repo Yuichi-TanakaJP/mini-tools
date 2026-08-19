@@ -12,6 +12,7 @@ const baseData: PortfolioData = {
     { id: "position-2", accountId: "account-taxable", instrumentId: "instrument-1605", assetType: "domestic_stock", identifier: "1605", name: "INPEX", accountName: "課税口座", accountType: "taxable", institutionName: "証券会社", quantity: 10, unitCost: 2000, quotedPrice: 2200, quoteUnit: 1, costBasis: 20000, marketValue: 22000, unrealizedPnl: 2000, distributionMethod: null },
   ],
   review: { id: "review-1", title: "8月レビュー", status: "draft", asOf: "2026-08-14T00:02:00Z", newCapitalAmount: 100000, summary: null, allocationPolicy: null, updatedAt: "2026-08-14T00:02:00Z", items: [] },
+  dbCounts: { portfolio: 1, snapshots: 1, accounts: 2, instruments: 1, positions: 2, reviews: 1, reviewItems: 0 },
   source: "server",
 };
 
@@ -31,6 +32,16 @@ describe("summarizePortfolioDbResult", () => {
     });
   });
 
+  it("表示用に除外された行も取得クエリの件数として残す", () => {
+    const summary = summarizePortfolioDbResult({
+      ...baseData,
+      positions: baseData.positions.slice(0, 1),
+      dbCounts: { ...baseData.dbCounts, positions: 3, reviewItems: 2 },
+    });
+
+    expect(summary).toMatchObject({ positionCount: 3, reviewItemCount: 2 });
+  });
+
   it("未取込状態を空状態として区別する", () => {
     const summary = summarizePortfolioDbResult({
       ...baseData,
@@ -39,6 +50,7 @@ describe("summarizePortfolioDbResult", () => {
       currentSnapshot: null,
       positions: [],
       review: null,
+      dbCounts: { portfolio: 0, snapshots: 0, accounts: 0, instruments: 0, positions: 0, reviews: 0, reviewItems: 0 },
       source: "empty",
     });
 
@@ -58,6 +70,7 @@ describe("summarizePortfolioDbResult", () => {
       currentSnapshot: null,
       positions: [],
       review: null,
+      dbCounts: { portfolio: 1, snapshots: 1, accounts: 0, instruments: 0, positions: 0, reviews: 0, reviewItems: 0 },
       source: "empty",
     });
 

@@ -63,6 +63,16 @@ export type PortfolioReview = {
   items: PortfolioReviewItem[];
 };
 
+export type PortfolioDbCounts = {
+  portfolio: number;
+  snapshots: number;
+  accounts: number;
+  instruments: number;
+  positions: number;
+  reviews: number;
+  reviewItems: number;
+};
+
 export type PortfolioData = {
   authState: "authenticated" | "required";
   portfolio: {
@@ -74,5 +84,6 @@ export type PortfolioData = {
   currentSnapshot: PortfolioSnapshot | null;
   positions: PortfolioPosition[];
   review: PortfolioReview | null;
+  dbCounts: PortfolioDbCounts;
   source: "server" | "empty";
 };

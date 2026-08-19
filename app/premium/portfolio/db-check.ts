@@ -20,8 +20,6 @@ export type PortfolioDbCheckSummary = {
 };
 
 export function summarizePortfolioDbResult(data: PortfolioData): PortfolioDbCheckSummary {
-  const instrumentIds = new Set(data.positions.map((position) => position.instrumentId));
-  const accountIds = new Set(data.positions.map((position) => position.accountId));
   const loadState = data.authState === "required"
     ? "auth_required"
     : data.source === "server"
@@ -36,16 +34,16 @@ export function summarizePortfolioDbResult(data: PortfolioData): PortfolioDbChec
     portfolioId: data.portfolio.id,
     portfolioName: data.portfolio.name,
     baseCurrency: data.portfolio.baseCurrency,
-    snapshotCount: data.snapshots.length,
+    snapshotCount: data.dbCounts.snapshots,
     currentSnapshotId: data.currentSnapshot?.id ?? null,
     currentSnapshotStatus: data.currentSnapshot?.status ?? null,
     currentSnapshotAsOf: data.currentSnapshot?.asOf ?? null,
-    positionCount: data.positions.length,
-    instrumentCount: instrumentIds.size,
-    accountCount: accountIds.size,
-    reviewCount: data.review ? 1 : 0,
+    positionCount: data.dbCounts.positions,
+    instrumentCount: data.dbCounts.instruments,
+    accountCount: data.dbCounts.accounts,
+    reviewCount: data.dbCounts.reviews,
     reviewId: data.review?.id ?? null,
     reviewStatus: data.review?.status ?? null,
-    reviewItemCount: data.review?.items.length ?? 0,
+    reviewItemCount: data.dbCounts.reviewItems,
   };
 }

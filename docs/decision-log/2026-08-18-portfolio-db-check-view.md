@@ -7,7 +7,7 @@ MiniToolsの `/premium/portfolio` は、保存済みの保有状況とreviewを�
 ## 決めたこと
 
 - 既存の `/premium/portfolio` に「DB確認」タブを追加する
-- portfolio、最新ready snapshot、position、review、review itemの件数と主要ID・基準日を表示する
+- MiniToolsの取得クエリが返したportfolio、snapshot、position、review、review itemの生行数と主要ID・基準日を表示する
 - 最新ポジションの読み取り結果も同じ画面で確認できるようにする
 - DB確認タブは読み取り専用とし、保存・更新・削除操作を置かない
 - 未取込、認証必須、ready snapshotなしを、正常な空データと区別する

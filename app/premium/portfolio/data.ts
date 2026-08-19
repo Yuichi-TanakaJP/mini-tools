@@ -110,6 +110,15 @@ function emptyPortfolio(): PortfolioData {
     currentSnapshot: null,
     positions: [],
     review: null,
+    dbCounts: {
+      portfolio: 0,
+      snapshots: 0,
+      accounts: 0,
+      instruments: 0,
+      positions: 0,
+      reviews: 0,
+      reviewItems: 0,
+    },
     source: "empty",
   };
 }
@@ -150,6 +159,11 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
         baseCurrency: portfolio.base_currency,
       },
       snapshots,
+      dbCounts: {
+        ...emptyPortfolio().dbCounts,
+        portfolio: 1,
+        snapshots: snapshots.length,
+      },
     };
   }
 
@@ -175,9 +189,12 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
   if (instrumentsResult.error) throw instrumentsResult.error;
   if (positionsResult.error) throw positionsResult.error;
 
-  const accounts = new Map((accountsResult.data ?? []).map((row) => [row.id, row]));
-  const instruments = new Map((instrumentsResult.data ?? []).map((row) => [row.id, row]));
-  const positions: PortfolioPosition[] = (positionsResult.data ?? []).flatMap((row) => {
+  const accountRows = accountsResult.data ?? [];
+  const instrumentRows = instrumentsResult.data ?? [];
+  const positionRows = positionsResult.data ?? [];
+  const accounts = new Map(accountRows.map((row) => [row.id, row]));
+  const instruments = new Map(instrumentRows.map((row) => [row.id, row]));
+  const positions: PortfolioPosition[] = positionRows.flatMap((row) => {
     const account = accounts.get(row.account_id);
     const instrument = instruments.get(row.instrument_id);
     if (!account || !instrument) return [];
@@ -214,6 +231,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
   if (reviewError) throw reviewError;
 
   let review: PortfolioReview | null = null;
+  let reviewItemCount = 0;
   if (reviewRow) {
     const { data: itemRows, error: itemsError } = await supabase
       .from("stock_notes_portfolio_review_items")
@@ -224,6 +242,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
       .returns<ReviewItemRow[]>();
     if (itemsError) throw itemsError;
 
+    reviewItemCount = itemRows?.length ?? 0;
     review = {
       id: reviewRow.id,
       title: reviewRow.title,
@@ -269,6 +288,15 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     currentSnapshot,
     positions,
     review,
+    dbCounts: {
+      portfolio: 1,
+      snapshots: snapshots.length,
+      accounts: accountRows.length,
+      instruments: instrumentRows.length,
+      positions: positionRows.length,
+      reviews: reviewRow ? 1 : 0,
+      reviewItems: reviewItemCount,
+    },
     source: "server",
   };
 }
