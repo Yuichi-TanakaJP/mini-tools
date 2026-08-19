@@ -286,6 +286,7 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
   const totalCost = sumNullable(data.positions.map((position) => position.costBasis));
   const totalPnl = sumNullable(data.positions.map((position) => position.unrealizedPnl));
   const pnlRate = totalCost && totalPnl !== null ? (totalPnl / totalCost) * 100 : null;
+  const hasSnapshotHistory = data.snapshots.length > 0;
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
@@ -297,7 +298,7 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
           </div>
           <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 12, textAlign: "right" }}>
             <div>{data.portfolio.name ?? "ポートフォリオ未作成"}</div>
-            <div style={{ marginTop: 4 }}>{data.currentSnapshot ? `基準日 ${formatDate(data.currentSnapshot.asOf)}` : "CSV未取込"}</div>
+            <div style={{ marginTop: 4 }}>{data.currentSnapshot ? `基準日 ${formatDate(data.currentSnapshot.asOf)}` : hasSnapshotHistory ? "ready snapshotなし" : "CSV未取込"}</div>
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -314,8 +315,8 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
           <EmptyState>このポートフォリオはSupabaseのログインユーザー単位で表示します。先に <a href="/account">アカウント</a> へログインしてください。DB確認タブでは認証状態を確認できます。</EmptyState>
         </Section>
       ) : data.source === "empty" ? (
-        <Section title="ポートフォリオデータはまだありません">
-          <EmptyState>証券会社CSVをstock-notesの取込APIへ送ると、ここに最新スナップショットが表示されます。既存のmy-stocksデータはこの画面へ自動コピーせず、取込履歴を正本として管理します。</EmptyState>
+        <Section title={hasSnapshotHistory ? "readyスナップショットがありません" : "ポートフォリオデータはまだありません"}>
+          <EmptyState>{hasSnapshotHistory ? "取込履歴はありますが、ready状態のスナップショットがありません。DB確認タブで取込結果とreviewの保存状況を確認できます。" : "証券会社CSVをstock-notesの取込APIへ送ると、ここに最新スナップショットが表示されます。既存のmy-stocksデータはこの画面へ自動コピーせず、取込履歴を正本として管理します。"}</EmptyState>
         </Section>
       ) : null}
 

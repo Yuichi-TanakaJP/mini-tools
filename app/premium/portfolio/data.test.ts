@@ -97,4 +97,39 @@ describe("portfolio data loader", () => {
     expect(data.positions[0]).toMatchObject({ identifier: "9999", quantity: 2, marketValue: 2400 });
     expect(data.review?.items[0]).toMatchObject({ stance: "hold", targetAllocationPct: 10, buyConditions: ["押し目"] });
   });
+
+  it("ready snapshotがなくても関連テーブルの取得件数を保持する", async () => {
+    const data = await loadPortfolio(
+      stubClient({
+        stock_notes_portfolios: {
+          data: { id: "portfolio-1", name: "メイン", base_currency: "JPY" },
+          error: null,
+        },
+        stock_notes_portfolio_snapshots: {
+          data: [{ id: "snapshot-1", as_of: "2026-08-14T00:00:00Z", status: "failed", source_type: "broker_csv", imported_at: "2026-08-14T00:01:00Z" }],
+          error: null,
+        },
+        stock_notes_portfolio_accounts: {
+          data: [{ id: "account-1", account_name: "特定預り", account_type: "taxable", institution_name: "テスト証券" }],
+          error: null,
+        },
+        stock_notes_portfolio_instruments: {
+          data: [{ id: "instrument-1", asset_type: "domestic_stock", identifier: "9999", name: "テスト銘柄" }],
+          error: null,
+        },
+        stock_notes_portfolio_reviews: {
+          data: { id: "review-1", title: "8月棚卸し", status: "draft", as_of: "2026-08-14T00:02:00Z", new_capital_amount: null, summary: null, allocation_policy: null, updated_at: "2026-08-14T00:02:00Z" },
+          error: null,
+        },
+        stock_notes_portfolio_review_items: {
+          data: [{ id: "item-1", instrument_id: "instrument-1", item_status: "reviewed", role_labels: [], stance: null, portfolio_need: null, priority_tier: null, priority_rank: null, target_allocation_pct: null, proposed_new_capital_amount: null, buy_conditions: [], rationale: null, policy_note: null }],
+          error: null,
+        },
+      }),
+    );
+
+    expect(data.source).toBe("empty");
+    expect(data.currentSnapshot).toBeNull();
+    expect(data.dbCounts).toMatchObject({ portfolio: 1, snapshots: 1, accounts: 1, instruments: 1, positions: 0, reviews: 1, reviewItems: 1 });
+  });
 });

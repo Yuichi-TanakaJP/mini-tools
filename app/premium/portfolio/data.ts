@@ -150,24 +150,8 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
 
   const snapshots = (snapshotRows ?? []).map(snapshotFromRow);
   const currentSnapshot = snapshots.find((snapshot) => snapshot.status === "ready") ?? null;
-  if (!currentSnapshot) {
-    return {
-      ...emptyPortfolio(),
-      portfolio: {
-        id: portfolio.id,
-        name: portfolio.name,
-        baseCurrency: portfolio.base_currency,
-      },
-      snapshots,
-      dbCounts: {
-        ...emptyPortfolio().dbCounts,
-        portfolio: 1,
-        snapshots: snapshots.length,
-      },
-    };
-  }
 
-  const [accountsResult, instrumentsResult, positionsResult] = await Promise.all([
+  const [accountsResult, instrumentsResult] = await Promise.all([
     supabase
       .from("stock_notes_portfolio_accounts")
       .select("id, account_name, account_type, institution_name")
@@ -177,21 +161,24 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
       .from("stock_notes_portfolio_instruments")
       .select("id, asset_type, identifier, name")
       .returns<InstrumentRow[]>(),
-    supabase
+  ]);
+  if (accountsResult.error) throw accountsResult.error;
+  if (instrumentsResult.error) throw instrumentsResult.error;
+
+  const accountRows = accountsResult.data ?? [];
+  const instrumentRows = instrumentsResult.data ?? [];
+  let positionRows: PositionRow[] = [];
+  if (currentSnapshot) {
+    const { data: positionData, error: positionsError } = await supabase
       .from("stock_notes_portfolio_positions")
       .select(
         "id, account_id, instrument_id, quantity, unit_cost, quoted_price, quote_unit, cost_basis, market_value, unrealized_pnl, distribution_method",
       )
       .eq("snapshot_id", currentSnapshot.id)
-      .returns<PositionRow[]>(),
-  ]);
-  if (accountsResult.error) throw accountsResult.error;
-  if (instrumentsResult.error) throw instrumentsResult.error;
-  if (positionsResult.error) throw positionsResult.error;
-
-  const accountRows = accountsResult.data ?? [];
-  const instrumentRows = instrumentsResult.data ?? [];
-  const positionRows = positionsResult.data ?? [];
+      .returns<PositionRow[]>();
+    if (positionsError) throw positionsError;
+    positionRows = positionData ?? [];
+  }
   const accounts = new Map(accountRows.map((row) => [row.id, row]));
   const instruments = new Map(instrumentRows.map((row) => [row.id, row]));
   const positions: PortfolioPosition[] = positionRows.flatMap((row) => {
@@ -297,6 +284,6 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
       reviews: reviewRow ? 1 : 0,
       reviewItems: reviewItemCount,
     },
-    source: "server",
+    source: currentSnapshot ? "server" : "empty",
   };
 }
