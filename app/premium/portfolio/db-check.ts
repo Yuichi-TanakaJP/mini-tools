@@ -7,6 +7,9 @@ export type PortfolioDbCheckSummary = {
   portfolioName: string | null;
   baseCurrency: string;
   snapshotCount: number;
+  latestSnapshotId: string | null;
+  latestSnapshotStatus: NonNullable<PortfolioData["snapshots"]>[number]["status"] | null;
+  latestSnapshotAsOf: string | null;
   currentSnapshotId: string | null;
   currentSnapshotStatus: NonNullable<PortfolioData["currentSnapshot"]>["status"] | null;
   currentSnapshotAsOf: string | null;
@@ -35,6 +38,9 @@ export function summarizePortfolioDbResult(data: PortfolioData): PortfolioDbChec
     portfolioName: data.portfolio.name,
     baseCurrency: data.portfolio.baseCurrency,
     snapshotCount: data.dbCounts.snapshots,
+    latestSnapshotId: data.snapshots[0]?.id ?? null,
+    latestSnapshotStatus: data.snapshots[0]?.status ?? null,
+    latestSnapshotAsOf: data.snapshots[0]?.asOf ?? null,
     currentSnapshotId: data.currentSnapshot?.id ?? null,
     currentSnapshotStatus: data.currentSnapshot?.status ?? null,
     currentSnapshotAsOf: data.currentSnapshot?.asOf ?? null,

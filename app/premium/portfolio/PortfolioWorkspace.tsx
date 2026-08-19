@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { PortfolioData, PortfolioPosition, PortfolioReviewItem } from "./types";
+import type { PortfolioData, PortfolioDbPosition, PortfolioPosition, PortfolioReviewItem } from "./types";
 import { summarizePortfolioDbResult } from "./db-check";
 
 type Tab = "overview" | "record" | "policy" | "db";
@@ -201,6 +201,41 @@ function PolicyItem({ item }: { item: PortfolioReviewItem }) {
   );
 }
 
+function DbPositionTable({ positions }: { positions: PortfolioDbPosition[] }) {
+  if (positions.length === 0) return <EmptyState>このreadyスナップショットにはポジション行がありません。</EmptyState>;
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ width: "100%", minWidth: 760, borderCollapse: "collapse", fontSize: 13 }}>
+        <thead>
+          <tr style={{ textAlign: "left", color: "var(--color-text-muted)", fontSize: 11 }}>
+            {['position ID', '商品', '口座', '数量', '評価額', '状態'].map((label) => (
+              <th key={label} style={{ padding: "8px 7px", borderBottom: "1px solid var(--color-border)" }}>{label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {positions.map((position) => {
+            const resolved = Boolean(position.assetType && position.identifier && position.name && position.accountName && position.accountType && position.institutionName);
+            return (
+              <tr key={position.id}>
+                <td style={{ padding: "10px 7px", borderBottom: "1px solid var(--color-border)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", wordBreak: "break-all" }}>{position.id}</td>
+                <td style={{ padding: "10px 7px", borderBottom: "1px solid var(--color-border)" }}>
+                  <div>{position.identifier ?? "未解決"}</div>
+                  <div style={{ marginTop: 3, color: "var(--color-text-muted)", fontSize: 11 }}>{position.name ?? position.instrumentId}</div>
+                </td>
+                <td style={{ padding: "10px 7px", borderBottom: "1px solid var(--color-border)" }}>{position.accountName ?? position.accountId}</td>
+                <td style={{ padding: "10px 7px", borderBottom: "1px solid var(--color-border)" }}>{formatNumber(position.quantity, 2)}</td>
+                <td style={{ padding: "10px 7px", borderBottom: "1px solid var(--color-border)" }}>{formatYen(position.marketValue)}</td>
+                <td style={{ padding: "10px 7px", borderBottom: "1px solid var(--color-border)", color: resolved ? "#166534" : "#991b1b", fontWeight: 800 }}>{resolved ? "関連解決済み" : "関連行なし"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function DbValue({ children, muted = false }: { children: React.ReactNode; muted?: boolean }) {
   return <span style={{ color: muted ? "var(--color-text-muted)" : "var(--color-text-sub)", wordBreak: "break-word" }}>{children}</span>;
 }
@@ -221,7 +256,7 @@ function DbCheckView({ data }: { data: PortfolioData }) {
   const rows = [
     ["portfolio", summary.portfolioId ? 1 : 0, summary.portfolioName ?? "未作成"],
     ["portfolio_snapshots", summary.snapshotCount, summary.currentSnapshotId ? `current: ${summary.currentSnapshotId}` : "ready snapshotなし"],
-    ["portfolio_positions", summary.positionCount, `${summary.instrumentCount}商品 / ${summary.accountCount}口座`],
+    ["portfolio_positions", summary.positionCount, `${summary.instrumentCount}商品（ユーザー単位） / ${summary.accountCount}口座`],
     ["portfolio_reviews", summary.reviewCount, summary.reviewId ?? "reviewなし"],
     ["portfolio_review_items", summary.reviewItemCount, summary.reviewStatus ?? "reviewなし"],
   ] as const;
@@ -237,14 +272,16 @@ function DbCheckView({ data }: { data: PortfolioData }) {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
             <Metric label="portfolio" value={summary.portfolioId ? "1件" : "0件"} sub={summary.portfolioName ?? "未作成"} />
             <Metric label="ready snapshot" value={summary.currentSnapshotId ? "1件" : "0件"} sub={summary.currentSnapshotStatus ?? "なし"} />
-            <Metric label="position" value={`${summary.positionCount}件`} sub={`${summary.instrumentCount}商品`} />
+            <Metric label="position" value={`${summary.positionCount}件`} sub={`${summary.instrumentCount}商品（ユーザー単位）`} />
             <Metric label="review item" value={`${summary.reviewItemCount}件`} sub={summary.reviewStatus === "finalized" ? "確定review" : summary.reviewStatus === "draft" ? "下書きreview" : "reviewなし"} />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8, fontSize: 13 }}>
             <div><strong>portfolio ID</strong><br /><DbValue muted={!summary.portfolioId}>{summary.portfolioId ?? "—"}</DbValue></div>
-            <div><strong>最新snapshot ID</strong><br /><DbValue muted={!summary.currentSnapshotId}>{summary.currentSnapshotId ?? "—"}</DbValue></div>
+            <div><strong>ready snapshot ID</strong><br /><DbValue muted={!summary.currentSnapshotId}>{summary.currentSnapshotId ?? "—"}</DbValue></div>
+            <div><strong>最新取込 snapshot ID</strong><br /><DbValue muted={!summary.latestSnapshotId}>{summary.latestSnapshotId ?? "—"}</DbValue></div>
             <div><strong>review ID</strong><br /><DbValue muted={!summary.reviewId}>{summary.reviewId ?? "—"}</DbValue></div>
-            <div><strong>基準日</strong><br /><DbValue muted={!summary.currentSnapshotAsOf}>{formatDateTime(summary.currentSnapshotAsOf)}</DbValue></div>
+            <div><strong>ready基準日</strong><br /><DbValue muted={!summary.currentSnapshotAsOf}>{formatDateTime(summary.currentSnapshotAsOf)}</DbValue></div>
+            <div><strong>最新取込日時・status</strong><br /><DbValue muted={!summary.latestSnapshotAsOf}>{summary.latestSnapshotAsOf ? `${formatDateTime(summary.latestSnapshotAsOf)} / ${summary.latestSnapshotStatus}` : "—"}</DbValue></div>
           </div>
         </div>
       </Section>
@@ -273,7 +310,7 @@ function DbCheckView({ data }: { data: PortfolioData }) {
       </Section>
 
       <Section title="DBから読み取った最新ポジション">
-        {data.currentSnapshot ? <PositionTable positions={data.positions} /> : <EmptyState>ready状態のスナップショットがないため、ポジション明細は表示していません。</EmptyState>}
+        {data.dbPositionSnapshot ? <><div style={{ marginBottom: 12, color: "var(--color-text-muted)", fontSize: 12 }}>対象snapshot: {data.dbPositionSnapshot.id} / 基準日 {formatDateTime(data.dbPositionSnapshot.asOf)} / status {data.dbPositionSnapshot.status}</div><DbPositionTable positions={data.dbPositions} /></> : <EmptyState>取込snapshotがないため、ポジション明細は表示していません。</EmptyState>}
       </Section>
     </>
   );

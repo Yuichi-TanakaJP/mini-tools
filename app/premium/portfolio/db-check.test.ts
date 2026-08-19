@@ -7,7 +7,12 @@ const baseData: PortfolioData = {
   portfolio: { id: "portfolio-1", name: "メイン", baseCurrency: "JPY" },
   snapshots: [{ id: "snapshot-1", asOf: "2026-08-14T00:00:00Z", status: "ready", sourceType: "broker_csv", importedAt: "2026-08-14T00:01:00Z" }],
   currentSnapshot: { id: "snapshot-1", asOf: "2026-08-14T00:00:00Z", status: "ready", sourceType: "broker_csv", importedAt: "2026-08-14T00:01:00Z" },
+  dbPositionSnapshot: { id: "snapshot-1", asOf: "2026-08-14T00:00:00Z", status: "ready", sourceType: "broker_csv", importedAt: "2026-08-14T00:01:00Z" },
   positions: [
+    { id: "position-1", accountId: "account-nisa", instrumentId: "instrument-1605", assetType: "domestic_stock", identifier: "1605", name: "INPEX", accountName: "NISA", accountType: "nisa_growth", institutionName: "証券会社", quantity: 96, unitCost: 1927, quotedPrice: 2200, quoteUnit: 1, costBasis: 184992, marketValue: 211200, unrealizedPnl: 26208, distributionMethod: null },
+    { id: "position-2", accountId: "account-taxable", instrumentId: "instrument-1605", assetType: "domestic_stock", identifier: "1605", name: "INPEX", accountName: "課税口座", accountType: "taxable", institutionName: "証券会社", quantity: 10, unitCost: 2000, quotedPrice: 2200, quoteUnit: 1, costBasis: 20000, marketValue: 22000, unrealizedPnl: 2000, distributionMethod: null },
+  ],
+  dbPositions: [
     { id: "position-1", accountId: "account-nisa", instrumentId: "instrument-1605", assetType: "domestic_stock", identifier: "1605", name: "INPEX", accountName: "NISA", accountType: "nisa_growth", institutionName: "証券会社", quantity: 96, unitCost: 1927, quotedPrice: 2200, quoteUnit: 1, costBasis: 184992, marketValue: 211200, unrealizedPnl: 26208, distributionMethod: null },
     { id: "position-2", accountId: "account-taxable", instrumentId: "instrument-1605", assetType: "domestic_stock", identifier: "1605", name: "INPEX", accountName: "課税口座", accountType: "taxable", institutionName: "証券会社", quantity: 10, unitCost: 2000, quotedPrice: 2200, quoteUnit: 1, costBasis: 20000, marketValue: 22000, unrealizedPnl: 2000, distributionMethod: null },
   ],

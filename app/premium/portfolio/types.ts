@@ -9,7 +9,7 @@ export type PortfolioAccountType =
 export type PortfolioSnapshot = {
   id: string;
   asOf: string;
-  status: "ready" | "superseded" | "failed";
+  status: "ready" | "superseded" | "failed" | "importing";
   sourceType: string;
   importedAt: string;
 };
@@ -63,6 +63,26 @@ export type PortfolioReview = {
   items: PortfolioReviewItem[];
 };
 
+export type PortfolioDbPosition = {
+  id: string;
+  accountId: string;
+  instrumentId: string;
+  assetType: string | null;
+  identifier: string | null;
+  name: string | null;
+  accountName: string | null;
+  accountType: PortfolioAccountType | null;
+  institutionName: string | null;
+  quantity: number;
+  unitCost: number | null;
+  quotedPrice: number | null;
+  quoteUnit: number;
+  costBasis: number | null;
+  marketValue: number | null;
+  unrealizedPnl: number | null;
+  distributionMethod: string | null;
+};
+
 export type PortfolioDbCounts = {
   portfolio: number;
   snapshots: number;
@@ -82,7 +102,9 @@ export type PortfolioData = {
   };
   snapshots: PortfolioSnapshot[];
   currentSnapshot: PortfolioSnapshot | null;
+  dbPositionSnapshot: PortfolioSnapshot | null;
   positions: PortfolioPosition[];
+  dbPositions: PortfolioDbPosition[];
   review: PortfolioReview | null;
   dbCounts: PortfolioDbCounts;
   source: "server" | "empty";

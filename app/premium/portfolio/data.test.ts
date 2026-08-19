@@ -79,7 +79,10 @@ describe("portfolio data loader", () => {
           error: null,
         },
         stock_notes_portfolio_positions: {
-          data: [{ id: "position-1", account_id: "account-1", instrument_id: "instrument-1", quantity: "2", unit_cost: "1000", quoted_price: "1200", quote_unit: "1", cost_basis: "2000", market_value: "2400", unrealized_pnl: "400", distribution_method: null }],
+          data: [
+            { id: "position-1", account_id: "account-1", instrument_id: "instrument-1", quantity: "2", unit_cost: "1000", quoted_price: "1200", quote_unit: "1", cost_basis: "2000", market_value: "2400", unrealized_pnl: "400", distribution_method: null },
+            { id: "position-2", account_id: "account-missing", instrument_id: "instrument-1", quantity: "1", unit_cost: "900", quoted_price: "1200", quote_unit: "1", cost_basis: "900", market_value: "1200", unrealized_pnl: "300", distribution_method: null },
+          ],
           error: null,
         },
         stock_notes_portfolio_reviews: {
@@ -95,6 +98,9 @@ describe("portfolio data loader", () => {
 
     expect(data.source).toBe("server");
     expect(data.positions[0]).toMatchObject({ identifier: "9999", quantity: 2, marketValue: 2400 });
+    expect(data.positions).toHaveLength(1);
+    expect(data.dbPositions).toHaveLength(2);
+    expect(data.dbPositions[1]).toMatchObject({ id: "position-2", accountName: null, accountId: "account-missing" });
     expect(data.review?.items[0]).toMatchObject({ stance: "hold", targetAllocationPct: 10, buyConditions: ["押し目"] });
   });
 
@@ -113,8 +119,15 @@ describe("portfolio data loader", () => {
           data: [{ id: "account-1", account_name: "特定預り", account_type: "taxable", institution_name: "テスト証券" }],
           error: null,
         },
+        stock_notes_portfolio_positions: {
+          data: [{ id: "position-failed", account_id: "account-1", instrument_id: "instrument-1", quantity: "1", unit_cost: "1000", quoted_price: "1100", quote_unit: "1", cost_basis: "1000", market_value: "1100", unrealized_pnl: "100", distribution_method: null }],
+          error: null,
+        },
         stock_notes_portfolio_instruments: {
-          data: [{ id: "instrument-1", asset_type: "domestic_stock", identifier: "9999", name: "テスト銘柄" }],
+          data: [
+            { id: "instrument-1", asset_type: "domestic_stock", identifier: "9999", name: "テスト銘柄" },
+            { id: "instrument-unreferenced", asset_type: "domestic_stock", identifier: "8888", name: "未参照銘柄" },
+          ],
           error: null,
         },
         stock_notes_portfolio_reviews: {
@@ -130,6 +143,8 @@ describe("portfolio data loader", () => {
 
     expect(data.source).toBe("empty");
     expect(data.currentSnapshot).toBeNull();
-    expect(data.dbCounts).toMatchObject({ portfolio: 1, snapshots: 1, accounts: 1, instruments: 1, positions: 0, reviews: 1, reviewItems: 1 });
+    expect(data.dbPositionSnapshot?.id).toBe("snapshot-1");
+    expect(data.dbPositions).toHaveLength(1);
+    expect(data.dbCounts).toMatchObject({ portfolio: 1, snapshots: 1, accounts: 1, instruments: 2, positions: 1, reviews: 1, reviewItems: 1 });
   });
 });
