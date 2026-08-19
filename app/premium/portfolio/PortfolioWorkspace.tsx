@@ -297,8 +297,8 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
             <h1 style={{ margin: "7px 0 0", fontSize: 30 }}>ポートフォリオ</h1>
           </div>
           <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 12, textAlign: "right" }}>
-            <div>{data.portfolio.name ?? "ポートフォリオ未作成"}</div>
-            <div style={{ marginTop: 4 }}>{data.currentSnapshot ? `基準日 ${formatDate(data.currentSnapshot.asOf)}` : hasSnapshotHistory ? "ready snapshotなし" : "CSV未取込"}</div>
+            <div>{data.authState === "required" ? "Supabase認証待ち" : data.portfolio.name ?? "ポートフォリオ未作成"}</div>
+            <div style={{ marginTop: 4 }}>{data.authState === "required" ? "認証が必要" : data.currentSnapshot ? `基準日 ${formatDate(data.currentSnapshot.asOf)}` : hasSnapshotHistory ? "ready snapshotなし" : "CSV未取込"}</div>
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
