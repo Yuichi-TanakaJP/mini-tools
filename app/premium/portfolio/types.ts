@@ -63,6 +63,54 @@ export type PortfolioReview = {
   items: PortfolioReviewItem[];
 };
 
+export type PortfolioPolicyRule = {
+  id: string;
+  dimension: string;
+  targetKey: string;
+  minPct: number | null;
+  maxPct: number | null;
+  priority: string;
+  rationale: string | null;
+};
+
+export type PortfolioPolicy = {
+  id: string;
+  versionNumber: number;
+  status: "draft" | "active" | "superseded";
+  title: string;
+  objective: string | null;
+  timeHorizon: string | null;
+  incomePriority: string | null;
+  capitalGrowthPriority: string | null;
+  riskStatement: string | null;
+  cashPolicy: string | null;
+  buyPolicy: string | null;
+  sellPolicy: string | null;
+  principles: string[];
+  constraints: string[];
+  changeReason: string | null;
+  basedOnPolicyId: string | null;
+  effectiveFrom: string | null;
+  createdAt: string;
+  updatedAt: string;
+  rules: PortfolioPolicyRule[];
+};
+
+export type PortfolioReflection = {
+  id: string;
+  reviewId: string;
+  asOf: string;
+  expectedOutcome: string | null;
+  actualOutcome: string | null;
+  workedWell: string[];
+  didNotWork: string[];
+  missedRisks: string[];
+  lessons: string[];
+  policyChangeRecommended: boolean;
+  policyChangeSummary: string | null;
+  createdAt: string;
+};
+
 export type PortfolioRecommendation = {
   id: string;
   reviewId: string;
@@ -143,6 +191,10 @@ export type PortfolioData = {
   positions: PortfolioPosition[];
   dbPositions: PortfolioDbPosition[];
   review: PortfolioReview | null;
+  activePolicy: PortfolioPolicy | null;
+  policyHistory: PortfolioPolicy[];
+  latestReflection: PortfolioReflection | null;
+  reflections: PortfolioReflection[];
   recommendations: PortfolioRecommendation[];
   actions: PortfolioAction[];
   dbCounts: PortfolioDbCounts;

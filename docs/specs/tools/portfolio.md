@@ -1,6 +1,6 @@
 # ポートフォリオ 仕様
 
-> **実装状態:** 2026-08-21時点の画面は、最新snapshotと保存済みreview/recommendation/actionを読むUI-1〜UI-2初回版である。
+> **実装状態:** 2026-08-22時点の画面は、最新snapshot、active policy・policy履歴、保存済みreview/recommendation/action、latest reflectionを読むUI-1〜UI-2初回版である。
 > ポートフォリオ意思決定プラットフォームの完成品ではない。目標運用とUIの実装順序は
 > [ポートフォリオ意思決定ワークスペース実装計画](../../plans/portfolio-decision-workspace-plan.md) を参照する。
 
@@ -21,7 +21,7 @@
 - **意思決定**: 判断状態、snapshot/reviewの基準日、全体要約、金額なしの補強・調査recommendation、未完了portfolio action
 - **表示**: 最新readyスナップショットの評価額・取得額・含み損益・商品別配分
 - **記録**: 最新スナップショットの口座別ポジション明細、過去の取込履歴
-- **方針**: 最新portfolio reviewの全体方針と銘柄別の役割・判断・買い増し条件・優先順位
+- **方針・履歴**: active policyの版・原則・構造化ルール・変更履歴、最新reviewの一時判断、latest reflection
 - **DB確認**: MiniToolsがSupabaseから取得したportfolio、snapshot、position、review、review itemの生行数・ID・基準日を読み取り専用で確認する。銘柄マスタ件数は、portfolio_idを持たないユーザー単位の取得結果として表示し、readyがない場合は最新取込snapshotのポジション行も確認する
 
 ### 入力
@@ -30,6 +30,7 @@
 - CSV取込はstock-notesの認証付きAPIを使用する
 - 目標仕様でも主入力はMiniToolsのフォームではなく、ChatGPTとの相談とする
 - ChatGPTが全体contextを取得し、ユーザー確認後にreview/actionを保存する経路は未実装
+- policyのdraft作成・active化、reviewのfinalize、reflectionの保存はMiniToolsから行わない。GPT/APIの責務である
 - MiniToolsの画面からrecommendation/actionを編集・保存する入力は持たない。保存済みデータの正本はstock-notes API/DBである
 
 ### 出力
@@ -44,7 +45,7 @@
 
 - MiniToolsからChatGPTの相談・保存を開始する
 - MiniToolsからrecommendation/actionを作成・更新・完了する
-- stock-notesのdecision-context全体をMiniTools専用の共通読み取り契約として集約する
+- stock-notesのdecision-context全体をMiniTools専用の共通読み取り契約として集約する（現時点はSupabaseの本人行を読み取る暫定実装）
 - 金額指定を含む新規資金の順位・配分を表示する（現在は金額なし候補の表示のみ）
 - 前回reviewとの差分を表示する
 - 銘柄ダッシュボードとportfolio方針を往復する
@@ -66,7 +67,8 @@
 
 - Supabaseの `stock_notes_portfolios`、`stock_notes_portfolio_snapshots`、`stock_notes_portfolio_accounts`、
   `stock_notes_portfolio_instruments`、`stock_notes_portfolio_positions`、`stock_notes_portfolio_reviews`、
-  `stock_notes_portfolio_review_items`、`stock_notes_portfolio_recommendations`、`stock_notes_portfolio_actions`
+  `stock_notes_portfolio_review_items`、`stock_notes_portfolio_recommendations`、`stock_notes_portfolio_actions`、
+  `stock_notes_portfolio_policy_versions`、`stock_notes_portfolio_policy_rules`、`stock_notes_portfolio_reflections`
 - SupabaseログインセッションとRLSで本人の行だけを取得する
 - CSV取込の正本はstock-notes側の `POST /portfolio/import`
 
@@ -109,4 +111,5 @@
 - UAT: [ポートフォリオ UAT](../../uat/portfolio.md)
 - Decision Log: [ポートフォリオの「表示・記録・方針」構成](../../decision-log/2026-08-14-portfolio-record-display-policy.md)
 - Decision Log: [ChatGPT起点の意思決定ワークスペース](../../decision-log/2026-08-15-portfolio-chat-first-operating-model.md)
+- Decision Log: [ポートフォリオのWhatとpolicy/reflection表示](../../decision-log/2026-08-22-portfolio-what-and-policy-reflection-display.md)
 - Plan: [ポートフォリオ意思決定ワークスペース実装計画](../../plans/portfolio-decision-workspace-plan.md)

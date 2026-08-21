@@ -9,8 +9,11 @@
 ## 正常系
 
 - [ ] `/premium/portfolio` がPremiumログイン後に表示される
-- [ ] 「意思決定」「表示」「記録」「方針」「DB確認」の5タブを切り替えられる
+- [ ] 「意思決定」「表示」「記録」「方針・履歴」「DB確認」の5タブを切り替えられる
 - [ ] 「意思決定」でsnapshot/reviewの基準日と判断状態を確認できる
+- [ ] 「意思決定」でactive policyの版、原則、構造化ルールを確認できる
+- [ ] active policyがreviewの一時メモとは別に表示される
+- [ ] 「意思決定」でlatest reflectionの期待、結果、学び、方針変更案を確認できる
 - [ ] 「意思決定」で保存済みrecommendationの対象、優先順位、条件、理由を確認できる
 - [ ] 金額未指定recommendationが「金額を仮定しない」と表示される
 - [ ] 「意思決定」で保存済みportfolio actionの状態、実行条件、期限を確認できる
@@ -18,7 +21,9 @@
 - [ ] 同一商品を複数口座で保有している場合、「表示」では商品単位に集約される
 - [ ] 「記録」で口座名・預り区分・数量・取得単価・現在値・評価額が確認できる
 - [ ] 「記録」でスナップショットの基準日・取込日時・statusが表示される
-- [ ] 「方針」でreviewの全体方針と銘柄別項目が優先順位順に表示される
+- [ ] 「方針・履歴」でactive policyとpolicy version履歴が表示される
+- [ ] 「方針・履歴」でreviewの一時判断と銘柄別項目が優先順位順に表示される
+- [ ] policyなし・reflectionなしが未登録状態として表示される
 - [ ] 「DB確認」で読み込み状態、portfolio/snapshot/position/reviewの件数、主要ID、基準日が確認できる
 - [ ] 「DB確認」に「読み取り専用」と表示され、保存・更新操作が存在しない
 
@@ -41,3 +46,4 @@
 
 - 仕様: [ポートフォリオ仕様](../specs/tools/portfolio.md)
 - Decision Log: [ポートフォリオの「表示・記録・方針」構成](../decision-log/2026-08-14-portfolio-record-display-policy.md)
+- Decision Log: [ポートフォリオのWhatとpolicy/reflection表示](../decision-log/2026-08-22-portfolio-what-and-policy-reflection-display.md)

@@ -5,7 +5,9 @@ import type {
   PortfolioData,
   PortfolioPosition,
   PortfolioAction,
+  PortfolioPolicy,
   PortfolioRecommendation,
+  PortfolioReflection,
   PortfolioReview,
   PortfolioReviewItem,
   PortfolioSnapshot,
@@ -62,6 +64,54 @@ type ReviewRow = {
   summary: string | null;
   allocation_policy: string | null;
   updated_at: string;
+};
+
+type PolicyRow = {
+  id: string;
+  version_number: number;
+  status: PortfolioPolicy["status"];
+  title: string;
+  objective: string | null;
+  time_horizon: string | null;
+  income_priority: string | null;
+  capital_growth_priority: string | null;
+  risk_statement: string | null;
+  cash_policy: string | null;
+  buy_policy: string | null;
+  sell_policy: string | null;
+  principles: unknown;
+  constraints: unknown;
+  change_reason: string | null;
+  based_on_policy_id: string | null;
+  effective_from: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type PolicyRuleRow = {
+  id: string;
+  policy_version_id: string;
+  dimension: string;
+  target_key: string;
+  min_pct: number | string | null;
+  max_pct: number | string | null;
+  priority: string;
+  rationale: string | null;
+};
+
+type ReflectionRow = {
+  id: string;
+  review_id: string;
+  as_of: string;
+  expected_outcome: string | null;
+  actual_outcome: string | null;
+  worked_well: unknown;
+  did_not_work: unknown;
+  missed_risks: unknown;
+  lessons: unknown;
+  policy_change_recommended: boolean;
+  policy_change_summary: string | null;
+  created_at: string;
 };
 
 type ReviewItemRow = {
@@ -128,6 +178,56 @@ function stringArray(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === "string");
 }
 
+function policyFromRow(row: PolicyRow, rules: PolicyRuleRow[]): PortfolioPolicy {
+  return {
+    id: row.id,
+    versionNumber: row.version_number,
+    status: row.status,
+    title: row.title,
+    objective: row.objective,
+    timeHorizon: row.time_horizon,
+    incomePriority: row.income_priority,
+    capitalGrowthPriority: row.capital_growth_priority,
+    riskStatement: row.risk_statement,
+    cashPolicy: row.cash_policy,
+    buyPolicy: row.buy_policy,
+    sellPolicy: row.sell_policy,
+    principles: stringArray(row.principles),
+    constraints: stringArray(row.constraints),
+    changeReason: row.change_reason,
+    basedOnPolicyId: row.based_on_policy_id,
+    effectiveFrom: row.effective_from,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    rules: rules.map((rule) => ({
+      id: rule.id,
+      dimension: rule.dimension,
+      targetKey: rule.target_key,
+      minPct: numberOrNull(rule.min_pct),
+      maxPct: numberOrNull(rule.max_pct),
+      priority: rule.priority,
+      rationale: rule.rationale,
+    })),
+  };
+}
+
+function reflectionFromRow(row: ReflectionRow): PortfolioReflection {
+  return {
+    id: row.id,
+    reviewId: row.review_id,
+    asOf: row.as_of,
+    expectedOutcome: row.expected_outcome,
+    actualOutcome: row.actual_outcome,
+    workedWell: stringArray(row.worked_well),
+    didNotWork: stringArray(row.did_not_work),
+    missedRisks: stringArray(row.missed_risks),
+    lessons: stringArray(row.lessons),
+    policyChangeRecommended: row.policy_change_recommended,
+    policyChangeSummary: row.policy_change_summary,
+    createdAt: row.created_at,
+  };
+}
+
 function snapshotFromRow(row: SnapshotRow): PortfolioSnapshot {
   return {
     id: row.id,
@@ -148,6 +248,10 @@ function emptyPortfolio(): PortfolioData {
     positions: [],
     dbPositions: [],
     review: null,
+    activePolicy: null,
+    policyHistory: [],
+    latestReflection: null,
+    reflections: [],
     recommendations: [],
     actions: [],
     dbCounts: {
@@ -220,6 +324,50 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     .limit(1)
     .maybeSingle<ReviewRow>();
   if (reviewError) throw reviewError;
+
+  const { data: policyData, error: policiesError } = await supabase
+    .from("stock_notes_portfolio_policy_versions")
+    .select(
+      "id, version_number, status, title, objective, time_horizon, income_priority, capital_growth_priority, risk_statement, cash_policy, buy_policy, sell_policy, principles, constraints, change_reason, based_on_policy_id, effective_from, created_at, updated_at",
+    )
+    .eq("portfolio_id", portfolio.id)
+    .order("version_number", { ascending: false })
+    .limit(20)
+    .returns<PolicyRow[]>();
+  if (policiesError) throw policiesError;
+
+  const policyRows = policyData ?? [];
+  const policyIds = policyRows.map((row) => row.id);
+  const { data: policyRuleData, error: policyRulesError } = policyIds.length > 0
+    ? await supabase
+      .from("stock_notes_portfolio_policy_rules")
+      .select("id, policy_version_id, dimension, target_key, min_pct, max_pct, priority, rationale")
+      .in("policy_version_id", policyIds)
+      .order("dimension", { ascending: true })
+      .order("target_key", { ascending: true })
+      .returns<PolicyRuleRow[]>()
+    : { data: [], error: null };
+  if (policyRulesError) throw policyRulesError;
+
+  const rulesByPolicy = new Map<string, PolicyRuleRow[]>();
+  for (const rule of policyRuleData ?? []) {
+    const rules = rulesByPolicy.get(rule.policy_version_id) ?? [];
+    rules.push(rule);
+    rulesByPolicy.set(rule.policy_version_id, rules);
+  }
+  const policyHistory = policyRows.map((row) => policyFromRow(row, rulesByPolicy.get(row.id) ?? []));
+  const activePolicy = policyHistory.find((policy) => policy.status === "active") ?? null;
+
+  const { data: reflectionData, error: reflectionsError } = await supabase
+    .from("stock_notes_portfolio_reflections")
+    .select("id, review_id, as_of, expected_outcome, actual_outcome, worked_well, did_not_work, missed_risks, lessons, policy_change_recommended, policy_change_summary, created_at")
+    .eq("portfolio_id", portfolio.id)
+    .order("as_of", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(20)
+    .returns<ReflectionRow[]>();
+  if (reflectionsError) throw reflectionsError;
+  const reflections = (reflectionData ?? []).map(reflectionFromRow);
 
   let reviewItemRows: ReviewItemRow[] = [];
   if (reviewRow) {
@@ -386,6 +534,10 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     positions,
     dbPositions,
     review,
+    activePolicy,
+    policyHistory,
+    latestReflection: reflections[0] ?? null,
+    reflections,
     recommendations,
     actions,
     dbCounts: {

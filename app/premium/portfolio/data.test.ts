@@ -14,6 +14,10 @@ class QueryStub {
     return this;
   }
 
+  in() {
+    return this;
+  }
+
   order() {
     return this;
   }
@@ -90,6 +94,18 @@ describe("portfolio data loader", () => {
           data: { id: "review-1", title: "8月棚卸し", status: "draft", as_of: "2026-08-14T00:02:00Z", new_capital_amount: "100000", summary: "分散を維持", allocation_policy: "押し目を待つ", updated_at: "2026-08-14T00:02:00Z" },
           error: null,
         },
+        stock_notes_portfolio_policy_versions: {
+          data: [{ id: "policy-2", version_number: 2, status: "active", title: "高配当を軸に成長も重視", objective: "配当と成長を両立", time_horizon: "長期", income_priority: "high", capital_growth_priority: "medium", risk_statement: "分散を維持", cash_policy: null, buy_policy: "押し目で買い増し", sell_policy: null, principles: ["高配当を切り口にする", "成長も評価する"], constraints: [], change_reason: "成長も一定割合重視", based_on_policy_id: "policy-1", effective_from: "2026-08-14T00:00:00Z", created_at: "2026-08-14T00:00:00Z", updated_at: "2026-08-14T00:00:00Z" }],
+          error: null,
+        },
+        stock_notes_portfolio_policy_rules: {
+          data: [{ id: "rule-1", policy_version_id: "policy-2", dimension: "cycle_profile", target_key: "cyclical", min_pct: "70", max_pct: "70", priority: "preferred", rationale: "当面の目安" }],
+          error: null,
+        },
+        stock_notes_portfolio_reflections: {
+          data: [{ id: "reflection-1", review_id: "review-finalized", as_of: "2026-08-20T00:00:00Z", expected_outcome: "分散を維持", actual_outcome: "集中は許容範囲", worked_well: ["業種分散"], did_not_work: [], missed_risks: ["未分類商品"], lessons: ["分類の鮮度を確認する"], policy_change_recommended: true, policy_change_summary: "分類確認を定期化", created_at: "2026-08-20T00:00:00Z" }],
+          error: null,
+        },
         stock_notes_portfolio_review_items: {
           data: [{ id: "item-1", instrument_id: "instrument-1", item_status: "reviewed", role_labels: ["高配当"], stance: "hold", portfolio_need: "maintain", priority_tier: "medium", priority_rank: 1, target_allocation_pct: "10", proposed_new_capital_amount: "0", buy_conditions: ["押し目"], rationale: "役割は十分", policy_note: null }],
           error: null,
@@ -111,6 +127,9 @@ describe("portfolio data loader", () => {
     expect(data.dbPositions).toHaveLength(2);
     expect(data.dbPositions[1]).toMatchObject({ id: "position-2", accountName: null, accountId: "account-missing" });
     expect(data.review?.items[0]).toMatchObject({ stance: "hold", targetAllocationPct: 10, buyConditions: ["押し目"] });
+    expect(data.activePolicy).toMatchObject({ versionNumber: 2, status: "active", title: "高配当を軸に成長も重視" });
+    expect(data.activePolicy?.rules[0]).toMatchObject({ dimension: "cycle_profile", targetKey: "cyclical", minPct: 70, maxPct: 70 });
+    expect(data.latestReflection).toMatchObject({ policyChangeRecommended: true, lessons: ["分類の鮮度を確認する"] });
     expect(data.recommendations[0]).toMatchObject({ themeKey: "income_reinforcement", proposedAmount: null, proposedPct: null });
     expect(data.actions[0]).toMatchObject({ actionType: "concentration_check", status: "open" });
   });
