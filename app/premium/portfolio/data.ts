@@ -249,14 +249,14 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
   let actionQuery = supabase
     .from("stock_notes_portfolio_actions")
     .select("id, review_id, instrument_id, action_type, title, detail, trigger_condition, due_date, status, created_at, updated_at")
-    .eq("portfolio_id", portfolio.id);
+    .eq("portfolio_id", portfolio.id)
+    .eq("status", "open");
   if (reviewRow) {
     actionQuery = actionQuery.or(`review_id.eq.${reviewRow.id},review_id.is.null`);
   } else {
     actionQuery = actionQuery.or("review_id.is.null");
   }
   const { data: actionData, error: actionsError } = await actionQuery
-    .order("status", { ascending: true })
     .order("created_at", { ascending: false })
     .limit(50)
     .returns<ActionRow[]>();

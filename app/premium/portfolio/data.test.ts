@@ -9,7 +9,8 @@ class QueryStub {
     return this;
   }
 
-  eq() {
+  eq(column?: string, value?: unknown) {
+    if (column === "status" && value === "open") this.queryLog.push("status=open");
     return this;
   }
 
@@ -183,5 +184,6 @@ describe("portfolio data loader", () => {
 
     expect(data.actions).toEqual([]);
     expect(queryLog).toContain("or");
+    expect(queryLog).toContain("status=open");
   });
 });
