@@ -43,7 +43,7 @@ MiniToolsはポートフォリオ方針の主入力画面ではない。主入�
 - 保存済みreview/itemの読み取り表示
 - 保存済みrecommendation/actionの読み取り表示（MiniToolsからの書き込みは行わない）
 - 「意思決定」画面で、判断状態・全体要約・金額なしの補強/調査候補・次のActionを表示
-- DBのpolicy versionをreviewの一時メモと分離して読み取り表示
+- DBのactive policy・policy履歴をreviewの一時メモと分離して読み取り表示し、reviewが参照したpolicy versionも表示
 - policy履歴とlatest reflectionの読み取り表示
 
 ### 未実装

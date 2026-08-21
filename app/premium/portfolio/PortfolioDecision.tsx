@@ -181,6 +181,19 @@ function PolicyCard({ data }: { data: PortfolioData }) {
   );
 }
 
+export function reviewPolicyReferenceLabel(data: PortfolioData): string | null {
+  if (!data.review) return null;
+  const policyId = data.review.policyVersionId;
+  const policy = policyId ? data.policyHistory.find((item) => item.id === policyId) : null;
+  return policy ? `v${policy.versionNumber} / ${policy.status === "active" ? "active" : policy.status}` : policyId ? `未取得（${policyId.slice(0, 8)}…）` : "未紐付け（legacy review）";
+}
+
+function ReviewPolicyReference({ data }: { data: PortfolioData }) {
+  const label = reviewPolicyReferenceLabel(data);
+  if (!label) return null;
+  return <div><strong>review参照方針</strong><br />{label}</div>;
+}
+
 function ReflectionCard({ data }: { data: PortfolioData }) {
   const reflection = data.latestReflection;
   if (!reflection) {
@@ -232,6 +245,7 @@ export default function PortfolioDecision({ data }: { data: PortfolioData }) {
             <div><strong>保有基準日</strong><br />{formatDateTime(data.currentSnapshot?.asOf)}</div>
             <div><strong>review基準日</strong><br />{formatDateTime(data.review?.asOf)}</div>
             <div><strong>review状態</strong><br />{data.review?.status === "finalized" ? "確定" : data.review ? "下書き" : "未作成"}</div>
+            <ReviewPolicyReference data={data} />
           </div>
         </div>
       </Card>

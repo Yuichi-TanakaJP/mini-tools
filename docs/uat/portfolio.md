@@ -11,6 +11,7 @@
 - [ ] `/premium/portfolio` がPremiumログイン後に表示される
 - [ ] 「意思決定」「表示」「記録」「方針・履歴」「DB確認」の5タブを切り替えられる
 - [ ] 「意思決定」でsnapshot/reviewの基準日と判断状態を確認できる
+- [ ] 「意思決定」でreviewが参照したpolicy versionを確認できる（v2等。legacy reviewは未紐付けと表示）
 - [ ] 「意思決定」でactive policyの版、原則、構造化ルールを確認できる
 - [ ] active policyがreviewの一時メモとは別に表示される
 - [ ] 「意思決定」でlatest reflectionの期待、結果、学び、方針変更案を確認できる

@@ -53,6 +53,7 @@ export type PortfolioReviewItem = {
 
 export type PortfolioReview = {
   id: string;
+  policyVersionId: string | null;
   title: string;
   status: "draft" | "finalized";
   asOf: string;

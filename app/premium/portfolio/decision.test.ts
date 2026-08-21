@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getPortfolioDecisionState } from "./PortfolioDecision";
+import { getPortfolioDecisionState, reviewPolicyReferenceLabel } from "./PortfolioDecision";
 import type { PortfolioData } from "./types";
 
 const baseData: PortfolioData = {
@@ -10,7 +10,7 @@ const baseData: PortfolioData = {
   dbPositionSnapshot: null,
   positions: [],
   dbPositions: [],
-  review: { id: "review-1", title: "レビュー", status: "draft", asOf: "2026-08-14T00:02:00Z", newCapitalAmount: null, summary: null, allocationPolicy: null, updatedAt: "2026-08-14T00:02:00Z", items: [] },
+  review: { id: "review-1", policyVersionId: null, title: "レビュー", status: "draft", asOf: "2026-08-14T00:02:00Z", newCapitalAmount: null, summary: null, allocationPolicy: null, updatedAt: "2026-08-14T00:02:00Z", items: [] },
   activePolicy: null,
   policyHistory: [],
   latestReflection: null,
@@ -45,5 +45,35 @@ describe("portfolio decision view state", () => {
       ...baseData,
       currentSnapshot: { ...baseData.currentSnapshot!, asOf: "2026-08-20T00:00:00Z" },
     }).label).toBe("要再レビュー");
+  });
+
+  it("reviewが参照したpolicy versionを表示できる", () => {
+    expect(reviewPolicyReferenceLabel({
+      ...baseData,
+      review: { ...baseData.review!, policyVersionId: "policy-2" },
+      policyHistory: [{
+        id: "policy-2",
+        versionNumber: 2,
+        status: "active",
+        title: "v2",
+        objective: null,
+        timeHorizon: null,
+        incomePriority: null,
+        capitalGrowthPriority: null,
+        riskStatement: null,
+        cashPolicy: null,
+        buyPolicy: null,
+        sellPolicy: null,
+        principles: [],
+        constraints: [],
+        changeReason: null,
+        basedOnPolicyId: null,
+        effectiveFrom: null,
+        createdAt: "2026-08-14T00:00:00Z",
+        updatedAt: "2026-08-14T00:00:00Z",
+        rules: [],
+      }],
+    })).toBe("v2 / active");
+    expect(reviewPolicyReferenceLabel(baseData)).toBe("未紐付け（legacy review）");
   });
 });

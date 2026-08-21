@@ -57,6 +57,7 @@ type PositionRow = {
 
 type ReviewRow = {
   id: string;
+  policy_version_id: string | null;
   title: string;
   status: PortfolioReview["status"];
   as_of: string;
@@ -318,7 +319,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
   }
   const { data: reviewRow, error: reviewError } = await supabase
     .from("stock_notes_portfolio_reviews")
-    .select("id, title, status, as_of, new_capital_amount, summary, allocation_policy, updated_at")
+    .select("id, policy_version_id, title, status, as_of, new_capital_amount, summary, allocation_policy, updated_at")
     .eq("portfolio_id", portfolio.id)
     .order("as_of", { ascending: false })
     .limit(1)
@@ -446,6 +447,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
   if (reviewRow) {
     review = {
       id: reviewRow.id,
+      policyVersionId: reviewRow.policy_version_id,
       title: reviewRow.title,
       status: reviewRow.status,
       asOf: reviewRow.as_of,
