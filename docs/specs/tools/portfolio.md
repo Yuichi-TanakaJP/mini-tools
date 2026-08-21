@@ -46,7 +46,6 @@
 - MiniToolsからrecommendation/actionを作成・更新・完了する
 - stock-notesのdecision-context全体をMiniTools専用の共通読み取り契約として集約する
 - 金額指定を含む新規資金の順位・配分を表示する（現在は金額なし候補の表示のみ）
-- snapshotとreviewの鮮度差を判定する
 - 前回reviewとの差分を表示する
 - 銘柄ダッシュボードとportfolio方針を往復する
 
@@ -67,7 +66,7 @@
 
 - Supabaseの `stock_notes_portfolios`、`stock_notes_portfolio_snapshots`、`stock_notes_portfolio_accounts`、
   `stock_notes_portfolio_instruments`、`stock_notes_portfolio_positions`、`stock_notes_portfolio_reviews`、
-  `stock_notes_portfolio_review_items`
+  `stock_notes_portfolio_review_items`、`stock_notes_portfolio_recommendations`、`stock_notes_portfolio_actions`
 - SupabaseログインセッションとRLSで本人の行だけを取得する
 - CSV取込の正本はstock-notes側の `POST /portfolio/import`
 
@@ -89,7 +88,7 @@
 | Premium未認証 | `/premium/login?next=/premium/portfolio` へ遷移 |
 | Supabase未設定・未ログイン | Supabaseログインが必要であることを表示 |
 | portfolio未作成・CSV未取込 | サンプルを表示せず、未取込メッセージを表示 |
-| readyスナップショットあり | 4タブに実データを表示 |
+| readyスナップショットあり | 5タブに実データを表示 |
 | Supabase取得失敗 | Server Componentの取得エラーとして既存のNext.jsエラー処理に委ねる |
 
 ## premium / 権限制御
@@ -104,7 +103,6 @@
 - [portfolio types](/c:/Users/yutaz/dev/mini-tools/app/premium/portfolio/types.ts)
 - [portfolio workspace](/c:/Users/yutaz/dev/mini-tools/app/premium/portfolio/PortfolioWorkspace.tsx)
 - [portfolio decision view](/c:/Users/yutaz/dev/mini-tools/app/premium/portfolio/PortfolioDecision.tsx)
-- [portfolio data loader](/c:/Users/yutaz/dev/mini-tools/app/premium/portfolio/data.ts)
 
 ## 関連 docs
 

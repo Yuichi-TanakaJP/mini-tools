@@ -148,7 +148,9 @@ export default function PortfolioDecision({ data }: { data: PortfolioData }) {
   const status = statusFor(data);
   const uniqueInstrumentCount = new Set(data.positions.map((position) => position.identifier)).size;
   const openActions = data.actions.filter((action) => action.status === "open");
-  const allAmountless = data.recommendations.length > 0 && data.recommendations.every((recommendation) => recommendation.proposedAmount === null && recommendation.proposedPct === null);
+  const amountlessRecommendations = data.recommendations.filter((recommendation) => recommendation.proposedAmount === null && recommendation.proposedPct === null);
+  const capitalRecommendations = data.recommendations.filter((recommendation) => recommendation.proposedAmount !== null || recommendation.proposedPct !== null);
+  const allAmountless = data.recommendations.length > 0 && capitalRecommendations.length === 0;
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
@@ -160,7 +162,7 @@ export default function PortfolioDecision({ data }: { data: PortfolioData }) {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
             <div style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 12 }}><div style={{ color: "var(--color-text-muted)", fontSize: 12 }}>保有商品</div><strong style={{ display: "block", marginTop: 6, fontSize: 22 }}>{uniqueInstrumentCount}商品</strong><span style={{ color: "var(--color-text-muted)", fontSize: 11 }}>position {data.positions.length}件</span></div>
-            <div style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 12 }}><div style={{ color: "var(--color-text-muted)", fontSize: 12 }}>保存済み推薦</div><strong style={{ display: "block", marginTop: 6, fontSize: 22 }}>{data.recommendations.length}件</strong><span style={{ color: "var(--color-text-muted)", fontSize: 11 }}>{allAmountless ? "金額を仮定しない" : "金額指定を含む"}</span></div>
+            <div style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 12 }}><div style={{ color: "var(--color-text-muted)", fontSize: 12 }}>表示対象の推薦</div><strong style={{ display: "block", marginTop: 6, fontSize: 22 }}>{amountlessRecommendations.length}件</strong><span style={{ color: "var(--color-text-muted)", fontSize: 11 }}>{capitalRecommendations.length > 0 ? `金額付き ${capitalRecommendations.length}件は対象外` : "金額を仮定しない"}</span></div>
             <div style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 12 }}><div style={{ color: "var(--color-text-muted)", fontSize: 12 }}>未完了Action</div><strong style={{ display: "block", marginTop: 6, fontSize: 22 }}>{openActions.length}件</strong><span style={{ color: "var(--color-text-muted)", fontSize: 11 }}>次に確認する作業</span></div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8, color: "var(--color-text-sub)", fontSize: 13 }}>
@@ -183,10 +185,11 @@ export default function PortfolioDecision({ data }: { data: PortfolioData }) {
       </Card>
 
       <Card title="補強・調査の優先順位">
-        {data.recommendations.length === 0 ? <EmptyMessage>保存済みrecommendationはありません。ChatGPTで「不足」「補強」「調査」を整理し、確認後に保存するとここへ反映されます。</EmptyMessage> : (
+        {capitalRecommendations.length > 0 ? <div style={{ marginBottom: amountlessRecommendations.length > 0 ? 10 : 0, padding: 12, borderRadius: 10, background: "#fff7ed", color: "#9a3412", fontSize: 13, lineHeight: 1.65 }}>金額または比率付きrecommendation {capitalRecommendations.length}件は、この初回表示の対象外です。金額配分UIを実装するまで、MiniTools上では配分指示として表示しません。</div> : null}
+        {amountlessRecommendations.length === 0 ? <EmptyMessage>表示対象のrecommendationはありません。ChatGPTで金額を仮定しない「不足」「補強」「調査」を整理し、確認後に保存するとここへ反映されます。</EmptyMessage> : (
           <div style={{ display: "grid", gap: 10 }}>
             {allAmountless ? <div style={{ padding: 12, borderRadius: 10, background: "#eff6ff", color: "#1e3a8a", fontSize: 13, lineHeight: 1.65 }}>現在の推薦はすべて金額なしのテーマ・調査です。銘柄の売買指示や資金配分ではなく、次に検討する論点を保存しています。</div> : null}
-            {data.recommendations.map((recommendation) => <RecommendationCard key={recommendation.id} recommendation={recommendation} />)}
+            {amountlessRecommendations.map((recommendation) => <RecommendationCard key={recommendation.id} recommendation={recommendation} />)}
           </div>
         )}
       </Card>
