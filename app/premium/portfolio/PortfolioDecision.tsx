@@ -144,6 +144,69 @@ function ActionCard({ action }: { action: PortfolioAction }) {
   );
 }
 
+function PolicyCard({ data }: { data: PortfolioData }) {
+  const policy = data.activePolicy;
+  if (!policy) {
+    return (
+      <Card title="現在の投資方針">
+        <EmptyMessage>activeな投資方針はまだありません。ChatGPTで方針案を相談し、確認後にactive化してください。reviewの一時メモとは別に管理されます。</EmptyMessage>
+      </Card>
+    );
+  }
+
+  return (
+    <Card title="現在の投資方針">
+      <div style={{ display: "grid", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+          <strong>{policy.title}</strong>
+          <Badge tone="green">v{policy.versionNumber} / active</Badge>
+          <span style={{ color: "var(--color-text-muted)", fontSize: 12 }}>適用開始 {formatDate(policy.effectiveFrom)}</span>
+        </div>
+        {policy.objective ? <div style={{ color: "var(--color-text-sub)", lineHeight: 1.65 }}>{policy.objective}</div> : null}
+        {policy.principles.length > 0 ? (
+          <div style={{ display: "grid", gap: 5, color: "var(--color-text-sub)", fontSize: 13 }}>
+            <strong>原則</strong>
+            <ul style={{ margin: 0, paddingLeft: 20 }}>{policy.principles.map((principle) => <li key={principle}>{principle}</li>)}</ul>
+          </div>
+        ) : null}
+        {policy.rules.length > 0 ? (
+          <div style={{ display: "grid", gap: 5, color: "var(--color-text-sub)", fontSize: 13 }}>
+            <strong>構造化ルール</strong>
+            <ul style={{ margin: 0, paddingLeft: 20 }}>{policy.rules.map((rule) => <li key={rule.id}>{rule.dimension} / {rule.targetKey}: {rule.minPct !== null ? `${rule.minPct}%` : "下限なし"}〜{rule.maxPct !== null ? `${rule.maxPct}%` : "上限なし"}{rule.rationale ? `（${rule.rationale}）` : ""}</li>)}</ul>
+          </div>
+        ) : null}
+        <div style={{ color: "var(--color-text-muted)", fontSize: 12 }}>この方針はreviewの要約とは別の正本です。変更時は新しい版として履歴に残ります。</div>
+      </div>
+    </Card>
+  );
+}
+
+function ReflectionCard({ data }: { data: PortfolioData }) {
+  const reflection = data.latestReflection;
+  if (!reflection) {
+    return (
+      <Card title="最新の振り返り">
+        <EmptyMessage>振り返りはまだありません。確定済みreviewをもとに、後日GPTで期待と結果を比較して保存します。</EmptyMessage>
+      </Card>
+    );
+  }
+
+  return (
+    <Card title="最新の振り返り">
+      <div style={{ display: "grid", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+          <strong>{formatDate(reflection.asOf)}</strong>
+          {reflection.policyChangeRecommended ? <Badge tone="orange">方針変更案あり</Badge> : <Badge tone="slate">方針継続</Badge>}
+        </div>
+        {reflection.expectedOutcome ? <div style={{ color: "var(--color-text-sub)", lineHeight: 1.65 }}><strong>期待</strong><br />{reflection.expectedOutcome}</div> : null}
+        {reflection.actualOutcome ? <div style={{ color: "var(--color-text-sub)", lineHeight: 1.65 }}><strong>結果</strong><br />{reflection.actualOutcome}</div> : null}
+        {reflection.lessons.length > 0 ? <div style={{ color: "var(--color-text-sub)", lineHeight: 1.65 }}><strong>学び</strong><br />{reflection.lessons.join(" / ")}</div> : null}
+        {reflection.policyChangeSummary ? <div style={{ color: "var(--color-text-sub)", lineHeight: 1.65 }}><strong>方針変更案</strong><br />{reflection.policyChangeSummary}</div> : null}
+      </div>
+    </Card>
+  );
+}
+
 export default function PortfolioDecision({ data }: { data: PortfolioData }) {
   const status = statusFor(data);
   const uniqueInstrumentCount = new Set(data.positions.map((position) => position.identifier)).size;
@@ -172,6 +235,10 @@ export default function PortfolioDecision({ data }: { data: PortfolioData }) {
           </div>
         </div>
       </Card>
+
+      <PolicyCard data={data} />
+
+      <ReflectionCard data={data} />
 
       <Card title="今回の全体判断">
         {!data.review ? <EmptyMessage>まだreviewが保存されていません。MiniToolsから手入力せず、ポートフォリオGPTで相談して保存してください。</EmptyMessage> : (
