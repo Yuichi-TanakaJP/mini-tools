@@ -17,6 +17,10 @@ class QueryStub {
     return this;
   }
 
+  or() {
+    return this;
+  }
+
   limit() {
     return this;
   }

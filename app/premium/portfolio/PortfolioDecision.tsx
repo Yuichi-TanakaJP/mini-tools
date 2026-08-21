@@ -192,7 +192,7 @@ export default function PortfolioDecision({ data }: { data: PortfolioData }) {
       </Card>
 
       <Card title="次に確認するAction">
-        {data.actions.length === 0 ? <EmptyMessage>保存済みActionはありません。</EmptyMessage> : <div style={{ display: "grid", gap: 10 }}>{data.actions.map((action) => <ActionCard key={action.id} action={action} />)}</div>}
+        {openActions.length === 0 ? <EmptyMessage>未完了のActionはありません。</EmptyMessage> : <div style={{ display: "grid", gap: 10 }}>{openActions.map((action) => <ActionCard key={action.id} action={action} />)}</div>}
       </Card>
     </div>
   );
