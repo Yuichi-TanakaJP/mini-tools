@@ -1,6 +1,6 @@
 # ポートフォリオ 仕様
 
-> **実装状態:** 2026-08-15時点の画面は、最新snapshotと保存済みreviewを読むPhase 0版である。
+> **実装状態:** 2026-08-21時点の画面は、最新snapshotと保存済みreview/recommendation/actionを読むUI-1〜UI-2初回版である。
 > ポートフォリオ意思決定プラットフォームの完成品ではない。目標運用とUIの実装順序は
 > [ポートフォリオ意思決定ワークスペース実装計画](../../plans/portfolio-decision-workspace-plan.md) を参照する。
 
@@ -8,7 +8,7 @@
 
 - URL: `/premium/portfolio`
 - 分類: Premium / 投資管理
-- 現行Phase 0の主な用途: 保有状況を「表示・記録・方針」の3つの視点で確認し、DB確認タブで読み取り結果を検証する
+- 現行の主な用途: ChatGPTで保存したポートフォリオ判断を「意思決定」画面で確認し、保有明細・履歴・DB確認を補助表示として利用する
 
 ## 対象ユーザー
 
@@ -18,6 +18,7 @@
 
 ### 主な画面要素
 
+- **意思決定**: 判断状態、snapshot/reviewの基準日、全体要約、金額なしの補強・調査recommendation、未完了portfolio action
 - **表示**: 最新readyスナップショットの評価額・取得額・含み損益・商品別配分
 - **記録**: 最新スナップショットの口座別ポジション明細、過去の取込履歴
 - **方針**: 最新portfolio reviewの全体方針と銘柄別の役割・判断・買い増し条件・優先順位
@@ -29,18 +30,22 @@
 - CSV取込はstock-notesの認証付きAPIを使用する
 - 目標仕様でも主入力はMiniToolsのフォームではなく、ChatGPTとの相談とする
 - ChatGPTが全体contextを取得し、ユーザー確認後にreview/actionを保存する経路は未実装
+- MiniToolsの画面からrecommendation/actionを編集・保存する入力は持たない。保存済みデータの正本はstock-notes API/DBである
 
 ### 出力
 
+- 「意思決定」では、保存済みreviewの基準日・状態・要約、recommendationの対象/優先順位/条件/理由、actionの状態/実行条件を表示する
+- `proposed_amount` と `proposed_pct` が未設定のrecommendationは「金額未指定」「金額を仮定しない」と明示する
 - 株式・投資信託を商品単位で表示する
 - 口座別の同一商品は「表示」では集約し、「記録」では分けて表示する
 - 金額が未取得の場合は `—` とし、0円とは区別する
 
 ### 現段階でできないこと
 
-- ChatGPTがportfolio全体の判断材料を一括取得する
-- 全体の弱み、不足する役割、集中リスクを表示する
-- 新規資金の順位、配分、待機資金、見送り理由を表示する
+- MiniToolsからChatGPTの相談・保存を開始する
+- MiniToolsからrecommendation/actionを作成・更新・完了する
+- stock-notesのdecision-context全体をMiniTools専用の共通読み取り契約として集約する
+- 金額指定を含む新規資金の順位・配分を表示する（現在は金額なし候補の表示のみ）
 - snapshotとreviewの鮮度差を判定する
 - 前回reviewとの差分を表示する
 - 銘柄ダッシュボードとportfolio方針を往復する
@@ -52,6 +57,7 @@
 - 画面に表示する件数は、現在の取得クエリが返した生行数であり、関連行の表示用整形で除外された行も含む。銘柄マスタはスキーマ上portfolio_idを持たないためユーザー単位、それ以外は現在のportfolio・snapshot・reviewに紐づく取得範囲である。DB全体の無条件スキャンではない
 - 未取込・認証必須・ready snapshotなしを0件の成功状態と混同しない
 - DBの正本はSupabaseであり、この画面は表示用の派生ビューである
+- recommendation/actionの取得も本人のSupabase行だけを対象とし、取得失敗を「0件」として扱わない
 
 これらは「後からあると便利」な拡張ではなく、実装計画上の完成条件である。
 
@@ -97,6 +103,8 @@
 - [portfolio data loader](/c:/Users/yutaz/dev/mini-tools/app/premium/portfolio/data.ts)
 - [portfolio types](/c:/Users/yutaz/dev/mini-tools/app/premium/portfolio/types.ts)
 - [portfolio workspace](/c:/Users/yutaz/dev/mini-tools/app/premium/portfolio/PortfolioWorkspace.tsx)
+- [portfolio decision view](/c:/Users/yutaz/dev/mini-tools/app/premium/portfolio/PortfolioDecision.tsx)
+- [portfolio data loader](/c:/Users/yutaz/dev/mini-tools/app/premium/portfolio/data.ts)
 
 ## 関連 docs
 

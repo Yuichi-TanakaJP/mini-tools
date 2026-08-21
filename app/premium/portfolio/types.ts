@@ -63,6 +63,43 @@ export type PortfolioReview = {
   items: PortfolioReviewItem[];
 };
 
+export type PortfolioRecommendation = {
+  id: string;
+  reviewId: string;
+  targetType: "holding" | "candidate_stock" | "theme" | "cash";
+  instrumentId: string | null;
+  instrumentIdentifier: string | null;
+  instrumentName: string | null;
+  stockId: string | null;
+  themeKey: string | null;
+  recommendationType: "reinforce" | "new_position" | "maintain" | "wait" | "reduce" | "research";
+  priorityTier: "high" | "medium" | "low" | null;
+  priorityRank: number | null;
+  proposedAmount: number | null;
+  proposedPct: number | null;
+  conditions: string[];
+  rationale: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PortfolioAction = {
+  id: string;
+  reviewId: string | null;
+  instrumentId: string | null;
+  instrumentIdentifier: string | null;
+  instrumentName: string | null;
+  actionType: "review" | "allocation_wait" | "staged_investment" | "price_check" | "yield_check" | "earnings_check" | "concentration_check" | "other";
+  title: string;
+  detail: string | null;
+  triggerCondition: string | null;
+  dueDate: string | null;
+  status: "open" | "done" | "dismissed";
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type PortfolioDbPosition = {
   id: string;
   accountId: string;
@@ -106,6 +143,8 @@ export type PortfolioData = {
   positions: PortfolioPosition[];
   dbPositions: PortfolioDbPosition[];
   review: PortfolioReview | null;
+  recommendations: PortfolioRecommendation[];
+  actions: PortfolioAction[];
   dbCounts: PortfolioDbCounts;
   source: "server" | "empty";
 };

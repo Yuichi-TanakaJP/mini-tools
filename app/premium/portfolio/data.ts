@@ -4,6 +4,8 @@ import type {
   PortfolioDbPosition,
   PortfolioData,
   PortfolioPosition,
+  PortfolioAction,
+  PortfolioRecommendation,
   PortfolioReview,
   PortfolioReviewItem,
   PortfolioSnapshot,
@@ -78,6 +80,39 @@ type ReviewItemRow = {
   policy_note: string | null;
 };
 
+type RecommendationRow = {
+  id: string;
+  review_id: string;
+  target_type: PortfolioRecommendation["targetType"];
+  instrument_id: string | null;
+  stock_id: string | null;
+  theme_key: string | null;
+  recommendation_type: PortfolioRecommendation["recommendationType"];
+  priority_tier: PortfolioRecommendation["priorityTier"];
+  priority_rank: number | null;
+  proposed_amount: number | string | null;
+  proposed_pct: number | string | null;
+  conditions: unknown;
+  rationale: string | null;
+  rejection_reason: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type ActionRow = {
+  id: string;
+  review_id: string | null;
+  instrument_id: string | null;
+  action_type: PortfolioAction["actionType"];
+  title: string;
+  detail: string | null;
+  trigger_condition: string | null;
+  due_date: string | null;
+  status: PortfolioAction["status"];
+  created_at: string;
+  updated_at: string;
+};
+
 function numberOrNull(value: number | string | null | undefined): number | null {
   if (value === null || value === undefined || value === "") return null;
   const parsed = typeof value === "number" ? value : Number(value);
@@ -113,6 +148,8 @@ function emptyPortfolio(): PortfolioData {
     positions: [],
     dbPositions: [],
     review: null,
+    recommendations: [],
+    actions: [],
     dbCounts: {
       portfolio: 0,
       snapshots: 0,
@@ -198,6 +235,27 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     reviewItemRows = itemRows ?? [];
   }
 
+  const { data: recommendationData, error: recommendationsError } = reviewRow
+    ? await supabase
+      .from("stock_notes_portfolio_recommendations")
+      .select("id, review_id, target_type, instrument_id, stock_id, theme_key, recommendation_type, priority_tier, priority_rank, proposed_amount, proposed_pct, conditions, rationale, rejection_reason, created_at, updated_at")
+      .eq("review_id", reviewRow.id)
+      .order("priority_rank", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true })
+      .returns<RecommendationRow[]>()
+    : { data: [], error: null };
+  if (recommendationsError) throw recommendationsError;
+
+  const { data: actionData, error: actionsError } = await supabase
+    .from("stock_notes_portfolio_actions")
+    .select("id, review_id, instrument_id, action_type, title, detail, trigger_condition, due_date, status, created_at, updated_at")
+    .eq("portfolio_id", portfolio.id)
+    .order("status", { ascending: true })
+    .order("created_at", { ascending: false })
+    .limit(50)
+    .returns<ActionRow[]>();
+  if (actionsError) throw actionsError;
+
   const { data: instrumentData, error: instrumentsError } = await supabase
     .from("stock_notes_portfolio_instruments")
     .select("id, asset_type, identifier, name")
@@ -271,6 +329,49 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     };
   }
 
+  const recommendations: PortfolioRecommendation[] = (recommendationData ?? []).map((row) => {
+    const instrument = row.instrument_id ? instruments.get(row.instrument_id) : undefined;
+    return {
+      id: row.id,
+      reviewId: row.review_id,
+      targetType: row.target_type,
+      instrumentId: row.instrument_id,
+      instrumentIdentifier: instrument?.identifier ?? null,
+      instrumentName: instrument?.name ?? null,
+      stockId: row.stock_id,
+      themeKey: row.theme_key,
+      recommendationType: row.recommendation_type,
+      priorityTier: row.priority_tier,
+      priorityRank: row.priority_rank,
+      proposedAmount: numberOrNull(row.proposed_amount),
+      proposedPct: numberOrNull(row.proposed_pct),
+      conditions: stringArray(row.conditions),
+      rationale: row.rationale,
+      rejectionReason: row.rejection_reason,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  });
+
+  const actions: PortfolioAction[] = (actionData ?? []).map((row) => {
+    const instrument = row.instrument_id ? instruments.get(row.instrument_id) : undefined;
+    return {
+      id: row.id,
+      reviewId: row.review_id,
+      instrumentId: row.instrument_id,
+      instrumentIdentifier: instrument?.identifier ?? null,
+      instrumentName: instrument?.name ?? null,
+      actionType: row.action_type,
+      title: row.title,
+      detail: row.detail,
+      triggerCondition: row.trigger_condition,
+      dueDate: row.due_date,
+      status: row.status,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  });
+
   return {
     authState: "authenticated",
     portfolio: {
@@ -284,6 +385,8 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     positions,
     dbPositions,
     review,
+    recommendations,
+    actions,
     dbCounts: {
       portfolio: 1,
       snapshots: snapshots.length,

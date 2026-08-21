@@ -15,6 +15,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 - [2026-08-14 ポートフォリオの「表示・記録・方針」構成](./decision-log/2026-08-14-portfolio-record-display-policy.md)
 - [2026-08-15 ポートフォリオはChatGPT起点の意思決定ワークスペースとする](./decision-log/2026-08-15-portfolio-chat-first-operating-model.md)
 - [2026-08-18 ポートフォリオDB確認ビュー](./decision-log/2026-08-18-portfolio-db-check-view.md)
+- [2026-08-21 ポートフォリオ意思決定画面の初回実装](./decision-log/2026-08-21-portfolio-decision-view.md)
 - [2026-08-07 優待取得時に次回権利月を固定する](./decision-log/2026-08-07-yutai-acquired-entitlement-lock.md)
 
 設計・方針・トレードオフの判断理由を記録します。
