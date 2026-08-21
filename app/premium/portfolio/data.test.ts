@@ -3,13 +3,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadPortfolio, portfolioAuthRequired } from "./data";
 
 class QueryStub {
-  constructor(private readonly result: unknown) {}
+  constructor(private readonly result: unknown, private readonly queryLog: string[] = []) {}
 
   select() {
     return this;
   }
 
-  eq() {
+  eq(column?: string, value?: unknown) {
+    if (column === "status" && value === "open") this.queryLog.push("status=open");
     return this;
   }
 
@@ -30,10 +31,10 @@ class QueryStub {
   }
 }
 
-function stubClient(results: Record<string, unknown>) {
+function stubClient(results: Record<string, unknown>, queryLog: string[] = []) {
   return {
     from(table: string) {
-      return new QueryStub(results[table] ?? { data: [], error: null });
+      return new QueryStub(results[table] ?? { data: [], error: null }, queryLog);
     },
   } as unknown as SupabaseClient;
 }
@@ -93,6 +94,14 @@ describe("portfolio data loader", () => {
           data: [{ id: "item-1", instrument_id: "instrument-1", item_status: "reviewed", role_labels: ["高配当"], stance: "hold", portfolio_need: "maintain", priority_tier: "medium", priority_rank: 1, target_allocation_pct: "10", proposed_new_capital_amount: "0", buy_conditions: ["押し目"], rationale: "役割は十分", policy_note: null }],
           error: null,
         },
+        stock_notes_portfolio_recommendations: {
+          data: [{ id: "recommendation-1", review_id: "review-1", target_type: "theme", instrument_id: null, stock_id: null, theme_key: "income_reinforcement", recommendation_type: "research", priority_tier: "high", priority_rank: 1, proposed_amount: null, proposed_pct: null, conditions: ["利回り確認"], rationale: "調査する", rejection_reason: null, created_at: "2026-08-14T00:03:00Z", updated_at: "2026-08-14T00:03:00Z" }],
+          error: null,
+        },
+        stock_notes_portfolio_actions: {
+          data: [{ id: "action-1", review_id: "review-1", instrument_id: null, action_type: "concentration_check", title: "集中確認", detail: "業種集中を確認", trigger_condition: "分類後", due_date: null, status: "open", created_at: "2026-08-14T00:04:00Z", updated_at: "2026-08-14T00:04:00Z" }],
+          error: null,
+        },
       }),
     );
 
@@ -102,6 +111,8 @@ describe("portfolio data loader", () => {
     expect(data.dbPositions).toHaveLength(2);
     expect(data.dbPositions[1]).toMatchObject({ id: "position-2", accountName: null, accountId: "account-missing" });
     expect(data.review?.items[0]).toMatchObject({ stance: "hold", targetAllocationPct: 10, buyConditions: ["押し目"] });
+    expect(data.recommendations[0]).toMatchObject({ themeKey: "income_reinforcement", proposedAmount: null, proposedPct: null });
+    expect(data.actions[0]).toMatchObject({ actionType: "concentration_check", status: "open" });
   });
 
   it("ready snapshotがなくても関連テーブルの取得件数を保持する", async () => {
@@ -146,5 +157,30 @@ describe("portfolio data loader", () => {
     expect(data.dbPositionSnapshot?.id).toBe("snapshot-1");
     expect(data.dbPositions).toHaveLength(1);
     expect(data.dbCounts).toMatchObject({ portfolio: 1, snapshots: 1, accounts: 1, instruments: 2, positions: 1, reviews: 1, reviewItems: 1 });
+  });
+
+  it("review周期をまたいだ未完了Actionを取得する", async () => {
+    const queryLog: string[] = [];
+    const data = await loadPortfolio(
+      stubClient({
+        stock_notes_portfolios: {
+          data: { id: "portfolio-1", name: "メイン", base_currency: "JPY" },
+          error: null,
+        },
+        stock_notes_portfolio_snapshots: { data: [], error: null },
+        stock_notes_portfolio_accounts: { data: [], error: null },
+        stock_notes_portfolio_positions: { data: [], error: null },
+        stock_notes_portfolio_reviews: { data: null, error: null },
+        stock_notes_portfolio_review_items: { data: [], error: null },
+        stock_notes_portfolio_instruments: { data: [], error: null },
+        stock_notes_portfolio_actions: {
+          data: [{ id: "action-old", review_id: "review-old", instrument_id: null, action_type: "review", title: "未完了の持越し確認", detail: "前回reviewからの持越し", trigger_condition: null, due_date: null, status: "open", created_at: "2026-08-14T00:04:00Z", updated_at: "2026-08-14T00:04:00Z" }],
+          error: null,
+        },
+      }, queryLog),
+    );
+
+    expect(data.actions[0]).toMatchObject({ id: "action-old", reviewId: "review-old", status: "open" });
+    expect(queryLog).toContain("status=open");
   });
 });

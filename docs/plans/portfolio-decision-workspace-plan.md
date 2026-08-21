@@ -2,7 +2,7 @@
 
 最終更新: 2026-08-15
 
-状態: **計画レビュー中。現行 `/premium/portfolio` はPhase 0の読み取り版であり、完成品ではない。**
+状態: **UI-1〜UI-2の初回実装中。`/premium/portfolio` は保存済み判断を読む意思決定ワークスペースへ移行中であり、完成品ではない。**
 
 ## 1. 正本と対象範囲
 
@@ -37,11 +37,13 @@ MiniToolsはポートフォリオ方針の主入力画面ではない。主入�
 - 最新ready snapshotの評価額・取得額・損益表示
 - 口座別position、snapshot履歴の表示
 - 保存済みreview/itemの読み取り表示
+- 保存済みrecommendation/actionの読み取り表示（MiniToolsからの書き込みは行わない）
+- 「意思決定」画面で、判断状態・全体要約・金額なしの補強/調査候補・次のActionを表示
 
 ### 未実装
 
 - ChatGPT相談開始・継続導線
-- portfolio context APIを使った判断材料の集約
+- stock-notesのdecision context APIをMiniTools専用の共有契約として利用すること
 - 全体診断、弱み、不足する役割
 - 新規資金配分、待機資金、見送り理由
 - 分析鮮度、決算後未分析、取得失敗の表示
@@ -227,16 +229,20 @@ MiniToolsはSupabase Auth/RLSを使って本人データを読む。表示用の
 - 現行仕様に読み取り版・未完成と明記
 - 旧decision logを置換せず、後続判断で更新されたことを記録
 
-### UI-1: 読み取りcontractと型
+### UI-1: 読み取りcontractと型（初回実装）
 
 - context/review/action/diffの画面用型
 - 正常、reviewなし、分析不足、失敗のfixture
 - データ変換の単体テスト
+- recommendation/actionのSupabase読み取り型と正規化
+- 金額なしrecommendationを金額配分と誤認しない表示状態
 
-### UI-2: 意思決定画面
+### UI-2: 意思決定画面（初回実装）
 
 - ヘッダー、全体判断、投入計画、診断、アクション
 - reviewなし・要再レビュー状態
+- 保存済みテーマ推薦と未完了Action
+- 新規資金額未設定時の明示
 - モバイル/PC UAT
 
 ### UI-3: 保有・履歴

@@ -17,6 +17,8 @@ const baseData: PortfolioData = {
     { id: "position-2", accountId: "account-taxable", instrumentId: "instrument-1605", assetType: "domestic_stock", identifier: "1605", name: "INPEX", accountName: "課税口座", accountType: "taxable", institutionName: "証券会社", quantity: 10, unitCost: 2000, quotedPrice: 2200, quoteUnit: 1, costBasis: 20000, marketValue: 22000, unrealizedPnl: 2000, distributionMethod: null },
   ],
   review: { id: "review-1", title: "8月レビュー", status: "draft", asOf: "2026-08-14T00:02:00Z", newCapitalAmount: 100000, summary: null, allocationPolicy: null, updatedAt: "2026-08-14T00:02:00Z", items: [] },
+  recommendations: [],
+  actions: [],
   dbCounts: { portfolio: 1, snapshots: 1, accounts: 2, instruments: 1, positions: 2, reviews: 1, reviewItems: 0 },
   source: "server",
 };

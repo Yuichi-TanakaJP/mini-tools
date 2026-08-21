@@ -3,10 +3,12 @@
 import { useMemo, useState } from "react";
 import type { PortfolioData, PortfolioDbPosition, PortfolioPosition, PortfolioReviewItem } from "./types";
 import { summarizePortfolioDbResult } from "./db-check";
+import PortfolioDecision from "./PortfolioDecision";
 
-type Tab = "overview" | "record" | "policy" | "db";
+type Tab = "decision" | "overview" | "record" | "policy" | "db";
 
 const tabLabels: Record<Tab, string> = {
+  decision: "意思決定",
   overview: "表示",
   record: "記録",
   policy: "方針",
@@ -317,7 +319,7 @@ function DbCheckView({ data }: { data: PortfolioData }) {
 }
 
 export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>("decision");
   const grouped = useMemo(() => groupPositions(data.positions), [data.positions]);
   const totalValue = sumNullable(data.positions.map((position) => position.marketValue));
   const totalCost = sumNullable(data.positions.map((position) => position.costBasis));
@@ -361,6 +363,8 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
         tab === "db" ? <DbCheckView data={data} /> : null
       ) : (
         <>
+      {tab === "decision" ? <PortfolioDecision data={data} /> : null}
+
       {tab === "overview" ? (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
