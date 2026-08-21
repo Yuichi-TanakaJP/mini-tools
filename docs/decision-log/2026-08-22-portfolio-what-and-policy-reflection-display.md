@@ -15,6 +15,7 @@ MiniToolsは主入力画面ではなく、stock-notes API/DBに保存された�
 - MiniToolsからpolicyのactive化、reviewのfinalize、reflection保存は行わない
 - 今回は新規APIや新規DBテーブルを追加せず、既存Supabaseの本人データを読み取る
 - MiniToolsとstock-notesの集計定義を別実装にしないため、exposure・差分・鮮度判定は共有読み取り契約へ移行する候補として残す
+- reviewとactive policyの取り違えを防ぐため、reviewの`policy_version_id`を読み取り、policy履歴からv2等の版表示へ解決する。legacy reviewは未紐付けとして表示する
 
 ## 実装範囲
 

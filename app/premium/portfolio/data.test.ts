@@ -91,7 +91,7 @@ describe("portfolio data loader", () => {
           error: null,
         },
         stock_notes_portfolio_reviews: {
-          data: { id: "review-1", title: "8月棚卸し", status: "draft", as_of: "2026-08-14T00:02:00Z", new_capital_amount: "100000", summary: "分散を維持", allocation_policy: "押し目を待つ", updated_at: "2026-08-14T00:02:00Z" },
+          data: { id: "review-1", policy_version_id: "policy-2", title: "8月棚卸し", status: "draft", as_of: "2026-08-14T00:02:00Z", new_capital_amount: "100000", summary: "分散を維持", allocation_policy: "押し目を待つ", updated_at: "2026-08-14T00:02:00Z" },
           error: null,
         },
         stock_notes_portfolio_policy_versions: {
@@ -127,6 +127,7 @@ describe("portfolio data loader", () => {
     expect(data.dbPositions).toHaveLength(2);
     expect(data.dbPositions[1]).toMatchObject({ id: "position-2", accountName: null, accountId: "account-missing" });
     expect(data.review?.items[0]).toMatchObject({ stance: "hold", targetAllocationPct: 10, buyConditions: ["押し目"] });
+    expect(data.review?.policyVersionId).toBe("policy-2");
     expect(data.activePolicy).toMatchObject({ versionNumber: 2, status: "active", title: "高配当を軸に成長も重視" });
     expect(data.activePolicy?.rules[0]).toMatchObject({ dimension: "cycle_profile", targetKey: "cyclical", minPct: 70, maxPct: 70 });
     expect(data.latestReflection).toMatchObject({ policyChangeRecommended: true, lessons: ["分類の鮮度を確認する"] });
@@ -161,7 +162,7 @@ describe("portfolio data loader", () => {
           error: null,
         },
         stock_notes_portfolio_reviews: {
-          data: { id: "review-1", title: "8月棚卸し", status: "draft", as_of: "2026-08-14T00:02:00Z", new_capital_amount: null, summary: null, allocation_policy: null, updated_at: "2026-08-14T00:02:00Z" },
+          data: { id: "review-1", policy_version_id: null, title: "8月棚卸し", status: "draft", as_of: "2026-08-14T00:02:00Z", new_capital_amount: null, summary: null, allocation_policy: null, updated_at: "2026-08-14T00:02:00Z" },
           error: null,
         },
         stock_notes_portfolio_review_items: {

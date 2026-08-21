@@ -1,6 +1,6 @@
 # ポートフォリオ 仕様
 
-> **実装状態:** 2026-08-22時点の画面は、最新snapshot、active policy・policy履歴、保存済みreview/recommendation/action、latest reflectionを読むUI-1〜UI-2初回版である。
+> **実装状態:** 2026-08-22時点の画面は、最新snapshot、active policy・policy履歴、保存済みreview/recommendation/action、latest reflectionを読むUI-1〜UI-2初回版である。reviewが参照したpolicy versionも表示する。
 > ポートフォリオ意思決定プラットフォームの完成品ではない。目標運用とUIの実装順序は
 > [ポートフォリオ意思決定ワークスペース実装計画](../../plans/portfolio-decision-workspace-plan.md) を参照する。
 
@@ -36,6 +36,7 @@
 ### 出力
 
 - 「意思決定」では、保存済みreviewの基準日・状態・要約、recommendationの対象/優先順位/条件/理由、actionの状態/実行条件を表示する
+- 「意思決定」では、reviewが参照したpolicy versionを表示する。旧reviewで参照先が未保存の場合は「未紐付け（legacy review）」と表示し、active policyと混同しない
 - `proposed_amount` と `proposed_pct` が未設定のrecommendationは「金額未指定」「金額を仮定しない」と明示する
 - 株式・投資信託を商品単位で表示する
 - 口座別の同一商品は「表示」では集約し、「記録」では分けて表示する
