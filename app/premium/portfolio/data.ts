@@ -337,7 +337,19 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     .returns<PolicyRow[]>();
   if (policiesError) throw policiesError;
 
-  const policyRows = policyData ?? [];
+  let policyRows = policyData ?? [];
+  const referencedPolicyId = reviewRow?.policy_version_id;
+  if (referencedPolicyId && !policyRows.some((row) => row.id === referencedPolicyId)) {
+    const { data: referencedPolicy, error: referencedPolicyError } = await supabase
+      .from("stock_notes_portfolio_policy_versions")
+      .select(
+        "id, version_number, status, title, objective, time_horizon, income_priority, capital_growth_priority, risk_statement, cash_policy, buy_policy, sell_policy, principles, constraints, change_reason, based_on_policy_id, effective_from, created_at, updated_at",
+      )
+      .eq("id", referencedPolicyId)
+      .maybeSingle<PolicyRow>();
+    if (referencedPolicyError) throw referencedPolicyError;
+    if (referencedPolicy) policyRows = [...policyRows, referencedPolicy];
+  }
   const policyIds = policyRows.map((row) => row.id);
   const { data: policyRuleData, error: policyRulesError } = policyIds.length > 0
     ? await supabase
