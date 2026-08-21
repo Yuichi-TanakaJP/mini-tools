@@ -18,11 +18,6 @@ class QueryStub {
     return this;
   }
 
-  or() {
-    this.queryLog.push("or");
-    return this;
-  }
-
   limit() {
     return this;
   }
@@ -164,7 +159,7 @@ describe("portfolio data loader", () => {
     expect(data.dbCounts).toMatchObject({ portfolio: 1, snapshots: 1, accounts: 1, instruments: 2, positions: 1, reviews: 1, reviewItems: 1 });
   });
 
-  it("review未作成時はreviewに紐づかないActionだけを取得する", async () => {
+  it("review周期をまたいだ未完了Actionを取得する", async () => {
     const queryLog: string[] = [];
     const data = await loadPortfolio(
       stubClient({
@@ -178,12 +173,14 @@ describe("portfolio data loader", () => {
         stock_notes_portfolio_reviews: { data: null, error: null },
         stock_notes_portfolio_review_items: { data: [], error: null },
         stock_notes_portfolio_instruments: { data: [], error: null },
-        stock_notes_portfolio_actions: { data: [], error: null },
+        stock_notes_portfolio_actions: {
+          data: [{ id: "action-old", review_id: "review-old", instrument_id: null, action_type: "review", title: "未完了の持越し確認", detail: "前回reviewからの持越し", trigger_condition: null, due_date: null, status: "open", created_at: "2026-08-14T00:04:00Z", updated_at: "2026-08-14T00:04:00Z" }],
+          error: null,
+        },
       }, queryLog),
     );
 
-    expect(data.actions).toEqual([]);
-    expect(queryLog).toContain("or");
+    expect(data.actions[0]).toMatchObject({ id: "action-old", reviewId: "review-old", status: "open" });
     expect(queryLog).toContain("status=open");
   });
 });
