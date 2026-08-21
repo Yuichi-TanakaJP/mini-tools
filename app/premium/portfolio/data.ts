@@ -252,6 +252,8 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     .eq("portfolio_id", portfolio.id);
   if (reviewRow) {
     actionQuery = actionQuery.or(`review_id.eq.${reviewRow.id},review_id.is.null`);
+  } else {
+    actionQuery = actionQuery.or("review_id.is.null");
   }
   const { data: actionData, error: actionsError } = await actionQuery
     .order("status", { ascending: true })

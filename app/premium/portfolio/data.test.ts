@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadPortfolio, portfolioAuthRequired } from "./data";
 
 class QueryStub {
-  constructor(private readonly result: unknown) {}
+  constructor(private readonly result: unknown, private readonly queryLog: string[] = []) {}
 
   select() {
     return this;
@@ -18,6 +18,7 @@ class QueryStub {
   }
 
   or() {
+    this.queryLog.push("or");
     return this;
   }
 
@@ -34,10 +35,10 @@ class QueryStub {
   }
 }
 
-function stubClient(results: Record<string, unknown>) {
+function stubClient(results: Record<string, unknown>, queryLog: string[] = []) {
   return {
     from(table: string) {
-      return new QueryStub(results[table] ?? { data: [], error: null });
+      return new QueryStub(results[table] ?? { data: [], error: null }, queryLog);
     },
   } as unknown as SupabaseClient;
 }
@@ -160,5 +161,27 @@ describe("portfolio data loader", () => {
     expect(data.dbPositionSnapshot?.id).toBe("snapshot-1");
     expect(data.dbPositions).toHaveLength(1);
     expect(data.dbCounts).toMatchObject({ portfolio: 1, snapshots: 1, accounts: 1, instruments: 2, positions: 1, reviews: 1, reviewItems: 1 });
+  });
+
+  it("review未作成時はreviewに紐づかないActionだけを取得する", async () => {
+    const queryLog: string[] = [];
+    const data = await loadPortfolio(
+      stubClient({
+        stock_notes_portfolios: {
+          data: { id: "portfolio-1", name: "メイン", base_currency: "JPY" },
+          error: null,
+        },
+        stock_notes_portfolio_snapshots: { data: [], error: null },
+        stock_notes_portfolio_accounts: { data: [], error: null },
+        stock_notes_portfolio_positions: { data: [], error: null },
+        stock_notes_portfolio_reviews: { data: null, error: null },
+        stock_notes_portfolio_review_items: { data: [], error: null },
+        stock_notes_portfolio_instruments: { data: [], error: null },
+        stock_notes_portfolio_actions: { data: [], error: null },
+      }, queryLog),
+    );
+
+    expect(data.actions).toEqual([]);
+    expect(queryLog).toContain("or");
   });
 });
