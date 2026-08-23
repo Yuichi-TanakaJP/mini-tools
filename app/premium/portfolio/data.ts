@@ -591,11 +591,9 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     };
   });
 
-  const actions: PortfolioAction[] = (actionData ?? []).filter((row) => {
-    if (!row.review_id) return true;
-    if (supersededReviewIds.has(row.review_id)) return false;
-    return !reviewRow || row.review_id === reviewRow.id;
-  }).map((row) => {
+  // Open actions from non-superseded reviews carry over across review cycles.
+  // Only explicitly superseded review actions leave the current work queue.
+  const actions: PortfolioAction[] = (actionData ?? []).filter((row) => !row.review_id || !supersededReviewIds.has(row.review_id)).map((row) => {
     const instrument = row.instrument_id ? instruments.get(row.instrument_id) : undefined;
     return {
       id: row.id,

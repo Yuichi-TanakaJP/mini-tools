@@ -197,7 +197,7 @@ describe("portfolio data loader", () => {
 
     expect(data.review?.id).toBe("review-draft");
     expect(data.reviewHistory[0]?.id).toBe("review-draft");
-    expect(data.actions.map((action) => action.id)).toEqual(["action-draft", "action-portfolio"]);
+    expect(data.actions.map((action) => action.id)).toEqual(["action-finalized", "action-draft", "action-portfolio"]);
   });
 
   it("最新の振り返りは時間順で選び、reviewの状態にかかわらず履歴を残す", async () => {
