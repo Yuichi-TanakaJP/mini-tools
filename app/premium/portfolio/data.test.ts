@@ -168,8 +168,8 @@ describe("portfolio data loader", () => {
 
     expect(data.review).toBeNull();
     expect(data.reviewHistory).toMatchObject([{ id: "review-old", status: "superseded", supersedeReason: "active policy更新により現行reviewを置き換えたため" }]);
-    expect(data.latestReflection).toBeNull();
-    expect(data.actions).toEqual([]);
+    expect(data.latestReflection).toMatchObject({ id: "reflection-old", reviewId: "review-old" });
+    expect(data.actions).toMatchObject([{ id: "action-old", status: "open" }]);
     expect(data.dbCounts.reviews).toBe(1);
   });
 
@@ -190,7 +190,7 @@ describe("portfolio data loader", () => {
     expect(data.review?.id).toBe("review-draft");
   });
 
-  it("最新の振り返りは時間順で選び、置換済みreviewの振り返りを除外する", async () => {
+  it("最新の振り返りは時間順で選び、reviewの状態にかかわらず履歴を残す", async () => {
     const data = await loadPortfolio(
       stubClient({
         stock_notes_portfolios: { data: { id: "portfolio-1", name: "メイン", base_currency: "JPY" }, error: null },
@@ -204,16 +204,16 @@ describe("portfolio data loader", () => {
         },
         stock_notes_portfolio_reflections: {
           data: [
-            { id: "reflection-new", review_id: "review-finalized", as_of: "2026-08-20T00:00:00Z", expected_outcome: "新しい期待", actual_outcome: null, worked_well: [], did_not_work: [], missed_risks: [], lessons: ["最新の学び"], policy_change_recommended: false, policy_change_summary: null, created_at: "2026-08-20T00:01:00Z" },
+            { id: "reflection-superseded", review_id: "review-superseded", as_of: "2026-08-22T00:00:00Z", expected_outcome: "置換済みの期待", actual_outcome: null, worked_well: [], did_not_work: [], missed_risks: [], lessons: ["最新の学び"], policy_change_recommended: false, policy_change_summary: null, created_at: "2026-08-22T00:01:00Z" },
+            { id: "reflection-new", review_id: "review-finalized", as_of: "2026-08-20T00:00:00Z", expected_outcome: "新しい期待", actual_outcome: null, worked_well: [], did_not_work: [], missed_risks: [], lessons: ["確定reviewの学び"], policy_change_recommended: false, policy_change_summary: null, created_at: "2026-08-20T00:01:00Z" },
             { id: "reflection-old", review_id: "review-draft", as_of: "2026-08-10T00:00:00Z", expected_outcome: "古い期待", actual_outcome: null, worked_well: [], did_not_work: [], missed_risks: [], lessons: ["古い学び"], policy_change_recommended: false, policy_change_summary: null, created_at: "2026-08-10T00:01:00Z" },
-            { id: "reflection-superseded", review_id: "review-superseded", as_of: "2026-08-22T00:00:00Z", expected_outcome: "置換済みの期待", actual_outcome: null, worked_well: [], did_not_work: [], missed_risks: [], lessons: ["除外する学び"], policy_change_recommended: false, policy_change_summary: null, created_at: "2026-08-22T00:01:00Z" },
           ],
           error: null,
         },
       }),
     );
 
-    expect(data.latestReflection?.id).toBe("reflection-new");
+    expect(data.latestReflection?.id).toBe("reflection-superseded");
   });
 
   it("ready snapshotがなくても関連テーブルの取得件数を保持する", async () => {

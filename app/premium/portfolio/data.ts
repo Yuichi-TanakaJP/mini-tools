@@ -588,7 +588,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     };
   });
 
-  const actions: PortfolioAction[] = (actionData ?? []).filter((row) => !row.review_id || !supersededReviewIds.has(row.review_id)).map((row) => {
+  const actions: PortfolioAction[] = (actionData ?? []).map((row) => {
     const instrument = row.instrument_id ? instruments.get(row.instrument_id) : undefined;
     return {
       id: row.id,
@@ -623,7 +623,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     reviewHistory,
     activePolicy,
     policyHistory,
-    latestReflection: reflections.find((reflection) => !supersededReviewIds.has(reflection.reviewId)) ?? null,
+    latestReflection: reflections[0] ?? null,
     reflections,
     recommendations,
     actions,
