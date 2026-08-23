@@ -169,7 +169,7 @@ describe("portfolio data loader", () => {
     expect(data.review).toBeNull();
     expect(data.reviewHistory).toMatchObject([{ id: "review-old", status: "superseded", supersedeReason: "active policy更新により現行reviewを置き換えたため" }]);
     expect(data.latestReflection).toMatchObject({ id: "reflection-old", reviewId: "review-old" });
-    expect(data.actions).toMatchObject([{ id: "action-old", status: "open" }]);
+    expect(data.actions).toEqual([]);
     expect(data.dbCounts.reviews).toBe(1);
   });
 

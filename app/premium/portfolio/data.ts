@@ -70,6 +70,8 @@ type ReviewRow = {
   updated_at: string;
 };
 
+type ReviewIdRow = { id: string };
+
 type PolicyRow = {
   id: string;
   version_number: number;
@@ -382,6 +384,14 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     ? [...recentReviewHistory.slice(0, -1), currentReviewHistory].sort(compareReviewHistory)
     : recentReviewHistory;
   const reviewRow = currentReviewRow ?? null;
+  const { data: supersededReviewRows, error: supersededReviewsError } = await supabase
+    .from("stock_notes_portfolio_reviews")
+    .select("id")
+    .eq("portfolio_id", portfolio.id)
+    .eq("status", "superseded")
+    .returns<ReviewIdRow[]>();
+  if (supersededReviewsError) throw supersededReviewsError;
+  const supersededReviewIds = new Set((supersededReviewRows ?? []).map((row) => row.id));
   const { count: reviewCountFromDb, error: reviewCountError } = await supabase
     .from("stock_notes_portfolio_reviews")
     .select("id", { count: "exact", head: true })
@@ -476,8 +486,6 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     .select("id, review_id, instrument_id, action_type, title, detail, trigger_condition, due_date, status, created_at, updated_at")
     .eq("portfolio_id", portfolio.id)
     .eq("status", "open");
-  // Open actions intentionally carry over across review cycles. Replacing a draft review
-  // does not cancel operational follow-up work; completion or dismissal is explicit.
   const { data: actionData, error: actionsError } = await actionQuery
     .order("created_at", { ascending: false })
     .limit(50)
@@ -582,7 +590,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     };
   });
 
-  const actions: PortfolioAction[] = (actionData ?? []).map((row) => {
+  const actions: PortfolioAction[] = (actionData ?? []).filter((row) => !row.review_id || !supersededReviewIds.has(row.review_id)).map((row) => {
     const instrument = row.instrument_id ? instruments.get(row.instrument_id) : undefined;
     return {
       id: row.id,
