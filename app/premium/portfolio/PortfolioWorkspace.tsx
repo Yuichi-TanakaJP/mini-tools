@@ -204,11 +204,11 @@ function PolicyItem({ item }: { item: PortfolioReviewItem }) {
   );
 }
 
-const reviewStatusLabels: Record<PortfolioReviewHistoryItem["status"], string> = {
-  draft: "下書き・現行",
-  finalized: "確定",
-  superseded: "置換済み",
-};
+function reviewStatusLabel(review: PortfolioReviewHistoryItem, currentReviewId: string | null) {
+  if (review.status === "draft") return review.id === currentReviewId ? "下書き・現行" : "下書き・旧";
+  if (review.status === "finalized") return "確定";
+  return "置換済み";
+}
 
 function ReviewHistoryView({ data }: { data: PortfolioData }) {
   const policyTitles = new Map(data.policyHistory.map((policy) => [policy.id, `v${policy.versionNumber} ${policy.title}`]));
@@ -229,7 +229,7 @@ function ReviewHistoryView({ data }: { data: PortfolioData }) {
                     <div style={{ marginTop: 4, color: "var(--color-text-muted)", fontSize: 12 }}>基準日 {formatDateTime(review.asOf)} / 更新 {formatDateTime(review.updatedAt)}</div>
                   </div>
                   <span style={{ borderRadius: 999, padding: "4px 9px", background: review.status === "superseded" ? "#f1f5f9" : review.status === "finalized" ? "#dcfce7" : "#dbeafe", color: review.status === "superseded" ? "#475569" : review.status === "finalized" ? "#166534" : "#1d4ed8", fontSize: 11, fontWeight: 900 }}>
-                    {reviewStatusLabels[review.status]}
+                    {reviewStatusLabel(review, data.review?.id ?? null)}
                   </span>
                 </div>
                 <div style={{ display: "grid", gap: 4, color: "var(--color-text-sub)", fontSize: 12 }}>
