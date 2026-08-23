@@ -1,6 +1,6 @@
 # ポートフォリオ 仕様
 
-> **実装状態:** 2026-08-23時点の画面は、最新snapshot、active policy・policy履歴、保存済みreview/recommendation/action、latest reflectionを読むUI-1〜UI-2初回版に、UI-3のreview履歴分離表示を加えたものである。reviewが参照したpolicy versionも表示する。
+> **実装状態:** 2026-08-23時点の画面は、最新snapshot、active policy・policy履歴、保存済みreview/recommendation/action、latest reflectionを読むUI-1〜UI-2初回版に、UI-3のreview履歴分離表示と外部口座・参考資産の読み取り表示を加えたものである。reviewが参照したpolicy versionも表示する。
 > ポートフォリオ意思決定プラットフォームの完成品ではない。目標運用とUIの実装順序は
 > [ポートフォリオ意思決定ワークスペース実装計画](../../plans/portfolio-decision-workspace-plan.md) を参照する。
 
@@ -20,7 +20,7 @@
 
 - **意思決定**: 判断状態、snapshot/reviewの基準日、全体要約、金額なしの補強・調査recommendation、未完了portfolio action
 - **保有一覧**: 最新readyスナップショットの評価額・取得額・含み損益・商品別配分
-- **口座・取込**: 最新スナップショットの口座別ポジション明細、過去の取込履歴
+- **口座・取込**: 最新の公式snapshotの口座別ポジション明細、過去の取込履歴、外部口座・参考資産の別集計。外部資産はiDeCo・企業型DC・海外口座・暗号資産・現金等を対象とし、公式保有とは混ぜずに表示する
 - **方針**: active policyの版・原則・構造化ルール・変更履歴、現行reviewの一時判断、latest reflection
 - **履歴**: snapshot履歴とreview履歴。reviewは`draft` / `finalized` / `superseded`を表示し、置換済みreviewは現行判断と分けて表示する
 - **DB確認**: MiniToolsがSupabaseから取得したportfolio、snapshot、position、review、review itemの生行数・ID・基準日を読み取り専用で確認する。銘柄マスタ件数は、portfolio_idを持たないユーザー単位の取得結果として表示し、readyがない場合は最新取込snapshotのポジション行も確認する
@@ -32,6 +32,7 @@
 - 目標仕様でも主入力はMiniToolsのフォームではなく、ChatGPTとの相談とする
 - ChatGPTが全体contextを取得し、ユーザー確認後にreview/actionを保存する経路は未実装
 - policyのdraft作成・active化、reviewのfinalize、reflectionの保存はMiniToolsから行わない。GPT/APIの責務である
+- 外部資産の登録・更新・削除もMiniToolsから行わない。ChatGPTで確認した内容をstock-notes APIへ保存し、MiniToolsは結果を読み取る
 - MiniToolsの画面からrecommendation/actionを編集・保存する入力は持たない。保存済みデータの正本はstock-notes API/DBである
 
 ### 出力
@@ -44,6 +45,10 @@
 - 株式・投資信託を商品単位で表示する
 - 口座別の同一商品は「表示」では集約し、「記録」では分けて表示する
 - 金額が未取得の場合は `—` とし、0円とは区別する
+- 外部資産は、未登録・取得済み・取込中・取得失敗を別状態で表示する。最新取込が失敗・取込中でも、最後に成功した外部snapshotがあればそれを表示し、最新状態を警告として併記する。評価額未取得の明細も `—` とし、0円とは区別する
+- 外部資産のsnapshotには `external_reference` scopeを表示し、基準日・取得元・口座種別・資産種別・数量または残高・通貨・評価額を確認できる
+- 外部資産の「未紐付け」は国内株・海外株で `stock_id` がない場合だけを数え、現金・預金・暗号資産・iDeCo残高など銘柄マスターを必要としない資産を誤警告しない
+- 外部資産の評価額は現段階では「保有一覧」や意思決定の公式集計へ自動合算しない。二重計上を避けるため、総合集計への統合は別仕様で定義する
 
 ### 現段階でできないこと
 
@@ -53,6 +58,7 @@
 - 金額指定を含む新規資金の順位・配分を表示する（現在は金額なし候補の表示のみ）
 - 前回reviewとの差分を表示する
 - 銘柄ダッシュボードとportfolio方針を往復する
+- 外部資産を公式ポートフォリオの総額・配分分析へ自動統合する。通貨換算、重複排除、分析対象外ルールは後続で定義する
 
 ### DB確認タブの位置づけ
 
@@ -62,6 +68,7 @@
 - 未取込・認証必須・ready snapshotなしを0件の成功状態と混同しない
 - DBの正本はSupabaseであり、この画面は表示用の派生ビューである
 - recommendation/actionの取得も本人のSupabase行だけを対象とし、取得失敗を「0件」として扱わない
+- 外部資産の取得失敗も「未登録」や「0件」として扱わず、外部資産セクションだけにエラーを表示する。公式保有の表示は継続する
 
 これらは「後からあると便利」な拡張ではなく、実装計画上の完成条件である。
 
@@ -73,6 +80,7 @@
   `stock_notes_portfolio_instruments`、`stock_notes_portfolio_positions`、`stock_notes_portfolio_reviews`、
   `stock_notes_portfolio_review_items`、`stock_notes_portfolio_recommendations`、`stock_notes_portfolio_actions`、
   `stock_notes_portfolio_policy_versions`、`stock_notes_portfolio_policy_rules`、`stock_notes_portfolio_reflections`
+- 外部資産は同じsnapshot・account・instrument・position系テーブルを使い、snapshotの `portfolio_scope=external_reference` で公式資産と分離する。positionの `valuation_mode`、native value/currency、FX情報も読み取る
 - SupabaseログインセッションとRLSで本人の行だけを取得する
 - CSV取込の正本はstock-notes側の `POST /portfolio/import`
 
@@ -109,6 +117,7 @@
 - [portfolio types](/c:/Users/yutaz/dev/mini-tools/app/premium/portfolio/types.ts)
 - [portfolio workspace](/c:/Users/yutaz/dev/mini-tools/app/premium/portfolio/PortfolioWorkspace.tsx)
 - [portfolio decision view](/c:/Users/yutaz/dev/mini-tools/app/premium/portfolio/PortfolioDecision.tsx)
+- [external asset display model](/c:/Users/yutaz/dev/mini-tools/app/premium/portfolio/external-assets.ts)
 
 ## 関連 docs
 
@@ -116,4 +125,5 @@
 - Decision Log: [ポートフォリオの「表示・記録・方針」構成](../../decision-log/2026-08-14-portfolio-record-display-policy.md)
 - Decision Log: [ChatGPT起点の意思決定ワークスペース](../../decision-log/2026-08-15-portfolio-chat-first-operating-model.md)
 - Decision Log: [ポートフォリオのWhatとpolicy/reflection表示](../../decision-log/2026-08-22-portfolio-what-and-policy-reflection-display.md)
+- Decision Log: [外部資産の表示と公式集計の分離](../../decision-log/2026-08-23-portfolio-external-assets-display.md)
 - Plan: [ポートフォリオ意思決定ワークスペース実装計画](../../plans/portfolio-decision-workspace-plan.md)

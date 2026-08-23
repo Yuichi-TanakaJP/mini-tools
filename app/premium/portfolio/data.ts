@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { emptyExternalAssets, externalAssetsError, externalAssetsLoading, loadedExternalAssets } from "./external-assets";
 import type {
   PortfolioAccountType,
   PortfolioDbPosition,
@@ -12,6 +13,8 @@ import type {
   PortfolioReviewHistoryItem,
   PortfolioReviewItem,
   PortfolioSnapshot,
+  PortfolioExternalAssetPosition,
+  PortfolioExternalAssetSnapshot,
 } from "./types";
 
 type PortfolioRow = {
@@ -26,6 +29,8 @@ type SnapshotRow = {
   status: PortfolioSnapshot["status"];
   source_type: string;
   imported_at: string;
+  portfolio_scope?: PortfolioSnapshot["portfolioScope"] | null;
+  note?: string | null;
 };
 
 type AccountRow = {
@@ -33,6 +38,7 @@ type AccountRow = {
   account_name: string;
   account_type: PortfolioAccountType;
   institution_name: string;
+  withdrawal_profile?: string | null;
 };
 
 type InstrumentRow = {
@@ -40,13 +46,14 @@ type InstrumentRow = {
   asset_type: string;
   identifier: string;
   name: string;
+  stock_id?: string | null;
 };
 
 type PositionRow = {
   id: string;
   account_id: string;
   instrument_id: string;
-  quantity: number | string;
+  quantity: number | string | null;
   unit_cost: number | string | null;
   quoted_price: number | string | null;
   quote_unit: number | string;
@@ -54,6 +61,14 @@ type PositionRow = {
   market_value: number | string | null;
   unrealized_pnl: number | string | null;
   distribution_method: string | null;
+  valuation_mode?: "quantity" | "balance" | null;
+  native_market_value?: number | string | null;
+  native_currency?: string | null;
+  cost_basis_native?: number | string | null;
+  fx_rate?: number | string | null;
+  fx_as_of?: string | null;
+  fx_source?: string | null;
+  note?: string | null;
 };
 
 type ReviewRow = {
@@ -259,6 +274,8 @@ function snapshotFromRow(row: SnapshotRow): PortfolioSnapshot {
     status: row.status,
     sourceType: row.source_type,
     importedAt: row.imported_at,
+    portfolioScope: row.portfolio_scope ?? "official",
+    sourceLabel: row.note ?? null,
   };
 }
 
@@ -267,8 +284,10 @@ function emptyPortfolio(): PortfolioData {
     authState: "authenticated",
     portfolio: { id: null, name: null, baseCurrency: "JPY" },
     snapshots: [],
+    externalSnapshots: [],
     currentSnapshot: null,
     dbPositionSnapshot: null,
+    externalAssets: emptyExternalAssets(),
     positions: [],
     dbPositions: [],
     review: null,
@@ -307,23 +326,49 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
   if (portfolioError) throw portfolioError;
   if (!portfolio) return emptyPortfolio();
 
-  const { data: snapshotRows, error: snapshotsError } = await supabase
+  const { data: officialSnapshotRows, error: officialSnapshotsError } = await supabase
     .from("stock_notes_portfolio_snapshots")
-    .select("id, as_of, status, source_type, imported_at")
+    .select("id, as_of, status, source_type, imported_at, portfolio_scope, note")
     .eq("portfolio_id", portfolio.id)
+    .or("portfolio_scope.eq.official,portfolio_scope.is.null")
     .order("as_of", { ascending: false })
     .order("imported_at", { ascending: false })
     .limit(20)
     .returns<SnapshotRow[]>();
-  if (snapshotsError) throw snapshotsError;
+  if (officialSnapshotsError) throw officialSnapshotsError;
 
-  const snapshots = (snapshotRows ?? []).map(snapshotFromRow);
-  const currentSnapshot = snapshots.find((snapshot) => snapshot.status === "ready") ?? null;
-  const dbPositionSnapshot = currentSnapshot ?? snapshots[0] ?? null;
+  const { data: externalSnapshotRows, error: externalSnapshotsError } = await supabase
+    .from("stock_notes_portfolio_snapshots")
+    .select("id, as_of, status, source_type, imported_at, portfolio_scope, note")
+    .eq("portfolio_id", portfolio.id)
+    .eq("portfolio_scope", "external_reference")
+    .order("as_of", { ascending: false })
+    .order("imported_at", { ascending: false })
+    .limit(20)
+    .returns<SnapshotRow[]>();
+
+  const snapshots = (officialSnapshotRows ?? [])
+    .map(snapshotFromRow)
+    .sort((a, b) => b.asOf.localeCompare(a.asOf) || b.importedAt.localeCompare(a.importedAt) || b.id.localeCompare(a.id));
+  const externalSnapshots = (externalSnapshotRows ?? [])
+    .map((row) => snapshotFromRow(row) as PortfolioExternalAssetSnapshot)
+    .sort((a, b) => b.asOf.localeCompare(a.asOf) || b.importedAt.localeCompare(a.importedAt) || b.id.localeCompare(a.id));
+  const officialSnapshots = snapshots;
+  const currentSnapshot = officialSnapshots.find((snapshot) => snapshot.status === "ready") ?? null;
+  const dbPositionSnapshot = currentSnapshot ?? officialSnapshots[0] ?? null;
+  const latestExternalSnapshotRow = externalSnapshotRows?.[0] ?? null;
+  const externalSnapshotRow = (externalSnapshotRows ?? []).find((row) => row.status === "ready") ?? null;
+  const externalSnapshotWarning = latestExternalSnapshotRow && latestExternalSnapshotRow.status !== "ready"
+    ? latestExternalSnapshotRow.status === "importing"
+      ? "最新の外部資産取込は処理中です。表示中の明細は最後に成功したsnapshotです。"
+      : latestExternalSnapshotRow.status === "failed"
+        ? "最新の外部資産取込に失敗しています。表示中の明細は最後に成功したsnapshotです。"
+        : "最新の外部資産snapshotは置換済みです。表示中の明細は最後に成功したsnapshotです。"
+    : null;
 
   const { data: accountData, error: accountsError } = await supabase
     .from("stock_notes_portfolio_accounts")
-    .select("id, account_name, account_type, institution_name")
+    .select("id, account_name, account_type, institution_name, withdrawal_profile")
     .eq("portfolio_id", portfolio.id)
     .returns<AccountRow[]>();
   if (accountsError) throw accountsError;
@@ -495,13 +540,73 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
 
   const { data: instrumentData, error: instrumentsError } = await supabase
     .from("stock_notes_portfolio_instruments")
-    .select("id, asset_type, identifier, name")
+    .select("id, asset_type, identifier, name, stock_id")
     .returns<InstrumentRow[]>();
   if (instrumentsError) throw instrumentsError;
   const instrumentRows = instrumentData ?? [];
 
   const accounts = new Map(accountRows.map((row) => [row.id, row]));
   const instruments = new Map(instrumentRows.map((row) => [row.id, row]));
+  let externalAssets = externalSnapshotsError ? externalAssetsError() : emptyExternalAssets();
+  try {
+    if (!externalSnapshotsError && externalSnapshotRow) {
+      const { data: externalPositionData, error: externalPositionsError } = await supabase
+        .from("stock_notes_portfolio_positions")
+        .select(
+          "id, account_id, instrument_id, quantity, unit_cost, quoted_price, quote_unit, cost_basis, market_value, unrealized_pnl, distribution_method, valuation_mode, native_market_value, native_currency, cost_basis_native, fx_rate, fx_as_of, fx_source, note",
+        )
+        .eq("snapshot_id", externalSnapshotRow.id)
+        .returns<PositionRow[]>();
+
+      if (externalPositionsError) {
+        externalAssets = externalAssetsError();
+      } else {
+        const externalPositions: PortfolioExternalAssetPosition[] = (externalPositionData ?? []).map((row) => {
+          const account = accounts.get(row.account_id);
+          const instrument = instruments.get(row.instrument_id);
+          return {
+            id: row.id,
+            accountId: row.account_id,
+            instrumentId: row.instrument_id,
+            assetType: instrument?.asset_type ?? null,
+            identifier: instrument?.identifier ?? null,
+            name: instrument?.name ?? null,
+            stockId: instrument?.stock_id ?? null,
+            accountName: account?.account_name ?? null,
+            accountType: account?.account_type ?? null,
+            institutionName: account?.institution_name ?? null,
+            withdrawalProfile: account?.withdrawal_profile ?? null,
+            valuationMode: row.valuation_mode === "balance" ? "balance" : "quantity",
+            quantity: numberOrNull(row.quantity),
+            nativeMarketValue: numberOrNull(row.native_market_value),
+            nativeCurrency: row.native_currency ?? null,
+            marketValue: numberOrNull(row.market_value),
+            costBasis: numberOrNull(row.cost_basis),
+            costBasisNative: numberOrNull(row.cost_basis_native),
+            fxRate: numberOrNull(row.fx_rate),
+            fxAsOf: row.fx_as_of ?? null,
+            fxSource: row.fx_source ?? null,
+            note: row.note ?? null,
+          };
+        });
+        const externalSnapshot = snapshotFromRow(externalSnapshotRow) as PortfolioExternalAssetSnapshot;
+        const loadedAssets = loadedExternalAssets(externalSnapshot, externalPositions, externalSnapshotWarning);
+        externalAssets = latestExternalSnapshotRow && latestExternalSnapshotRow.status !== "ready"
+          ? { ...loadedAssets, status: latestExternalSnapshotRow.status === "importing" ? "loading" : "error" }
+          : loadedAssets;
+      }
+    } else if (!externalSnapshotsError && latestExternalSnapshotRow) {
+      const latestExternalSnapshot = snapshotFromRow(latestExternalSnapshotRow) as PortfolioExternalAssetSnapshot;
+      externalAssets = latestExternalSnapshot.status === "importing"
+        ? externalAssetsLoading(latestExternalSnapshot)
+        : latestExternalSnapshot.status === "failed"
+          ? externalAssetsError("外部資産の最新取込に失敗しています。", latestExternalSnapshot)
+          : externalAssetsError("外部資産の最新snapshotは置換済みです。", latestExternalSnapshot);
+    }
+  } catch {
+    // 外部参照データの失敗は、公式snapshot・reviewの表示を壊さない。
+    externalAssets = externalAssetsError();
+  }
   const dbPositions: PortfolioDbPosition[] = positionRows.map((row) => {
     const account = accounts.get(row.account_id);
     const instrument = instruments.get(row.instrument_id);
@@ -620,6 +725,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
       baseCurrency: portfolio.base_currency,
     },
     snapshots,
+    externalSnapshots,
     currentSnapshot,
     dbPositionSnapshot,
     positions,
@@ -641,6 +747,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
       reviews: reviewCountFromDb ?? (reviewRows ?? []).length,
       reviewItems: reviewItemRows.length,
     },
+    externalAssets,
     source: currentSnapshot ? "server" : "empty",
   };
 }

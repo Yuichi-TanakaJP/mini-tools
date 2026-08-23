@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadPortfolio, portfolioAuthRequired } from "./data";
 
 class QueryStub {
-  private statusPredicate: ((value: unknown) => boolean) | null = null;
+  private predicates: Array<{ column: string; matches: (value: unknown) => boolean }> = [];
 
   constructor(private readonly result: unknown, private readonly queryLog: string[] = []) {}
 
@@ -13,12 +13,21 @@ class QueryStub {
 
   eq(column?: string, value?: unknown) {
     if (column === "status" && value === "open") this.queryLog.push("status=open");
-    if (column === "status") this.statusPredicate = (candidate) => candidate === value;
+    if (column === "status" || column === "portfolio_scope" || column === "snapshot_id") {
+      this.predicates.push({ column, matches: (candidate) => candidate === value });
+    }
+    return this;
+  }
+
+  or(filter?: string) {
+    if (filter === "portfolio_scope.eq.official,portfolio_scope.is.null") {
+      this.predicates.push({ column: "portfolio_scope", matches: (candidate) => candidate === "official" || candidate === null || candidate === undefined });
+    }
     return this;
   }
 
   in(column?: string, values?: unknown[]) {
-    if (column === "status") this.statusPredicate = (candidate) => values?.includes(candidate) ?? false;
+    if (column === "status") this.predicates.push({ column, matches: (candidate) => values?.includes(candidate) ?? false });
     return this;
   }
 
@@ -41,8 +50,18 @@ class QueryStub {
 
   private filteredResult() {
     const result = this.result as { data?: unknown; error?: unknown };
-    if (!this.statusPredicate || !Array.isArray(result.data)) return this.result;
-    return { ...result, data: result.data.filter((row) => this.statusPredicate?.((row as { status?: unknown }).status)) };
+    if (this.predicates.length === 0 || !Array.isArray(result.data)) return this.result;
+    return {
+      ...result,
+      data: result.data.filter((row) => this.predicates.every(({ column, matches }) => {
+        const record = row as Record<string, unknown>;
+        // Older fixtures omit snapshot_id because the old loader did not need it.
+        if (column === "snapshot_id" && !Object.prototype.hasOwnProperty.call(record, column)) return true;
+        // Before portfolio_scope was added, every stored snapshot was official.
+        if (column === "portfolio_scope" && !Object.prototype.hasOwnProperty.call(record, column)) return matches("official");
+        return matches(record[column]);
+      })),
+    };
   }
 }
 
@@ -146,6 +165,139 @@ describe("portfolio data loader", () => {
     expect(data.latestReflection).toMatchObject({ policyChangeRecommended: true, lessons: ["分類の鮮度を確認する"] });
     expect(data.recommendations[0]).toMatchObject({ themeKey: "income_reinforcement", proposedAmount: null, proposedPct: null });
     expect(data.actions[0]).toMatchObject({ actionType: "concentration_check", status: "open" });
+  });
+
+  it("外部参照snapshotを公式保有と分け、残高方式を読み取る", async () => {
+    const data = await loadPortfolio(
+      stubClient({
+        stock_notes_portfolios: { data: { id: "portfolio-1", name: "メイン", base_currency: "JPY" }, error: null },
+        stock_notes_portfolio_snapshots: {
+          data: [
+            { id: "external-snapshot", as_of: "2026-08-18T00:00:00Z", status: "ready", source_type: "manual", imported_at: "2026-08-18T00:01:00Z", portfolio_scope: "external_reference", note: "iDeCo明細" },
+            { id: "official-snapshot", as_of: "2026-08-14T00:00:00Z", status: "ready", source_type: "broker_csv", imported_at: "2026-08-14T00:01:00Z", portfolio_scope: "official", note: null },
+          ],
+          error: null,
+        },
+        stock_notes_portfolio_accounts: {
+          data: [
+            { id: "account-official", account_name: "証券口座", account_type: "taxable", institution_name: "証券会社", withdrawal_profile: "immediate" },
+            { id: "account-external", account_name: "iDeCo", account_type: "ideco", institution_name: "年金運営会社", withdrawal_profile: "retirement_locked" },
+          ],
+          error: null,
+        },
+        stock_notes_portfolio_instruments: {
+          data: [{ id: "instrument-external", asset_type: "investment_fund", identifier: "IDEC0-FUND", name: "iDeCoファンド", stock_id: null }],
+          error: null,
+        },
+        stock_notes_portfolio_positions: {
+          data: [
+            { id: "official-position", snapshot_id: "official-snapshot", account_id: "account-official", instrument_id: "instrument-external", quantity: "10", unit_cost: "1000", quoted_price: "1100", quote_unit: "1", cost_basis: "10000", market_value: "11000", unrealized_pnl: "1000", distribution_method: null },
+            { id: "external-position", snapshot_id: "external-snapshot", account_id: "account-external", instrument_id: "instrument-external", quantity: null, unit_cost: null, quoted_price: null, quote_unit: "1", cost_basis: null, market_value: "550000", unrealized_pnl: null, distribution_method: null, valuation_mode: "balance", native_market_value: "550000", native_currency: "JPY", cost_basis_native: null, fx_rate: null, fx_as_of: null, fx_source: null, note: "残高として登録" },
+          ],
+          error: null,
+        },
+        stock_notes_portfolio_reviews: { data: [], error: null },
+        stock_notes_portfolio_policy_versions: { data: [], error: null },
+        stock_notes_portfolio_policy_rules: { data: [], error: null },
+        stock_notes_portfolio_reflections: { data: [], error: null },
+        stock_notes_portfolio_review_items: { data: [], error: null },
+        stock_notes_portfolio_recommendations: { data: [], error: null },
+        stock_notes_portfolio_actions: { data: [], error: null },
+      }),
+    );
+
+    expect(data.currentSnapshot?.id).toBe("official-snapshot");
+    expect(data.dbPositionSnapshot?.id).toBe("official-snapshot");
+    expect(data.dbPositions).toHaveLength(1);
+    expect(data.externalAssets).toMatchObject({ status: "loaded", totalMarketValue: 550000, unresolvedInstrumentCount: 0 });
+    expect(data.externalAssets.snapshot).toMatchObject({ id: "external-snapshot", portfolioScope: "external_reference", sourceLabel: "iDeCo明細" });
+    expect(data.externalAssets.positions[0]).toMatchObject({ valuationMode: "balance", quantity: null, accountType: "ideco", withdrawalProfile: "retirement_locked" });
+  });
+
+  it("外部資産だけでは公式ポートフォリオを読み込み済みにしない", async () => {
+    const data = await loadPortfolio(
+      stubClient({
+        stock_notes_portfolios: { data: { id: "portfolio-1", name: "メイン", base_currency: "JPY" }, error: null },
+        stock_notes_portfolio_snapshots: {
+          data: [{ id: "external-snapshot", as_of: "2026-08-18T00:00:00Z", status: "ready", source_type: "manual", imported_at: "2026-08-18T00:01:00Z", portfolio_scope: "external_reference", note: "暗号資産" }],
+          error: null,
+        },
+        stock_notes_portfolio_accounts: { data: [{ id: "account-external", account_name: "暗号資産口座", account_type: "crypto_exchange", institution_name: "取引所", withdrawal_profile: "immediate" }], error: null },
+        stock_notes_portfolio_instruments: { data: [{ id: "instrument-crypto", asset_type: "crypto", identifier: "BTC", name: "Bitcoin", stock_id: null }], error: null },
+        stock_notes_portfolio_positions: { data: [{ id: "external-position", snapshot_id: "external-snapshot", account_id: "account-external", instrument_id: "instrument-crypto", quantity: "0.1", unit_cost: null, quoted_price: null, quote_unit: "1", cost_basis: null, market_value: "1000000", unrealized_pnl: null, distribution_method: null, valuation_mode: "quantity", native_market_value: "1000000", native_currency: "JPY" }], error: null },
+        stock_notes_portfolio_reviews: { data: [], error: null },
+        stock_notes_portfolio_policy_versions: { data: [], error: null },
+        stock_notes_portfolio_policy_rules: { data: [], error: null },
+        stock_notes_portfolio_reflections: { data: [], error: null },
+        stock_notes_portfolio_review_items: { data: [], error: null },
+        stock_notes_portfolio_recommendations: { data: [], error: null },
+        stock_notes_portfolio_actions: { data: [], error: null },
+      }),
+    );
+
+    expect(data.source).toBe("empty");
+    expect(data.currentSnapshot).toBeNull();
+    expect(data.positions).toEqual([]);
+    expect(data.externalAssets.status).toBe("loaded");
+    expect(data.snapshots).toEqual([]);
+    expect(data.externalSnapshots).toMatchObject([{ id: "external-snapshot", portfolioScope: "external_reference" }]);
+  });
+
+  it("portfolio_scope未設定の旧snapshotを公式保有として読み取る", async () => {
+    const data = await loadPortfolio(
+      stubClient({
+        stock_notes_portfolios: { data: { id: "portfolio-1", name: "メイン", base_currency: "JPY" }, error: null },
+        stock_notes_portfolio_snapshots: {
+          data: [{ id: "legacy-snapshot", as_of: "2026-08-14T00:00:00Z", status: "ready", source_type: "broker_csv", imported_at: "2026-08-14T00:01:00Z" }],
+          error: null,
+        },
+        stock_notes_portfolio_accounts: { data: [], error: null },
+        stock_notes_portfolio_positions: { data: [], error: null },
+        stock_notes_portfolio_reviews: { data: [], error: null },
+        stock_notes_portfolio_policy_versions: { data: [], error: null },
+        stock_notes_portfolio_policy_rules: { data: [], error: null },
+        stock_notes_portfolio_reflections: { data: [], error: null },
+        stock_notes_portfolio_review_items: { data: [], error: null },
+        stock_notes_portfolio_recommendations: { data: [], error: null },
+        stock_notes_portfolio_actions: { data: [], error: null },
+        stock_notes_portfolio_instruments: { data: [], error: null },
+      }),
+    );
+
+    expect(data.currentSnapshot?.id).toBe("legacy-snapshot");
+    expect(data.currentSnapshot?.portfolioScope).toBe("official");
+    expect(data.source).toBe("server");
+  });
+
+  it("最新の外部取込が失敗中でも、最後に成功したsnapshotを警告付きで表示する", async () => {
+    const data = await loadPortfolio(
+      stubClient({
+        stock_notes_portfolios: { data: { id: "portfolio-1", name: "メイン", base_currency: "JPY" }, error: null },
+        stock_notes_portfolio_snapshots: {
+          data: [
+            { id: "external-failed", as_of: "2026-08-20T00:00:00Z", status: "failed", source_type: "manual", imported_at: "2026-08-20T00:01:00Z", portfolio_scope: "external_reference", note: "最新取込" },
+            { id: "external-ready", as_of: "2026-08-18T00:00:00Z", status: "ready", source_type: "manual", imported_at: "2026-08-18T00:01:00Z", portfolio_scope: "external_reference", note: "前回取込" },
+          ],
+          error: null,
+        },
+        stock_notes_portfolio_accounts: { data: [], error: null },
+        stock_notes_portfolio_positions: { data: [], error: null },
+        stock_notes_portfolio_reviews: { data: [], error: null },
+        stock_notes_portfolio_policy_versions: { data: [], error: null },
+        stock_notes_portfolio_policy_rules: { data: [], error: null },
+        stock_notes_portfolio_reflections: { data: [], error: null },
+        stock_notes_portfolio_review_items: { data: [], error: null },
+        stock_notes_portfolio_recommendations: { data: [], error: null },
+        stock_notes_portfolio_actions: { data: [], error: null },
+        stock_notes_portfolio_instruments: { data: [], error: null },
+      }),
+    );
+
+    expect(data.externalAssets).toMatchObject({
+      status: "error",
+      snapshot: { id: "external-ready", status: "ready" },
+      errorMessage: "最新の外部資産取込に失敗しています。表示中の明細は最後に成功したsnapshotです。",
+    });
   });
 
   it("superseded reviewを現行判断から除外し、履歴には残す", async () => {

@@ -22,6 +22,10 @@
 - [ ] 同一商品を複数口座で保有している場合、「表示」では商品単位に集約される
 - [ ] 「口座・取込」で口座名・預り区分・数量・取得単価・現在値・評価額が確認できる
 - [ ] 「口座・取込」でスナップショットの基準日・取込日時・statusが表示される
+- [ ] 「口座・取込」で外部口座・参考資産が「登録済み」として表示され、基準日・取得元・評価額・明細数を確認できる
+- [ ] 外部snapshotが `external_reference` と表示され、公式snapshotと別管理であることを確認できる
+- [ ] iDeCo・企業型DC・海外口座・暗号資産・現金等の口座種別・資産種別・数量または残高・通貨が明細で確認できる
+- [ ] 外部資産の評価額が「保有一覧」や公式ポートフォリオ評価額へ自動合算されていない
 - [ ] 「方針」でactive policyとpolicy version履歴が表示される
 - [ ] 「方針」で現行reviewの一時判断と銘柄別項目が優先順位順に表示される
 - [ ] `draft`が存在する場合、基準日が新しい`finalized`より現行reviewとして優先される
@@ -47,9 +51,15 @@
 - [ ] DB未取込時は「未取込」と表示され、正常な0件と混同されない
 - [ ] import履歴はあるがready snapshotがない場合は「ready snapshotなし」と表示される
 - [ ] ready snapshotがない場合でも、最新取込snapshotに保存済みのポジション行があれば「DB確認」で表示される
+- [ ] 外部資産未登録時は「未登録」と表示され、正常な0円・0件と混同されない
+- [ ] 外部資産の取込中は「取込中」と表示され、最後に成功したsnapshotがあればその明細と最新取込の警告を確認できる
+- [ ] 外部資産の取得失敗時は「取得失敗」と表示され、公式保有の表示は継続する
+- [ ] 外部資産の評価額未取得は `—` と表示され、0円と混同されない
+- [ ] 外部資産の明細表はスマートフォン幅で横スクロールできる
 
 ## 関連
 
 - 仕様: [ポートフォリオ仕様](../specs/tools/portfolio.md)
 - Decision Log: [ポートフォリオの「表示・記録・方針」構成](../decision-log/2026-08-14-portfolio-record-display-policy.md)
 - Decision Log: [ポートフォリオのWhatとpolicy/reflection表示](../decision-log/2026-08-22-portfolio-what-and-policy-reflection-display.md)
+- Decision Log: [外部資産の表示と公式集計の分離](../decision-log/2026-08-23-portfolio-external-assets-display.md)
