@@ -137,3 +137,4 @@ Get-ScheduledTask -TaskPath '\market_info\','\' | ForEach-Object {
 ## 関連 docs
 
 - Decision Log: [2026-08-08 ルーティン可視化を静的棚卸しにする](../../decision-log/2026-08-08-routines-static-inventory.md)
+- Decision Log: [2026-08-23 ルーティン一覧の棚卸しズレを直す](../../decision-log/2026-08-23-routines-inventory-resync.md)
