@@ -351,6 +351,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     .select(reviewSelect)
     .eq("portfolio_id", portfolio.id)
     .eq("status", "draft")
+    .order("as_of", { ascending: false })
     .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle<ReviewRow>();
@@ -452,20 +453,6 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     .returns<ReflectionRow[]>();
   if (reflectionsError) throw reflectionsError;
   const reflections = (reflectionData ?? []).map(reflectionFromRow);
-  let currentReflection: PortfolioReflection | null = null;
-  if (reviewRow) {
-    const { data: currentReflectionRow, error: currentReflectionError } = await supabase
-      .from("stock_notes_portfolio_reflections")
-      .select(reflectionSelect)
-      .eq("portfolio_id", portfolio.id)
-      .eq("review_id", reviewRow.id)
-      .order("as_of", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle<ReflectionRow>();
-    if (currentReflectionError) throw currentReflectionError;
-    currentReflection = currentReflectionRow ? reflectionFromRow(currentReflectionRow) : null;
-  }
 
   let reviewItemRows: ReviewItemRow[] = [];
   if (reviewRow) {
@@ -636,7 +623,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     reviewHistory,
     activePolicy,
     policyHistory,
-    latestReflection: currentReflection ?? reflections.find((reflection) => !supersededReviewIds.has(reflection.reviewId)) ?? null,
+    latestReflection: reflections.find((reflection) => !supersededReviewIds.has(reflection.reviewId)) ?? null,
     reflections,
     recommendations,
     actions,

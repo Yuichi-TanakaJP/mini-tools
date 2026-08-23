@@ -190,6 +190,32 @@ describe("portfolio data loader", () => {
     expect(data.review?.id).toBe("review-draft");
   });
 
+  it("最新の振り返りは時間順で選び、置換済みreviewの振り返りを除外する", async () => {
+    const data = await loadPortfolio(
+      stubClient({
+        stock_notes_portfolios: { data: { id: "portfolio-1", name: "メイン", base_currency: "JPY" }, error: null },
+        stock_notes_portfolio_reviews: {
+          data: [
+            { id: "review-finalized", policy_version_id: "policy-1", snapshot_id: null, title: "確定review", status: "finalized", as_of: "2026-08-20T00:00:00Z", new_capital_amount: null, summary: null, allocation_policy: null, supersede_reason: null, updated_at: "2026-08-20T00:01:00Z" },
+            { id: "review-draft", policy_version_id: "policy-2", snapshot_id: null, title: "現行draft", status: "draft", as_of: "2026-08-01T00:00:00Z", new_capital_amount: null, summary: null, allocation_policy: null, supersede_reason: null, updated_at: "2026-08-21T00:01:00Z" },
+            { id: "review-superseded", policy_version_id: "policy-0", snapshot_id: null, title: "置換済みreview", status: "superseded", as_of: "2026-08-21T00:00:00Z", new_capital_amount: null, summary: null, allocation_policy: null, supersede_reason: "新reviewへ置換", updated_at: "2026-08-21T00:01:00Z" },
+          ],
+          error: null,
+        },
+        stock_notes_portfolio_reflections: {
+          data: [
+            { id: "reflection-new", review_id: "review-finalized", as_of: "2026-08-20T00:00:00Z", expected_outcome: "新しい期待", actual_outcome: null, worked_well: [], did_not_work: [], missed_risks: [], lessons: ["最新の学び"], policy_change_recommended: false, policy_change_summary: null, created_at: "2026-08-20T00:01:00Z" },
+            { id: "reflection-old", review_id: "review-draft", as_of: "2026-08-10T00:00:00Z", expected_outcome: "古い期待", actual_outcome: null, worked_well: [], did_not_work: [], missed_risks: [], lessons: ["古い学び"], policy_change_recommended: false, policy_change_summary: null, created_at: "2026-08-10T00:01:00Z" },
+            { id: "reflection-superseded", review_id: "review-superseded", as_of: "2026-08-22T00:00:00Z", expected_outcome: "置換済みの期待", actual_outcome: null, worked_well: [], did_not_work: [], missed_risks: [], lessons: ["除外する学び"], policy_change_recommended: false, policy_change_summary: null, created_at: "2026-08-22T00:01:00Z" },
+          ],
+          error: null,
+        },
+      }),
+    );
+
+    expect(data.latestReflection?.id).toBe("reflection-new");
+  });
+
   it("ready snapshotがなくても関連テーブルの取得件数を保持する", async () => {
     const data = await loadPortfolio(
       stubClient({
