@@ -12,6 +12,18 @@ export type MonthlyYutaiCandidate = {
   official_link_status: "found" | "missing" | "not_checked";
   source: string;
   fetched_at: string;
+  /** MINKABU候補をMini Toolsに表示するか。旧JSONでは未設定=表示。 */
+  display_policy?: "include" | "exclude";
+  review_status?:
+    | "pending"
+    | "verified_match"
+    | "confirmed_month_mismatch"
+    | "anytime_unqualified"
+    | "needs_review";
+  review_reason_code?: string | null;
+  official_rights_months?: number[];
+  official_source_urls?: string[];
+  reviewed_at?: string | null;
 };
 
 export type MonthlyYutaiMonthManifest = {
@@ -19,6 +31,8 @@ export type MonthlyYutaiMonthManifest = {
   month: number;
   path: string;
   count: number;
+  /** 旧manifestでは未設定。未設定時はcountを表示件数として扱う。 */
+  visible_count?: number;
 };
 
 export type MonthlyYutaiManifest = {

@@ -76,6 +76,7 @@
 ### 取得元
 
 - 月次候補 / 日興信用 / SBI 信用: `yutai-candidates/data-loader.ts` の `loadMonthlyYutaiPageData()` を共用（SSR、`MARKET_INFO_API_BASE_URL`）
+- 月次候補JSONに `display_policy: "exclude"` があるレコードは、data-loaderで候補表示から除外する。`display_policy` がない旧JSONは従来互換で表示する。manifestの `visible_count` があれば月タブ件数に使い、未設定なら `count` に戻す
 - 優待メモ / 取得実績: `yutai-memo/storage.ts`（LocalStorage、マウント後に読む）
 - ピック / パス / カードメモ: `_shared/yutai-selection.ts`（`yutai-candidates` と同一キーを共有）
 
@@ -159,6 +160,7 @@
 - UAT: [優待ダッシュボード UAT](../../uat/yutai-dashboard.md)
 - Plan: [優待統合ダッシュボード（PC）実装計画](../../plans/yutai-dashboard-plan.md)
 - Decision Log:
+  - [2026-08-23 MINKABU候補の公式月突合結果を表示から除外する互換運用](../../decision-log/2026-08-23-yutai-candidate-review-filter.md)
   - [2026-07-26 優待公式条件の割引率・長期保有メタデータ表示](../../decision-log/2026-07-26-yutai-launch-display-benefit-metadata.md)
   - [2026-07-26 日興クロス手数料の概算表示](../../decision-log/2026-07-26-yutai-dashboard-cross-fee.md)
   - [2026-07-18 簡易優待効率MVP](../../decision-log/2026-07-18-yutai-dashboard-simple-efficiency.md)
