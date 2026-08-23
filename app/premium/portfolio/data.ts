@@ -9,6 +9,7 @@ import type {
   PortfolioRecommendation,
   PortfolioReflection,
   PortfolioReview,
+  PortfolioReviewHistoryItem,
   PortfolioReviewItem,
   PortfolioSnapshot,
 } from "./types";
@@ -58,6 +59,7 @@ type PositionRow = {
 type ReviewRow = {
   id: string;
   policy_version_id: string | null;
+  snapshot_id: string | null;
   title: string;
   status: PortfolioReview["status"];
   as_of: string;
@@ -66,6 +68,8 @@ type ReviewRow = {
   allocation_policy: string | null;
   updated_at: string;
 };
+
+type ReviewIdRow = { id: string };
 
 type PolicyRow = {
   id: string;
@@ -229,6 +233,19 @@ function reflectionFromRow(row: ReflectionRow): PortfolioReflection {
   };
 }
 
+function reviewHistoryFromRow(row: ReviewRow): PortfolioReviewHistoryItem {
+  return {
+    id: row.id,
+    policyVersionId: row.policy_version_id,
+    snapshotId: row.snapshot_id,
+    title: row.title,
+    status: row.status,
+    asOf: row.as_of,
+    newCapitalAmount: numberOrNull(row.new_capital_amount),
+    updatedAt: row.updated_at,
+  };
+}
+
 function snapshotFromRow(row: SnapshotRow): PortfolioSnapshot {
   return {
     id: row.id,
@@ -249,6 +266,7 @@ function emptyPortfolio(): PortfolioData {
     positions: [],
     dbPositions: [],
     review: null,
+    reviewHistory: [],
     activePolicy: null,
     policyHistory: [],
     latestReflection: null,
@@ -317,14 +335,49 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     if (positionsError) throw positionsError;
     positionRows = positionData ?? [];
   }
-  const { data: reviewRow, error: reviewError } = await supabase
+  const reviewSelect = "id, policy_version_id, snapshot_id, title, status, as_of, new_capital_amount, summary, allocation_policy, updated_at";
+  const { data: reviewRows, error: reviewError } = await supabase
     .from("stock_notes_portfolio_reviews")
-    .select("id, policy_version_id, title, status, as_of, new_capital_amount, summary, allocation_policy, updated_at")
+    .select(reviewSelect)
     .eq("portfolio_id", portfolio.id)
+    .order("as_of", { ascending: false })
+    .limit(20)
+    .returns<ReviewRow[]>();
+  if (reviewError) throw reviewError;
+  const { data: currentReviewRow, error: currentReviewError } = await supabase
+    .from("stock_notes_portfolio_reviews")
+    .select(reviewSelect)
+    .eq("portfolio_id", portfolio.id)
+    .in("status", ["draft", "finalized"])
     .order("as_of", { ascending: false })
     .limit(1)
     .maybeSingle<ReviewRow>();
-  if (reviewError) throw reviewError;
+  if (currentReviewError) throw currentReviewError;
+  const reviewRowsWithCurrent = currentReviewRow && !(reviewRows ?? []).some((row) => row.id === currentReviewRow.id)
+    ? [...(reviewRows ?? []), currentReviewRow]
+    : reviewRows ?? [];
+  const reviewHistoryItems = reviewRowsWithCurrent
+    .map(reviewHistoryFromRow)
+    .sort((a, b) => b.asOf.localeCompare(a.asOf));
+  const recentReviewHistory = reviewHistoryItems.slice(0, 20);
+  const currentReviewHistory = currentReviewRow ? reviewHistoryItems.find((review) => review.id === currentReviewRow.id) ?? null : null;
+  const reviewHistory = currentReviewHistory && !recentReviewHistory.some((review) => review.id === currentReviewHistory.id)
+    ? [...recentReviewHistory.slice(0, -1), currentReviewHistory].sort((a, b) => b.asOf.localeCompare(a.asOf))
+    : recentReviewHistory;
+  const reviewRow = currentReviewRow ?? null;
+  const { data: supersededReviewRows, error: supersededReviewsError } = await supabase
+    .from("stock_notes_portfolio_reviews")
+    .select("id")
+    .eq("portfolio_id", portfolio.id)
+    .eq("status", "superseded")
+    .returns<ReviewIdRow[]>();
+  if (supersededReviewsError) throw supersededReviewsError;
+  const supersededReviewIds = new Set((supersededReviewRows ?? []).map((row) => row.id));
+  const { count: reviewCountFromDb, error: reviewCountError } = await supabase
+    .from("stock_notes_portfolio_reviews")
+    .select("id", { count: "exact", head: true })
+    .eq("portfolio_id", portfolio.id);
+  if (reviewCountError) throw reviewCountError;
 
   const { data: policyData, error: policiesError } = await supabase
     .from("stock_notes_portfolio_policy_versions")
@@ -338,17 +391,18 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
   if (policiesError) throw policiesError;
 
   let policyRows = policyData ?? [];
-  const referencedPolicyId = reviewRow?.policy_version_id;
-  if (referencedPolicyId && !policyRows.some((row) => row.id === referencedPolicyId)) {
-    const { data: referencedPolicy, error: referencedPolicyError } = await supabase
+  const referencedPolicyIds = [...new Set((reviewRowsWithCurrent ?? []).map((row) => row.policy_version_id).filter((id): id is string => Boolean(id)))];
+  const missingReferencedPolicyIds = referencedPolicyIds.filter((id) => !policyRows.some((row) => row.id === id));
+  if (missingReferencedPolicyIds.length > 0) {
+    const { data: referencedPolicies, error: referencedPoliciesError } = await supabase
       .from("stock_notes_portfolio_policy_versions")
       .select(
         "id, version_number, status, title, objective, time_horizon, income_priority, capital_growth_priority, risk_statement, cash_policy, buy_policy, sell_policy, principles, constraints, change_reason, based_on_policy_id, effective_from, created_at, updated_at",
       )
-      .eq("id", referencedPolicyId)
-      .maybeSingle<PolicyRow>();
-    if (referencedPolicyError) throw referencedPolicyError;
-    if (referencedPolicy) policyRows = [...policyRows, referencedPolicy];
+      .in("id", missingReferencedPolicyIds)
+      .returns<PolicyRow[]>();
+    if (referencedPoliciesError) throw referencedPoliciesError;
+    policyRows = [...policyRows, ...(referencedPolicies ?? [])];
   }
   const policyIds = policyRows.map((row) => row.id);
   const { data: policyRuleData, error: policyRulesError } = policyIds.length > 0
@@ -371,9 +425,10 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
   const policyHistory = policyRows.map((row) => policyFromRow(row, rulesByPolicy.get(row.id) ?? []));
   const activePolicy = policyHistory.find((policy) => policy.status === "active") ?? null;
 
+  const reflectionSelect = "id, review_id, as_of, expected_outcome, actual_outcome, worked_well, did_not_work, missed_risks, lessons, policy_change_recommended, policy_change_summary, created_at";
   const { data: reflectionData, error: reflectionsError } = await supabase
     .from("stock_notes_portfolio_reflections")
-    .select("id, review_id, as_of, expected_outcome, actual_outcome, worked_well, did_not_work, missed_risks, lessons, policy_change_recommended, policy_change_summary, created_at")
+    .select(reflectionSelect)
     .eq("portfolio_id", portfolio.id)
     .order("as_of", { ascending: false })
     .order("created_at", { ascending: false })
@@ -381,6 +436,20 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     .returns<ReflectionRow[]>();
   if (reflectionsError) throw reflectionsError;
   const reflections = (reflectionData ?? []).map(reflectionFromRow);
+  let currentReflection: PortfolioReflection | null = null;
+  if (reviewRow) {
+    const { data: currentReflectionRow, error: currentReflectionError } = await supabase
+      .from("stock_notes_portfolio_reflections")
+      .select(reflectionSelect)
+      .eq("portfolio_id", portfolio.id)
+      .eq("review_id", reviewRow.id)
+      .order("as_of", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<ReflectionRow>();
+    if (currentReflectionError) throw currentReflectionError;
+    currentReflection = currentReflectionRow ? reflectionFromRow(currentReflectionRow) : null;
+  }
 
   let reviewItemRows: ReviewItemRow[] = [];
   if (reviewRow) {
@@ -516,7 +585,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     };
   });
 
-  const actions: PortfolioAction[] = (actionData ?? []).map((row) => {
+  const actions: PortfolioAction[] = (actionData ?? []).filter((row) => !row.review_id || !supersededReviewIds.has(row.review_id)).map((row) => {
     const instrument = row.instrument_id ? instruments.get(row.instrument_id) : undefined;
     return {
       id: row.id,
@@ -548,9 +617,10 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     positions,
     dbPositions,
     review,
+    reviewHistory,
     activePolicy,
     policyHistory,
-    latestReflection: reflections[0] ?? null,
+    latestReflection: currentReflection ?? reflections.find((reflection) => !supersededReviewIds.has(reflection.reviewId)) ?? null,
     reflections,
     recommendations,
     actions,
@@ -560,7 +630,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
       accounts: accountRows.length,
       instruments: instrumentRows.length,
       positions: positionRows.length,
-      reviews: reviewRow ? 1 : 0,
+      reviews: reviewCountFromDb ?? (reviewRows ?? []).length,
       reviewItems: reviewItemRows.length,
     },
     source: currentSnapshot ? "server" : "empty",

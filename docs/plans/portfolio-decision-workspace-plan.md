@@ -1,8 +1,8 @@
 # ポートフォリオ意思決定ワークスペース 実装計画
 
-最終更新: 2026-08-22
+最終更新: 2026-08-23
 
-状態: **UI-1〜UI-2の初回実装済み。`/premium/portfolio` は保存済み判断を読む意思決定ワークスペースへ移行中であり、active policy・reflection・差分表示と共有読み取り契約は未完成である。**
+状態: **UI-1〜UI-2の初回実装済み。UI-3の初回範囲として、現行reviewと置換済みを含むreview履歴の分離表示を実装中。`/premium/portfolio` は保存済み判断を読む意思決定ワークスペースへ移行中であり、共有読み取り契約・外部資産統合・差分表示は未完成である。**
 
 ## 1. 正本と対象範囲
 
@@ -257,6 +257,10 @@ MiniToolsはSupabase Auth/RLSを使って本人データを読む。表示用の
 
 - 商品別集約、口座別明細
 - snapshot/review履歴と差分
+- `superseded` reviewを現行判断から除外し、履歴画面には表示する
+- 現行reviewがない場合に、置換済み履歴とChatGPTでの次の操作を表示する
+
+UI-3の初回受入範囲は、stock-notes側のreview lifecycle（`draft` / `finalized` / `superseded`）とMiniToolsの表示を一致させることとする。`superseded`は未確定のまま新しいreviewへ切り替えた履歴であり、現行reviewや未完了Actionの対象にはしない。
 
 ### UI-4: 銘柄ダッシュボード統合
 

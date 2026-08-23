@@ -55,13 +55,24 @@ export type PortfolioReview = {
   id: string;
   policyVersionId: string | null;
   title: string;
-  status: "draft" | "finalized";
+  status: "draft" | "finalized" | "superseded";
   asOf: string;
   newCapitalAmount: number | null;
   summary: string | null;
   allocationPolicy: string | null;
   updatedAt: string;
   items: PortfolioReviewItem[];
+};
+
+export type PortfolioReviewHistoryItem = {
+  id: string;
+  policyVersionId: string | null;
+  snapshotId: string | null;
+  title: string;
+  status: PortfolioReview["status"];
+  asOf: string;
+  newCapitalAmount: number | null;
+  updatedAt: string;
 };
 
 export type PortfolioPolicyRule = {
@@ -192,6 +203,7 @@ export type PortfolioData = {
   positions: PortfolioPosition[];
   dbPositions: PortfolioDbPosition[];
   review: PortfolioReview | null;
+  reviewHistory: PortfolioReviewHistoryItem[];
   activePolicy: PortfolioPolicy | null;
   policyHistory: PortfolioPolicy[];
   latestReflection: PortfolioReflection | null;

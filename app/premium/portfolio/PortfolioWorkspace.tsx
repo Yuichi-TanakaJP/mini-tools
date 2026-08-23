@@ -1,17 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { PortfolioData, PortfolioDbPosition, PortfolioPosition, PortfolioReviewItem } from "./types";
+import type { PortfolioData, PortfolioDbPosition, PortfolioPosition, PortfolioReviewHistoryItem, PortfolioReviewItem } from "./types";
 import { summarizePortfolioDbResult } from "./db-check";
 import PortfolioDecision from "./PortfolioDecision";
 
-type Tab = "decision" | "overview" | "record" | "policy" | "db";
+type Tab = "decision" | "overview" | "record" | "policy" | "history" | "db";
 
 const tabLabels: Record<Tab, string> = {
   decision: "意思決定",
-  overview: "表示",
-  record: "記録",
-  policy: "方針・履歴",
+  overview: "保有一覧",
+  record: "口座・取込",
+  policy: "方針",
+  history: "履歴",
   db: "DB確認",
 };
 
@@ -200,6 +201,61 @@ function PolicyItem({ item }: { item: PortfolioReviewItem }) {
       {item.rationale ? <div style={{ color: "var(--color-text-sub)", fontSize: 12, lineHeight: 1.6 }}>理由: {item.rationale}</div> : null}
       {item.policyNote ? <div style={{ color: "var(--color-text-muted)", fontSize: 12, lineHeight: 1.6 }}>方針メモ: {item.policyNote}</div> : null}
     </li>
+  );
+}
+
+const reviewStatusLabels: Record<PortfolioReviewHistoryItem["status"], string> = {
+  draft: "下書き・現行",
+  finalized: "確定",
+  superseded: "置換済み",
+};
+
+function ReviewHistoryView({ data }: { data: PortfolioData }) {
+  const policyTitles = new Map(data.policyHistory.map((policy) => [policy.id, `v${policy.versionNumber} ${policy.title}`]));
+
+  return (
+    <>
+      <Section title="ポートフォリオreview履歴">
+        <div style={{ marginBottom: 12, color: "var(--color-text-muted)", fontSize: 12, lineHeight: 1.6 }}>
+          ChatGPTで保存したreviewの履歴です。<strong>置換済み</strong>は未確定のまま新しいreviewに切り替えた記録で、現在の判断には使いません。
+        </div>
+        {data.reviewHistory.length === 0 ? <EmptyState>review履歴はありません。</EmptyState> : (
+          <div style={{ display: "grid", gap: 9 }}>
+            {data.reviewHistory.map((review) => (
+              <div key={review.id} style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 12, display: "grid", gap: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "baseline" }}>
+                  <div>
+                    <strong>{review.title}</strong>
+                    <div style={{ marginTop: 4, color: "var(--color-text-muted)", fontSize: 12 }}>基準日 {formatDateTime(review.asOf)} / 更新 {formatDateTime(review.updatedAt)}</div>
+                  </div>
+                  <span style={{ borderRadius: 999, padding: "4px 9px", background: review.status === "superseded" ? "#f1f5f9" : review.status === "finalized" ? "#dcfce7" : "#dbeafe", color: review.status === "superseded" ? "#475569" : review.status === "finalized" ? "#166534" : "#1d4ed8", fontSize: 11, fontWeight: 900 }}>
+                    {reviewStatusLabels[review.status]}
+                  </span>
+                </div>
+                <div style={{ display: "grid", gap: 4, color: "var(--color-text-sub)", fontSize: 12 }}>
+                  <div><strong>参照policy:</strong> {review.policyVersionId ? policyTitles.get(review.policyVersionId) ?? review.policyVersionId : "未紐付け（legacy review）"}</div>
+                  <div><strong>対象snapshot:</strong> {review.snapshotId ?? "未紐付け"}</div>
+                  {review.newCapitalAmount !== null ? <div><strong>想定新規資金:</strong> {formatYen(review.newCapitalAmount)}</div> : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+
+      <Section title="snapshot取込履歴">
+        {data.snapshots.length === 0 ? <EmptyState>取込履歴がありません。</EmptyState> : (
+          <div style={{ display: "grid", gap: 8 }}>
+            {data.snapshots.map((snapshot) => (
+              <div key={snapshot.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", borderBottom: "1px solid var(--color-border)", padding: "8px 0", fontSize: 13 }}>
+                <span>{formatDateTime(snapshot.asOf)} / {snapshot.sourceType}</span>
+                <span style={{ color: snapshot.status === "ready" ? "#166534" : "var(--color-text-muted)", fontWeight: 800 }}>{snapshot.status}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+    </>
   );
 }
 
@@ -406,6 +462,8 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
         </>
       ) : null}
 
+      {tab === "history" ? <ReviewHistoryView data={data} /> : null}
+
       {tab === "policy" ? (
         <>
           <Section title="投資方針の現在版">
@@ -415,7 +473,7 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
             {data.policyHistory.length === 0 ? <EmptyState>方針履歴はありません。</EmptyState> : <div style={{ display: "grid", gap: 8 }}>{data.policyHistory.map((policy) => <div key={policy.id} style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 12, display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}><div><strong>v{policy.versionNumber} {policy.title}</strong><div style={{ marginTop: 4, color: "var(--color-text-muted)", fontSize: 12 }}>{formatDateTime(policy.effectiveFrom ?? policy.createdAt)} / {policy.changeReason ?? "変更理由未登録"}</div></div><span style={{ color: policy.status === "active" ? "#166534" : "var(--color-text-muted)", fontWeight: 800, fontSize: 12 }}>{policy.status === "active" ? "active" : policy.status === "superseded" ? "旧版" : "draft"}</span></div>)}</div>}
           </Section>
           <Section title="最新reviewの一時判断">
-            {!data.review ? <EmptyState>reviewはまだありません。</EmptyState> : <div style={{ display: "grid", gap: 14 }}><div><h3 style={{ margin: 0, fontSize: 18 }}>{data.review.title}</h3><div style={{ marginTop: 5, color: "var(--color-text-muted)", fontSize: 12 }}>{formatDateTime(data.review.asOf)} / {data.review.status === "finalized" ? "確定" : "下書き"}</div></div>{data.review.newCapitalAmount !== null ? <div style={{ fontWeight: 800 }}>想定新規資金: {formatYen(data.review.newCapitalAmount)}</div> : null}{data.review.summary ? <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.7, color: "var(--color-text-sub)" }}>{data.review.summary}</div> : null}{data.review.allocationPolicy ? <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.7, color: "var(--color-text-sub)" }}><strong>今回の判断メモ</strong><br />{data.review.allocationPolicy}</div> : null}{data.review.items.length === 0 ? <EmptyState>銘柄別の方針項目はまだありません。</EmptyState> : <ol style={{ display: "grid", gap: 9, margin: 0, padding: 0, listStyle: "none" }}>{data.review.items.slice().sort((a, b) => (a.priorityRank ?? 999) - (b.priorityRank ?? 999)).map((item) => <PolicyItem key={item.id} item={item} />)}</ol>}</div>}
+            {!data.review ? <EmptyState>{data.reviewHistory.some((review) => review.status === "superseded") ? "現行reviewはありません。旧reviewは履歴タブで置換済みとして確認できます。ChatGPTで新しいreviewを作成してください。" : "reviewはまだありません。"}</EmptyState> : <div style={{ display: "grid", gap: 14 }}><div><h3 style={{ margin: 0, fontSize: 18 }}>{data.review.title}</h3><div style={{ marginTop: 5, color: "var(--color-text-muted)", fontSize: 12 }}>{formatDateTime(data.review.asOf)} / {data.review.status === "finalized" ? "確定" : "下書き"}</div></div>{data.review.newCapitalAmount !== null ? <div style={{ fontWeight: 800 }}>想定新規資金: {formatYen(data.review.newCapitalAmount)}</div> : null}{data.review.summary ? <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.7, color: "var(--color-text-sub)" }}>{data.review.summary}</div> : null}{data.review.allocationPolicy ? <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.7, color: "var(--color-text-sub)" }}><strong>今回の判断メモ</strong><br />{data.review.allocationPolicy}</div> : null}{data.review.items.length === 0 ? <EmptyState>銘柄別の方針項目はまだありません。</EmptyState> : <ol style={{ display: "grid", gap: 9, margin: 0, padding: 0, listStyle: "none" }}>{data.review.items.slice().sort((a, b) => (a.priorityRank ?? 999) - (b.priorityRank ?? 999)).map((item) => <PolicyItem key={item.id} item={item} />)}</ol>}</div>}
           </Section>
           <Section title="最新の振り返り">
             {!data.latestReflection ? <EmptyState>振り返りはまだありません。</EmptyState> : <div style={{ display: "grid", gap: 8, color: "var(--color-text-sub)", lineHeight: 1.7 }}><div><strong>{formatDateTime(data.latestReflection.asOf)}</strong>{data.latestReflection.policyChangeRecommended ? <span style={{ marginLeft: 8, color: "#c2410c", fontWeight: 800 }}>方針変更案あり</span> : null}</div>{data.latestReflection.expectedOutcome ? <div><strong>期待:</strong> {data.latestReflection.expectedOutcome}</div> : null}{data.latestReflection.actualOutcome ? <div><strong>結果:</strong> {data.latestReflection.actualOutcome}</div> : null}{data.latestReflection.lessons.length > 0 ? <div><strong>学び:</strong> {data.latestReflection.lessons.join(" / ")}</div> : null}{data.latestReflection.policyChangeSummary ? <div><strong>方針変更案:</strong> {data.latestReflection.policyChangeSummary}</div> : null}</div>}
