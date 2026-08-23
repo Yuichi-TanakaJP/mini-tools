@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type {
+  MonthlyYutaiCandidate,
   MonthlyYutaiManifest,
   MonthlyYutaiMonthData,
   NikkoCreditData,
@@ -12,6 +13,7 @@ vi.mock("node:fs/promises", () => ({
 
 import { readFile } from "node:fs/promises";
 import {
+  filterVisibleMonthlyYutaiCandidates,
   loadMonthlyYutaiManifest,
   loadMonthlyYutaiMonthData,
   loadMonthlyYutaiPageData,
@@ -162,6 +164,19 @@ describe("loadMonthlyYutaiMonthData", () => {
 
     expect(result).toEqual(SAMPLE_MONTH_DATA);
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("display_policy=exclude の候補だけを表示データから外し、旧JSONは残す", async () => {
+    const visible = { code: "1111", display_policy: "include" } as MonthlyYutaiCandidate;
+    const excluded = { code: "2222", display_policy: "exclude" } as MonthlyYutaiCandidate;
+    const legacy = { code: "3333" } as MonthlyYutaiCandidate;
+    const records = [visible, excluded, legacy];
+    mockReadFile.mockResolvedValue(JSON.stringify({ ...SAMPLE_MONTH_DATA, records }));
+
+    const result = await loadMonthlyYutaiMonthData("2025-04");
+
+    expect(result?.records.map((record) => record.code)).toEqual(["1111", "3333"]);
+    expect(filterVisibleMonthlyYutaiCandidates(records)).toEqual([visible, legacy]);
   });
 
   it("API 設定あり・正常レスポンスのとき、API のデータを返す", async () => {

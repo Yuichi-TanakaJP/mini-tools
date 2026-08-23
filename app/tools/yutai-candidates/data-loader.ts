@@ -3,12 +3,30 @@ import path from "node:path";
 import { canUseLocalMarketDataFallback, getApiBaseUrl, fetchJson } from "@/lib/market-api";
 import { getKenriLastDay, getKenriLastDateForMonthId } from "@/app/tools/_shared/yutai-kenri-date";
 import type {
+  MonthlyYutaiCandidate,
   MonthlyYutaiManifest,
   MonthlyYutaiMonthData,
   MonthlyYutaiPageData,
   NikkoCreditData,
   SbiCreditData,
 } from "./types";
+
+/**
+ * MINKABU候補JSONから、明示的に除外された銘柄だけを表示対象から外す。
+ * display_policyがない旧JSONは従来互換で表示する。
+ */
+export function filterVisibleMonthlyYutaiCandidates(
+  records: MonthlyYutaiCandidate[],
+): MonthlyYutaiCandidate[] {
+  return records.filter((record) => record.display_policy !== "exclude");
+}
+
+function filterVisibleMonthData(data: MonthlyYutaiMonthData): MonthlyYutaiMonthData {
+  return {
+    ...data,
+    records: filterVisibleMonthlyYutaiCandidates(data.records),
+  };
+}
 
 /** JST の今日の年・月・日を返す */
 function getJstToday(): { year: number; month: number; day: number } {
@@ -91,13 +109,16 @@ export async function loadMonthlyYutaiMonthData(yearMonth: string): Promise<Mont
   const canUseLocalFallback = canUseLocalMarketDataFallback();
 
   if (!apiBase) {
-    return canUseLocalFallback ? loadLocalMonthData(yearMonth) : null;
+    const data = canUseLocalFallback ? await loadLocalMonthData(yearMonth) : null;
+    return data ? filterVisibleMonthData(data) : null;
   }
 
   try {
-    return await fetchJson<MonthlyYutaiMonthData>(`${apiBase}/yutai/monthly/${yearMonth}`);
+    const data = await fetchJson<MonthlyYutaiMonthData>(`${apiBase}/yutai/monthly/${yearMonth}`);
+    return filterVisibleMonthData(data);
   } catch {
-    return canUseLocalFallback ? loadLocalMonthData(yearMonth) : null;
+    const data = canUseLocalFallback ? await loadLocalMonthData(yearMonth) : null;
+    return data ? filterVisibleMonthData(data) : null;
   }
 }
 

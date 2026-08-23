@@ -186,7 +186,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
         id: `${entry.year}-${`${entry.month}`.padStart(2, "0")}`,
         label: `${entry.year}年${entry.month}月`,
         shortLabel: `${entry.month}月`,
-        count: entry.count,
+        count: entry.visible_count ?? entry.count,
       }))
       .sort((a, b) => a.id.localeCompare(b.id));
   }, [data.manifest]);
