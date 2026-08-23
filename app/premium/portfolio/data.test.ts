@@ -180,7 +180,7 @@ describe("portfolio data loader", () => {
         stock_notes_portfolio_reviews: {
           data: [
             { id: "review-finalized", policy_version_id: "policy-1", snapshot_id: "snapshot-new", title: "確定済みreview", status: "finalized", as_of: "2026-08-20T00:00:00Z", new_capital_amount: null, summary: null, allocation_policy: null, supersede_reason: null, updated_at: "2026-08-20T00:01:00Z" },
-            { id: "review-draft", policy_version_id: "policy-2", snapshot_id: "snapshot-old", title: "現行draft", status: "draft", as_of: "2026-08-01T00:00:00Z", new_capital_amount: null, summary: null, allocation_policy: null, supersede_reason: null, updated_at: "2026-08-21T00:01:00Z" },
+            { id: "review-draft", policy_version_id: "policy-2", snapshot_id: "snapshot-old", title: "現行draft", status: "draft", as_of: "2026-08-20T00:00:00Z", new_capital_amount: null, summary: null, allocation_policy: null, supersede_reason: null, updated_at: "2026-08-20T00:02:00Z" },
           ],
           error: null,
         },
@@ -188,6 +188,7 @@ describe("portfolio data loader", () => {
     );
 
     expect(data.review?.id).toBe("review-draft");
+    expect(data.reviewHistory[0]?.id).toBe("review-draft");
   });
 
   it("最新の振り返りは時間順で選び、reviewの状態にかかわらず履歴を残す", async () => {

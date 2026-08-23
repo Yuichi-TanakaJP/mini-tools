@@ -70,8 +70,6 @@ type ReviewRow = {
   updated_at: string;
 };
 
-type ReviewIdRow = { id: string };
-
 type PolicyRow = {
   id: string;
   version_number: number;
@@ -248,6 +246,10 @@ function reviewHistoryFromRow(row: ReviewRow): PortfolioReviewHistoryItem {
   };
 }
 
+function compareReviewHistory(a: PortfolioReviewHistoryItem, b: PortfolioReviewHistoryItem) {
+  return b.asOf.localeCompare(a.asOf) || b.updatedAt.localeCompare(a.updatedAt) || b.id.localeCompare(a.id);
+}
+
 function snapshotFromRow(row: SnapshotRow): PortfolioSnapshot {
   return {
     id: row.id,
@@ -373,23 +375,13 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
   const reviewRowsWithCurrent = currentReviewRow && !(reviewRows ?? []).some((row) => row.id === currentReviewRow.id)
     ? [...(reviewRows ?? []), currentReviewRow]
     : reviewRows ?? [];
-  const reviewHistoryItems = reviewRowsWithCurrent
-    .map(reviewHistoryFromRow)
-    .sort((a, b) => b.asOf.localeCompare(a.asOf));
+  const reviewHistoryItems = reviewRowsWithCurrent.map(reviewHistoryFromRow).sort(compareReviewHistory);
   const recentReviewHistory = reviewHistoryItems.slice(0, 20);
   const currentReviewHistory = currentReviewRow ? reviewHistoryItems.find((review) => review.id === currentReviewRow.id) ?? null : null;
   const reviewHistory = currentReviewHistory && !recentReviewHistory.some((review) => review.id === currentReviewHistory.id)
-    ? [...recentReviewHistory.slice(0, -1), currentReviewHistory].sort((a, b) => b.asOf.localeCompare(a.asOf))
+    ? [...recentReviewHistory.slice(0, -1), currentReviewHistory].sort(compareReviewHistory)
     : recentReviewHistory;
   const reviewRow = currentReviewRow ?? null;
-  const { data: supersededReviewRows, error: supersededReviewsError } = await supabase
-    .from("stock_notes_portfolio_reviews")
-    .select("id")
-    .eq("portfolio_id", portfolio.id)
-    .eq("status", "superseded")
-    .returns<ReviewIdRow[]>();
-  if (supersededReviewsError) throw supersededReviewsError;
-  const supersededReviewIds = new Set((supersededReviewRows ?? []).map((row) => row.id));
   const { count: reviewCountFromDb, error: reviewCountError } = await supabase
     .from("stock_notes_portfolio_reviews")
     .select("id", { count: "exact", head: true })
@@ -484,6 +476,8 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     .select("id, review_id, instrument_id, action_type, title, detail, trigger_condition, due_date, status, created_at, updated_at")
     .eq("portfolio_id", portfolio.id)
     .eq("status", "open");
+  // Open actions intentionally carry over across review cycles. Replacing a draft review
+  // does not cancel operational follow-up work; completion or dismissal is explicit.
   const { data: actionData, error: actionsError } = await actionQuery
     .order("created_at", { ascending: false })
     .limit(50)
