@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { summarizePortfolioDbResult } from "./db-check";
+import { emptyExternalAssets } from "./external-assets";
 import type { PortfolioData } from "./types";
 
 const baseData: PortfolioData = {
   authState: "authenticated",
   portfolio: { id: "portfolio-1", name: "メイン", baseCurrency: "JPY" },
-  snapshots: [{ id: "snapshot-1", asOf: "2026-08-14T00:00:00Z", status: "ready", sourceType: "broker_csv", importedAt: "2026-08-14T00:01:00Z" }],
-  currentSnapshot: { id: "snapshot-1", asOf: "2026-08-14T00:00:00Z", status: "ready", sourceType: "broker_csv", importedAt: "2026-08-14T00:01:00Z" },
-  dbPositionSnapshot: { id: "snapshot-1", asOf: "2026-08-14T00:00:00Z", status: "ready", sourceType: "broker_csv", importedAt: "2026-08-14T00:01:00Z" },
+  snapshots: [{ id: "snapshot-1", asOf: "2026-08-14T00:00:00Z", status: "ready", sourceType: "broker_csv", importedAt: "2026-08-14T00:01:00Z", portfolioScope: "official", sourceLabel: null }],
+  externalSnapshots: [],
+  currentSnapshot: { id: "snapshot-1", asOf: "2026-08-14T00:00:00Z", status: "ready", sourceType: "broker_csv", importedAt: "2026-08-14T00:01:00Z", portfolioScope: "official", sourceLabel: null },
+  dbPositionSnapshot: { id: "snapshot-1", asOf: "2026-08-14T00:00:00Z", status: "ready", sourceType: "broker_csv", importedAt: "2026-08-14T00:01:00Z", portfolioScope: "official", sourceLabel: null },
+  externalAssets: emptyExternalAssets(),
   positions: [
     { id: "position-1", accountId: "account-nisa", instrumentId: "instrument-1605", assetType: "domestic_stock", identifier: "1605", name: "INPEX", accountName: "NISA", accountType: "nisa_growth", institutionName: "証券会社", quantity: 96, unitCost: 1927, quotedPrice: 2200, quoteUnit: 1, costBasis: 184992, marketValue: 211200, unrealizedPnl: 26208, distributionMethod: null },
     { id: "position-2", accountId: "account-taxable", instrumentId: "instrument-1605", assetType: "domestic_stock", identifier: "1605", name: "INPEX", accountName: "課税口座", accountType: "taxable", institutionName: "証券会社", quantity: 10, unitCost: 2000, quotedPrice: 2200, quoteUnit: 1, costBasis: 20000, marketValue: 22000, unrealizedPnl: 2000, distributionMethod: null },
@@ -73,6 +76,21 @@ describe("summarizePortfolioDbResult", () => {
     const summary = summarizePortfolioDbResult({ ...baseData, authState: "required" });
 
     expect(summary.loadState).toBe("auth_required");
+  });
+
+  it("外部snapshotだけでは公式取込済みと扱わない", () => {
+    const summary = summarizePortfolioDbResult({
+      ...baseData,
+      snapshots: [],
+      externalSnapshots: [{ ...baseData.snapshots[0], portfolioScope: "external_reference" }],
+      currentSnapshot: null,
+      positions: [],
+      review: null,
+      dbCounts: { ...baseData.dbCounts, snapshots: 0, positions: 0, reviews: 0, reviewItems: 0 },
+      source: "empty",
+    });
+
+    expect(summary).toMatchObject({ loadState: "empty", snapshotCount: 0, latestSnapshotId: null });
   });
 
   it("import履歴はあるがready snapshotがない状態を区別する", () => {

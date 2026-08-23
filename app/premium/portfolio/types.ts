@@ -4,6 +4,12 @@ export type PortfolioAccountType =
   | "nisa_accumulation"
   | "legacy_nisa"
   | "pension"
+  | "ideco"
+  | "corporate_dc"
+  | "foreign_brokerage"
+  | "crypto_exchange"
+  | "bank_cash"
+  | "real_estate_crowdfunding"
   | "other";
 
 export type PortfolioSnapshot = {
@@ -12,6 +18,8 @@ export type PortfolioSnapshot = {
   status: "ready" | "superseded" | "failed" | "importing";
   sourceType: string;
   importedAt: string;
+  portfolioScope: "official" | "external_reference";
+  sourceLabel: string | null;
 };
 
 export type PortfolioPosition = {
@@ -181,6 +189,45 @@ export type PortfolioDbPosition = {
   distributionMethod: string | null;
 };
 
+export type PortfolioExternalAssetSnapshot = PortfolioSnapshot & {
+  portfolioScope: "external_reference";
+};
+
+export type PortfolioExternalAssetPosition = {
+  id: string;
+  accountId: string;
+  instrumentId: string;
+  assetType: string | null;
+  identifier: string | null;
+  name: string | null;
+  stockId: string | null;
+  accountName: string | null;
+  accountType: PortfolioAccountType | null;
+  institutionName: string | null;
+  withdrawalProfile: string | null;
+  valuationMode: "quantity" | "balance";
+  quantity: number | null;
+  nativeMarketValue: number | null;
+  nativeCurrency: string | null;
+  marketValue: number | null;
+  costBasis: number | null;
+  costBasisNative: number | null;
+  fxRate: number | null;
+  fxAsOf: string | null;
+  fxSource: string | null;
+  note: string | null;
+};
+
+export type PortfolioExternalAssets = {
+  status: "loaded" | "empty" | "loading" | "error";
+  snapshot: PortfolioExternalAssetSnapshot | null;
+  positions: PortfolioExternalAssetPosition[];
+  totalMarketValue: number | null;
+  missingMarketValueCount: number;
+  unresolvedInstrumentCount: number;
+  errorMessage: string | null;
+};
+
 export type PortfolioDbCounts = {
   portfolio: number;
   snapshots: number;
@@ -199,8 +246,10 @@ export type PortfolioData = {
     baseCurrency: string;
   };
   snapshots: PortfolioSnapshot[];
+  externalSnapshots: PortfolioExternalAssetSnapshot[];
   currentSnapshot: PortfolioSnapshot | null;
   dbPositionSnapshot: PortfolioSnapshot | null;
+  externalAssets: PortfolioExternalAssets;
   positions: PortfolioPosition[];
   dbPositions: PortfolioDbPosition[];
   review: PortfolioReview | null;

@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { getPortfolioDecisionState, reviewPolicyReferenceLabel } from "./PortfolioDecision";
+import { emptyExternalAssets } from "./external-assets";
 import type { PortfolioData } from "./types";
 
 const baseData: PortfolioData = {
   authState: "authenticated",
   portfolio: { id: "portfolio-1", name: "メイン", baseCurrency: "JPY" },
-  snapshots: [{ id: "snapshot-1", asOf: "2026-08-14T00:00:00Z", status: "ready", sourceType: "broker_csv", importedAt: "2026-08-14T00:01:00Z" }],
-  currentSnapshot: { id: "snapshot-1", asOf: "2026-08-14T00:00:00Z", status: "ready", sourceType: "broker_csv", importedAt: "2026-08-14T00:01:00Z" },
+  snapshots: [{ id: "snapshot-1", asOf: "2026-08-14T00:00:00Z", status: "ready", sourceType: "broker_csv", importedAt: "2026-08-14T00:01:00Z", portfolioScope: "official", sourceLabel: null }],
+  externalSnapshots: [],
+  currentSnapshot: { id: "snapshot-1", asOf: "2026-08-14T00:00:00Z", status: "ready", sourceType: "broker_csv", importedAt: "2026-08-14T00:01:00Z", portfolioScope: "official", sourceLabel: null },
   dbPositionSnapshot: null,
+  externalAssets: emptyExternalAssets(),
   positions: [],
   dbPositions: [],
   review: { id: "review-1", policyVersionId: null, title: "レビュー", status: "draft", asOf: "2026-08-14T00:02:00Z", newCapitalAmount: null, summary: null, allocationPolicy: null, updatedAt: "2026-08-14T00:02:00Z", items: [] },
