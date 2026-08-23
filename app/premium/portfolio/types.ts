@@ -72,6 +72,7 @@ export type PortfolioReviewHistoryItem = {
   status: PortfolioReview["status"];
   asOf: string;
   newCapitalAmount: number | null;
+  supersedeReason: string | null;
   updatedAt: string;
 };
 

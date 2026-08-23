@@ -66,6 +66,7 @@ type ReviewRow = {
   new_capital_amount: number | string | null;
   summary: string | null;
   allocation_policy: string | null;
+  supersede_reason: string | null;
   updated_at: string;
 };
 
@@ -242,6 +243,7 @@ function reviewHistoryFromRow(row: ReviewRow): PortfolioReviewHistoryItem {
     status: row.status,
     asOf: row.as_of,
     newCapitalAmount: numberOrNull(row.new_capital_amount),
+    supersedeReason: row.supersede_reason ?? null,
     updatedAt: row.updated_at,
   };
 }
@@ -335,7 +337,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     if (positionsError) throw positionsError;
     positionRows = positionData ?? [];
   }
-  const reviewSelect = "id, policy_version_id, snapshot_id, title, status, as_of, new_capital_amount, summary, allocation_policy, updated_at";
+  const reviewSelect = "id, policy_version_id, snapshot_id, title, status, as_of, new_capital_amount, summary, allocation_policy, supersede_reason, updated_at";
   const { data: reviewRows, error: reviewError } = await supabase
     .from("stock_notes_portfolio_reviews")
     .select(reviewSelect)
@@ -344,15 +346,29 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     .limit(20)
     .returns<ReviewRow[]>();
   if (reviewError) throw reviewError;
-  const { data: currentReviewRow, error: currentReviewError } = await supabase
+  const { data: draftReviewRow, error: draftReviewError } = await supabase
     .from("stock_notes_portfolio_reviews")
     .select(reviewSelect)
     .eq("portfolio_id", portfolio.id)
-    .in("status", ["draft", "finalized"])
-    .order("as_of", { ascending: false })
+    .eq("status", "draft")
+    .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle<ReviewRow>();
-  if (currentReviewError) throw currentReviewError;
+  if (draftReviewError) throw draftReviewError;
+  let currentReviewRow = draftReviewRow;
+  if (!currentReviewRow) {
+    const { data: finalizedReviewRow, error: finalizedReviewError } = await supabase
+      .from("stock_notes_portfolio_reviews")
+      .select(reviewSelect)
+      .eq("portfolio_id", portfolio.id)
+      .eq("status", "finalized")
+      .order("as_of", { ascending: false })
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<ReviewRow>();
+    if (finalizedReviewError) throw finalizedReviewError;
+    currentReviewRow = finalizedReviewRow;
+  }
   const reviewRowsWithCurrent = currentReviewRow && !(reviewRows ?? []).some((row) => row.id === currentReviewRow.id)
     ? [...(reviewRows ?? []), currentReviewRow]
     : reviewRows ?? [];

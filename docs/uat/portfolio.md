@@ -24,8 +24,10 @@
 - [ ] 「口座・取込」でスナップショットの基準日・取込日時・statusが表示される
 - [ ] 「方針」でactive policyとpolicy version履歴が表示される
 - [ ] 「方針」で現行reviewの一時判断と銘柄別項目が優先順位順に表示される
+- [ ] `draft`が存在する場合、基準日が新しい`finalized`より現行reviewとして優先される
 - [ ] 「履歴」でsnapshot履歴とreview履歴が表示される
 - [ ] `superseded` reviewが「置換済み」と表示され、現行reviewの判断に混ざらない
+- [ ] `superseded` reviewに保存済みの置換理由が表示される
 - [ ] 現行reviewがない場合、置換済み履歴の存在とChatGPTで新reviewを作成する案内が表示される
 - [ ] policyなし・reflectionなしが未登録状態として表示される
 - [ ] 「DB確認」で読み込み状態、portfolio/snapshot/position/reviewの件数、主要ID、基準日が確認できる

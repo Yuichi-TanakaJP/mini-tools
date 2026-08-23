@@ -18,9 +18,15 @@ MiniToolsは読み取り専用の意思決定ワークスペースであり、re
 - 「履歴」: `superseded`を含むreview履歴とsnapshot取込履歴
 - 現行reviewがない場合: 置換済み履歴を示し、ChatGPTで新しいreviewを作成する運用を案内
 
+## 2026-08-23 追補 — 現行reviewの優先順位と置換理由
+
+外部監査で、基準日が新しい過去の`finalized` reviewが存在すると、単純な`as_of`順では現行の`draft`が隠れる可能性を確認した。現行reviewは`draft`を優先し、`draft`がない場合だけ最新の`finalized`を表示する。
+
+また、履歴の監査性を保つため、`supersede_reason`を取得して`superseded` reviewのカードに表示する。理由が未設定のlegacy行でも履歴自体は表示し、理由欄だけを省略する。
+
 ## データと根拠
 
-review履歴はSupabaseの`stock_notes_portfolio_reviews`から、portfolio単位で最大20件を基準日降順で取得する。MiniToolsは`superseded`を派生生成せず、stock-notesの保存済みstatusをそのまま表示する。現行reviewの明細・recommendationは`superseded`を除いたreviewに対してだけ取得する。
+review履歴はSupabaseの`stock_notes_portfolio_reviews`から、portfolio単位で最大20件を基準日降順で取得する。現行reviewは`draft`を優先し、存在しない場合だけ`finalized`を基準日・更新日時順で1件取得する。MiniToolsは`superseded`を派生生成せず、stock-notesの保存済みstatusと`supersede_reason`をそのまま表示する。現行reviewの明細・recommendationは`superseded`を除いたreviewに対してだけ取得する。
 
 ## 未完了の後続
 

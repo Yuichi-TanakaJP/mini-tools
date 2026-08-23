@@ -235,6 +235,7 @@ function ReviewHistoryView({ data }: { data: PortfolioData }) {
                 <div style={{ display: "grid", gap: 4, color: "var(--color-text-sub)", fontSize: 12 }}>
                   <div><strong>参照policy:</strong> {review.policyVersionId ? policyTitles.get(review.policyVersionId) ?? review.policyVersionId : "未紐付け（legacy review）"}</div>
                   <div><strong>対象snapshot:</strong> {review.snapshotId ?? "未紐付け"}</div>
+                  {review.status === "superseded" && review.supersedeReason ? <div><strong>置換理由:</strong> {review.supersedeReason}</div> : null}
                   {review.newCapitalAmount !== null ? <div><strong>想定新規資金:</strong> {formatYen(review.newCapitalAmount)}</div> : null}
                 </div>
               </div>
