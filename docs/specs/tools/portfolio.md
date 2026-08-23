@@ -1,6 +1,6 @@
 # ポートフォリオ 仕様
 
-> **実装状態:** 2026-08-22時点の画面は、最新snapshot、active policy・policy履歴、保存済みreview/recommendation/action、latest reflectionを読むUI-1〜UI-2初回版である。reviewが参照したpolicy versionも表示する。
+> **実装状態:** 2026-08-23時点の画面は、最新snapshot、active policy・policy履歴、保存済みreview/recommendation/action、latest reflectionを読むUI-1〜UI-2初回版に、UI-3のreview履歴分離表示を加えたものである。reviewが参照したpolicy versionも表示する。
 > ポートフォリオ意思決定プラットフォームの完成品ではない。目標運用とUIの実装順序は
 > [ポートフォリオ意思決定ワークスペース実装計画](../../plans/portfolio-decision-workspace-plan.md) を参照する。
 
@@ -19,9 +19,10 @@
 ### 主な画面要素
 
 - **意思決定**: 判断状態、snapshot/reviewの基準日、全体要約、金額なしの補強・調査recommendation、未完了portfolio action
-- **表示**: 最新readyスナップショットの評価額・取得額・含み損益・商品別配分
-- **記録**: 最新スナップショットの口座別ポジション明細、過去の取込履歴
-- **方針・履歴**: active policyの版・原則・構造化ルール・変更履歴、最新reviewの一時判断、latest reflection
+- **保有一覧**: 最新readyスナップショットの評価額・取得額・含み損益・商品別配分
+- **口座・取込**: 最新スナップショットの口座別ポジション明細、過去の取込履歴
+- **方針**: active policyの版・原則・構造化ルール・変更履歴、現行reviewの一時判断、latest reflection
+- **履歴**: snapshot履歴とreview履歴。reviewは`draft` / `finalized` / `superseded`を表示し、置換済みreviewは現行判断と分けて表示する
 - **DB確認**: MiniToolsがSupabaseから取得したportfolio、snapshot、position、review、review itemの生行数・ID・基準日を読み取り専用で確認する。銘柄マスタ件数は、portfolio_idを持たないユーザー単位の取得結果として表示し、readyがない場合は最新取込snapshotのポジション行も確認する
 
 ### 入力
@@ -37,6 +38,8 @@
 
 - 「意思決定」では、保存済みreviewの基準日・状態・要約、recommendationの対象/優先順位/条件/理由、actionの状態/実行条件を表示する
 - 「意思決定」では、reviewが参照したpolicy versionを表示する。旧reviewで参照先が未保存の場合は「未紐付け（legacy review）」と表示し、active policyと混同しない
+- 「方針」では、現行review（`draft`または`finalized`）だけを表示する。`superseded`しか残っていない場合は現行reviewなしとして表示し、履歴タブへ案内する
+- 「履歴」では、`superseded`を含む保存済みreviewを表示する。`superseded`は「未確定のまま新しいreviewに置き換えた履歴」であり、現在の判断には使わない
 - `proposed_amount` と `proposed_pct` が未設定のrecommendationは「金額未指定」「金額を仮定しない」と明示する
 - 株式・投資信託を商品単位で表示する
 - 口座別の同一商品は「表示」では集約し、「記録」では分けて表示する

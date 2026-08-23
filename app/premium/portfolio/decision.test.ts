@@ -11,6 +11,7 @@ const baseData: PortfolioData = {
   positions: [],
   dbPositions: [],
   review: { id: "review-1", policyVersionId: null, title: "レビュー", status: "draft", asOf: "2026-08-14T00:02:00Z", newCapitalAmount: null, summary: null, allocationPolicy: null, updatedAt: "2026-08-14T00:02:00Z", items: [] },
+  reviewHistory: [],
   activePolicy: null,
   policyHistory: [],
   latestReflection: null,

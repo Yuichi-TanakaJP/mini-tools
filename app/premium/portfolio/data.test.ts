@@ -3,6 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadPortfolio, portfolioAuthRequired } from "./data";
 
 class QueryStub {
+  private statusPredicate: ((value: unknown) => boolean) | null = null;
+
   constructor(private readonly result: unknown, private readonly queryLog: string[] = []) {}
 
   select() {
@@ -11,10 +13,12 @@ class QueryStub {
 
   eq(column?: string, value?: unknown) {
     if (column === "status" && value === "open") this.queryLog.push("status=open");
+    if (column === "status") this.statusPredicate = (candidate) => candidate === value;
     return this;
   }
 
-  in() {
+  in(column?: string, values?: unknown[]) {
+    if (column === "status") this.statusPredicate = (candidate) => values?.includes(candidate) ?? false;
     return this;
   }
 
@@ -27,11 +31,18 @@ class QueryStub {
   }
 
   maybeSingle() {
-    return Promise.resolve(this.result);
+    const result = this.filteredResult() as { data?: unknown; error?: unknown };
+    return Promise.resolve(Array.isArray(result.data) ? { ...result, data: result.data[0] ?? null } : this.result);
   }
 
   returns() {
-    return Promise.resolve(this.result);
+    return Promise.resolve(this.filteredResult());
+  }
+
+  private filteredResult() {
+    const result = this.result as { data?: unknown; error?: unknown };
+    if (!this.statusPredicate || !Array.isArray(result.data)) return this.result;
+    return { ...result, data: result.data.filter((row) => this.statusPredicate?.((row as { status?: unknown }).status)) };
   }
 }
 
@@ -91,7 +102,7 @@ describe("portfolio data loader", () => {
           error: null,
         },
         stock_notes_portfolio_reviews: {
-          data: { id: "review-1", policy_version_id: "policy-2", title: "8月棚卸し", status: "draft", as_of: "2026-08-14T00:02:00Z", new_capital_amount: "100000", summary: "分散を維持", allocation_policy: "押し目を待つ", updated_at: "2026-08-14T00:02:00Z" },
+          data: [{ id: "review-1", policy_version_id: "policy-2", snapshot_id: "snapshot-1", title: "8月棚卸し", status: "draft", as_of: "2026-08-14T00:02:00Z", new_capital_amount: "100000", summary: "分散を維持", allocation_policy: "押し目を待つ", updated_at: "2026-08-14T00:02:00Z" }],
           error: null,
         },
         stock_notes_portfolio_policy_versions: {
@@ -103,7 +114,7 @@ describe("portfolio data loader", () => {
           error: null,
         },
         stock_notes_portfolio_reflections: {
-          data: [{ id: "reflection-1", review_id: "review-finalized", as_of: "2026-08-20T00:00:00Z", expected_outcome: "分散を維持", actual_outcome: "集中は許容範囲", worked_well: ["業種分散"], did_not_work: [], missed_risks: ["未分類商品"], lessons: ["分類の鮮度を確認する"], policy_change_recommended: true, policy_change_summary: "分類確認を定期化", created_at: "2026-08-20T00:00:00Z" }],
+          data: [{ id: "reflection-1", review_id: "review-1", as_of: "2026-08-20T00:00:00Z", expected_outcome: "分散を維持", actual_outcome: "集中は許容範囲", worked_well: ["業種分散"], did_not_work: [], missed_risks: ["未分類商品"], lessons: ["分類の鮮度を確認する"], policy_change_recommended: true, policy_change_summary: "分類確認を定期化", created_at: "2026-08-20T00:00:00Z" }],
           error: null,
         },
         stock_notes_portfolio_review_items: {
@@ -127,12 +138,92 @@ describe("portfolio data loader", () => {
     expect(data.dbPositions).toHaveLength(2);
     expect(data.dbPositions[1]).toMatchObject({ id: "position-2", accountName: null, accountId: "account-missing" });
     expect(data.review?.items[0]).toMatchObject({ stance: "hold", targetAllocationPct: 10, buyConditions: ["押し目"] });
+    expect(data.reviewHistory).toHaveLength(1);
+    expect(data.reviewHistory[0]).toMatchObject({ id: "review-1", status: "draft", snapshotId: "snapshot-1" });
     expect(data.review?.policyVersionId).toBe("policy-2");
     expect(data.activePolicy).toMatchObject({ versionNumber: 2, status: "active", title: "高配当を軸に成長も重視" });
     expect(data.activePolicy?.rules[0]).toMatchObject({ dimension: "cycle_profile", targetKey: "cyclical", minPct: 70, maxPct: 70 });
     expect(data.latestReflection).toMatchObject({ policyChangeRecommended: true, lessons: ["分類の鮮度を確認する"] });
     expect(data.recommendations[0]).toMatchObject({ themeKey: "income_reinforcement", proposedAmount: null, proposedPct: null });
     expect(data.actions[0]).toMatchObject({ actionType: "concentration_check", status: "open" });
+  });
+
+  it("superseded reviewを現行判断から除外し、履歴には残す", async () => {
+    const data = await loadPortfolio(
+      stubClient({
+        stock_notes_portfolios: { data: { id: "portfolio-1", name: "メイン", base_currency: "JPY" }, error: null },
+        stock_notes_portfolio_snapshots: { data: [{ id: "snapshot-1", as_of: "2026-08-14T00:00:00Z", status: "ready", source_type: "broker_csv", imported_at: "2026-08-14T00:01:00Z" }], error: null },
+        stock_notes_portfolio_accounts: { data: [], error: null },
+        stock_notes_portfolio_positions: { data: [], error: null },
+        stock_notes_portfolio_reviews: { data: [{ id: "review-old", policy_version_id: "policy-v1", snapshot_id: "snapshot-1", title: "旧v1 review", status: "superseded", as_of: "2026-08-10T00:00:00Z", new_capital_amount: null, summary: "旧方針の途中案", allocation_policy: null, supersede_reason: "active policy更新により現行reviewを置き換えたため", updated_at: "2026-08-11T00:00:00Z" }], error: null },
+        stock_notes_portfolio_policy_versions: { data: [], error: null },
+        stock_notes_portfolio_policy_rules: { data: [], error: null },
+        stock_notes_portfolio_reflections: { data: [{ id: "reflection-old", review_id: "review-old", as_of: "2026-08-12T00:00:00Z", expected_outcome: "旧reviewの想定", actual_outcome: null, worked_well: [], did_not_work: [], missed_risks: [], lessons: ["旧方針の学び"], policy_change_recommended: false, policy_change_summary: null, created_at: "2026-08-12T00:00:00Z" }], error: null },
+        stock_notes_portfolio_review_items: { data: [], error: null },
+        stock_notes_portfolio_recommendations: { data: [], error: null },
+        stock_notes_portfolio_actions: { data: [{ id: "action-old", review_id: "review-old", instrument_id: null, action_type: "review", title: "旧reviewの確認", detail: null, trigger_condition: null, due_date: null, status: "open", created_at: "2026-08-10T00:00:00Z", updated_at: "2026-08-10T00:00:00Z" }], error: null },
+        stock_notes_portfolio_instruments: { data: [], error: null },
+      }),
+    );
+
+    expect(data.review).toBeNull();
+    expect(data.reviewHistory).toMatchObject([{ id: "review-old", status: "superseded", supersedeReason: "active policy更新により現行reviewを置き換えたため" }]);
+    expect(data.latestReflection).toMatchObject({ id: "reflection-old", reviewId: "review-old" });
+    expect(data.actions).toEqual([]);
+    expect(data.dbCounts.reviews).toBe(1);
+  });
+
+  it("基準日が新しい確定reviewより現行draftを優先する", async () => {
+    const data = await loadPortfolio(
+      stubClient({
+        stock_notes_portfolios: { data: { id: "portfolio-1", name: "メイン", base_currency: "JPY" }, error: null },
+        stock_notes_portfolio_reviews: {
+          data: [
+            { id: "review-finalized", policy_version_id: "policy-1", snapshot_id: "snapshot-new", title: "確定済みreview", status: "finalized", as_of: "2026-08-20T00:00:00Z", new_capital_amount: null, summary: null, allocation_policy: null, supersede_reason: null, updated_at: "2026-08-20T00:01:00Z" },
+            { id: "review-draft", policy_version_id: "policy-2", snapshot_id: "snapshot-old", title: "現行draft", status: "draft", as_of: "2026-08-20T00:00:00Z", new_capital_amount: null, summary: null, allocation_policy: null, supersede_reason: null, updated_at: "2026-08-20T00:02:00Z" },
+          ],
+          error: null,
+        },
+        stock_notes_portfolio_actions: {
+          data: [
+            { id: "action-finalized", review_id: "review-finalized", instrument_id: null, action_type: "review", title: "旧reviewのAction", detail: null, trigger_condition: null, due_date: null, status: "open", created_at: "2026-08-20T00:03:00Z", updated_at: "2026-08-20T00:03:00Z" },
+            { id: "action-draft", review_id: "review-draft", instrument_id: null, action_type: "review", title: "現行draftのAction", detail: null, trigger_condition: null, due_date: null, status: "open", created_at: "2026-08-20T00:04:00Z", updated_at: "2026-08-20T00:04:00Z" },
+            { id: "action-portfolio", review_id: null, instrument_id: null, action_type: "review", title: "ポートフォリオ全体Action", detail: null, trigger_condition: null, due_date: null, status: "open", created_at: "2026-08-20T00:05:00Z", updated_at: "2026-08-20T00:05:00Z" },
+          ],
+          error: null,
+        },
+      }),
+    );
+
+    expect(data.review?.id).toBe("review-draft");
+    expect(data.reviewHistory[0]?.id).toBe("review-draft");
+    expect(data.actions.map((action) => action.id)).toEqual(["action-finalized", "action-draft", "action-portfolio"]);
+  });
+
+  it("最新の振り返りは時間順で選び、reviewの状態にかかわらず履歴を残す", async () => {
+    const data = await loadPortfolio(
+      stubClient({
+        stock_notes_portfolios: { data: { id: "portfolio-1", name: "メイン", base_currency: "JPY" }, error: null },
+        stock_notes_portfolio_reviews: {
+          data: [
+            { id: "review-finalized", policy_version_id: "policy-1", snapshot_id: null, title: "確定review", status: "finalized", as_of: "2026-08-20T00:00:00Z", new_capital_amount: null, summary: null, allocation_policy: null, supersede_reason: null, updated_at: "2026-08-20T00:01:00Z" },
+            { id: "review-draft", policy_version_id: "policy-2", snapshot_id: null, title: "現行draft", status: "draft", as_of: "2026-08-01T00:00:00Z", new_capital_amount: null, summary: null, allocation_policy: null, supersede_reason: null, updated_at: "2026-08-21T00:01:00Z" },
+            { id: "review-superseded", policy_version_id: "policy-0", snapshot_id: null, title: "置換済みreview", status: "superseded", as_of: "2026-08-21T00:00:00Z", new_capital_amount: null, summary: null, allocation_policy: null, supersede_reason: "新reviewへ置換", updated_at: "2026-08-21T00:01:00Z" },
+          ],
+          error: null,
+        },
+        stock_notes_portfolio_reflections: {
+          data: [
+            { id: "reflection-superseded", review_id: "review-superseded", as_of: "2026-08-22T00:00:00Z", expected_outcome: "置換済みの期待", actual_outcome: null, worked_well: [], did_not_work: [], missed_risks: [], lessons: ["最新の学び"], policy_change_recommended: false, policy_change_summary: null, created_at: "2026-08-22T00:01:00Z" },
+            { id: "reflection-new", review_id: "review-finalized", as_of: "2026-08-20T00:00:00Z", expected_outcome: "新しい期待", actual_outcome: null, worked_well: [], did_not_work: [], missed_risks: [], lessons: ["確定reviewの学び"], policy_change_recommended: false, policy_change_summary: null, created_at: "2026-08-20T00:01:00Z" },
+            { id: "reflection-old", review_id: "review-draft", as_of: "2026-08-10T00:00:00Z", expected_outcome: "古い期待", actual_outcome: null, worked_well: [], did_not_work: [], missed_risks: [], lessons: ["古い学び"], policy_change_recommended: false, policy_change_summary: null, created_at: "2026-08-10T00:01:00Z" },
+          ],
+          error: null,
+        },
+      }),
+    );
+
+    expect(data.latestReflection?.id).toBe("reflection-superseded");
   });
 
   it("ready snapshotがなくても関連テーブルの取得件数を保持する", async () => {
@@ -162,7 +253,7 @@ describe("portfolio data loader", () => {
           error: null,
         },
         stock_notes_portfolio_reviews: {
-          data: { id: "review-1", policy_version_id: null, title: "8月棚卸し", status: "draft", as_of: "2026-08-14T00:02:00Z", new_capital_amount: null, summary: null, allocation_policy: null, updated_at: "2026-08-14T00:02:00Z" },
+          data: [{ id: "review-1", policy_version_id: null, snapshot_id: "snapshot-1", title: "8月棚卸し", status: "draft", as_of: "2026-08-14T00:02:00Z", new_capital_amount: null, summary: null, allocation_policy: null, updated_at: "2026-08-14T00:02:00Z" }],
           error: null,
         },
         stock_notes_portfolio_review_items: {
