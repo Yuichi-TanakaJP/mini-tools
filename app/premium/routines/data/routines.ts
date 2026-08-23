@@ -7,12 +7,12 @@
 //   `market_info/docs/operations/{daily,monthly}_operations.md`
 //
 // 実行実績を自動で取り込む仕組みは持たない。棚卸ししたときに手で更新する。
-// 最終棚卸し: 2026-08-08
+// 最終棚卸し: 2026-08-23
 
 import type { Routine } from "../types";
 
 /** この定義を最後に実機と突き合わせた日。画面に鮮度として出す。 */
-export const ROUTINES_SURVEYED_ON = "2026-08-08";
+export const ROUTINES_SURVEYED_ON = "2026-08-23";
 
 export const ROUTINES: Routine[] = [
   // ---- 自動: 毎日 ----
@@ -106,6 +106,18 @@ export const ROUTINES: Routine[] = [
     source: "tdnet_meta_daily",
     repo: "market_info",
   },
+  // 2026-08-08 の棚卸しから漏れていた既存の自動タスク（今回のタスク変更とは無関係）。
+  // 実行時刻は未確認のため「時刻未定」として扱う。要確認。
+  {
+    id: "yutai-stock-prices-daily",
+    label: "優待銘柄 株価取得",
+    description: "優待銘柄の株価を日次で取得する。",
+    mode: "auto",
+    domain: "market-data",
+    schedule: { kind: "daily", times: [] },
+    source: "yutai_stock_prices_daily",
+    repo: "market_info",
+  },
 
   // ---- 自動: 週次 ----
   {
@@ -166,54 +178,57 @@ export const ROUTINES: Routine[] = [
     repo: "market_info",
   },
 
-  // ---- 半自動: リマインダー起点 ----
+  // ---- 手動: 市場データ取得 ----
+  // 2026-08-23 時点、以下はすべて Windows タスクスケジューラに
+  // \market_info\ 配下でトリガーなし登録されている。pc-saas-health-monitor
+  // の実行画面からタスク名で起動するためだけの登録で、自動実行はしない。
+  // 起動は完全に本人の意思なので mode は manual とした（auto は無人実行が
+  // 前提のため不適合、semi はリマインダー起点だが該当するリマインダーは
+  // 廃止済みのため不適合）。
   {
-    id: "credit-inventory-nikko",
-    label: "信用在庫 取得（日興）",
+    id: "naito-daily-run",
+    label: "market ランキング取得・publish",
     description:
-      "リマインダーを受けて日興の一般信用売り在庫を取得し publish する。/weekend-credit-inventory を使う。",
-    mode: "semi",
+      "内藤証券にログイン（2FA を手で処理）して 9tables を取得し、株価ランキング / 日経225寄与度 / TOPIX33 / 米国株ランキングを publish してバックアップまで流す。火曜は信用残、木曜は投資部門別の追加取得が走る。pc-saas-health-monitor の実行画面からも起動できる。run_naito_and_backup.ps1。",
+    mode: "manual",
     domain: "market-data",
-    schedule: { kind: "weekly", weekdays: [6], times: ["09:00"] },
-    source: "credit_inventory_reminder_nikko",
+    schedule: { kind: "weekday", times: ["20:00"] },
+    source: "manual_run_naito_and_backup",
     repo: "market_info",
   },
   {
-    id: "credit-inventory-sbi",
+    id: "sbi-credit-inventory",
     label: "信用在庫 取得（SBI）",
     description:
-      "リマインダーを受けて SBI の一般信用売り在庫を取得し publish する。/weekend-credit-inventory を使う。",
-    mode: "semi",
+      "SBI の一般信用売り在庫を取得し publish する。ブラウザでパスキー認証を待つため無人実行できず、pc-saas-health-monitor の実行画面から手動で起動する。旧リマインダー（credit_inventory_reminder_sbi）は廃止済み。run_sbi_inventory_and_publish.ps1。",
+    mode: "manual",
     domain: "market-data",
-    schedule: { kind: "weekly", weekdays: [0], times: ["09:00"] },
-    source: "credit_inventory_reminder_sbi",
+    schedule: { kind: "weekly", weekdays: [0], times: [] },
+    source: "manual_run_sbi_credit_inventory",
+    repo: "market_info",
+  },
+  {
+    id: "nikko-credit-inventory",
+    label: "信用在庫 取得（日興）",
+    description:
+      "日興の一般信用売り在庫を取得し publish する。ブラウザでパスキー認証を待つため無人実行できず、pc-saas-health-monitor の実行画面から手動で起動する。旧リマインダー（credit_inventory_reminder_nikko）は廃止済み。run_nikko_inventory_and_publish.ps1。",
+    mode: "manual",
+    domain: "market-data",
+    schedule: { kind: "weekly", weekdays: [6], times: [] },
+    source: "manual_run_nikko_credit_inventory",
     repo: "market_info",
   },
   {
     id: "monthly-rankings",
     label: "月次ランキング取得",
     description:
-      "月初のポップアップを受けて信用残・売買代金ランキングの月次取得を手で流す。",
-    mode: "semi",
-    domain: "market-data",
-    schedule: { kind: "monthly", daysOfMonth: [1], times: ["09:00"] },
-    source: "monthly_rankings_reminder",
-    repo: "market_info",
-  },
-
-  // ---- 手動: 市場データ取得 ----
-  {
-    id: "naito-daily-run",
-    label: "market ランキング取得・publish",
-    description:
-      "内藤証券にログイン（2FA を手で処理）して 9tables を取得し、株価ランキング / 日経225寄与度 / TOPIX33 / 米国株ランキングを publish してバックアップまで流す。火曜は信用残、木曜は投資部門別の追加取得が走る。run_naito_and_backup.ps1。",
+      "時価総額・配当利回りランキングを月初に取得し publish する。pc-saas-health-monitor の実行画面から手動で起動する。旧リマインダー（monthly_rankings_reminder）は廃止済み。run_monthly_rankings.ps1。",
     mode: "manual",
     domain: "market-data",
-    schedule: { kind: "weekday", times: ["20:00"] },
-    source: "scripts/run_naito_and_backup.ps1",
+    schedule: { kind: "monthly", daysOfMonth: [1], times: [] },
+    source: "manual_run_monthly_rankings",
     repo: "market_info",
   },
-
   // ---- 手動: 保有・優待・入金の確認 ----
   {
     id: "yutai-purchase-check",
