@@ -347,6 +347,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     .select(reviewSelect)
     .eq("portfolio_id", portfolio.id)
     .order("as_of", { ascending: false })
+    .order("updated_at", { ascending: false })
     .limit(20)
     .returns<ReviewRow[]>();
   if (reviewError) throw reviewError;
