@@ -184,11 +184,20 @@ describe("portfolio data loader", () => {
           ],
           error: null,
         },
+        stock_notes_portfolio_actions: {
+          data: [
+            { id: "action-finalized", review_id: "review-finalized", instrument_id: null, action_type: "review", title: "旧reviewのAction", detail: null, trigger_condition: null, due_date: null, status: "open", created_at: "2026-08-20T00:03:00Z", updated_at: "2026-08-20T00:03:00Z" },
+            { id: "action-draft", review_id: "review-draft", instrument_id: null, action_type: "review", title: "現行draftのAction", detail: null, trigger_condition: null, due_date: null, status: "open", created_at: "2026-08-20T00:04:00Z", updated_at: "2026-08-20T00:04:00Z" },
+            { id: "action-portfolio", review_id: null, instrument_id: null, action_type: "review", title: "ポートフォリオ全体Action", detail: null, trigger_condition: null, due_date: null, status: "open", created_at: "2026-08-20T00:05:00Z", updated_at: "2026-08-20T00:05:00Z" },
+          ],
+          error: null,
+        },
       }),
     );
 
     expect(data.review?.id).toBe("review-draft");
     expect(data.reviewHistory[0]?.id).toBe("review-draft");
+    expect(data.actions.map((action) => action.id)).toEqual(["action-draft", "action-portfolio"]);
   });
 
   it("最新の振り返りは時間順で選び、reviewの状態にかかわらず履歴を残す", async () => {
