@@ -16,6 +16,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 - [2026-08-15 ポートフォリオはChatGPT起点の意思決定ワークスペースとする](./decision-log/2026-08-15-portfolio-chat-first-operating-model.md)
 - [2026-08-18 ポートフォリオDB確認ビュー](./decision-log/2026-08-18-portfolio-db-check-view.md)
 - [2026-08-21 ポートフォリオ意思決定画面の初回実装](./decision-log/2026-08-21-portfolio-decision-view.md)
+- [2026-08-27 テーマViewerの読み取り契約と責任境界](./decision-log/2026-08-27-theme-viewer-read-model.md)
 - [2026-08-07 優待取得時に次回権利月を固定する](./decision-log/2026-08-07-yutai-acquired-entitlement-lock.md)
 
 設計・方針・トレードオフの判断理由を記録します。
@@ -134,6 +135,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
   - [ペンギンシューター 仕様](./specs/tools/penguin-shooter.md)
   - [ルーティン一覧 仕様](./specs/tools/routines.md)
   - [ポートフォリオ 仕様](./specs/tools/portfolio.md)
+  - [テーマViewer 仕様](./specs/tools/theme-viewer.md)
 - [横断仕様インデックス](./specs/cross-cutting/index.md)
   - [mini-tools システム構成概要](./specs/cross-cutting/system-architecture-overview.md)
   - [React Server / Client 責任境界](./specs/cross-cutting/react-server-client-boundaries.md)
@@ -181,6 +183,7 @@ PR マージ後・リリース前の確認観点をツールごとにまとめ�
   - [株主優待期限帳](./uat/yutai-expiry.md)
   - [優待銘柄メモ帳](./uat/yutai-memo.md)
   - [ペンギンシューター](./uat/penguin-shooter.md)
+  - [テーマViewer](./uat/theme-viewer.md)
 
 ---
 

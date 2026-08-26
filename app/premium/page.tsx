@@ -38,6 +38,13 @@ const FEATURE_CARDS: FeatureCard[] = [
     tone: "amber",
   },
   {
+    href: "/premium/themes",
+    icon: "🧭",
+    title: "テーマViewer",
+    description: "ChatGPT + Supabaseで整備したテーマの概要・根拠・履歴を読み取り専用で確認します。",
+    tone: "violet",
+  },
+  {
     href: "/premium/routines",
     icon: "🗓",
     title: "ルーティン一覧",

@@ -8,6 +8,8 @@ describe("getSafePremiumNextPath", () => {
   it.each([
     ["/premium", "/premium"],
     ["/premium/portfolio?tab=stocks", "/premium/portfolio?tab=stocks"],
+    ["/premium/themes", "/premium/themes"],
+    ["/premium/themes/theme-1", "/premium/themes/theme-1"],
     ["/admin", "/admin"],
     ["/tools/yutai-dashboard", "/tools/yutai-dashboard"],
     ["/tools/yutai-dashboard?month=all", "/tools/yutai-dashboard?month=all"],

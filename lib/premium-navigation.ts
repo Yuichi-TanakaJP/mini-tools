@@ -1,6 +1,7 @@
 const DEFAULT_PREMIUM_NEXT_PATH = "/premium";
 const ALLOWED_PREMIUM_NEXT_PATHS = [
   "/premium",
+  "/premium/themes",
   "/admin",
   "/tools/yutai-dashboard",
 ] as const;
