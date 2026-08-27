@@ -168,7 +168,7 @@ function requiredThemeStatus(record: RawObject): ThemeStatus {
 
 function contractVersion(record: RawObject): typeof THEME_VIEWER_CONTRACT_VERSION {
   const field = readField(record, ["schemaVersion", "schema_version", "contractVersion", "contract_version"]);
-  if (field.value !== undefined && field.value !== THEME_VIEWER_CONTRACT_VERSION) {
+  if (field.value !== THEME_VIEWER_CONTRACT_VERSION) {
     throw new ThemeViewerResponseError("unsupported viewer contract version");
   }
   return THEME_VIEWER_CONTRACT_VERSION;
@@ -246,6 +246,7 @@ function parseThemeRecord(value: unknown, fallback: ThemeProvenance): ThemeRecor
 
 function parseThesis(value: unknown, fallback: ThemeProvenance): ThemeThesis {
   const record = requiredObject(value, "currentThesis");
+  const thesisProvenance = provenance(record, fallback);
   return {
     id: requiredString(record, ["id"], "currentThesis.id"),
     versionNumber: optionalNumber(record, ["versionNumber", "version_number"]),
@@ -254,13 +255,13 @@ function parseThesis(value: unknown, fallback: ThemeProvenance): ThemeThesis {
     structuralHypothesis: optionalString(record, ["structuralHypothesis", "structural_hypothesis"]),
     confidence:
       optionalConfidence(record, ["confidence"]) ??
-      provenance(record, fallback).confidence,
+      thesisProvenance.confidence,
     lenses: stringArray(record, ["lenses"]),
     risks: stringArray(record, ["risks"]),
     falsificationConditions: stringArray(record, ["falsificationConditions", "falsification_conditions"]),
     nextChecks: stringArray(record, ["nextChecks", "next_checks"]),
-    asOf: optionalString(record, ["asOf", "as_of"]),
-    source: provenance(record, fallback).source,
+    asOf: optionalString(record, ["asOf", "as_of"]) ?? thesisProvenance.asOf,
+    source: thesisProvenance.source,
     basedOnAnalysisId: optionalString(record, ["basedOnAnalysisId", "based_on_analysis_id"]),
   };
 }

@@ -51,8 +51,11 @@ function fullDetailResponse() {
       risks: ["capex slowdown"],
       falsificationConditions: ["orders decline for two quarters"],
       nextChecks: ["check quarterly bookings"],
-      asOf: "2026-08-26",
-      source: "chatgpt-supabase",
+      provenance: {
+        source: "chatgpt-supabase",
+        asOf: "2026-08-26",
+        confidence: "medium",
+      },
       basedOnAnalysisId: "analysis-1",
     },
     analysisHistory: [
@@ -282,7 +285,11 @@ describe("Theme Viewer data loader", () => {
       asOf: "2026-08-26",
       confidence: "medium",
     });
-    expect(result.data.currentThesis?.status).toBe("draft");
+    expect(result.data.currentThesis).toMatchObject({
+      status: "draft",
+      source: "chatgpt-supabase",
+      asOf: "2026-08-26",
+    });
     expect(result.data.analysisHistory[0]).toMatchObject({ asOf: "2026-08-25", confidence: "medium" });
     expect(result.data.directLinks[0]?.url).toBe("https://example.com/stocks/stock-1");
     expect(result.data.taxonomyMap.stockLinks[0]?.stockId).toBe("stock-1");
@@ -410,8 +417,10 @@ describe("Theme Viewer data loader", () => {
       .mockResolvedValueOnce(jsonResponse({ schemaVersion: "theme-viewer.v1", themes: [{ id: "missing-fields" }] }))
       .mockResolvedValueOnce(
         jsonResponse({ schemaVersion: "theme-viewer.v2", themes: [] }),
-      );
+      )
+      .mockResolvedValueOnce(jsonResponse({ themes: [] }));
 
+    await expect(loadThemeList()).resolves.toMatchObject({ status: "invalid_response" });
     await expect(loadThemeList()).resolves.toMatchObject({ status: "invalid_response" });
     await expect(loadThemeList()).resolves.toMatchObject({ status: "invalid_response" });
   });

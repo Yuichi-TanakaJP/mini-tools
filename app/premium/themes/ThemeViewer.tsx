@@ -94,6 +94,10 @@ function ConfidenceBadge({ confidence }: { confidence: ThemeConfidence | null | 
   return <span style={styles.mutedBadge}>{CONFIDENCE_LABELS[confidence]}</span>;
 }
 
+function formatThesisStatus(status: string) {
+  return status === "draft" ? "下書き" : status;
+}
+
 function AvailabilityBadge({ availability }: { availability: ThemeSectionAvailability }) {
   const color = DATA_STATE_COLORS[availability.state];
   return (
@@ -335,7 +339,7 @@ function ThesisSection({ data }: { data: NonNullable<Extract<ThemeDetailLoadResu
     <Section title="現在の見立て" availability={availability} description="見立てのas-ofと確度を、概要とは分けて確認します。">
       <div style={{ display: "grid", gap: 14, marginTop: 16 }}>
         <div style={styles.inlineMeta}>
-          <span style={styles.mutedBadge}>{thesis.status}</span>
+          <span style={styles.mutedBadge}>{formatThesisStatus(thesis.status)}</span>
           <span style={styles.mutedBadge}>v{thesis.versionNumber ?? "—"}</span>
           <span>as-of {formatDateTime(thesis.asOf)}</span>
           <ConfidenceBadge confidence={thesis.confidence} />
