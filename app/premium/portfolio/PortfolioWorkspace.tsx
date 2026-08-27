@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { PortfolioData, PortfolioDbPosition, PortfolioExternalAssetPosition, PortfolioReviewHistoryItem, PortfolioReviewItem, PortfolioPosition } from "./types";
-import { aggregatePortfolioPositions, sumCompleteAmounts } from "./aggregates";
+import { aggregatePortfolioPositions } from "./aggregates";
 import { summarizePortfolioDbResult } from "./db-check";
 import { isUnresolvedExternalInstrument } from "./external-assets";
 import PortfolioDecision from "./PortfolioDecision";
@@ -115,6 +115,11 @@ function formatDateTime(value: string | null | undefined) {
     timeStyle: "short",
     timeZone: "Asia/Tokyo",
   }).format(date);
+}
+
+function sumNullable(values: Array<number | null>) {
+  if (values.every((value) => value === null)) return null;
+  return values.reduce<number>((sum, value) => sum + (value ?? 0), 0);
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -498,9 +503,9 @@ function DbCheckView({ data }: { data: PortfolioData }) {
 export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
   const [tab, setTab] = useState<Tab>("decision");
   const grouped = useMemo(() => aggregatePortfolioPositions(data.positions), [data.positions]);
-  const totalValue = sumCompleteAmounts(data.positions.map((position) => position.marketValue));
-  const totalCost = sumCompleteAmounts(data.positions.map((position) => position.costBasis));
-  const totalPnl = sumCompleteAmounts(data.positions.map((position) => position.unrealizedPnl));
+  const totalValue = sumNullable(data.positions.map((position) => position.marketValue));
+  const totalCost = sumNullable(data.positions.map((position) => position.costBasis));
+  const totalPnl = sumNullable(data.positions.map((position) => position.unrealizedPnl));
   const pnlRate = totalCost && totalPnl !== null ? (totalPnl / totalCost) * 100 : null;
   const hasSnapshotHistory = data.snapshots.some((snapshot) => snapshot.portfolioScope === "official");
 

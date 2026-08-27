@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aggregatePortfolioPositions, sumCompleteAmounts } from "./aggregates";
+import { aggregatePortfolioPositions } from "./aggregates";
 import type { PortfolioPosition } from "./types";
 
 function position(overrides: Partial<PortfolioPosition>): PortfolioPosition {
@@ -69,15 +69,5 @@ describe("aggregatePortfolioPositions", () => {
     ]);
 
     expect(result[0].marketValue).toBeNull();
-  });
-});
-
-describe("sumCompleteAmounts", () => {
-  it("複数口座の金額を合計する", () => {
-    expect(sumCompleteAmounts([211200, 22000])).toBe(233200);
-  });
-
-  it("一部口座の金額が未取得なら部分合計を返さない", () => {
-    expect(sumCompleteAmounts([211200, null])).toBeNull();
   });
 });

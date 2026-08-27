@@ -16,11 +16,6 @@ function addCompleteAmount(current: number | null, next: number | null) {
   return current === null || next === null ? null : current + next;
 }
 
-export function sumCompleteAmounts(values: Array<number | null>) {
-  if (values.length === 0 || values.some((value) => value === null)) return null;
-  return values.reduce<number>((sum, value) => sum + (value ?? 0), 0);
-}
-
 export function aggregatePortfolioPositions(positions: PortfolioPosition[]): PortfolioPositionAggregate[] {
   const groups = new Map<string, PortfolioPositionAggregate>();
 
