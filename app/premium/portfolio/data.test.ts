@@ -153,7 +153,8 @@ describe("portfolio data loader", () => {
 
     expect(data.source).toBe("server");
     expect(data.positions[0]).toMatchObject({ identifier: "9999", quantity: 2, marketValue: 2400 });
-    expect(data.positions).toHaveLength(1);
+    expect(data.positions).toHaveLength(2);
+    expect(data.positions[1]).toMatchObject({ id: "position-2", accountName: "account-missing", accountType: "other", institutionName: "不明" });
     expect(data.dbPositions).toHaveLength(2);
     expect(data.dbPositions[1]).toMatchObject({ id: "position-2", accountName: null, accountId: "account-missing" });
     expect(data.review?.items[0]).toMatchObject({ stance: "hold", targetAllocationPct: 10, buyConditions: ["押し目"] });

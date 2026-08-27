@@ -630,10 +630,15 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
       distributionMethod: row.distribution_method,
     };
   });
-  const positions: PortfolioPosition[] = dbPositions.flatMap((position) => {
-    if (!position.assetType || !position.identifier || !position.name || !position.accountName || !position.accountType || !position.institutionName) return [];
-    return [position as PortfolioPosition];
-  });
+  const positions: PortfolioPosition[] = dbPositions.map((position) => ({
+    ...position,
+    assetType: position.assetType ?? "other",
+    identifier: position.identifier ?? position.instrumentId,
+    name: position.name ?? "不明商品",
+    accountName: position.accountName ?? position.accountId,
+    accountType: position.accountType ?? "other",
+    institutionName: position.institutionName ?? "不明",
+  }));
 
   let review: PortfolioReview | null = null;
   if (reviewRow) {
