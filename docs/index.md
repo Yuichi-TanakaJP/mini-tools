@@ -17,6 +17,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 - [2026-08-18 ポートフォリオDB確認ビュー](./decision-log/2026-08-18-portfolio-db-check-view.md)
 - [2026-08-21 ポートフォリオ意思決定画面の初回実装](./decision-log/2026-08-21-portfolio-decision-view.md)
 - [2026-08-27 テーマViewerの読み取り契約と責任境界](./decision-log/2026-08-27-theme-viewer-read-model.md)
+- [2026-08-28 業界マップの表現選択とデータ経路](./decision-log/2026-08-28-industry-map-view-selection.md)
 - [2026-08-07 優待取得時に次回権利月を固定する](./decision-log/2026-08-07-yutai-acquired-entitlement-lock.md)
 
 設計・方針・トレードオフの判断理由を記録します。
@@ -112,6 +113,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 
 日々の開発作業や試行錯誤の記録です。
 
+- [2026-08-28 業界マップ 表現手法サーベイ](./devlog/2026-08-28-industry-map-visualization-survey.md)
 - [2026-04-11 commonization PR handoff](./devlog/2026-04-11-commonization-handoff.md)
 - [2026-04-05 market tools 本番確認メモ](./devlog/2026-04-05-market-tools-production-verification.md)
 - [2026-01-11 QR 共有 UI 改善ログ](./devlog/2026-01-11-qr-share-ui-improvement.md)
@@ -184,6 +186,7 @@ PR マージ後・リリース前の確認観点をツールごとにまとめ�
   - [優待銘柄メモ帳](./uat/yutai-memo.md)
   - [ペンギンシューター](./uat/penguin-shooter.md)
   - [テーマViewer](./uat/theme-viewer.md)
+  - [業界マップ](./uat/industry-map.md)
 
 ---
 

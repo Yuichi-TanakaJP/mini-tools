@@ -28,6 +28,7 @@
 | 投資主体別売買動向 | `/tools/investor-flow` | [investor-flow.md](./tools/investor-flow.md) |
 | ペンギンシューター | `/tools/penguin-shooter` | [penguin-shooter.md](./tools/penguin-shooter.md) |
 | ルーティン一覧 | `/premium/routines` | [routines.md](./tools/routines.md) |
+| 業界マップ | `/premium/industry-map` | [industry-map.md](./tools/industry-map.md) |
 | ポートフォリオ | `/premium/portfolio` | [portfolio.md](./tools/portfolio.md) |
 | テーマViewer | `/premium/themes` | [theme-viewer.md](./tools/theme-viewer.md) |
 

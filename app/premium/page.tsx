@@ -45,6 +45,14 @@ const FEATURE_CARDS: FeatureCard[] = [
     tone: "violet",
   },
   {
+    href: "/premium/industry-map",
+    icon: "🗺",
+    title: "業界マップ",
+    description:
+      "Supabaseに保存した産業構造・企業経済圏を、階層・放射・ネットワーク・マトリクス・表に切り替えて俯瞰します。",
+    tone: "violet",
+  },
+  {
     href: "/premium/routines",
     icon: "🗓",
     title: "ルーティン一覧",

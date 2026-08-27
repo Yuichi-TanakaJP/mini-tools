@@ -1,0 +1,1022 @@
+/* 業界マップ。配色は app/globals.css のトークンを守り、
+   モダンさは余白・階調・モーションで作る。
+   判断: docs/decision-log/2026-08-28-industry-map-view-selection.md */
+
+.page {
+  --kind-classification: #2554ff;
+  --kind-product: #0d9488;
+  --kind-technology: #7c3aed;
+
+  --rel-hierarchy: #94a3b8;
+  --rel-depends: #d97706;
+  --rel-enables: #16a34a;
+  --rel-used: #0284c7;
+  --rel-related: #64748b;
+
+  --panel-radius: 16px;
+
+  display: grid;
+  gap: 14px;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 24px 16px calc(72px + var(--bottom-nav-space));
+}
+
+.topNav {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.topNavLink {
+  color: var(--color-text-sub);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.topNavLink:hover {
+  color: var(--color-accent);
+}
+
+/* ---------- hero ---------- */
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--panel-radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  padding: 20px;
+  display: grid;
+  gap: 14px;
+}
+
+/* 背景の淡いグラデーション。彩度は抑えて既存トーンから浮かせない。 */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: -40% 55% 40% -10%;
+  background: radial-gradient(
+    circle at 30% 40%,
+    rgba(37, 84, 255, 0.14),
+    rgba(37, 84, 255, 0) 70%
+  );
+  pointer-events: none;
+}
+
+.heroHead {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.heroTitle {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+}
+
+.heroLead {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.7;
+}
+
+.versionBadge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+.domainRow {
+  position: relative;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+
+.domainChip {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  border-radius: 12px;
+  padding: 9px 14px;
+  cursor: pointer;
+  font: inherit;
+  color: var(--color-text-sub);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.domainChip:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-border-strong);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.07);
+}
+
+.domainChipActive {
+  border-color: var(--color-accent);
+  background: var(--color-accent-sub);
+  color: var(--color-accent);
+  box-shadow: 0 6px 18px rgba(37, 84, 255, 0.16);
+}
+
+.domainChipName {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.domainChipMeta {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.domainChipActive .domainChipMeta {
+  color: var(--color-accent);
+  opacity: 0.85;
+}
+
+.statRow {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.stat {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-input);
+  padding: 10px 12px;
+}
+
+.statLabel {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.statValue {
+  font-size: 20px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
+.statUnit {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  margin-left: 3px;
+}
+
+/* ---------- toolbar ---------- */
+
+.toolbar {
+  display: grid;
+  gap: 10px;
+  border-radius: var(--panel-radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  padding: 12px;
+  position: sticky;
+  top: 8px;
+  z-index: 5;
+  backdrop-filter: saturate(1.4) blur(6px);
+}
+
+/* スライドするインジケータ付きのセグメントコントロール。 */
+.segmented {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 2px;
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 3px;
+  overflow: hidden;
+}
+
+.segmentedIndicator {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: 9px;
+  background: var(--color-bg-card);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.12);
+  transition:
+    left 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.segment {
+  position: relative;
+  border: 0;
+  background: transparent;
+  border-radius: 9px;
+  padding: 8px 6px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 160ms ease;
+}
+
+.segmentActive {
+  color: var(--color-accent);
+}
+
+.segmentIcon {
+  display: block;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.filterRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.search {
+  flex: 1 1 180px;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-input);
+  border-radius: 10px;
+  padding: 8px 11px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--color-text);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.search:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(37, 84, 255, 0.14);
+}
+
+.toggle {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 160ms ease;
+}
+
+.toggle:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+}
+
+.toggle:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.toggleOn {
+  color: var(--color-text);
+  border-color: currentColor;
+  background: var(--color-bg-input);
+}
+
+.toggleDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.35;
+  transition: opacity 160ms ease;
+}
+
+.toggleOn .toggleDot {
+  opacity: 1;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+/* ---------- workspace ---------- */
+
+.workspace {
+  display: grid;
+  gap: 12px;
+  align-items: start;
+}
+
+.canvas {
+  border-radius: var(--panel-radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  padding: 14px;
+  min-height: 320px;
+  overflow: hidden;
+}
+
+.canvasScroll {
+  overflow: auto;
+  max-height: min(72vh, 760px);
+}
+
+.viewFade {
+  animation: viewIn 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes viewIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------- tree view ---------- */
+
+.tree {
+  display: grid;
+  gap: 3px;
+}
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 10px;
+  padding: 7px 10px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: var(--color-text);
+  animation: rowIn 260ms ease both;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+@keyframes rowIn {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.treeRow:hover {
+  background: var(--color-bg-input);
+}
+
+.treeRowSelected {
+  background: var(--color-accent-sub);
+  border-color: var(--color-accent);
+}
+
+.treeRowDim {
+  opacity: 0.38;
+}
+
+.treeGuide {
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--color-border);
+}
+
+.treeCaret {
+  flex: 0 0 auto;
+  width: 16px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.treeCaretOpen {
+  transform: rotate(90deg);
+}
+
+.treeCaretLeaf {
+  opacity: 0.28;
+}
+
+.treeLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.treeCount {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- shared chips ---------- */
+
+.kindDot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+}
+
+.badge {
+  flex: 0 0 auto;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  border-radius: 999px;
+  padding: 2px 7px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+
+.badgeMuted {
+  color: var(--color-text-muted);
+}
+
+.badgeStock {
+  color: var(--color-accent);
+  background: var(--color-accent-sub);
+}
+
+.badgeCross {
+  color: var(--rel-depends);
+}
+
+/* ---------- svg views ---------- */
+
+.svgWrap {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(37, 84, 255, 0.05), rgba(37, 84, 255, 0) 62%),
+    var(--color-bg-card);
+}
+
+/* viewBox は正方形。高さを決めて preserveAspectRatio に収めさせ、
+   図が画面いっぱいに伸びて操作しづらくなるのを防ぐ。 */
+/* viewBox は正方形に正規化してある。幅なりの高さだと画面を占有しすぎるので、
+   max-height で頭打ちにし、はみ出しは preserveAspectRatio に収めさせる。 */
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(72vh, 660px);
+  touch-action: pan-y;
+}
+
+.svgLink {
+  fill: none;
+  stroke: var(--rel-hierarchy);
+  stroke-opacity: 0.7;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  animation: drawIn 700ms ease both;
+}
+
+@keyframes drawIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.svgLinkActive {
+  stroke: var(--color-accent);
+  stroke-width: 2;
+}
+
+.svgNode {
+  cursor: pointer;
+  animation: popIn 380ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.svgNodeShape {
+  transition:
+    r 180ms ease,
+    stroke-width 180ms ease,
+    opacity 180ms ease;
+}
+
+.svgNode:hover .svgNodeShape {
+  stroke-width: 3;
+}
+
+.svgNodeDim {
+  opacity: 0.22;
+}
+
+.svgLabel {
+  font-size: 9px;
+  font-weight: 700;
+  fill: var(--color-text-sub);
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--color-bg-card);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.svgLabelStrong {
+  font-size: 11px;
+  font-weight: 900;
+  fill: var(--color-text);
+}
+
+.pulse {
+  animation: pulse 1800ms ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* ---------- matrix view ---------- */
+
+.matrixIntro {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 0 0 10px;
+  line-height: 1.7;
+}
+
+.matrixScroll {
+  overflow: auto;
+  max-height: min(66vh, 700px);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+.matrix {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  font-size: 12px;
+}
+
+.matrix th,
+.matrix td {
+  border-bottom: 1px solid var(--color-border);
+  padding: 0;
+}
+
+.matrixCorner,
+.matrixColHead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--color-bg-input);
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--color-text-sub);
+  padding: 8px 6px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.matrixCorner {
+  left: 0;
+  z-index: 3;
+  text-align: left;
+  min-width: 180px;
+}
+
+.matrixRowHead {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-bg-card);
+  padding: 7px 10px;
+  text-align: left;
+  font-weight: 700;
+  min-width: 180px;
+  max-width: 260px;
+}
+
+.matrixRowHeadInner {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.matrixRowLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.matrixCell {
+  text-align: center;
+  vertical-align: middle;
+  padding: 4px;
+}
+
+.matrixMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 22px;
+  border-radius: 7px;
+  font-size: 9px;
+  font-weight: 900;
+  color: #fff;
+  animation: popIn 300ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.matrixEmpty {
+  display: inline-block;
+  width: 30px;
+  height: 22px;
+  border-radius: 7px;
+  border: 1px dashed var(--color-border);
+}
+
+.matrixRow:hover .matrixRowHead,
+.matrixRow:hover .matrixCell {
+  background: var(--color-bg-input);
+}
+
+/* ---------- table view ---------- */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-bg-input);
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--color-text-sub);
+  text-align: left;
+  padding: 8px;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tableSortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.tableSortable:hover {
+  color: var(--color-accent);
+}
+
+.table td {
+  padding: 8px;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+}
+
+.tableRow {
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+.tableRow:hover {
+  background: var(--color-bg-input);
+}
+
+.tableRowSelected {
+  background: var(--color-accent-sub);
+}
+
+.tableName {
+  font-weight: 800;
+}
+
+.tableDesc {
+  color: var(--color-text-muted);
+  line-height: 1.6;
+  max-width: 420px;
+}
+
+/* ---------- detail panel ---------- */
+
+.detail {
+  border-radius: var(--panel-radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  animation: viewIn 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.detailHead {
+  display: grid;
+  gap: 6px;
+}
+
+.detailKind {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.detailTitle {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1.4;
+}
+
+.detailSlug {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.detailBody {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--color-text-sub);
+  margin: 0;
+}
+
+.detailSection {
+  display: grid;
+  gap: 6px;
+}
+
+.detailSectionTitle {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.detailList {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.detailItem {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  padding: 7px 9px;
+  background: var(--color-bg-input);
+}
+
+.detailItemLink {
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: border-color 140ms ease, transform 140ms ease;
+}
+
+.detailItemLink:hover {
+  border-color: var(--color-accent);
+  transform: translateX(2px);
+}
+
+.detailItemMain {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.detailItemNote {
+  display: block;
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+  line-height: 1.6;
+}
+
+.relTag {
+  flex: 0 0 auto;
+  font-size: 9px;
+  font-weight: 900;
+  border-radius: 999px;
+  padding: 2px 7px;
+  color: #fff;
+}
+
+.detailEmpty {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+/* ---------- legend ---------- */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.legendSwatch {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+/* ---------- states ---------- */
+
+.state {
+  border-radius: var(--panel-radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  padding: 28px 20px;
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  text-align: center;
+}
+
+.stateIcon {
+  font-size: 30px;
+}
+
+.stateTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.stateBody {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.8;
+  max-width: 46ch;
+}
+
+.stateError .stateTitle {
+  color: var(--color-error);
+}
+
+.note {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* ---------- responsive ---------- */
+
+@media (min-width: 720px) {
+  .statRow {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .toolbar {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    align-items: center;
+  }
+}
+
+@media (min-width: 1024px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+
+  .detail {
+    position: sticky;
+    top: 128px;
+    max-height: calc(100vh - 160px);
+    overflow-y: auto;
+  }
+
+  .segment {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 719px) {
+  .segmentIcon {
+    font-size: 16px;
+  }
+
+  .segmentLabel {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .viewFade,
+  .treeRow,
+  .svgNode,
+  .svgLink,
+  .matrixMark,
+  .detail,
+  .pulse {
+    animation: none !important;
+  }
+
+  .segmentedIndicator,
+  .treeCaret,
+  .domainChip,
+  .detailItemLink {
+    transition: none !important;
+  }
+}
