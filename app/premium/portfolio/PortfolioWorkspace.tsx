@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { PortfolioData, PortfolioDbPosition, PortfolioExternalAssetPosition, PortfolioReviewHistoryItem, PortfolioReviewItem, PortfolioPosition } from "./types";
+import { aggregatePortfolioPositions } from "./aggregates";
 import { summarizePortfolioDbResult } from "./db-check";
 import { isUnresolvedExternalInstrument } from "./external-assets";
 import PortfolioDecision from "./PortfolioDecision";
@@ -119,46 +120,6 @@ function formatDateTime(value: string | null | undefined) {
 function sumNullable(values: Array<number | null>) {
   if (values.every((value) => value === null)) return null;
   return values.reduce<number>((sum, value) => sum + (value ?? 0), 0);
-}
-
-function groupPositions(positions: PortfolioPosition[]) {
-  const groups = new Map<string, {
-    identifier: string;
-    name: string;
-    assetType: string;
-    quantity: number;
-    marketValue: number | null;
-    costBasis: number | null;
-    unrealizedPnl: number | null;
-    accounts: string[];
-  }>();
-
-  for (const position of positions) {
-    const key = `${position.assetType}:${position.identifier}`;
-    const current = groups.get(key) ?? {
-      identifier: position.identifier,
-      name: position.name,
-      assetType: position.assetType,
-      quantity: 0,
-      marketValue: 0,
-      costBasis: 0,
-      unrealizedPnl: 0,
-      accounts: [],
-    };
-    current.quantity += position.quantity;
-    current.marketValue = current.marketValue === null || position.marketValue === null
-      ? null
-      : current.marketValue + position.marketValue;
-    current.costBasis = current.costBasis === null || position.costBasis === null
-      ? null
-      : current.costBasis + position.costBasis;
-    current.unrealizedPnl = current.unrealizedPnl === null || position.unrealizedPnl === null
-      ? null
-      : current.unrealizedPnl + position.unrealizedPnl;
-    if (!current.accounts.includes(position.accountName)) current.accounts.push(position.accountName);
-    groups.set(key, current);
-  }
-  return [...groups.values()].sort((a, b) => (b.marketValue ?? 0) - (a.marketValue ?? 0));
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -541,7 +502,7 @@ function DbCheckView({ data }: { data: PortfolioData }) {
 
 export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
   const [tab, setTab] = useState<Tab>("decision");
-  const grouped = useMemo(() => groupPositions(data.positions), [data.positions]);
+  const grouped = useMemo(() => aggregatePortfolioPositions(data.positions), [data.positions]);
   const totalValue = sumNullable(data.positions.map((position) => position.marketValue));
   const totalCost = sumNullable(data.positions.map((position) => position.costBasis));
   const totalPnl = sumNullable(data.positions.map((position) => position.unrealizedPnl));
@@ -601,12 +562,13 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
                 {grouped.map((item) => {
                   const percent = totalValue && item.marketValue !== null ? (item.marketValue / totalValue) * 100 : 0;
                   return (
-                    <div key={`${item.assetType}:${item.identifier}`}>
+                    <div key={item.instrumentId}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13 }}>
                         <span><strong>{item.identifier}</strong> {item.name}</span>
                         <span style={{ fontWeight: 800 }}>{formatYen(item.marketValue)} / {formatNumber(percent, 1)}%</span>
                       </div>
                       <div style={{ height: 8, marginTop: 5, borderRadius: 999, background: "#e2e8f0", overflow: "hidden" }}><div style={{ height: "100%", width: `${Math.min(100, Math.max(0, percent))}%`, background: "#2563eb" }} /></div>
+                      <div style={{ marginTop: 4, color: "var(--color-text-sub)", fontSize: 11 }}>数量: {formatNumber(item.quantity, 2)} / 取得額: {formatYen(item.costBasis)} / 損益: {formatYen(item.unrealizedPnl)}</div>
                       <div style={{ marginTop: 4, color: "var(--color-text-muted)", fontSize: 11 }}>口座: {item.accounts.join(" / ")}</div>
                     </div>
                   );
