@@ -24,6 +24,7 @@ PR マージ後・リリース前に「何を確認すれば OK か」をツー�
 | アカウント（パスワードのリセット・変更） | `/account`, `/account/reset-password` | Supabase Auth | [password-reset.md](./password-reset.md) |
 | ペンギンシューター | `/tools/penguin-shooter` | なし（初期版はメモリ上のゲーム状態のみ） | [penguin-shooter.md](./penguin-shooter.md) |
 | ポートフォリオ | `/premium/portfolio` | Supabase（RLS付き読み取り）、Premium + Supabase Auth | [portfolio.md](./portfolio.md) |
+| テーマViewer | `/premium/themes` | stock-notes Viewer API（server-only token）、Premium | [theme-viewer.md](./theme-viewer.md) |
 
 ## 確認環境
 

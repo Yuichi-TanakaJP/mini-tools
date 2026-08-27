@@ -29,6 +29,7 @@
 | ペンギンシューター | `/tools/penguin-shooter` | [penguin-shooter.md](./tools/penguin-shooter.md) |
 | ルーティン一覧 | `/premium/routines` | [routines.md](./tools/routines.md) |
 | ポートフォリオ | `/premium/portfolio` | [portfolio.md](./tools/portfolio.md) |
+| テーマViewer | `/premium/themes` | [theme-viewer.md](./tools/theme-viewer.md) |
 
 ## テンプレート
 
