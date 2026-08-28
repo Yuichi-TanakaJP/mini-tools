@@ -135,9 +135,9 @@ export default function ThemeCompanyNetworkClient({ result }: { result: ThemeCom
         </header>
 
         <section style={{ background: "var(--color-bg-card)", border: "1px solid var(--color-border)", borderRadius: 14, padding: 16, display: "flex", gap: 18, flexWrap: "wrap", alignItems: "end" }}>
-          <label style={{ display: "grid", gap: 6, minWidth: 280, flex: "1 1 360px" }}>
+          <label style={{ display: "grid", gap: 6, minWidth: 260, flex: "1 1 360px" }}>
             <span style={{ fontSize: 12, fontWeight: 900, color: "var(--color-text-muted)" }}>テーマ</span>
-            <select value={selectedThemeId} onChange={(event) => setSelectedThemeId(event.target.value)} style={{ minHeight: 42, borderRadius: 9, border: "1px solid var(--color-border)", background: "var(--color-bg-input)", color: "var(--color-text)", padding: "0 10px" }}>
+            <select value={selectedThemeId} onChange={(event) => setSelectedThemeId(event.target.value)} style={{ minHeight: 42, borderRadius: 9, border: "1px solid var(--color-border)", background: "var(--color-bg-input)", color: "var(--color-text)", padding: "0 10px", maxWidth: "100%" }}>
               {data.themes.map((theme) => <option key={theme.id} value={theme.id}>{theme.name}</option>)}
             </select>
           </label>
@@ -147,31 +147,31 @@ export default function ThemeCompanyNetworkClient({ result }: { result: ThemeCom
           </label>
         </section>
 
-        <section style={{ display: "grid", gridTemplateColumns: "minmax(220px, 0.8fr) minmax(280px, 1fr) minmax(320px, 1.25fr)", gap: 14, alignItems: "start" }}>
-          <div style={{ background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: 14, padding: 16 }}>
+        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14, alignItems: "start" }}>
+          <div style={{ background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: 14, padding: 16, minWidth: 0 }}>
             <div style={{ fontSize: 11, fontWeight: 900, color: "#4338ca" }}>THEME</div>
             <h2 style={{ margin: "6px 0 4px", fontSize: 19 }}>{selectedTheme?.name ?? "—"}</h2>
             <div style={{ color: "var(--color-text-muted)", fontSize: 12 }}>{directCompanies.length} 直接企業</div>
           </div>
 
-          <div style={{ display: "grid", gap: 10 }}>
+          <div style={{ display: "grid", gap: 10, minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 900, color: "var(--color-text-muted)" }}>直接テーマ企業</div>
             {directCompanies.length > 0 ? directCompanies.map((company) => (
-              <article key={company.linkId} style={{ background: "var(--color-bg-card)", border: "2px solid #818cf8", borderRadius: 14, padding: 15 }}>
+              <article key={company.linkId} style={{ background: "var(--color-bg-card)", border: "2px solid #818cf8", borderRadius: 14, padding: 15, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                   <strong>{company.companyName}</strong>
                   <span style={{ fontSize: 11, fontWeight: 900 }}>{company.sourceStatus}</span>
                 </div>
                 <div style={{ marginTop: 7, color: "var(--color-text-sub)", fontSize: 12 }}>theme relation: {company.relationType ?? "—"}</div>
                 <div style={{ marginTop: 5, color: "var(--color-text-muted)", fontSize: 11 }}>source {formatDate(company.sourceAsOf)} / confidence {company.confidence ?? "—"}</div>
-                {company.sourceUrl ? <a href={company.sourceUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 8, color: "var(--color-accent)", fontSize: 12, fontWeight: 800 }}>テーマ根拠を見る ↗</a> : null}
+                {company.sourceUrl ? <a href={company.sourceUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 8, color: "var(--color-accent)", fontSize: 12, fontWeight: 800, overflowWrap: "anywhere" }}>テーマ根拠を見る ↗</a> : null}
               </article>
             )) : (
               <div style={{ border: "1px dashed var(--color-border)", borderRadius: 12, padding: 14, color: "var(--color-text-sub)", lineHeight: 1.7 }}>この条件で根拠確認済みの直接企業はありません。</div>
             )}
           </div>
 
-          <div style={{ display: "grid", gap: 10 }}>
+          <div style={{ display: "grid", gap: 10, minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 900, color: "var(--color-text-muted)" }}>企業関係で見つかった企業</div>
             {relatedRows.length > 0 ? relatedRows.map((row) => {
               const relationship = row.relationship;
@@ -179,7 +179,7 @@ export default function ThemeCompanyNetworkClient({ result }: { result: ThemeCom
                 ? `${row.direct.companyName} → ${row.relatedCompanyName}`
                 : `${row.relatedCompanyName} → ${row.direct.companyName}`;
               return (
-                <article key={`${row.direct.companyId}:${relationship.relationId}`} style={{ background: "var(--color-bg-card)", border: relationship.verificationStatus === "verified" ? "1px solid var(--color-border)" : "1px dashed #a78bfa", borderRadius: 14, padding: 15 }}>
+                <article key={`${row.direct.companyId}:${relationship.relationId}`} style={{ background: "var(--color-bg-card)", border: relationship.verificationStatus === "verified" ? "1px solid var(--color-border)" : "1px dashed #a78bfa", borderRadius: 14, padding: 15, minWidth: 0 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                     <strong>{row.relatedCompanyName}</strong>
                     <span style={{ fontSize: 11, fontWeight: 900 }}>{relationship.verificationStatus}</span>
@@ -191,7 +191,7 @@ export default function ThemeCompanyNetworkClient({ result }: { result: ThemeCom
                   <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: 8, background: "var(--color-bg-input)", color: "var(--color-text-sub)", fontSize: 11, lineHeight: 1.6 }}>
                     これは企業関係の事実です。{row.relatedCompanyName}が「{selectedTheme?.name ?? "このテーマ"}」の受益企業であることを意味しません。
                   </div>
-                  {relationship.sourceUrl ? <a href={relationship.sourceUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 8, color: "var(--color-accent)", fontSize: 12, fontWeight: 800 }}>企業関係の根拠を見る ↗</a> : null}
+                  {relationship.sourceUrl ? <a href={relationship.sourceUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 8, color: "var(--color-accent)", fontSize: 12, fontWeight: 800, overflowWrap: "anywhere" }}>企業関係の根拠を見る ↗</a> : null}
                 </article>
               );
             }) : (
