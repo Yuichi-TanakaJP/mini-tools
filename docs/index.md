@@ -18,6 +18,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 - [2026-08-21 ポートフォリオ意思決定画面の初回実装](./decision-log/2026-08-21-portfolio-decision-view.md)
 - [2026-08-27 テーマViewerの読み取り契約と責任境界](./decision-log/2026-08-27-theme-viewer-read-model.md)
 - [2026-08-28 業界マップの表現選択とデータ経路](./decision-log/2026-08-28-industry-map-view-selection.md)
+- [2026-08-28 業界マップの拡大縮小と、ページスクロールとの住み分け](./decision-log/2026-08-28-industry-map-pan-zoom-gestures.md)
 - [2026-08-07 優待取得時に次回権利月を固定する](./decision-log/2026-08-07-yutai-acquired-entitlement-lock.md)
 
 設計・方針・トレードオフの判断理由を記録します。

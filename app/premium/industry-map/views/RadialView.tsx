@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import styles from "../IndustryMap.module.css";
 import type { MapContext } from "../context";
 import { layoutRadial } from "../graph-layout";
 import { KIND_COLOR, KIND_LABEL } from "../presentation";
+import { usePanZoom } from "../use-pan-zoom";
+import ZoomControls from "./ZoomControls";
 
 type Props = {
   context: MapContext;
@@ -32,6 +34,8 @@ export default function RadialView({
   selectedId,
   onSelect,
 }: Props) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const panZoom = usePanZoom(svgRef, context.domain.domain);
   const layout = useMemo(
     () => layoutRadial(context.roots, RADIUS_STEP),
     [context.roots],
@@ -52,12 +56,19 @@ export default function RadialView({
 
   return (
     <div className={`${styles.svgWrap} ${styles.viewFade}`}>
+      <ZoomControls panZoom={panZoom} />
       <svg
-        className={styles.svg}
+        ref={svgRef}
+        className={`${styles.svg} ${panZoom.panning ? styles.svgGrabbing : styles.svgGrab}`}
+        /* 等倍のうちは1本指で画面を縦スクロールでき、拡大後は図の操作に切り替わる。 */
+        style={{ touchAction: panZoom.viewport.scale === 1 ? "pan-y" : "none" }}
         viewBox={`${-VIEWBOX_HALF} ${-VIEWBOX_HALF} ${size} ${size}`}
         role="img"
         aria-label={`${context.domain.label}の放射マップ`}
+        onPointerDown={panZoom.onPointerDown}
+        onDoubleClick={panZoom.onDoubleClick}
       >
+        <g transform={panZoom.transform}>
         <g>
           {layout.links.map((link, index) => {
             // 親の半径を通る曲線にすると、放射状の枝らしい形になる。
@@ -102,7 +113,10 @@ export default function RadialView({
                 key={point.id}
                 transform={`translate(${point.x * fit} ${point.y * fit})`}
                 className={active ? undefined : styles.svgNodeDim}
-                onClick={() => onSelect(point.id)}
+                onClick={() => {
+                  // ドラッグで図を動かしたときは選択しない。
+                  if (!panZoom.didPan()) onSelect(point.id);
+                }}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(event) => {
@@ -153,6 +167,7 @@ export default function RadialView({
               </g>
             );
           })}
+        </g>
         </g>
       </svg>
     </div>

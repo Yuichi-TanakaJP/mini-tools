@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "../IndustryMap.module.css";
 import type { MapContext } from "../context";
 import { seedSimNodes, simExtent, stepForce, type SimLink, type SimNode } from "../graph-layout";
 import { KIND_COLOR, KIND_LABEL, RELATION_COLOR, RELATION_LABEL } from "../presentation";
 import type { RelationType } from "../types";
+import { usePanZoom } from "../use-pan-zoom";
+import ZoomControls from "./ZoomControls";
 
 type Props = {
   context: MapContext;
@@ -45,6 +47,8 @@ export default function NetworkView({
   enabledRelations,
   onToggleRelation,
 }: Props) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const panZoom = usePanZoom(svgRef, context.domain.domain);
   const [frame, setFrame] = useState<{ source: SimNode[]; nodes: SimNode[] } | null>(null);
   const [runId, setRunId] = useState(0);
 
@@ -133,11 +137,17 @@ export default function NetworkView({
       </div>
 
       <div className={styles.svgWrap}>
+        <ZoomControls panZoom={panZoom} />
         <svg
-          className={styles.svg}
+          ref={svgRef}
+          className={`${styles.svg} ${panZoom.panning ? styles.svgGrabbing : styles.svgGrab}`}
+          /* 等倍のうちは1本指で画面を縦スクロールでき、拡大後は図の操作に切り替わる。 */
+          style={{ touchAction: panZoom.viewport.scale === 1 ? "pan-y" : "none" }}
           viewBox={`${-VIEWBOX_HALF} ${-VIEWBOX_HALF} ${size} ${size}`}
           role="img"
           aria-label={`${context.domain.label}の関係ネットワーク`}
+          onPointerDown={panZoom.onPointerDown}
+          onDoubleClick={panZoom.onDoubleClick}
         >
           <defs>
             <marker
@@ -152,6 +162,7 @@ export default function NetworkView({
               <path d="M 0 0 L 8 4 L 0 8 z" fill="currentColor" />
             </marker>
           </defs>
+          <g transform={panZoom.transform}>
           <g>
             {links.map((link) => {
               const source = positions.get(link.sourceId);
@@ -192,7 +203,10 @@ export default function NetworkView({
                   transform={`translate(${simNode.x * fit} ${simNode.y * fit})`}
                   className={dimmed ? styles.svgNodeDim : undefined}
                   style={{ cursor: "pointer" }}
-                  onClick={() => onSelect(simNode.id)}
+                  onClick={() => {
+                    // ドラッグで図を動かしたときは選択しない。
+                    if (!panZoom.didPan()) onSelect(simNode.id);
+                  }}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(event) => {
@@ -224,6 +238,7 @@ export default function NetworkView({
                 </g>
               );
             })}
+          </g>
           </g>
         </svg>
       </div>
