@@ -49,7 +49,7 @@ export default function TreeView({
     const { node } = item;
     const hasChildren = item.children.length > 0;
     const expanded = expandedIds.has(node.id);
-    const stockLinks = context.stockLinksByNode.get(node.id) ?? [];
+    const companyLinks = context.companyLinksByNode.get(node.id) ?? [];
     const crossCount = item.crossEdges.length;
     // 階層に接続していない単独ノード。多数の根がある domain でのみ区別に意味がある。
     const unattached = item.depth === 0 && !hasChildren && context.roots.length > 1;
@@ -104,9 +104,9 @@ export default function TreeView({
               階層未接続
             </span>
           ) : null}
-          {stockLinks.length > 0 ? (
+          {companyLinks.length > 0 ? (
             <span className={`${styles.badge} ${styles.badgeStock}`}>
-              銘柄 {stockLinks.length}
+              企業 {companyLinks.length}
             </span>
           ) : null}
           {crossCount > 0 ? (

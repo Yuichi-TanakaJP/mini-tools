@@ -10,7 +10,7 @@ ChatGPT + Supabaseを編集チャネル、MiniToolsを閲覧チャネルとす�
 
 - URL: `/premium/industry-map`
 - 分類: Premium / 業界マップ
-- 主な用途: 産業の分解構造、階層をまたぐ依存、保有銘柄とテーマの押さえどころと空白を俯瞰する
+- 主な用途: 産業の分解構造、階層をまたぐ依存、企業（非上場・海外を含む）とテーマの押さえどころと空白を俯瞰する
 
 ## 対象ユーザー
 
@@ -24,11 +24,11 @@ ChatGPT + Supabaseを編集チャネル、MiniToolsを閲覧チャネルとす�
 |---|---|
 | ヘッダー | タイトル、read modelのバージョン（`industry-map.v1`） |
 | domainチップ | domainごとの表示名・領域数・関係数。横スクロール。選ぶとマップ全体が切り替わる |
-| 集計 | 領域数 / 横断する関係数 / 紐づく銘柄数 / 紐づくテーマ数 |
+| 集計 | 領域数 / 横断する関係数 / 紐づく企業数 / 紐づくテーマ数。企業レイヤーが取得失敗のときは企業数を `—` にする |
 | 表現切り替え | 階層・放射・関係・マトリクス・表の5ビュー。選択中はインジケータがスライドする |
 | 検索 | 表示名・slug・説明の部分一致 |
 | 種別フィルタ | 分類 / 製品・事業 / 技術。最後の1つは外せない |
-| 詳細パネル | 選択した領域の定義、階層パス、下位領域、横断する関係、紐づく銘柄・テーマ |
+| 詳細パネル | 選択した領域の定義、階層パス、下位領域、横断する関係、紐づく企業・テーマ |
 
 domainの表示名は、その階層の起点になっている `classification` の `display_name` を使う。
 
@@ -39,8 +39,8 @@ domainの表示名は、その階層の起点になっている `classification`
 | 階層ツリー（既定） | 折りたたみ可能な木。初期状態は深さ1まで展開 | `contains` / `part_of` |
 | 放射マップ | 中心に最も葉の多い木、外周に葉と未接続領域 | `contains` / `part_of` |
 | 関係ネットワーク | force配置。関係種別ごとにON/OFF、「再配置」で初期配置からやり直す | 6種すべて |
-| マトリクス | 銘柄 × 領域、テーマ × 領域 | `stock_taxonomy_links` / `theme_taxonomy_links` |
-| テーブル | 全領域の一覧。領域・種別・階層・銘柄数・横断関係数で並べ替え | 全件 |
+| マトリクス | 企業 × 領域、テーマ × 領域 | `industry_map_company_links_v1` / `theme_taxonomy_links` |
+| テーブル | 全領域の一覧。領域・種別・階層・企業数・横断関係数で並べ替え | 全件 |
 
 ### 図の拡大縮小・移動（放射マップ / 関係ネットワーク）
 
@@ -82,12 +82,21 @@ Supabaseから、Server Component内で6テーブルをRLS経由で読む。
 |---|---|
 | `stock_notes_taxonomy_nodes` | 領域（`classification` / `product_segment` / `technology`） |
 | `stock_notes_taxonomy_edges` | 関係（`contains` / `part_of` / `depends_on` / `enables` / `used_for` / `related_to`） |
-| `stock_notes_stock_taxonomy_links` | 銘柄との紐付け。`valid_to is null` の現行行だけ |
+| `stock_notes_industry_map_company_links_v1` | **企業との紐付け（ビュー）**。`valid_to is null` の現行行だけ |
 | `stock_notes_theme_taxonomy_links` | テーマとの紐付け |
-| `stock_notes_stocks` | 銘柄コード・名称 |
 | `stock_notes_themes` | テーマ表示名 |
 
-1テーブルあたり最大2000行。並びは `created_at` 昇順（銘柄はコード順、テーマは表示名順）で、登録順の意味が保たれる。
+1テーブルあたり最大2000行。並びは `created_at` 昇順（企業・テーマは表示名順）で、登録順の意味が保たれる。
+
+### 企業レイヤー
+
+企業は上場銘柄とは限らない。NVIDIA、Waymo のような非上場・海外企業を含むため、軸は「銘柄」ではなく「企業」とする。上場企業として銘柄に紐付いている場合だけ、銘柄コードと銘柄名を添える。
+
+`stock_notes_industry_map_company_links_v1` は Supabase 側で業界マップ向けに用意されたビューで、`stock_notes_company_entities` / `stock_notes_company_taxonomy_links` / `stock_notes_company_stock_links` を非正規化したもの。MiniTools はこのビューだけを読み、基底テーブルを直接読まない。
+
+`company_status`（draft / active / archived）、`listing_status`、`country_code` は Supabase 側で値が増えうるため検証せず、既知の値だけラベルへ変換して残りは元の値を出す。`strategic_role` / `control_type` / `confidence` は配色に使うため検証し、未知の値の行は落とす。
+
+このビューはリポジトリ外（Supabase 側）で管理されているため、**取得に失敗しても画面全体を失敗にしない**。企業レイヤーだけを空にし、マトリクスと集計で「取得失敗」と明示する。他のテーブルは必須で、失敗すれば画面全体が取得失敗になる。
 
 `metadata` からは `layer` だけを読む。文字列でなければ `null` にする。
 
@@ -96,7 +105,7 @@ Supabaseから、Server Component内で6テーブルをRLS経由で読む。
 - DBのsnake_caseはloaderの中だけで扱い、UIへは `industry-map.v1` のcamelCase read modelを渡す
 - 必須項目が欠けた行、未知の種別・関係、自己ループの辺は落とす
 - 辺は、両端が同じdomainのノードである場合だけ採用する
-- 銘柄・テーマは、この業界マップに紐付いているものだけ返す
+- テーマは、この業界マップに紐付いているものだけ返す
 - 階層の起点は「`contains` で指されず、`part_of` を出していない」領域。全領域が親を持つ場合でも起点を1つ返し、画面を空にしない
 
 ### 保存先
@@ -120,12 +129,14 @@ Supabaseから、Server Component内で6テーブルをRLS経由で読む。
 | 検索・フィルタで0件 | 表ビューで「条件に一致する領域がありません」 |
 | 倍率が上限・下限 | ＋ / − ボタンを押せない状態にする |
 | 等倍・移動なし | ⟲ ボタンを押せない状態にする |
-| 銘柄・テーマの紐付けなし | マトリクスで「まだありません」。空セルは紐付けなしを表すだけで優劣を表さない |
+| 企業・テーマの紐付けなし | マトリクスで「まだありません」。空セルは紐付けなしを表すだけで優劣を表さない |
+| 企業レイヤーだけ取得失敗 | マトリクスで「企業データを取得できませんでした。0件ではなく取得失敗です。」を赤系で表示し、他のビューは通常どおり動く |
 
 ## 表示上の禁止事項
 
 - 業界マップから売買推奨を生成・表示しない
 - `strategic_role` / `control_type` / `confidence` を数値スコアへ変換しない（レーダー等を作らない理由）
+- 銘柄コードのない企業を売買対象として扱わない。非上場・海外企業を含むことを画面に明示する
 - 取得失敗と0件を同じ表示にしない
 - この画面から保存・編集・削除を行わない
 

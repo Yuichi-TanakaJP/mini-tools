@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildIndustryMap, type RawIndustryMap } from "./data-loader";
+import { formatAsOf } from "./presentation";
 
 function node(overrides: Record<string, unknown>) {
   return {
@@ -27,12 +28,34 @@ function edge(overrides: Record<string, unknown>) {
   };
 }
 
+function companyLink(overrides: Record<string, unknown>) {
+  return {
+    company_taxonomy_link_id: "cl1",
+    company_entity_id: "c1",
+    company_name: "ＮＴＴ",
+    company_slug: "ntt",
+    company_status: "active",
+    country_code: "JP",
+    listing_status: "domestic_listed",
+    node_id: "n1",
+    strategic_role: "core",
+    control_type: "controlled",
+    confidence: "medium",
+    source_type: "manual",
+    relation_note: "",
+    as_of: "2026-08-01",
+    stock_id: "s1",
+    stock_code: "9432",
+    stock_name: "ＮＴＴ",
+    ...overrides,
+  };
+}
+
 const EMPTY: RawIndustryMap = {
   nodes: [],
   edges: [],
-  stockLinks: [],
+  companyLinks: [],
   themeLinks: [],
-  stocks: [],
   themes: [],
 };
 
@@ -112,41 +135,72 @@ describe("buildIndustryMap", () => {
     expect(nodes[2]?.layer).toBeNull();
   });
 
-  it("紐付けのない銘柄・テーマは返さない", () => {
+  it("存在しないノードへの企業紐付けと、紐付けのないテーマを落とす", () => {
     const data = buildIndustryMap({
       ...EMPTY,
       nodes: [node({})],
-      stockLinks: [
-        {
-          stock_id: "s1",
-          node_id: "n1",
-          strategic_role: "core",
-          control_type: "controlled",
-          confidence: "medium",
-          source_type: "manual",
-          relation_note: "",
-        },
-        // 存在しないノードへの紐付けは落とす。
-        {
-          stock_id: "s2",
-          node_id: "missing",
-          strategic_role: "core",
-          control_type: "owned",
-          confidence: "high",
-          source_type: "manual",
-          relation_note: "",
-        },
-      ],
-      stocks: [
-        { id: "s1", code: "9432", name: "ＮＴＴ", category: "holding" },
-        { id: "s2", code: "9433", name: "ＫＤＤＩ", category: "holding" },
+      companyLinks: [
+        companyLink({}),
+        companyLink({ company_taxonomy_link_id: "cl2", node_id: "missing" }),
       ],
       themes: [{ id: "t1", slug: "ai", display_name: "AI", status: "active" }],
     });
 
-    expect(data.stocks.map((item) => item.code)).toEqual(["9432"]);
-    expect(data.domains[0]?.stockLinks).toHaveLength(1);
+    expect(data.domains[0]?.companyLinks).toHaveLength(1);
     expect(data.themes).toHaveLength(0);
+  });
+
+  it("上場していない企業も落とさず、銘柄コードなしとして保持する", () => {
+    const data = buildIndustryMap({
+      ...EMPTY,
+      nodes: [node({})],
+      companyLinks: [
+        companyLink({
+          company_entity_id: "c2",
+          company_name: "NVIDIA",
+          company_status: "draft",
+          country_code: null,
+          listing_status: "unknown",
+          stock_id: null,
+          stock_code: null,
+          stock_name: null,
+        }),
+      ],
+    });
+
+    const link = data.domains[0]?.companyLinks[0];
+    expect(link?.companyName).toBe("NVIDIA");
+    expect(link?.stockCode).toBeNull();
+    expect(link?.countryCode).toBeNull();
+    // status / listing は Supabase 側で値が増えうるので、そのまま持つ。
+    expect(link?.companyStatus).toBe("draft");
+    expect(link?.listingStatus).toBe("unknown");
+  });
+
+  it("基準日はタイムスタンプでも日付だけを表示できる形で保持する", () => {
+    const data = buildIndustryMap({
+      ...EMPTY,
+      nodes: [node({})],
+      companyLinks: [companyLink({ as_of: "2026-08-26T05:26:40.59522+00:00" })],
+    });
+
+    expect(data.domains[0]?.companyLinks[0]?.asOf).toBe("2026-08-26T05:26:40.59522+00:00");
+    expect(formatAsOf(data.domains[0]!.companyLinks[0]!.asOf!)).toBe("2026-08-26");
+  });
+
+  it("役割・関与・確度が未知の企業紐付けは落とす", () => {
+    const data = buildIndustryMap({
+      ...EMPTY,
+      nodes: [node({})],
+      companyLinks: [
+        companyLink({ company_taxonomy_link_id: "cl3", strategic_role: "unknown_role" }),
+        companyLink({ company_taxonomy_link_id: "cl4", control_type: "leased" }),
+        companyLink({ company_taxonomy_link_id: "cl5", confidence: "very-high" }),
+        companyLink({ company_taxonomy_link_id: "cl6", company_name: "  " }),
+      ],
+    });
+
+    expect(data.domains[0]?.companyLinks).toHaveLength(0);
   });
 
   it("ノード数の多い domain を先に並べる", () => {

@@ -13,6 +13,9 @@ import {
   ROLE_LABEL,
   THEME_RELATION_COLOR,
   THEME_RELATION_LABEL,
+  companyStatusLabel,
+  formatAsOf,
+  listingLabel,
 } from "../presentation";
 
 type Props = {
@@ -53,7 +56,7 @@ export default function DetailPanel({ context, selectedId, onSelect }: Props) {
     .map((childId) => context.nodeById.get(childId))
     .filter((child): child is NonNullable<typeof child> => Boolean(child));
   const crossEdges = context.crossEdgesByNode.get(node.id) ?? [];
-  const stockLinks = context.stockLinksByNode.get(node.id) ?? [];
+  const companyLinks = context.companyLinksByNode.get(node.id) ?? [];
   const themeLinks = context.themeLinksByNode.get(node.id) ?? [];
 
   return (
@@ -132,33 +135,53 @@ export default function DetailPanel({ context, selectedId, onSelect }: Props) {
         </section>
       ) : null}
 
-      {stockLinks.length > 0 ? (
+      {companyLinks.length > 0 ? (
         <section className={styles.detailSection}>
-          <span className={styles.detailSectionTitle}>紐づく銘柄 {stockLinks.length}</span>
+          <span className={styles.detailSectionTitle}>紐づく企業 {companyLinks.length}</span>
           <ul className={styles.detailList}>
-            {stockLinks.map((link) => {
-              const stock = context.stockById.get(link.stockId);
-              return (
-                <li key={`${link.stockId}-${link.nodeId}`} className={styles.detailItem}>
-                  <span
-                    className={styles.relTag}
-                    style={{ background: ROLE_COLOR[link.strategicRole] }}
-                  >
-                    {ROLE_LABEL[link.strategicRole]}
-                  </span>
-                  <span className={styles.detailItemMain}>
-                    {stock ? `${stock.code} ${stock.name}` : link.stockId}
-                    <span className={styles.detailItemNote}>
-                      {CONTROL_LABEL[link.controlType]} · {CONFIDENCE_LABEL[link.confidence]}
-                      {link.note ? ` · ${link.note}` : ""}
+            {companyLinks.map((link) => (
+              <li key={link.linkId} className={styles.detailItem}>
+                <span
+                  className={styles.relTag}
+                  style={{ background: ROLE_COLOR[link.strategicRole] }}
+                >
+                  {ROLE_LABEL[link.strategicRole]}
+                </span>
+                <span className={styles.detailItemMain}>
+                  {link.companyName}
+                  {link.stockCode ? (
+                    <span className={`${styles.badge} ${styles.badgeStock}`}>
+                      {link.stockCode}
                     </span>
+                  ) : null}
+                  {link.companyStatus === "draft" ? (
+                    <span className={`${styles.badge} ${styles.badgeMuted}`}>
+                      {companyStatusLabel(link.companyStatus)}
+                    </span>
+                  ) : null}
+                  <span className={styles.detailItemNote}>
+                    {[
+                      CONTROL_LABEL[link.controlType],
+                      CONFIDENCE_LABEL[link.confidence],
+                      // 銘柄名が企業名と同じときは繰り返さない。
+                      link.stockCode
+                        ? link.stockName && link.stockName !== link.companyName
+                          ? link.stockName
+                          : null
+                        : listingLabel(link.listingStatus),
+                      link.countryCode,
+                      link.asOf ? formatAsOf(link.asOf) : null,
+                      link.note || null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </span>
-                </li>
-              );
-            })}
+                </span>
+              </li>
+            ))}
           </ul>
           <p className={styles.note}>
-            紐付けは事実の整理であり、売買の推奨ではありません。
+            紐付けは事実の整理であり、売買の推奨ではありません。銘柄コードのない企業は売買対象として扱えません。
           </p>
         </section>
       ) : null}

@@ -3,9 +3,8 @@ import {
   CROSS_RELATIONS,
   type IndustryDomain,
   type IndustryEdge,
+  type IndustryCompanyLink,
   type IndustryNode,
-  type IndustryStock,
-  type IndustryStockLink,
   type IndustryTheme,
   type IndustryThemeLink,
   type RelationType,
@@ -17,9 +16,8 @@ export type MapContext = {
   domain: IndustryDomain;
   roots: TreeNode[];
   nodeById: Map<string, IndustryNode>;
-  stockById: Map<string, IndustryStock>;
   themeById: Map<string, IndustryTheme>;
-  stockLinksByNode: Map<string, IndustryStockLink[]>;
+  companyLinksByNode: Map<string, IndustryCompanyLink[]>;
   themeLinksByNode: Map<string, IndustryThemeLink[]>;
   /** 階層をまたぐ関係だけを、両端のノードから引けるようにしたもの。 */
   crossEdgesByNode: Map<string, IndustryEdge[]>;
@@ -45,7 +43,6 @@ const CROSS_SET = new Set<RelationType>(CROSS_RELATIONS);
 
 export function buildMapContext(
   domain: IndustryDomain,
-  stocks: IndustryStock[],
   themes: IndustryTheme[],
 ): MapContext {
   const roots = buildForest(domain);
@@ -97,9 +94,8 @@ export function buildMapContext(
     domain,
     roots,
     nodeById: new Map(domain.nodes.map((node) => [node.id, node])),
-    stockById: new Map(stocks.map((stock) => [stock.id, stock])),
     themeById: new Map(themes.map((theme) => [theme.id, theme])),
-    stockLinksByNode: groupBy(domain.stockLinks, (link) => link.nodeId),
+    companyLinksByNode: groupBy(domain.companyLinks, (link) => link.nodeId),
     themeLinksByNode: groupBy(domain.themeLinks, (link) => link.nodeId),
     crossEdgesByNode,
     parentOf,

@@ -72,6 +72,45 @@ export const CONFIDENCE_LABEL: Record<Confidence, string> = {
   low: "確度低",
 };
 
+/**
+ * 上場区分と国。Supabase 側で値が増えうるので、既知の値だけラベルにして
+ * それ以外は元の値をそのまま出す（勝手に「不明」へ丸めない）。
+ */
+const LISTING_LABEL: Record<string, string> = {
+  domestic_listed: "国内上場",
+  foreign_listed: "海外上場",
+  unlisted: "非上場",
+  unknown: "上場区分未確認",
+};
+
+export function listingLabel(value: string): string {
+  return LISTING_LABEL[value] ?? value;
+}
+
+/** 上場が確認できている企業かどうか。銘柄コードの有無と合わせて表示に使う。 */
+export function isListed(value: string): boolean {
+  return value === "domestic_listed" || value === "foreign_listed";
+}
+
+const COMPANY_STATUS_LABEL: Record<string, string> = {
+  draft: "下書き",
+  active: "確定",
+  archived: "アーカイブ",
+};
+
+export function companyStatusLabel(value: string): string {
+  return COMPANY_STATUS_LABEL[value] ?? value;
+}
+
+/**
+ * 基準日。Supabase の `as_of` は日付のこともタイムスタンプのこともあるため、
+ * 先頭の日付部分だけを出す。解釈できない値はそのまま返す（勝手に捨てない）。
+ */
+export function formatAsOf(value: string): string {
+  const match = /^(\d{4}-\d{2}-\d{2})/.exec(value);
+  return match ? match[1] : value;
+}
+
 export const THEME_RELATION_LABEL: Record<ThemeRelationType, string> = {
   scope: "対象範囲",
   focus: "注目点",
@@ -123,7 +162,7 @@ export const VIEWS: readonly ViewDefinition[] = [
     mode: "matrix",
     icon: "▦",
     label: "マトリクス",
-    question: "保有銘柄とテーマがどこを押さえ、どこが空白か。",
+    question: "企業（非上場・海外を含む）とテーマがどこを押さえ、どこが空白か。",
   },
   {
     mode: "table",

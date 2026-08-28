@@ -69,21 +69,33 @@ export type IndustryEdge = {
   note: string;
 };
 
-export type IndustryStock = {
-  id: string;
-  code: string;
-  name: string;
-  category: string;
-};
-
-export type IndustryStockLink = {
-  stockId: string;
+/**
+ * 企業と領域の紐付け。`stock_notes_industry_map_company_links_v1` の1行に対応する。
+ *
+ * 企業は上場銘柄とは限らない（NVIDIA、Waymo のような非上場・海外企業を含む）。
+ * 上場企業として銘柄に紐付いている場合だけ `stockCode` / `stockName` が入る。
+ *
+ * `listingStatus` / `countryCode` / `companyStatus` は Supabase 側で値が増えうるため、
+ * 文字列のまま持ち、表示側で既知の値だけラベルへ変換する。
+ */
+export type IndustryCompanyLink = {
+  linkId: string;
+  companyId: string;
+  companyName: string;
+  companySlug: string;
+  companyStatus: string;
+  countryCode: string | null;
+  listingStatus: string;
   nodeId: string;
   strategicRole: StrategicRole;
   controlType: ControlType;
   confidence: Confidence;
   sourceType: string;
   note: string;
+  asOf: string | null;
+  stockId: string | null;
+  stockCode: string | null;
+  stockName: string | null;
 };
 
 export type IndustryTheme = {
@@ -109,15 +121,19 @@ export type IndustryDomain = {
   rootIds: string[];
   nodes: IndustryNode[];
   edges: IndustryEdge[];
-  stockLinks: IndustryStockLink[];
+  companyLinks: IndustryCompanyLink[];
   themeLinks: IndustryThemeLink[];
 };
 
 export type IndustryMapData = {
   modelVersion: typeof INDUSTRY_MAP_MODEL_VERSION;
   domains: IndustryDomain[];
-  stocks: IndustryStock[];
   themes: IndustryTheme[];
+  /**
+   * 企業レイヤーだけが取れなかった場合に立てる。
+   * 「0件」と「取得できなかった」を画面で区別するために使う。
+   */
+  companyLayerFailed: boolean;
 };
 
 export type IndustryMapLoadStatus =

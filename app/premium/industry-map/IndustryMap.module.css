@@ -692,6 +692,23 @@
   line-height: 1.7;
 }
 
+.matrixColMeta {
+  font-weight: 700;
+  opacity: 0.72;
+}
+
+/* 取得失敗。0件（.detailEmpty）とは別の見え方にする。 */
+.matrixFailed {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--color-error);
+  border: 1px solid currentColor;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--color-error) 6%, transparent);
+}
+
 .matrixScroll {
   overflow: auto;
   max-height: min(66vh, 700px);

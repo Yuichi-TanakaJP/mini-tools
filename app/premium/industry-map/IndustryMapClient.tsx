@@ -89,7 +89,7 @@ export default function IndustryMapClient({ result }: { result: IndustryMapLoadR
   );
 
   const context = useMemo(
-    () => (domain && data ? buildMapContext(domain, data.stocks, data.themes) : null),
+    () => (domain && data ? buildMapContext(domain, data.themes) : null),
     [domain, data],
   );
 
@@ -254,10 +254,12 @@ export default function IndustryMapClient({ result }: { result: IndustryMapLoadR
             </div>
           </div>
           <div className={styles.stat}>
-            <div className={styles.statLabel}>紐づく銘柄</div>
+            <div className={styles.statLabel}>紐づく企業</div>
             <div className={styles.statValue}>
-              {new Set(domain.stockLinks.map((link) => link.stockId)).size}
-              <span className={styles.statUnit}>銘柄</span>
+              {data.companyLayerFailed
+                ? "—"
+                : new Set(domain.companyLinks.map((link) => link.companyId)).size}
+              <span className={styles.statUnit}>社</span>
             </div>
           </div>
           <div className={styles.stat}>
@@ -363,6 +365,7 @@ export default function IndustryMapClient({ result }: { result: IndustryMapLoadR
               activeIds={activeIds}
               selectedId={selectedId}
               onSelect={selectNode}
+              companyLayerFailed={data.companyLayerFailed}
             />
           ) : null}
           {view === "table" ? (
