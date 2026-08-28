@@ -73,8 +73,9 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
 
   const selectedCompany = data?.companies.find((company) => company.id === selectedCompanyId) ?? null;
   const selectedRelation = relationships.find((relationship) => relationship.relationId === selectedRelationId) ?? null;
-  const currentView = VIEWS.find((item) => item.mode === view) ?? VIEWS[0];
   const viewIndex = VIEWS.findIndex((item) => item.mode === view);
+  const showHopControl = view === "radial" || view === "hierarchy";
+  const showGroupControl = view === "network" || view === "radial";
 
   const selectCompany = (companyId: string) => {
     setSelectedCompanyId(companyId);
@@ -130,6 +131,76 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
       </header>
 
       <section className={styles.toolbar} aria-label="企業関係マップの表示条件">
+        <div className={styles.controlRow}>
+          <label className={styles.companySelect}>
+            <span>中心企業</span>
+            <select value={selectedCompanyId} onChange={(event) => selectCompany(event.target.value)}>
+              {selectableCompanies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+            </select>
+          </label>
+          <input
+            className={styles.search}
+            type="search"
+            value={query}
+            placeholder="企業名・関係を検索"
+            aria-label="企業関係を検索"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </div>
+
+        <details className={styles.filterDetails}>
+          <summary className={styles.filterSummary}>
+            <span>絞り込み・表示設定</span>
+            <span className={styles.filterSummaryMeta}>
+              {verifiedOnly ? "verified" : "全状態"} · {categories.size}種別
+            </span>
+          </summary>
+          <div className={styles.filterPanel}>
+            {showHopControl ? (
+              <div className={styles.filterGroup}>
+                <span className={styles.filterLabel}>探索範囲</span>
+                <div className={styles.hopControl} aria-label="探索の深さ">
+                  {[1, 2].map((value) => (
+                    <button key={value} type="button" className={hops === value ? styles.toggleOn : styles.toggle} onClick={() => setHops(value as 1 | 2)}>
+                      {value}-hop
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            <div className={styles.filterGroup}>
+              <span className={styles.filterLabel}>関係種別</span>
+              <div className={styles.filterRow}>
+                {ALL_CATEGORIES.map((category) => (
+                  <button
+                    key={category}
+                    type="button"
+                    className={`${styles.toggle} ${categories.has(category) ? styles.toggleOn : ""}`}
+                    aria-pressed={categories.has(category)}
+                    onClick={() => toggleCategory(category)}
+                  >
+                    <span className={styles.toggleDot} />
+                    {CATEGORY_LABEL[category]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className={styles.filterGroup}>
+              <span className={styles.filterLabel}>表示</span>
+              <div className={styles.filterRow}>
+                <button type="button" className={`${styles.toggle} ${verifiedOnly ? styles.toggleOn : ""}`} aria-pressed={verifiedOnly} onClick={() => { setVerifiedOnly((value) => !value); setSelectedRelationId(null); }}>
+                  verifiedのみ
+                </button>
+                {showGroupControl ? (
+                  <button type="button" className={`${styles.toggle} ${showGroups ? styles.toggleOn : ""}`} aria-pressed={showGroups} onClick={() => setShowGroups((value) => !value)}>
+                    グループ表示
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </details>
+
         <div className={styles.segmented} role="tablist" aria-label="表現の切り替え">
           <span
             className={styles.segmentedIndicator}
@@ -154,54 +225,7 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
             </button>
           ))}
         </div>
-
-        <div className={styles.controlRow}>
-          <label className={styles.companySelect}>
-            <span>中心企業</span>
-            <select value={selectedCompanyId} onChange={(event) => selectCompany(event.target.value)}>
-              {selectableCompanies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
-            </select>
-          </label>
-          <input
-            className={styles.search}
-            type="search"
-            value={query}
-            placeholder="企業名・関係を検索"
-            aria-label="企業関係を検索"
-            onChange={(event) => setQuery(event.target.value)}
-          />
-          <div className={styles.hopControl} aria-label="探索の深さ">
-            {[1, 2].map((value) => (
-              <button key={value} type="button" className={hops === value ? styles.toggleOn : styles.toggle} onClick={() => setHops(value as 1 | 2)}>
-                {value}-hop
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className={styles.filterRow}>
-          {ALL_CATEGORIES.map((category) => (
-            <button
-              key={category}
-              type="button"
-              className={`${styles.toggle} ${categories.has(category) ? styles.toggleOn : ""}`}
-              aria-pressed={categories.has(category)}
-              onClick={() => toggleCategory(category)}
-            >
-              <span className={styles.toggleDot} />
-              {CATEGORY_LABEL[category]}
-            </button>
-          ))}
-          <button type="button" className={`${styles.toggle} ${verifiedOnly ? styles.toggleOn : ""}`} aria-pressed={verifiedOnly} onClick={() => { setVerifiedOnly((value) => !value); setSelectedRelationId(null); }}>
-            verifiedのみ
-          </button>
-          <button type="button" className={`${styles.toggle} ${showGroups ? styles.toggleOn : ""}`} aria-pressed={showGroups} onClick={() => setShowGroups((value) => !value)}>
-            グループ表示
-          </button>
-        </div>
       </section>
-
-      <p className={styles.hint}>{currentView.question}</p>
 
       <div className={styles.workspace}>
         <section className={styles.canvas}>
