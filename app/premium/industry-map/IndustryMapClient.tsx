@@ -315,6 +315,8 @@ export default function IndustryMapClient({ result }: { result: IndustryMapLoadR
               type="button"
               className={`${styles.toggle} ${kinds.has(kind) ? styles.toggleOn : ""}`}
               style={kinds.has(kind) ? { color: KIND_COLOR[kind] } : undefined}
+              // 0件の種別は関係フィルタと同じく押せない状態にする。
+              disabled={context.kindCounts[kind] === 0}
               aria-pressed={kinds.has(kind)}
               onClick={() => toggleKind(kind)}
             >

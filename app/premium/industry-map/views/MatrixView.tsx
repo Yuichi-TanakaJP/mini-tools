@@ -185,6 +185,9 @@ export default function MatrixView({
             </table>
           </div>
         )}
+        {companies.length > 1 ? (
+          <span className={styles.matrixScrollHint}>← 横にスクロールすると残りの企業を見られます</span>
+        ) : null}
         <div className={styles.legend}>
           {(Object.keys(ROLE_LABEL) as (keyof typeof ROLE_LABEL)[]).map((role) => (
             <span key={role} className={styles.legendItem}>
@@ -265,6 +268,9 @@ export default function MatrixView({
             </table>
           </div>
         )}
+        {themes.length > 1 ? (
+          <span className={styles.matrixScrollHint}>← 横にスクロールすると残りのテーマを見られます</span>
+        ) : null}
       </section>
 
       <p className={styles.note} style={{ marginTop: 14 }}>

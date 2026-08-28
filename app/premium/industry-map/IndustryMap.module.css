@@ -716,17 +716,26 @@
   border-radius: 12px;
 }
 
+/*
+ * 列は内容なりの幅にして、入りきらない場合は .matrixScroll を横スクロールさせる。
+ * width: 100% にすると、狭い画面で列が圧縮されて見出しが重なり、社名も切れる。
+ */
 .matrix {
   border-collapse: separate;
   border-spacing: 0;
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   font-size: 12px;
 }
 
+/*
+ * ここで padding を指定すると `.matrix th`（要素セレクタ込み）の詳細度が
+ * `.matrixColHead` 等の単一クラスより高くなり、セル側の余白がすべて打ち消される。
+ * 余白は各セルのクラスだけで決める。
+ */
 .matrix th,
 .matrix td {
   border-bottom: 1px solid var(--color-border);
-  padding: 0;
 }
 
 .matrixCorner,
@@ -738,7 +747,8 @@
   font-size: 10px;
   font-weight: 900;
   color: var(--color-text-sub);
-  padding: 8px 6px;
+  /* 隣の列の見出しとくっつかないだけの左右余白を確保する。 */
+  padding: 8px 12px;
   text-align: center;
   white-space: nowrap;
 }
@@ -747,7 +757,8 @@
   left: 0;
   z-index: 3;
   text-align: left;
-  min-width: 180px;
+  /* 行見出しと同じ幅に揃える。狭い画面では行見出し側を優先して縮める。 */
+  min-width: 148px;
 }
 
 .matrixRowHead {
@@ -758,8 +769,19 @@
   padding: 7px 10px;
   text-align: left;
   font-weight: 700;
-  min-width: 180px;
-  max-width: 260px;
+  min-width: 148px;
+  max-width: 220px;
+}
+
+@media (min-width: 720px) {
+  .matrixCorner,
+  .matrixRowHead {
+    min-width: 180px;
+  }
+
+  .matrixRowHead {
+    max-width: 260px;
+  }
 }
 
 .matrixRowHeadInner {
@@ -804,6 +826,20 @@
 .matrixRow:hover .matrixRowHead,
 .matrixRow:hover .matrixCell {
   background: var(--color-bg-input);
+}
+
+/* 横スクロールできることが分かるように、端で内容が続くことを示す。 */
+.matrixScrollHint {
+  display: block;
+  margin: 6px 0 0;
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+@media (min-width: 720px) {
+  .matrixScrollHint {
+    display: none;
+  }
 }
 
 /* ---------- table view ---------- */
