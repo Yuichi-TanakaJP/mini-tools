@@ -173,11 +173,8 @@ function AssetAllocationChart({ valuation, data }: { valuation: PortfolioValuati
       row.value !== null && row.value > 0 && row.percentage !== null,
   );
 
-  if (total === null || total <= 0 || visibleRows.length === 0) {
-    return <EmptyState>評価額が未取得または0円のため、総資産の構成比を表示できません。</EmptyState>;
-  }
-
   const radius = 18;
+  const canDrawChart = total !== null && total > 0 && visibleRows.length > 0;
   const segments = visibleRows.map((row, index) => ({
     row,
     offset: visibleRows
@@ -191,7 +188,7 @@ function AssetAllocationChart({ valuation, data }: { valuation: PortfolioValuati
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", alignItems: "center", gap: 24 }}>
       <div style={{ display: "flex", justifyContent: "center" }}>
-        <svg viewBox="0 0 52 52" width={220} height={220} role="img" aria-label={ariaLabel} style={{ maxWidth: "100%" }}>
+        {canDrawChart ? <svg viewBox="0 0 52 52" width={220} height={220} role="img" aria-label={ariaLabel} style={{ maxWidth: "100%" }}>
           <circle cx={26} cy={26} r={radius} pathLength={100} fill="transparent" stroke="var(--color-bg-input)" strokeWidth={8} />
           {segments.map(({ row, offset }) => (
             <circle
@@ -211,7 +208,7 @@ function AssetAllocationChart({ valuation, data }: { valuation: PortfolioValuati
           ))}
           <text x={26} y={25.2} textAnchor="middle" fontSize={3.5} fontWeight={800} fill="var(--color-text-muted)">総資産</text>
           <text x={26} y={30} textAnchor="middle" fontSize={4.2} fontWeight={900} fill="var(--color-text)">100%</text>
-        </svg>
+        </svg> : <div style={{ maxWidth: 260, textAlign: "center" }}><EmptyState>評価額が未取得または0円のため、構成比の図は表示できません。</EmptyState></div>}
       </div>
       <div style={{ display: "grid", gap: 14 }}>
         {rows.map((row) => (
