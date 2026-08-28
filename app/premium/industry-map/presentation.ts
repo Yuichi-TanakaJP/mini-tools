@@ -109,13 +109,15 @@ export const VIEWS: readonly ViewDefinition[] = [
     mode: "radial",
     icon: "🌐",
     label: "放射",
-    question: "全体がどんな形か。中心から外側へ、階層が一望できます。",
+    question:
+      "全体がどんな形か。中心から外側へ階層が一望できます。ドラッグで移動、Ctrl+ホイールかピンチ、＋−ボタンで拡大縮小できます。",
   },
   {
     mode: "network",
     icon: "🕸",
     label: "関係",
-    question: "階層をまたぐ依存は何か。6種の関係をすべて線で描きます。",
+    question:
+      "階層をまたぐ依存は何か。6種の関係をすべて線で描きます。ドラッグで移動、Ctrl+ホイールかピンチ、＋−ボタンで拡大縮小できます。",
   },
   {
     mode: "matrix",

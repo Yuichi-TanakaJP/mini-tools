@@ -501,6 +501,7 @@
 /* ---------- svg views ---------- */
 
 .svgWrap {
+  position: relative;
   width: 100%;
   overflow: hidden;
   border-radius: 12px;
@@ -511,6 +512,79 @@
 
 /* viewBox は正方形。高さを決めて preserveAspectRatio に収めさせ、
    図が画面いっぱいに伸びて操作しづらくなるのを防ぐ。 */
+/* ドラッグ操作のあとに既定のフォーカス枠が残らないようにする。
+   キーボード操作時は focus-visible で明示的に出す。 */
+.svg [role="button"]:focus {
+  outline: none;
+}
+
+.svg [role="button"]:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.svgGrab {
+  cursor: grab;
+}
+
+.svgGrabbing {
+  cursor: grabbing;
+}
+
+/* 拡大縮小の操作。図の上に重ねる。 */
+.zoomControls {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-bg-card) 88%, transparent);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+}
+
+.zoomButton {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--color-text-sub);
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.zoomButton:hover:not(:disabled) {
+  background: var(--color-accent-sub);
+  color: var(--color-accent);
+}
+
+.zoomButton:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+.zoomLevel {
+  min-width: 40px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 /* viewBox は正方形に正規化してある。幅なりの高さだと画面を占有しすぎるので、
    max-height で頭打ちにし、はみ出しは preserveAspectRatio に収めさせる。 */
 .svg {
@@ -518,7 +592,9 @@
   width: 100%;
   height: auto;
   max-height: min(72vh, 660px);
+  /* touch-action は拡大状態に応じてコンポーネント側で切り替える。 */
   touch-action: pan-y;
+  user-select: none;
 }
 
 .svgLink {
@@ -1016,6 +1092,7 @@
   .segmentedIndicator,
   .treeCaret,
   .domainChip,
+  .zoomButton,
   .detailItemLink {
     transition: none !important;
   }
