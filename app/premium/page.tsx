@@ -61,6 +61,14 @@ const FEATURE_CARDS: FeatureCard[] = [
     tone: "violet",
   },
   {
+    href: "/premium/theme-company-network",
+    icon: "🔗",
+    title: "テーマ × 企業関係",
+    description:
+      "テーマへの直接企業と、出資・支配などの企業関係で見つかる企業を分けて横断探索します。",
+    tone: "violet",
+  },
+  {
     href: "/premium/routines",
     icon: "🗓",
     title: "ルーティン一覧",
