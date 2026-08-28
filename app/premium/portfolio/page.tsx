@@ -76,11 +76,14 @@ export default async function PremiumPortfolioPage() {
         </nav>
 
         {portfolio.authState === "authenticated" && portfolio.currentSnapshot ? (
-          <CompanyGroupExposureCard
-            exposure={companyGroupExposure}
-            asOf={portfolio.currentSnapshot.asOf}
-            errorMessage={companyGroupExposureError}
-          />
+          companyGroupExposureError ? (
+            <section style={{ background: "var(--color-bg-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: 18 }}>
+              <h2 style={{ margin: 0, fontSize: 20 }}>企業グループ集中（事実ベース）</h2>
+              <p style={{ margin: "8px 0 0", color: "var(--color-text-sub)", lineHeight: 1.7 }}>{companyGroupExposureError}</p>
+            </section>
+          ) : (
+            <CompanyGroupExposureCard exposure={companyGroupExposure} asOf={portfolio.currentSnapshot.asOf} />
+          )
         ) : null}
 
         <PortfolioWorkspace data={portfolio} />
