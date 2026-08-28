@@ -19,8 +19,8 @@
 ### 主な画面要素
 
 - **意思決定**: 判断状態、snapshot/reviewの基準日、全体要約、金額なしの補強・調査recommendation、未完了portfolio action
-- **保有一覧**: 最新readyスナップショットの評価額・取得額・含み損益・商品別配分
-- **口座・取込**: 最新の公式snapshotの口座別ポジション明細、過去の取込履歴、外部口座・参考資産の別集計。外部資産はiDeCo・企業型DC・海外口座・暗号資産・現金等を対象とし、公式保有とは混ぜずに表示する
+- **保有一覧**: 公式保有と外部参照資産を合算した総資産評価額、scope別内訳、公式保有の取得額・含み損益・商品別配分
+- **口座・取込**: 最新の公式snapshotの口座別ポジション明細、過去の取込履歴、外部口座・参考資産の別明細。外部資産はiDeCo・企業型DC・海外口座・暗号資産・現金等を対象とする
 - **方針**: active policyの版・原則・構造化ルール・変更履歴、現行reviewの一時判断、latest reflection
 - **履歴**: snapshot履歴とreview履歴。reviewは`draft` / `finalized` / `superseded`を表示し、置換済みreviewは現行判断と分けて表示する
 - **DB確認**: MiniToolsがSupabaseから取得したportfolio、snapshot、position、review、review itemの生行数・ID・基準日を読み取り専用で確認する。銘柄マスタ件数は、portfolio_idを持たないユーザー単位の取得結果として表示し、readyがない場合は最新取込snapshotのポジション行も確認する
@@ -48,7 +48,9 @@
 - 外部資産は、未登録・取得済み・取込中・取得失敗を別状態で表示する。最新取込が失敗・取込中でも、最後に成功した外部snapshotがあればそれを表示し、最新状態を警告として併記する。評価額未取得の明細も `—` とし、0円とは区別する
 - 外部資産のsnapshotには `external_reference` scopeを表示し、基準日・取得元・口座種別・資産種別・数量または残高・通貨・評価額を確認できる
 - 外部資産の「未紐付け」は国内株・海外株で `stock_id` がない場合だけを数え、現金・預金・暗号資産・iDeCo残高など銘柄マスターを必要としない資産を誤警告しない
-- 外部資産の評価額は現段階では「保有一覧」や意思決定の公式集計へ自動合算しない。二重計上を避けるため、総合集計への統合は別仕様で定義する
+- 外部資産の評価額は「保有一覧」の総資産評価額へ合算し、公式保有と外部参照資産の内訳・基準日・状態を併記する
+- `official` / `external_reference` は証券会社や口座の信頼度ではなく、snapshotに保存されたデータ管理scopeである
+- 取得額・含み損益・公式保有の商品別構成比は、外部資産に原価や同一基準日の情報がない場合があるため、現段階では公式保有だけを対象とする
 
 ### 現段階でできないこと
 
@@ -58,7 +60,7 @@
 - 金額指定を含む新規資金の順位・配分を表示する（現在は金額なし候補の表示のみ）
 - 前回reviewとの差分を表示する
 - 銘柄ダッシュボードとportfolio方針を往復する
-- 外部資産を公式ポートフォリオの総額・配分分析へ自動統合する。通貨換算、重複排除、分析対象外ルールは後続で定義する
+- 外部資産を商品別構成・意思決定context・配分分析へ統合する。通貨換算、重複排除、分析対象外ルールは後続で定義する
 
 ### DB確認タブの位置づけ
 
@@ -126,4 +128,5 @@
 - Decision Log: [ChatGPT起点の意思決定ワークスペース](../../decision-log/2026-08-15-portfolio-chat-first-operating-model.md)
 - Decision Log: [ポートフォリオのWhatとpolicy/reflection表示](../../decision-log/2026-08-22-portfolio-what-and-policy-reflection-display.md)
 - Decision Log: [外部資産の表示と公式集計の分離](../../decision-log/2026-08-23-portfolio-external-assets-display.md)
+- Decision Log: [公式保有と外部参照資産の総資産評価額](../../decision-log/2026-08-28-portfolio-total-assets-valuation.md)
 - Plan: [ポートフォリオ意思決定ワークスペース実装計画](../../plans/portfolio-decision-workspace-plan.md)

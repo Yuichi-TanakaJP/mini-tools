@@ -5,6 +5,7 @@ import type { PortfolioData, PortfolioDbPosition, PortfolioExternalAssetPosition
 import { aggregatePortfolioPositions } from "./aggregates";
 import { summarizePortfolioDbResult } from "./db-check";
 import { isUnresolvedExternalInstrument } from "./external-assets";
+import { summarizePortfolioValuation } from "./valuation-summary";
 import PortfolioDecision from "./PortfolioDecision";
 
 type Tab = "decision" | "overview" | "record" | "policy" | "history" | "db";
@@ -503,7 +504,8 @@ function DbCheckView({ data }: { data: PortfolioData }) {
 export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
   const [tab, setTab] = useState<Tab>("decision");
   const grouped = useMemo(() => aggregatePortfolioPositions(data.positions), [data.positions]);
-  const totalValue = sumNullable(data.positions.map((position) => position.marketValue));
+  const valuation = useMemo(() => summarizePortfolioValuation(data.positions, data.externalAssets), [data.externalAssets, data.positions]);
+  const totalValue = valuation.officialMarketValue;
   const totalCost = sumNullable(data.positions.map((position) => position.costBasis));
   const totalPnl = sumNullable(data.positions.map((position) => position.unrealizedPnl));
   const pnlRate = totalCost && totalPnl !== null ? (totalPnl / totalCost) * 100 : null;
@@ -551,12 +553,14 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
       {tab === "overview" ? (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-            <Metric label="評価額" value={formatYen(totalValue)} sub="最新readyスナップショット" />
-            <Metric label="取得額" value={formatYen(totalCost)} sub={`${grouped.length}商品`} />
-            <Metric label="含み損益" value={formatYen(totalPnl)} sub={pnlRate === null ? "損益率 —" : `損益率 ${formatNumber(pnlRate, 2)}%`} />
-            <Metric label="ポジション" value={`${data.positions.length}件`} sub={`${data.snapshots.length}件の取込履歴`} />
+            <Metric label="総資産評価額" value={formatYen(valuation.totalMarketValue)} sub={valuation.missingMarketValueCount > 0 ? `評価額未取得 ${valuation.missingMarketValueCount}件を除く` : "公式保有 + 外部参照資産"} />
+            <Metric label="公式保有" value={formatYen(valuation.officialMarketValue)} sub={`${valuation.officialPositionCount}ポジション / 基準日 ${formatDate(data.currentSnapshot?.asOf)}`} />
+            <Metric label="外部参照資産" value={formatYen(valuation.externalMarketValue)} sub={`${valuation.externalPositionCount}ポジション / ${externalAssetStatusLabel(data.externalAssets.status)} / 基準日 ${formatDate(data.externalAssets.snapshot?.asOf)}`} />
+            <Metric label="取得額（公式保有）" value={formatYen(totalCost)} sub={`${grouped.length}商品`} />
+            <Metric label="含み損益（公式保有）" value={formatYen(totalPnl)} sub={pnlRate === null ? "損益率 —" : `損益率 ${formatNumber(pnlRate, 2)}%`} />
+            <Metric label="全ポジション" value={`${valuation.officialPositionCount + valuation.externalPositionCount}件`} sub={`公式 ${valuation.officialPositionCount}件 / 外部 ${valuation.externalPositionCount}件`} />
           </div>
-          <Section title="商品別の構成">
+          <Section title="公式保有の商品別構成">
             {grouped.length === 0 ? <EmptyState>商品データがありません。</EmptyState> : (
               <div style={{ display: "grid", gap: 12 }}>
                 {grouped.map((item) => {
