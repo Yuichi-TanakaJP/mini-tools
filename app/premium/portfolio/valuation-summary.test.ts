@@ -69,6 +69,8 @@ describe("summarizePortfolioValuation", () => {
       totalMarketValue: 122000,
       officialMarketValue: 22000,
       externalMarketValue: 100000,
+      officialSharePct: (22000 / 122000) * 100,
+      externalSharePct: (100000 / 122000) * 100,
       officialPositionCount: 1,
       externalPositionCount: 1,
       missingMarketValueCount: 0,
@@ -80,6 +82,8 @@ describe("summarizePortfolioValuation", () => {
       totalMarketValue: 22000,
       officialMarketValue: 22000,
       externalMarketValue: null,
+      officialSharePct: 100,
+      externalSharePct: null,
     });
   });
 
@@ -90,6 +94,19 @@ describe("summarizePortfolioValuation", () => {
     );
 
     expect(result.totalMarketValue).toBeNull();
+    expect(result.officialSharePct).toBeNull();
+    expect(result.externalSharePct).toBeNull();
     expect(result.missingMarketValueCount).toBe(2);
+  });
+
+  it("評価額が0円だけの場合は構成比を算出しない", () => {
+    const result = summarizePortfolioValuation(
+      [{ ...officialPosition, marketValue: 0 }],
+      loadedExternalAssets(externalSnapshot, [{ ...externalPosition, marketValue: 0 }]),
+    );
+
+    expect(result.totalMarketValue).toBe(0);
+    expect(result.officialSharePct).toBeNull();
+    expect(result.externalSharePct).toBeNull();
   });
 });

@@ -4,6 +4,8 @@ export type PortfolioValuationSummary = {
   totalMarketValue: number | null;
   officialMarketValue: number | null;
   externalMarketValue: number | null;
+  officialSharePct: number | null;
+  externalSharePct: number | null;
   officialPositionCount: number;
   externalPositionCount: number;
   missingMarketValueCount: number;
@@ -20,11 +22,20 @@ export function summarizePortfolioValuation(
 ): PortfolioValuationSummary {
   const officialMarketValue = sumKnownAmounts(positions.map((position) => position.marketValue));
   const externalMarketValue = externalAssets.totalMarketValue;
+  const totalMarketValue = sumKnownAmounts([officialMarketValue, externalMarketValue]);
 
   return {
-    totalMarketValue: sumKnownAmounts([officialMarketValue, externalMarketValue]),
+    totalMarketValue,
     officialMarketValue,
     externalMarketValue,
+    officialSharePct:
+      totalMarketValue !== null && totalMarketValue > 0 && officialMarketValue !== null
+        ? (officialMarketValue / totalMarketValue) * 100
+        : null,
+    externalSharePct:
+      totalMarketValue !== null && totalMarketValue > 0 && externalMarketValue !== null
+        ? (externalMarketValue / totalMarketValue) * 100
+        : null,
     officialPositionCount: positions.length,
     externalPositionCount: externalAssets.positions.length,
     missingMarketValueCount:
