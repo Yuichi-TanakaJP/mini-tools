@@ -51,6 +51,51 @@ function toggleCategory(
 
 type Point = { x: number; y: number };
 
+type EdgeGeometry = {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  midX: number;
+  midY: number;
+};
+
+function edgeGeometry(
+  source: Point,
+  target: Point,
+  sourceRadius: number,
+  targetRadius: number,
+): EdgeGeometry {
+  const dx = target.x - source.x;
+  const dy = target.y - source.y;
+  const distance = Math.hypot(dx, dy);
+  if (distance === 0) {
+    return {
+      x1: source.x,
+      y1: source.y,
+      x2: target.x,
+      y2: target.y,
+      midX: source.x,
+      midY: source.y,
+    };
+  }
+
+  const unitX = dx / distance;
+  const unitY = dy / distance;
+  const x1 = source.x + unitX * (sourceRadius + 5);
+  const y1 = source.y + unitY * (sourceRadius + 5);
+  const x2 = target.x - unitX * (targetRadius + 8);
+  const y2 = target.y - unitY * (targetRadius + 8);
+  return {
+    x1,
+    y1,
+    x2,
+    y2,
+    midX: (x1 + x2) / 2,
+    midY: (y1 + y2) / 2,
+  };
+}
+
 function companyPositions(depthByCompany: Map<string, number>): Map<string, Point> {
   const positions = new Map<string, Point>();
   const center = { x: 450, y: 350 };
@@ -105,10 +150,10 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
     () => data?.companies.filter((company) => connectedCompanyIds.has(company.id)) ?? [],
     [connectedCompanyIds, data],
   );
+  const selectableCompanies = connectedCompanies.length > 0 ? connectedCompanies : (data?.companies ?? []);
   const defaultCompanyId =
-    connectedCompanies.find((company) => company.name === "トヨタ自動車")?.id ??
-    connectedCompanies[0]?.id ??
-    data?.companies[0]?.id ??
+    selectableCompanies.find((company) => company.name === "トヨタ自動車")?.id ??
+    selectableCompanies[0]?.id ??
     "";
 
   const [selectedCompanyId, setSelectedCompanyId] = useState(defaultCompanyId);
@@ -202,7 +247,7 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
                 setSelectedRelationId(null);
               }}
             >
-              {connectedCompanies.map((company) => (
+              {selectableCompanies.map((company) => (
                 <option key={company.id} value={company.id}>{company.name}</option>
               ))}
             </select>
@@ -270,19 +315,20 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
                 const source = positions.get(relationship.sourceCompanyId);
                 const target = positions.get(relationship.targetCompanyId);
                 if (!source || !target) return null;
-                const midX = (source.x + target.x) / 2;
-                const midY = (source.y + target.y) / 2;
+                const sourceRadius = network.depthByCompany.get(relationship.sourceCompanyId) === 0 ? 58 : 50;
+                const targetRadius = network.depthByCompany.get(relationship.targetCompanyId) === 0 ? 58 : 50;
+                const edge = edgeGeometry(source, target, sourceRadius, targetRadius);
                 return (
                   <g key={relationship.relationId}>
                     <line
-                      x1={source.x}
-                      y1={source.y}
-                      x2={target.x}
-                      y2={target.y}
+                      x1={edge.x1}
+                      y1={edge.y1}
+                      x2={edge.x2}
+                      y2={edge.y2}
                       className={relationship.verificationStatus === "verified" ? styles.edge : styles.proposedEdge}
                       markerEnd="url(#company-network-arrow)"
                     />
-                    <text x={midX} y={midY - 8} textAnchor="middle" className={styles.edgeLabel}>
+                    <text x={edge.midX} y={edge.midY - 8} textAnchor="middle" className={styles.edgeLabel}>
                       {relationLabel(relationship)}
                     </text>
                   </g>
