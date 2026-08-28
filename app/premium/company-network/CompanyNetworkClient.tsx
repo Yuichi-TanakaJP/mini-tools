@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import styles from "./CompanyNetwork.module.css";
+import { buildEntryCompanies } from "./entry-companies";
 import { CATEGORY_LABEL, VIEWS, type CompanyNetworkViewMode } from "./presentation";
 import type { CompanyNetworkLoadResult, RelationCategory } from "./types";
 import DetailPanel from "./views/DetailPanel";
@@ -29,21 +30,13 @@ function StateScreen({ title, body }: { title: string; body: string }) {
 
 export default function CompanyNetworkClient({ result }: { result: CompanyNetworkLoadResult }) {
   const data = result.data;
-  const connectedCompanyIds = useMemo(() => {
-    if (!data) return new Set<string>();
-    return new Set([
-      ...data.relationships.flatMap((relationship) => [relationship.sourceCompanyId, relationship.targetCompanyId]),
-      ...data.memberships.map((membership) => membership.companyId),
-    ]);
-  }, [data]);
-  const selectableCompanies = useMemo(() => {
+  const entryCompanies = useMemo(() => {
     if (!data) return [];
-    const connected = data.companies.filter((company) => connectedCompanyIds.has(company.id));
-    return connected.length > 0 ? connected : data.companies;
-  }, [connectedCompanyIds, data]);
+    return buildEntryCompanies(data.companies, data.relationships);
+  }, [data]);
   const defaultCompanyId =
-    selectableCompanies.find((company) => company.name === "トヨタ自動車")?.id ??
-    selectableCompanies[0]?.id ??
+    entryCompanies.find((company) => company.name === "トヨタ自動車")?.id ??
+    entryCompanies[0]?.id ??
     "";
 
   const [view, setView] = useState<CompanyNetworkViewMode>("network");
@@ -73,6 +66,11 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
 
   const selectedCompany = data?.companies.find((company) => company.id === selectedCompanyId) ?? null;
   const selectedRelation = relationships.find((relationship) => relationship.relationId === selectedRelationId) ?? null;
+  const dropdownCompanies = useMemo(() => {
+    if (!selectedCompany || entryCompanies.some((company) => company.id === selectedCompany.id)) return entryCompanies;
+    return [...entryCompanies, selectedCompany];
+  }, [entryCompanies, selectedCompany]);
+  const entryCompanyIds = useMemo(() => new Set(entryCompanies.map((company) => company.id)), [entryCompanies]);
   const viewIndex = VIEWS.findIndex((item) => item.mode === view);
   const showHopControl = view === "radial" || view === "hierarchy";
   const showGroupControl = view === "network" || view === "radial";
@@ -123,9 +121,13 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
       <section className={styles.toolbar} aria-label="企業関係マップの表示条件">
         <div className={styles.controlRow}>
           <label className={styles.companySelect}>
-            <span>中心企業</span>
+            <span>中心企業（入口）</span>
             <select value={selectedCompanyId} onChange={(event) => selectCompany(event.target.value)}>
-              {selectableCompanies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+              {dropdownCompanies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.name}{entryCompanyIds.has(company.id) ? "" : "（フォーカス中）"}
+                </option>
+              ))}
             </select>
           </label>
           <input className={styles.search} type="search" value={query} placeholder="企業名・関係を検索" aria-label="企業関係を検索" onChange={(event) => setQuery(event.target.value)} />
@@ -183,7 +185,7 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
         <DetailPanel company={selectedCompany} relationships={relationships} memberships={memberships} selectedRelation={selectedRelation} onSelectCompany={selectCompany} onSelectRelation={setSelectedRelationId} />
       </div>
 
-      <p className={styles.note}>企業グループ所属は親子・支配関係とは別エッジです。系列ビューには混ぜません。関係の表示は保存済み事実の閲覧であり、業績連動や投資判断を自動推論しません。</p>
+      <p className={styles.note}>中心企業の入口候補は上場企業または下流relationを持つ企業です。接続先の企業もグラフから一時フォーカスできます。企業グループ所属は親子・支配関係とは別エッジで、系列ビューには混ぜません。</p>
     </main>
   );
 }
