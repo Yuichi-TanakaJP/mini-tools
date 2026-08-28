@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import CompanyGroupExposureCard from "./CompanyGroupExposureCard";
 import PortfolioWorkspace from "./PortfolioWorkspace";
+import { emptyCompanyGroupExposure, loadCompanyGroupExposure } from "./company-group-exposure";
 import { loadPortfolio, portfolioAuthRequired } from "./data";
 import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
 import { isSyncConfigured } from "@/lib/supabase/config";
@@ -25,12 +27,24 @@ export default async function PremiumPortfolioPage() {
   }
 
   let portfolio = portfolioAuthRequired();
+  let companyGroupExposure = emptyCompanyGroupExposure();
+  let companyGroupExposureError: string | null = null;
+
   if (isSyncConfigured()) {
     const supabase = await createSupabaseServerClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    portfolio = user ? await loadPortfolio(supabase) : portfolioAuthRequired();
+
+    if (user) {
+      portfolio = await loadPortfolio(supabase);
+      try {
+        companyGroupExposure = await loadCompanyGroupExposure(supabase, portfolio.currentSnapshot?.id ?? null);
+      } catch (error) {
+        console.error("Failed to load company group exposure", error);
+        companyGroupExposureError = "企業関係データの取得に失敗しました。ポートフォリオ本体の表示は継続しています。";
+      }
+    }
   }
 
   return (
@@ -60,6 +74,14 @@ export default async function PremiumPortfolioPage() {
             優待銘柄メモ
           </Link>
         </nav>
+
+        {portfolio.authState === "authenticated" && portfolio.currentSnapshot ? (
+          <CompanyGroupExposureCard
+            exposure={companyGroupExposure}
+            asOf={portfolio.currentSnapshot.asOf}
+            errorMessage={companyGroupExposureError}
+          />
+        ) : null}
 
         <PortfolioWorkspace data={portfolio} />
       </section>
