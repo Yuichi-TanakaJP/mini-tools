@@ -213,7 +213,9 @@ export default function NetworkView({
             {nodes.map((node) => {
               const selected = node.id === selectedCompanyId;
               const focused = focusIds.has(node.id);
-              const dimmed = !queryMatch(node) || (!focused && selectedCompanyId.length > 0);
+              const dimmed = normalizedQuery.length > 0
+                ? !queryMatch(node)
+                : (!focused && selectedCompanyId.length > 0);
               const radius = node.kind === "group" ? 9 : selected ? 11 : 8;
               const fill = node.kind === "group" ? "#fff7ed" : selected ? "#2554ff" : "var(--color-bg-card)";
               const stroke = node.kind === "group" ? "#d97706" : "#2554ff";
