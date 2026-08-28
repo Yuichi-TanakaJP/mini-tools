@@ -18,6 +18,9 @@ import TableView from "./views/TableView";
 
 const ALL_CATEGORIES: readonly RelationCategory[] = ["capital", "control", "historical"];
 
+type ScopedState = { key: string; data: CompanyNetworkData };
+type ScopedError = { key: string; message: string };
+
 function StateScreen({ title, body }: { title: string; body: string }) {
   return (
     <main className={styles.page}>
@@ -45,11 +48,14 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
   const [verifiedOnly, setVerifiedOnly] = useState(true);
   const [showGroups, setShowGroups] = useState(true);
   const [query, setQuery] = useState("");
-  const [scope, setScope] = useState<CompanyNetworkData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [scopedState, setScopedState] = useState<ScopedState | null>(null);
+  const [scopedError, setScopedError] = useState<ScopedError | null>(null);
 
   const categoryKey = useMemo(() => [...categories].sort().join(","), [categories]);
+  const requestKey = `${centerCompanyId}|${hops}|${verifiedOnly ? "v" : "all"}|${showGroups ? "g" : "nog"}|${categoryKey}`;
+  const scope = scopedState?.key === requestKey ? scopedState.data : null;
+  const loadError = scopedError?.key === requestKey ? scopedError.message : null;
+  const loading = Boolean(centerCompanyId) && scope === null && loadError === null;
 
   useEffect(() => {
     if (!centerCompanyId) return;
@@ -61,9 +67,8 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
       includeGroups: String(showGroups),
       categories: categoryKey,
     });
+    const key = requestKey;
 
-    setLoading(true);
-    setLoadError(null);
     fetch(`/api/premium/company-network?${params.toString()}`, {
       credentials: "same-origin",
       signal: controller.signal,
@@ -77,23 +82,22 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
         return payload.data;
       })
       .then((data) => {
-        setScope(data);
+        if (controller.signal.aborted) return;
+        setScopedState({ key, data });
+        setScopedError(null);
         setSelectedRelationId(null);
         setSelectedCompanyId((current) => data.companies.some((company) => company.id === current) ? current : centerCompanyId);
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
-        setLoadError(error instanceof Error ? error.message : "企業関係の取得に失敗しました。");
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        setScopedError({ key, message: error instanceof Error ? error.message : "企業関係の取得に失敗しました。" });
       });
 
     return () => controller.abort();
-  }, [categoryKey, centerCompanyId, hops, showGroups, verifiedOnly]);
+  }, [categoryKey, centerCompanyId, hops, requestKey, showGroups, verifiedOnly]);
 
   const relationships = scope?.relationships ?? [];
-  const memberships = showGroups ? (scope?.memberships ?? []) : [];
+  const memberships = scope?.memberships ?? [];
   const selectedCompany = scope?.companies.find((company) => company.id === selectedCompanyId) ?? null;
   const selectedRelation = relationships.find((relationship) => relationship.relationId === selectedRelationId) ?? null;
   const viewIndex = VIEWS.findIndex((item) => item.mode === view);
@@ -137,7 +141,7 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
         <div className={styles.heroHead}>
           <div>
             <h1 className={styles.heroTitle}>企業関係マップ</h1>
-            <p className={styles.heroLead}>入口一覧だけを先に読み込み、選択した企業の周辺データを必要な時だけ取得します。閲覧専用です。</p>
+            <p className={styles.heroLead}>企業グループと入口企業だけを先に読み込み、選択した企業の周辺データを必要な時だけ取得します。閲覧専用です。</p>
           </div>
           <span className={styles.versionBadge}>company-network v3</span>
         </div>
@@ -202,7 +206,7 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
 
       <div className={styles.workspace}>
         <section className={styles.canvas} aria-busy={loading}>
-          {loading && !scope ? <p className={styles.empty}>選択企業の関係を読み込んでいます…</p> : null}
+          {loading ? <p className={styles.empty}>選択企業の関係を読み込んでいます…</p> : null}
           {loadError ? <p className={styles.empty}>{loadError}</p> : null}
           {!loading && scope && relationships.length === 0 && memberships.length === 0 ? <p className={styles.empty}>現在の条件では表示できる関係がありません。</p> : null}
           {scope && view === "network" ? <NetworkView companies={scope.companies} relationships={relationships} memberships={memberships} centerCompanyId={centerCompanyId} selectedCompanyId={selectedCompanyId} selectedRelationId={selectedRelationId} query={query} onSelectCompany={selectNode} onSelectRelation={setSelectedRelationId} /> : null}
