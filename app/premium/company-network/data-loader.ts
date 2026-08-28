@@ -1,9 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   CompanyGroupMembership,
+  CompanyNetworkBootstrapResult,
   CompanyNetworkCompany,
   CompanyNetworkData,
-  CompanyNetworkLoadResult,
+  CompanyNetworkGroup,
+  CompanyNetworkScopeResult,
   CompanyRelationship,
   Confidence,
   RelationCategory,
@@ -14,6 +16,15 @@ const ROW_LIMIT = 2000;
 const RELATION_CATEGORIES: readonly string[] = ["capital", "control", "historical"];
 const VERIFICATION_STATUSES: readonly string[] = ["proposed", "verified", "rejected", "superseded"];
 const CONFIDENCES: readonly string[] = ["high", "medium", "low"];
+const COMPANY_SELECT = "id,display_name,country_code,listing_status,status";
+const RELATIONSHIP_SELECT =
+  "relation_id,source_company_id,source_company_name,target_company_id,target_company_name," +
+  "relation_category,relation_type,ownership_pct,voting_rights_pct,is_consolidated,relation_note," +
+  "verification_status,confidence,source_title,source_url,source_type,source_as_of,checked_at,valid_to";
+const MEMBERSHIP_SELECT =
+  "membership_id,company_entity_id,company_name,group_id,group_slug,group_name,group_type," +
+  "membership_role,membership_basis,relation_note,verification_status,confidence," +
+  "source_title,source_url,source_type,source_as_of,valid_to";
 
 type Row = Record<string, unknown>;
 
@@ -70,17 +81,10 @@ function parseRelationship(row: Row): CompanyRelationship | null {
   const verificationStatus = oneOf<VerificationStatus>(row, "verification_status", VERIFICATION_STATUSES);
   const confidence = oneOf<Confidence>(row, "confidence", CONFIDENCES);
   if (
-    !relationId ||
-    !sourceCompanyId ||
-    !sourceCompanyName ||
-    !targetCompanyId ||
-    !targetCompanyName ||
-    !relationCategory ||
-    !verificationStatus ||
-    !confidence
-  ) {
-    return null;
-  }
+    !relationId || !sourceCompanyId || !sourceCompanyName || !targetCompanyId || !targetCompanyName ||
+    !relationCategory || !verificationStatus || !confidence
+  ) return null;
+
   return {
     relationId,
     sourceCompanyId,
@@ -111,9 +115,8 @@ function parseMembership(row: Row): CompanyGroupMembership | null {
   const groupName = nullableString(row, "group_name");
   const verificationStatus = oneOf<VerificationStatus>(row, "verification_status", VERIFICATION_STATUSES);
   const confidence = oneOf<Confidence>(row, "confidence", CONFIDENCES);
-  if (!membershipId || !companyId || !companyName || !groupId || !groupName || !verificationStatus || !confidence) {
-    return null;
-  }
+  if (!membershipId || !companyId || !companyName || !groupId || !groupName || !verificationStatus || !confidence) return null;
+
   return {
     membershipId,
     companyId,
@@ -134,79 +137,197 @@ function parseMembership(row: Row): CompanyGroupMembership | null {
   };
 }
 
-export function companyNetworkUnconfigured(): CompanyNetworkLoadResult {
-  return {
-    status: "unconfigured",
-    data: null,
-    message: "Supabase 連携が未設定のため企業関係マップを取得できません。",
-  };
+function parseGroup(row: Row): CompanyNetworkGroup | null {
+  const id = nullableString(row, "id");
+  const name = nullableString(row, "display_name");
+  if (!id || !name) return null;
+  return { id, name, groupType: stringValue(row, "group_type") };
 }
 
-export function companyNetworkAuthRequired(): CompanyNetworkLoadResult {
-  return {
-    status: "unauthenticated",
-    data: null,
-    message: "Supabase にログインすると、保存済みの企業関係マップを表示します。",
-  };
+export function companyNetworkUnconfigured(): CompanyNetworkBootstrapResult {
+  return { status: "unconfigured", data: null, message: "Supabase 連携が未設定のため企業関係マップを取得できません。" };
 }
 
-export async function loadCompanyNetwork(supabase: SupabaseClient): Promise<CompanyNetworkLoadResult> {
-  const [companiesResult, relationshipsResult, membershipsResult] = await Promise.all([
-    supabase
-      .from("stock_notes_company_entities")
-      .select("id,display_name,country_code,listing_status,status")
-      .neq("status", "archived")
-      .order("display_name", { ascending: true })
-      .limit(ROW_LIMIT),
+export function companyNetworkAuthRequired(): CompanyNetworkBootstrapResult {
+  return { status: "unauthenticated", data: null, message: "Supabase にログインすると、保存済みの企業関係マップを表示します。" };
+}
+
+export async function loadCompanyNetworkBootstrap(supabase: SupabaseClient): Promise<CompanyNetworkBootstrapResult> {
+  const [outboundResult, membershipIdsResult, groupsResult] = await Promise.all([
     supabase
       .from("stock_notes_company_relationship_edges_v")
-      .select(
-        "relation_id,source_company_id,source_company_name,target_company_id,target_company_name," +
-          "relation_category,relation_type,ownership_pct,voting_rights_pct,is_consolidated,relation_note," +
-          "verification_status,confidence,source_title,source_url,source_type,source_as_of,checked_at,valid_to",
-      )
+      .select("source_company_id")
       .is("valid_to", null)
       .in("verification_status", ["verified", "proposed"])
-      .order("source_company_name", { ascending: true })
       .limit(ROW_LIMIT),
     supabase
       .from("stock_notes_company_group_memberships_v")
-      .select(
-        "membership_id,company_entity_id,company_name,group_id,group_slug,group_name,group_type," +
-          "membership_role,membership_basis,relation_note,verification_status,confidence," +
-          "source_title,source_url,source_type,source_as_of,valid_to",
-      )
+      .select("company_entity_id")
       .is("valid_to", null)
       .in("verification_status", ["verified", "proposed"])
-      .order("company_name", { ascending: true })
+      .limit(ROW_LIMIT),
+    supabase
+      .from("stock_notes_corporate_groups")
+      .select("id,display_name,group_type")
+      .eq("status", "active")
+      .is("valid_to", null)
+      .in("verification_status", ["verified", "proposed"])
+      .order("display_name", { ascending: true })
       .limit(ROW_LIMIT),
   ]);
 
-  if (companiesResult.error || relationshipsResult.error || membershipsResult.error) {
-    return {
-      status: "error",
-      data: null,
-      message: "企業関係マップの取得に失敗しました。Supabase のView/RLS設定を確認してください。",
-    };
+  if (outboundResult.error || membershipIdsResult.error || groupsResult.error) {
+    return { status: "error", data: null, message: "企業関係マップの入口一覧を取得できませんでした。" };
+  }
+
+  const outboundIds = new Set(
+    ((outboundResult.data ?? []) as unknown as Row[])
+      .map((row) => nullableString(row, "source_company_id"))
+      .filter((id): id is string => Boolean(id)),
+  );
+  const membershipIds = ((membershipIdsResult.data ?? []) as unknown as Row[])
+    .map((row) => nullableString(row, "company_entity_id"))
+    .filter((id): id is string => Boolean(id));
+  const candidateIds = [...new Set([...outboundIds, ...membershipIds])];
+
+  let candidates: CompanyNetworkCompany[] = [];
+  if (candidateIds.length > 0) {
+    const candidatesResult = await supabase
+      .from("stock_notes_company_entities")
+      .select(COMPANY_SELECT)
+      .in("id", candidateIds)
+      .neq("status", "archived")
+      .order("display_name", { ascending: true });
+    if (candidatesResult.error) {
+      return { status: "error", data: null, message: "中心企業候補を取得できませんでした。" };
+    }
+    candidates = ((candidatesResult.data ?? []) as unknown as Row[])
+      .map(parseCompany)
+      .filter((row): row is CompanyNetworkCompany => row !== null);
+  }
+
+  const entryCompanies = candidates
+    .filter((company) => company.listingStatus === "domestic_listed" || outboundIds.has(company.id))
+    .sort((a, b) => a.name.localeCompare(b.name, "ja"));
+  const groups = ((groupsResult.data ?? []) as unknown as Row[])
+    .map(parseGroup)
+    .filter((row): row is CompanyNetworkGroup => row !== null);
+
+  if (entryCompanies.length === 0) {
+    return { status: "empty", data: { entryCompanies: [], groups, defaultCompanyId: "" }, message: "中心企業候補がまだありません。" };
+  }
+
+  const defaultCompanyId = entryCompanies.find((company) => company.name === "トヨタ自動車")?.id ?? entryCompanies[0].id;
+  return { status: "ok", data: { entryCompanies, groups, defaultCompanyId }, message: null };
+}
+
+export async function loadCompanyNetworkScope(
+  supabase: SupabaseClient,
+  options: {
+    companyId: string;
+    hops: 1 | 2;
+    verifiedOnly: boolean;
+    categories: RelationCategory[];
+    includeGroups: boolean;
+  },
+): Promise<CompanyNetworkScopeResult> {
+  const statuses = options.verifiedOnly ? ["verified"] : ["verified", "proposed"];
+
+  let relationshipIds: string[] = [];
+  if (options.categories.length > 0) {
+    const networkResult = await supabase.rpc("stock_notes_company_network", {
+      p_company_id: options.companyId,
+      p_max_hops: options.hops,
+      p_verified_only: options.verifiedOnly,
+      p_active_only: true,
+      p_relation_categories: options.categories,
+    });
+    if (networkResult.error) {
+      return { status: "error", data: null, message: "選択企業の企業間関係を取得できませんでした。" };
+    }
+    relationshipIds = [...new Set(
+      ((networkResult.data ?? []) as unknown as Row[])
+        .map((row) => nullableString(row, "relation_id"))
+        .filter((id): id is string => Boolean(id)),
+    )];
+  }
+
+  let relationships: CompanyRelationship[] = [];
+  if (relationshipIds.length > 0) {
+    const relationshipResult = await supabase
+      .from("stock_notes_company_relationship_edges_v")
+      .select(RELATIONSHIP_SELECT)
+      .in("relation_id", relationshipIds)
+      .is("valid_to", null)
+      .in("verification_status", statuses)
+      .order("source_company_name", { ascending: true });
+    if (relationshipResult.error) {
+      return { status: "error", data: null, message: "企業関係の根拠情報を取得できませんでした。" };
+    }
+    relationships = ((relationshipResult.data ?? []) as unknown as Row[])
+      .map(parseRelationship)
+      .filter((row): row is CompanyRelationship => row !== null);
+  }
+
+  let memberships: CompanyGroupMembership[] = [];
+  if (options.includeGroups) {
+    const centerMembershipResult = await supabase
+      .from("stock_notes_company_group_memberships_v")
+      .select(MEMBERSHIP_SELECT)
+      .eq("company_entity_id", options.companyId)
+      .is("valid_to", null)
+      .in("verification_status", statuses)
+      .limit(ROW_LIMIT);
+
+    if (centerMembershipResult.error) {
+      return { status: "error", data: null, message: "選択企業のグループ所属を取得できませんでした。" };
+    }
+
+    const centerMemberships = ((centerMembershipResult.data ?? []) as unknown as Row[])
+      .map(parseMembership)
+      .filter((row): row is CompanyGroupMembership => row !== null);
+    const groupIds = [...new Set(centerMemberships.map((membership) => membership.groupId))];
+
+    if (groupIds.length > 0) {
+      const groupMembershipResult = await supabase
+        .from("stock_notes_company_group_memberships_v")
+        .select(MEMBERSHIP_SELECT)
+        .in("group_id", groupIds)
+        .is("valid_to", null)
+        .in("verification_status", statuses)
+        .order("company_name", { ascending: true })
+        .limit(ROW_LIMIT);
+      if (groupMembershipResult.error) {
+        return { status: "error", data: null, message: "所属グループの企業一覧を取得できませんでした。" };
+      }
+      memberships = ((groupMembershipResult.data ?? []) as unknown as Row[])
+        .map(parseMembership)
+        .filter((row): row is CompanyGroupMembership => row !== null);
+    }
+  }
+
+  const companyIds = new Set<string>([options.companyId]);
+  relationships.forEach((relationship) => {
+    companyIds.add(relationship.sourceCompanyId);
+    companyIds.add(relationship.targetCompanyId);
+  });
+  memberships.forEach((membership) => companyIds.add(membership.companyId));
+
+  const companiesResult = await supabase
+    .from("stock_notes_company_entities")
+    .select(COMPANY_SELECT)
+    .in("id", [...companyIds])
+    .neq("status", "archived")
+    .order("display_name", { ascending: true });
+
+  if (companiesResult.error) {
+    return { status: "error", data: null, message: "表示対象企業の情報を取得できませんでした。" };
   }
 
   const companies = ((companiesResult.data ?? []) as unknown as Row[])
     .map(parseCompany)
     .filter((row): row is CompanyNetworkCompany => row !== null);
-  const relationships = ((relationshipsResult.data ?? []) as unknown as Row[])
-    .map(parseRelationship)
-    .filter((row): row is CompanyRelationship => row !== null);
-  const memberships = ((membershipsResult.data ?? []) as unknown as Row[])
-    .map(parseMembership)
-    .filter((row): row is CompanyGroupMembership => row !== null);
-
   const data: CompanyNetworkData = { companies, relationships, memberships };
-  if (relationships.length === 0 && memberships.length === 0) {
-    return {
-      status: "empty",
-      data,
-      message: "保存済みの企業関係がまだありません。",
-    };
-  }
-  return { status: "ok", data, message: null };
+  const empty = relationships.length === 0 && memberships.length === 0;
+  return { status: empty ? "empty" : "ok", data, message: empty ? "この企業には現在の条件で表示できる関係がありません。" : null };
 }

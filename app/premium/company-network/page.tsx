@@ -8,9 +8,9 @@ import CompanyNetworkClient from "./CompanyNetworkClient";
 import {
   companyNetworkAuthRequired,
   companyNetworkUnconfigured,
-  loadCompanyNetwork,
+  loadCompanyNetworkBootstrap,
 } from "./data-loader";
-import type { CompanyNetworkLoadResult } from "./types";
+import type { CompanyNetworkBootstrapResult } from "./types";
 
 export const metadata: Metadata = {
   title: "企業関係マップ | mini-tools premium",
@@ -33,13 +33,13 @@ export default async function PremiumCompanyNetworkPage() {
     redirect(`/premium/login?next=${encodeURIComponent("/premium/company-network")}`);
   }
 
-  let result: CompanyNetworkLoadResult = companyNetworkUnconfigured();
+  let result: CompanyNetworkBootstrapResult = companyNetworkUnconfigured();
   if (isSyncConfigured()) {
     const supabase = await createSupabaseServerClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    result = user ? await loadCompanyNetwork(supabase) : companyNetworkAuthRequired();
+    result = user ? await loadCompanyNetworkBootstrap(supabase) : companyNetworkAuthRequired();
   }
 
   return <CompanyNetworkClient result={result} />;

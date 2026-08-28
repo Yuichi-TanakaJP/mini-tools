@@ -21,7 +21,6 @@ function companyPositions(depthByCompany: Map<string, number>): Map<string, Poin
     bucket.push(companyId);
     byDepth.set(depth, bucket);
   }
-
   for (const [depth, ids] of byDepth) {
     if (depth === 0) {
       result.set(ids[0], { x: 0, y: 0 });
@@ -66,6 +65,7 @@ type Props = {
   companies: CompanyNetworkCompany[];
   relationships: CompanyRelationship[];
   memberships: CompanyGroupMembership[];
+  centerCompanyId: string;
   selectedCompanyId: string;
   selectedRelationId: string | null;
   hops: 1 | 2;
@@ -78,6 +78,7 @@ export default function RadialView({
   companies,
   relationships,
   memberships,
+  centerCompanyId,
   selectedCompanyId,
   selectedRelationId,
   hops,
@@ -86,16 +87,16 @@ export default function RadialView({
   onSelectRelation,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const panZoom = usePanZoom(svgRef, `${selectedCompanyId}:${hops}`);
+  const panZoom = usePanZoom(svgRef, `${centerCompanyId}:${hops}`);
   const network = useMemo(
     () => buildReachableNetwork({
-      selectedCompanyId,
+      selectedCompanyId: centerCompanyId,
       relationships,
       hops,
       categories: ["capital", "control", "historical"],
       verifiedOnly: false,
     }),
-    [hops, relationships, selectedCompanyId],
+    [centerCompanyId, hops, relationships],
   );
   const visibleCompanyIds = useMemo(() => new Set(network.depthByCompany.keys()), [network.depthByCompany]);
   const visibleMemberships = useMemo(
@@ -119,110 +120,48 @@ export default function RadialView({
           <button type="button" onClick={panZoom.zoomOut} aria-label="縮小">−</button>
           <button type="button" onClick={panZoom.reset} disabled={!panZoom.canReset}>戻す</button>
         </div>
-        <svg
-          ref={svgRef}
-          className={`${styles.svg} ${panZoom.panning ? styles.svgGrabbing : styles.svgGrab}`}
-          style={{ touchAction: panZoom.viewport.scale === 1 ? "pan-y" : "none" }}
-          viewBox="-520 -520 1040 1040"
-          role="img"
-          aria-label="選択企業を中心にした企業関係の放射マップ"
-          onPointerDown={panZoom.onPointerDown}
-          onDoubleClick={panZoom.onDoubleClick}
-        >
-          <defs>
-            <marker id="company-radial-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-              <path d="M 0 0 L 8 4 L 0 8 z" fill="currentColor" />
-            </marker>
-          </defs>
+        <svg ref={svgRef} className={`${styles.svg} ${panZoom.panning ? styles.svgGrabbing : styles.svgGrab}`} style={{ touchAction: panZoom.viewport.scale === 1 ? "pan-y" : "none" }} viewBox="-520 -520 1040 1040" role="img" aria-label="中心企業を基準にした企業関係の放射マップ" onPointerDown={panZoom.onPointerDown} onDoubleClick={panZoom.onDoubleClick}>
+          <defs><marker id="company-radial-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 8 4 L 0 8 z" fill="currentColor" /></marker></defs>
           <g transform={panZoom.transform}>
             <circle r="180" className={styles.radialRing} />
             {hops === 2 ? <circle r="315" className={styles.radialRing} /> : null}
             {visibleMemberships.length > 0 ? <circle r="425" className={styles.radialGroupRing} /> : null}
-
             {network.relationships.map((relationship) => {
               const source = positions.get(relationship.sourceCompanyId);
               const target = positions.get(relationship.targetCompanyId);
               if (!source || !target) return null;
-              const edge = shortenEdge(source, target, relationship.sourceCompanyId === selectedCompanyId ? 34 : 26, relationship.targetCompanyId === selectedCompanyId ? 34 : 26);
+              const edge = shortenEdge(source, target, relationship.sourceCompanyId === centerCompanyId ? 34 : 26, relationship.targetCompanyId === centerCompanyId ? 34 : 26);
               const selected = selectedRelationId === relationship.relationId;
-              return (
-                <g key={relationship.relationId} onClick={() => onSelectRelation(relationship.relationId)} className={styles.edgeHitTarget}>
-                  <line
-                    x1={edge.x1}
-                    y1={edge.y1}
-                    x2={edge.x2}
-                    y2={edge.y2}
-                    stroke={CATEGORY_COLOR[relationship.relationCategory]}
-                    strokeWidth={selected ? 3.2 : 1.8}
-                    strokeOpacity={selected ? 1 : 0.78}
-                    strokeDasharray={relationship.verificationStatus === "verified" ? undefined : "7 6"}
-                    markerEnd="url(#company-radial-arrow)"
-                    color={CATEGORY_COLOR[relationship.relationCategory]}
-                  />
-                  <text x={edge.midX} y={edge.midY - 7} textAnchor="middle" className={styles.svgEdgeLabel}>
-                    {relationLabel(relationship.relationType, relationship.ownershipPct)}
-                  </text>
-                </g>
-              );
+              return <g key={relationship.relationId} onClick={() => onSelectRelation(relationship.relationId)} className={styles.edgeHitTarget}>
+                <line x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke={CATEGORY_COLOR[relationship.relationCategory]} strokeWidth={selected ? 3.2 : 1.8} strokeOpacity={selected ? 1 : 0.78} strokeDasharray={relationship.verificationStatus === "verified" ? undefined : "7 6"} markerEnd="url(#company-radial-arrow)" color={CATEGORY_COLOR[relationship.relationCategory]} />
+                <text x={edge.midX} y={edge.midY - 7} textAnchor="middle" className={styles.svgEdgeLabel}>{relationLabel(relationship.relationType, relationship.ownershipPct)}</text>
+              </g>;
             })}
-
             {visibleMemberships.map((membership) => {
               const source = positions.get(membership.companyId);
               const target = groups.get(membership.groupId);
               if (!source || !target) return null;
-              return (
-                <line
-                  key={membership.membershipId}
-                  x1={source.x}
-                  y1={source.y}
-                  x2={target.x}
-                  y2={target.y}
-                  className={styles.membershipLine}
-                />
-              );
+              return <line key={membership.membershipId} x1={source.x} y1={source.y} x2={target.x} y2={target.y} className={styles.membershipLine} />;
             })}
-
             {[...network.depthByCompany.entries()].map(([companyId, depth]) => {
               const company = companyById.get(companyId);
               const point = positions.get(companyId);
               if (!company || !point) return null;
+              const isCenter = companyId === centerCompanyId;
               const selected = companyId === selectedCompanyId;
               const queryDim = normalizedQuery.length > 0 && !company.name.toLocaleLowerCase("ja").includes(normalizedQuery);
-              const radius = selected ? 34 : 26;
-              return (
-                <g
-                  key={companyId}
-                  transform={`translate(${point.x} ${point.y})`}
-                  className={queryDim ? styles.svgNodeDim : undefined}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => { if (!panZoom.didPan()) onSelectCompany(companyId); }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      onSelectCompany(companyId);
-                    }
-                  }}
-                  style={{ cursor: "pointer" }}
-                >
-                  {selected ? <circle className={styles.pulse} r={radius + 9} fill="none" stroke="#2554ff" strokeWidth={2} /> : null}
-                  <circle r={radius} fill={selected ? "#2554ff" : "var(--color-bg-card)"} stroke="#2554ff" strokeWidth={selected ? 3 : 2} />
-                  <text textAnchor="middle" y="-2" className={selected ? styles.radialCenterLabel : styles.radialNodeLabel}>{truncate(company.name, 11)}</text>
-                  <text textAnchor="middle" y="13" className={selected ? styles.radialCenterMeta : styles.radialNodeMeta}>{depth === 0 ? "center" : `${depth}-hop`}</text>
-                </g>
-              );
+              const radius = isCenter ? 34 : selected ? 30 : 26;
+              return <g key={companyId} transform={`translate(${point.x} ${point.y})`} className={queryDim ? styles.svgNodeDim : undefined} role="button" tabIndex={0} onClick={() => { if (!panZoom.didPan()) onSelectCompany(companyId); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelectCompany(companyId); } }} style={{ cursor: "pointer" }}>
+                {selected ? <circle className={styles.pulse} r={radius + 9} fill="none" stroke="#2554ff" strokeWidth={2} /> : null}
+                <circle r={radius} fill={isCenter ? "#2554ff" : "var(--color-bg-card)"} stroke="#2554ff" strokeWidth={selected || isCenter ? 3 : 2} />
+                <text textAnchor="middle" y="-2" className={isCenter ? styles.radialCenterLabel : styles.radialNodeLabel}>{truncate(company.name, 11)}</text>
+                <text textAnchor="middle" y="13" className={isCenter ? styles.radialCenterMeta : styles.radialNodeMeta}>{depth === 0 ? "center" : `${depth}-hop`}</text>
+              </g>;
             })}
-
             {[...new Map(visibleMemberships.map((membership) => [membership.groupId, membership])).values()].map((membership) => {
               const point = groups.get(membership.groupId);
               if (!point) return null;
-              return (
-                <g key={membership.groupId} transform={`translate(${point.x} ${point.y})`}>
-                  <rect x="-60" y="-25" width="120" height="50" rx="14" className={styles.radialGroupNode} />
-                  <text textAnchor="middle" y="-2" className={styles.radialGroupLabel}>{truncate(membership.groupName, 13)}</text>
-                  <text textAnchor="middle" y="13" className={styles.radialGroupMeta}>{groupTypeLabel(membership.groupType)}</text>
-                </g>
-              );
+              return <g key={membership.groupId} transform={`translate(${point.x} ${point.y})`}><rect x="-60" y="-25" width="120" height="50" rx="14" className={styles.radialGroupNode} /><text textAnchor="middle" y="-2" className={styles.radialGroupLabel}>{truncate(membership.groupName, 13)}</text><text textAnchor="middle" y="13" className={styles.radialGroupMeta}>{groupTypeLabel(membership.groupType)}</text></g>;
             })}
           </g>
         </svg>
