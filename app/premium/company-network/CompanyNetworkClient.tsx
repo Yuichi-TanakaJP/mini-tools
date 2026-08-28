@@ -37,6 +37,7 @@ function StateScreen({ title, body }: { title: string; body: string }) {
 
 export default function CompanyNetworkClient({ result }: { result: CompanyNetworkBootstrapResult }) {
   const bootstrap = result.data;
+  const entryCompanies = bootstrap?.entryCompanies ?? [];
   const defaultCompanyId = bootstrap?.defaultCompanyId ?? "";
 
   const [view, setView] = useState<CompanyNetworkViewMode>("network");
@@ -56,6 +57,11 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
   const scope = scopedState?.key === requestKey ? scopedState.data : null;
   const loadError = scopedError?.key === requestKey ? scopedError.message : null;
   const loading = Boolean(centerCompanyId) && scope === null && loadError === null;
+  const entryCompanyIds = useMemo(() => new Set(entryCompanies.map((company) => company.id)), [entryCompanies]);
+  const temporaryCenter = entryCompanyIds.has(centerCompanyId)
+    ? null
+    : scopedState?.data.companies.find((company) => company.id === centerCompanyId) ?? null;
+  const dropdownCompanies = temporaryCenter ? [...entryCompanies, temporaryCenter] : entryCompanies;
 
   useEffect(() => {
     if (!centerCompanyId) return;
@@ -128,7 +134,7 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
   if (result.status === "unconfigured") return <StateScreen title="Supabase 連携が未設定です" body={result.message} />;
   if (result.status === "unauthenticated") return <StateScreen title="Supabase にログインしてください" body={result.message} />;
   if (result.status === "error") return <StateScreen title="企業関係マップを取得できませんでした" body={`${result.message} 0件ではなく取得失敗です。`} />;
-  if (!bootstrap || bootstrap.entryCompanies.length === 0) return <StateScreen title="企業関係データがまだありません" body={result.message ?? "中心企業候補を登録するとここに表示されます。"} />;
+  if (!bootstrap || entryCompanies.length === 0) return <StateScreen title="企業関係データがまだありません" body={result.message ?? "中心企業候補を登録するとここに表示されます。"} />;
 
   return (
     <main className={styles.page}>
@@ -146,7 +152,7 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
           <span className={styles.versionBadge}>company-network v3</span>
         </div>
         <div className={styles.statRow}>
-          <div className={styles.stat}><span>入口企業</span><strong>{bootstrap.entryCompanies.length}</strong><small>社</small></div>
+          <div className={styles.stat}><span>入口企業</span><strong>{entryCompanies.length}</strong><small>社</small></div>
           <div className={styles.stat}><span>企業グループ</span><strong>{bootstrap.groups.length}</strong><small>件</small></div>
           <div className={styles.stat}><span>表示企業</span><strong>{scope?.companies.length ?? 0}</strong><small>社</small></div>
           <div className={styles.stat}><span>表示関係</span><strong>{relationships.length}</strong><small>件</small></div>
@@ -158,7 +164,11 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
           <label className={styles.companySelect}>
             <span>中心企業（入口）</span>
             <select value={centerCompanyId} onChange={(event) => changeCenter(event.target.value)}>
-              {bootstrap.entryCompanies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+              {dropdownCompanies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.name}{entryCompanyIds.has(company.id) ? "" : "（中心表示中）"}
+                </option>
+              ))}
             </select>
           </label>
           <input className={styles.search} type="search" value={query} placeholder="企業名・関係を検索" aria-label="企業関係を検索" onChange={(event) => setQuery(event.target.value)} />
