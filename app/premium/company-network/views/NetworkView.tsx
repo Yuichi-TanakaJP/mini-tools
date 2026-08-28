@@ -59,7 +59,10 @@ export default function NetworkView({
     return { nodes, links };
   }, [companies, memberships, relationships]);
 
-  const seeded = useMemo(() => seedSimNodes(graph.nodes, SEED_SPREAD), [graph.nodes, runId]);
+  const seeded = useMemo(() => {
+    void runId;
+    return seedSimNodes(graph.nodes, SEED_SPREAD);
+  }, [graph.nodes, runId]);
 
   useEffect(() => {
     const working = seeded.map((node) => ({ ...node }));
