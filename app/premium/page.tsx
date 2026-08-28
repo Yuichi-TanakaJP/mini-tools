@@ -53,6 +53,14 @@ const FEATURE_CARDS: FeatureCard[] = [
     tone: "violet",
   },
   {
+    href: "/premium/company-network",
+    icon: "🕸",
+    title: "企業関係マップ",
+    description:
+      "出資・親子・歴史的関係と財閥・企業グループ所属を、根拠付きのネットワークとして確認します。",
+    tone: "violet",
+  },
+  {
     href: "/premium/routines",
     icon: "🗓",
     title: "ルーティン一覧",
