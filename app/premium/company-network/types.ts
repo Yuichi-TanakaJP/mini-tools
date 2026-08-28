@@ -50,12 +50,28 @@ export type CompanyGroupMembership = {
   sourceAsOf: string | null;
 };
 
+export type CompanyNetworkGroup = {
+  id: string;
+  name: string;
+  groupType: string;
+};
+
 export type CompanyNetworkData = {
   companies: CompanyNetworkCompany[];
   relationships: CompanyRelationship[];
   memberships: CompanyGroupMembership[];
 };
 
-export type CompanyNetworkLoadResult =
-  | { status: "ok"; data: CompanyNetworkData; message: null }
-  | { status: "empty" | "error" | "unconfigured" | "unauthenticated"; data: CompanyNetworkData | null; message: string };
+export type CompanyNetworkBootstrapData = {
+  entryCompanies: CompanyNetworkCompany[];
+  groups: CompanyNetworkGroup[];
+  defaultCompanyId: string;
+};
+
+export type CompanyNetworkBootstrapResult =
+  | { status: "ok"; data: CompanyNetworkBootstrapData; message: null }
+  | { status: "empty" | "error" | "unconfigured" | "unauthenticated"; data: CompanyNetworkBootstrapData | null; message: string };
+
+export type CompanyNetworkScopeResult =
+  | { status: "ok" | "empty"; data: CompanyNetworkData; message: string | null }
+  | { status: "error" | "unconfigured" | "unauthenticated"; data: null; message: string };
