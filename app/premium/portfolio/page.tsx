@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import CompanyGroupExposureCard from "./CompanyGroupExposureCard";
 import PortfolioWorkspace from "./PortfolioWorkspace";
+import { emptyCompanyGroupExposure, loadCompanyGroupExposure } from "./company-group-exposure";
 import { loadPortfolio, portfolioAuthRequired } from "./data";
 import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
 import { isSyncConfigured } from "@/lib/supabase/config";
@@ -25,12 +27,24 @@ export default async function PremiumPortfolioPage() {
   }
 
   let portfolio = portfolioAuthRequired();
+  let companyGroupExposure = emptyCompanyGroupExposure();
+  let companyGroupExposureError: string | null = null;
+
   if (isSyncConfigured()) {
     const supabase = await createSupabaseServerClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    portfolio = user ? await loadPortfolio(supabase) : portfolioAuthRequired();
+
+    if (user) {
+      portfolio = await loadPortfolio(supabase);
+      try {
+        companyGroupExposure = await loadCompanyGroupExposure(supabase, portfolio.currentSnapshot?.id ?? null);
+      } catch (error) {
+        console.error("Failed to load company group exposure", error);
+        companyGroupExposureError = "企業関係データの取得に失敗しました。ポートフォリオ本体の表示は継続しています。";
+      }
+    }
   }
 
   return (
@@ -60,6 +74,17 @@ export default async function PremiumPortfolioPage() {
             優待銘柄メモ
           </Link>
         </nav>
+
+        {portfolio.authState === "authenticated" && portfolio.currentSnapshot ? (
+          companyGroupExposureError ? (
+            <section style={{ background: "var(--color-bg-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: 18 }}>
+              <h2 style={{ margin: 0, fontSize: 20 }}>企業グループ集中（事実ベース）</h2>
+              <p style={{ margin: "8px 0 0", color: "var(--color-text-sub)", lineHeight: 1.7 }}>{companyGroupExposureError}</p>
+            </section>
+          ) : (
+            <CompanyGroupExposureCard exposure={companyGroupExposure} asOf={portfolio.currentSnapshot.asOf} />
+          )
+        ) : null}
 
         <PortfolioWorkspace data={portfolio} />
       </section>
