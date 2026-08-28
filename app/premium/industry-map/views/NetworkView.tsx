@@ -194,8 +194,8 @@ export default function NetworkView({
               const dimmed =
                 !activeIds.has(simNode.id) ||
                 (neighbourIds !== null && !neighbourIds.has(simNode.id));
-              const stockCount = (context.stockLinksByNode.get(simNode.id) ?? []).length;
-              const radius = stockCount > 0 ? 9 : 6;
+              const companyCount = (context.companyLinksByNode.get(simNode.id) ?? []).length;
+              const radius = companyCount > 0 ? 9 : 6;
 
               return (
                 <g
@@ -228,7 +228,7 @@ export default function NetworkView({
                   ) : null}
                   <circle
                     r={radius}
-                    fill={stockCount > 0 ? KIND_COLOR[node.kind] : "var(--color-bg-card)"}
+                    fill={companyCount > 0 ? KIND_COLOR[node.kind] : "var(--color-bg-card)"}
                     stroke={KIND_COLOR[node.kind]}
                     strokeWidth={selected ? 3 : 2}
                   />

@@ -7,9 +7,8 @@ import {
   type IndustryEdge,
   type IndustryMapData,
   type IndustryMapLoadResult,
+  type IndustryCompanyLink,
   type IndustryNode,
-  type IndustryStock,
-  type IndustryStockLink,
   type IndustryTheme,
   type IndustryThemeLink,
   type RelationType,
@@ -62,9 +61,8 @@ type Row = Record<string, unknown>;
 export type RawIndustryMap = {
   nodes: Row[];
   edges: Row[];
-  stockLinks: Row[];
+  companyLinks: Row[];
   themeLinks: Row[];
-  stocks: Row[];
   themes: Row[];
 };
 
@@ -123,22 +121,36 @@ function parseEdge(row: Row): IndustryEdge | null {
   return { id, domain, sourceId, targetId, relationType, note: str(row, "relation_note") };
 }
 
-function parseStockLink(row: Row): IndustryStockLink | null {
-  const stockId = nonEmpty(row, "stock_id");
+function parseCompanyLink(row: Row): IndustryCompanyLink | null {
+  const linkId = nonEmpty(row, "company_taxonomy_link_id");
+  const companyId = nonEmpty(row, "company_entity_id");
+  const companyName = nonEmpty(row, "company_name");
   const nodeId = nonEmpty(row, "node_id");
   const strategicRole = oneOf<StrategicRole>(row, "strategic_role", ROLES);
   const controlType = oneOf<ControlType>(row, "control_type", CONTROLS);
   const confidence = oneOf<Confidence>(row, "confidence", CONFIDENCES);
-  if (!stockId || !nodeId || !strategicRole || !controlType || !confidence) return null;
+  if (!linkId || !companyId || !companyName || !nodeId) return null;
+  if (!strategicRole || !controlType || !confidence) return null;
 
   return {
-    stockId,
+    linkId,
+    companyId,
+    companyName,
+    companySlug: str(row, "company_slug"),
+    // status / listing / country は Supabase 側で値が増えうるので検証しない。
+    companyStatus: str(row, "company_status"),
+    countryCode: nonEmpty(row, "country_code"),
+    listingStatus: str(row, "listing_status"),
     nodeId,
     strategicRole,
     controlType,
     confidence,
     sourceType: str(row, "source_type"),
     note: str(row, "relation_note"),
+    asOf: nonEmpty(row, "as_of"),
+    stockId: nonEmpty(row, "stock_id"),
+    stockCode: nonEmpty(row, "stock_code"),
+    stockName: nonEmpty(row, "stock_name"),
   };
 }
 
@@ -149,13 +161,6 @@ function parseThemeLink(row: Row): IndustryThemeLink | null {
   if (!themeId || !nodeId || !relationType) return null;
 
   return { themeId, nodeId, relationType, note: str(row, "relation_note") };
-}
-
-function parseStock(row: Row): IndustryStock | null {
-  const id = nonEmpty(row, "id");
-  const code = nonEmpty(row, "code");
-  if (!id || !code) return null;
-  return { id, code, name: str(row, "name") || code, category: str(row, "category") };
 }
 
 function parseTheme(row: Row): IndustryTheme | null {
@@ -198,9 +203,9 @@ export function buildIndustryMap(raw: RawIndustryMap): IndustryMapData {
   const edges = raw.edges.map(parseEdge).filter((edge): edge is IndustryEdge => edge !== null);
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
 
-  const stockLinks = raw.stockLinks
-    .map(parseStockLink)
-    .filter((link): link is IndustryStockLink => link !== null && nodeById.has(link.nodeId));
+  const companyLinks = raw.companyLinks
+    .map(parseCompanyLink)
+    .filter((link): link is IndustryCompanyLink => link !== null && nodeById.has(link.nodeId));
   const themeLinks = raw.themeLinks
     .map(parseThemeLink)
     .filter((link): link is IndustryThemeLink => link !== null && nodeById.has(link.nodeId));
@@ -221,7 +226,7 @@ export function buildIndustryMap(raw: RawIndustryMap): IndustryMapData {
       rootIds,
       nodes: domainNodes,
       edges: domainEdges,
-      stockLinks: stockLinks.filter((link) => domainNodeIds.has(link.nodeId)),
+      companyLinks: companyLinks.filter((link) => domainNodeIds.has(link.nodeId)),
       themeLinks: themeLinks.filter((link) => domainNodeIds.has(link.nodeId)),
     };
   });
@@ -229,18 +234,15 @@ export function buildIndustryMap(raw: RawIndustryMap): IndustryMapData {
   // ノード数の多い domain を先に出す。同数なら表示名で安定させる。
   domains.sort((a, b) => b.nodes.length - a.nodes.length || a.label.localeCompare(b.label, "ja"));
 
-  const usedStockIds = new Set(stockLinks.map((link) => link.stockId));
   const usedThemeIds = new Set(themeLinks.map((link) => link.themeId));
 
   return {
     modelVersion: INDUSTRY_MAP_MODEL_VERSION,
     domains,
-    stocks: raw.stocks
-      .map(parseStock)
-      .filter((stock): stock is IndustryStock => stock !== null && usedStockIds.has(stock.id)),
     themes: raw.themes
       .map(parseTheme)
       .filter((theme): theme is IndustryTheme => theme !== null && usedThemeIds.has(theme.id)),
+    companyLayerFailed: false,
   };
 }
 
@@ -266,6 +268,11 @@ type TableQuery = {
   orderBy: string;
   /** 有効期間が切れていない行だけを見る。履歴行は現時点では扱わない。 */
   currentOnly?: boolean;
+  /**
+   * 取得に失敗しても画面全体を失敗にしない層。
+   * リポジトリ外（Supabase 側）で管理されている対象に使う。
+   */
+  optional?: boolean;
 };
 
 const QUERIES: Record<keyof RawIndustryMap, TableQuery> = {
@@ -279,22 +286,24 @@ const QUERIES: Record<keyof RawIndustryMap, TableQuery> = {
     columns: "id,domain,source_node_id,target_node_id,relation_type,relation_note,created_at",
     orderBy: "created_at",
   },
-  stockLinks: {
-    table: "stock_notes_stock_taxonomy_links",
+  /*
+   * 企業レイヤーは Supabase 側で用意された業界マップ専用ビューから読む。
+   * 上場銘柄に限らない企業（非上場・海外を含む）を扱えるのはこの経路だけ。
+   */
+  companyLinks: {
+    table: "stock_notes_industry_map_company_links_v1",
     columns:
-      "stock_id,node_id,strategic_role,control_type,confidence,source_type,relation_note,created_at",
-    orderBy: "created_at",
+      "company_taxonomy_link_id,company_entity_id,company_name,company_slug,company_status," +
+      "country_code,listing_status,node_id,strategic_role,control_type,confidence," +
+      "source_type,relation_note,as_of,stock_id,stock_code,stock_name,valid_to",
+    orderBy: "company_name",
     currentOnly: true,
+    optional: true,
   },
   themeLinks: {
     table: "stock_notes_theme_taxonomy_links",
     columns: "theme_id,node_id,relation_type,relation_note,created_at",
     orderBy: "created_at",
-  },
-  stocks: {
-    table: "stock_notes_stocks",
-    columns: "id,code,name,category",
-    orderBy: "code",
   },
   themes: {
     table: "stock_notes_themes",
@@ -318,20 +327,28 @@ export async function loadIndustryMap(
   );
 
   const raw = {} as RawIndustryMap;
+  let companyLayerFailed = false;
   for (const [index, key] of keys.entries()) {
+    const query = QUERIES[key];
     const result = results[index];
     if (result.error) {
-      // 取得失敗を 0 件として表示しない。
-      return {
-        status: "error",
-        data: null,
-        message: `業界マップの取得に失敗しました（${QUERIES[key].table}）。`,
-      };
+      if (!query.optional) {
+        // 取得失敗を 0 件として表示しない。
+        return {
+          status: "error",
+          data: null,
+          message: `業界マップの取得に失敗しました（${query.table}）。`,
+        };
+      }
+      // 任意の層は空で続行し、画面側で「0件」と区別して知らせる。
+      companyLayerFailed = true;
+      raw[key] = [];
+      continue;
     }
     raw[key] = (result.data ?? []) as unknown as Row[];
   }
 
-  const data = buildIndustryMap(raw);
+  const data = { ...buildIndustryMap(raw), companyLayerFailed };
   if (data.domains.length === 0) {
     return {
       status: "empty",

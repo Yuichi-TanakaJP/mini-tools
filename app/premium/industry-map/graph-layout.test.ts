@@ -41,7 +41,7 @@ function makeDomain(nodes: IndustryNode[], edges: IndustryEdge[], rootIds: strin
     rootIds,
     nodes,
     edges,
-    stockLinks: [],
+    companyLinks: [],
     themeLinks: [],
   };
 }

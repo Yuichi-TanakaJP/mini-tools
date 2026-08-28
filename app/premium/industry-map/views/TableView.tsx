@@ -14,13 +14,13 @@ type Props = {
   onSelect: (nodeId: string) => void;
 };
 
-type SortKey = "name" | "kind" | "depth" | "stocks" | "relations";
+type SortKey = "name" | "kind" | "depth" | "companies" | "relations";
 
 type TableRow = {
   node: IndustryNode;
   depth: number;
   parentName: string;
-  stockCount: number;
+  companyCount: number;
   relationCount: number;
 };
 
@@ -28,7 +28,7 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "name", label: "領域" },
   { key: "kind", label: "種別" },
   { key: "depth", label: "階層" },
-  { key: "stocks", label: "銘柄" },
+  { key: "companies", label: "企業" },
   { key: "relations", label: "横断関係" },
 ];
 
@@ -46,7 +46,7 @@ export default function TableView({ context, activeIds, selectedId, onSelect }: 
         node,
         depth: depthById.get(node.id) ?? 0,
         parentName: parentId ? (context.nodeById.get(parentId)?.displayName ?? "—") : "—",
-        stockCount: (context.stockLinksByNode.get(node.id) ?? []).length,
+        companyCount: (context.companyLinksByNode.get(node.id) ?? []).length,
         relationCount: (context.crossEdgesByNode.get(node.id) ?? []).length,
       };
     });
@@ -61,8 +61,8 @@ export default function TableView({ context, activeIds, selectedId, onSelect }: 
           return KIND_LABEL[a.node.kind].localeCompare(KIND_LABEL[b.node.kind], "ja");
         case "depth":
           return a.depth - b.depth;
-        case "stocks":
-          return a.stockCount - b.stockCount;
+        case "companies":
+          return a.companyCount - b.companyCount;
         case "relations":
           return a.relationCount - b.relationCount;
         default:
@@ -136,7 +136,7 @@ export default function TableView({ context, activeIds, selectedId, onSelect }: 
               <td>{KIND_LABEL[row.node.kind]}</td>
               <td style={{ fontVariantNumeric: "tabular-nums" }}>L{row.depth}</td>
               <td style={{ fontVariantNumeric: "tabular-nums" }}>
-                {row.stockCount > 0 ? row.stockCount : "—"}
+                {row.companyCount > 0 ? row.companyCount : "—"}
               </td>
               <td style={{ fontVariantNumeric: "tabular-nums" }}>
                 {row.relationCount > 0 ? row.relationCount : "—"}

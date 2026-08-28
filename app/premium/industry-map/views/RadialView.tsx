@@ -100,7 +100,7 @@ export default function RadialView({
               point.depth === 0 ? 13 : Math.max(4, 10 - point.depth * 2);
             const onLeft = Math.cos(point.angle) < 0;
             const labelOffset = radius + 7;
-            const stockCount = (context.stockLinksByNode.get(point.id) ?? [])
+            const companyCount = (context.companyLinksByNode.get(point.id) ?? [])
               .length;
 
             return (
@@ -144,7 +144,7 @@ export default function RadialView({
                     className={styles.svgNodeShape}
                     r={radius}
                     fill={
-                      stockCount > 0
+                      companyCount > 0
                         ? KIND_COLOR[point.node.kind]
                         : "var(--color-bg-card)"
                     }
