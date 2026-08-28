@@ -39,27 +39,64 @@ export default function NetworkView({
   onSelectRelation,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const resetKey = `${relationships.map((item) => item.relationId).join(":")}|${memberships.map((item) => item.membershipId).join(":")}`;
-  const panZoom = usePanZoom(svgRef, resetKey);
   const [frame, setFrame] = useState<{ source: SimNode[]; nodes: SimNode[] } | null>(null);
   const [runId, setRunId] = useState(0);
 
   const companyById = useMemo(() => new Map(companies.map((company) => [company.id, company])), [companies]);
 
-  const graph = useMemo(() => {
-    const companyIds = new Set<string>([selectedCompanyId]);
-    for (const relationship of relationships) {
-      companyIds.add(relationship.sourceCompanyId);
-      companyIds.add(relationship.targetCompanyId);
-    }
-    for (const membership of memberships) companyIds.add(membership.companyId);
+  const selectedComponent = useMemo(() => {
+    const companyIds = new Set<string>(selectedCompanyId ? [selectedCompanyId] : []);
+    const groupIds = new Set<string>();
+    let changed = true;
 
-    const nodes: VisualNode[] = [...companyIds]
+    while (changed) {
+      changed = false;
+
+      for (const relationship of relationships) {
+        if (!companyIds.has(relationship.sourceCompanyId) && !companyIds.has(relationship.targetCompanyId)) continue;
+        if (!companyIds.has(relationship.sourceCompanyId)) {
+          companyIds.add(relationship.sourceCompanyId);
+          changed = true;
+        }
+        if (!companyIds.has(relationship.targetCompanyId)) {
+          companyIds.add(relationship.targetCompanyId);
+          changed = true;
+        }
+      }
+
+      for (const membership of memberships) {
+        if (!companyIds.has(membership.companyId) && !groupIds.has(membership.groupId)) continue;
+        if (!companyIds.has(membership.companyId)) {
+          companyIds.add(membership.companyId);
+          changed = true;
+        }
+        if (!groupIds.has(membership.groupId)) {
+          groupIds.add(membership.groupId);
+          changed = true;
+        }
+      }
+    }
+
+    const visibleRelationships = relationships.filter(
+      (relationship) => companyIds.has(relationship.sourceCompanyId) && companyIds.has(relationship.targetCompanyId),
+    );
+    const visibleMemberships = memberships.filter(
+      (membership) => companyIds.has(membership.companyId) && groupIds.has(membership.groupId),
+    );
+
+    return { companyIds, groupIds, relationships: visibleRelationships, memberships: visibleMemberships };
+  }, [memberships, relationships, selectedCompanyId]);
+
+  const resetKey = `${selectedCompanyId}|${selectedComponent.relationships.map((item) => item.relationId).join(":")}|${selectedComponent.memberships.map((item) => item.membershipId).join(":")}`;
+  const panZoom = usePanZoom(svgRef, resetKey);
+
+  const graph = useMemo(() => {
+    const nodes: VisualNode[] = [...selectedComponent.companyIds]
       .map((companyId) => companyById.get(companyId))
       .filter((company): company is CompanyNetworkCompany => Boolean(company))
       .map((company) => ({ id: company.id, label: company.name, kind: "company" as const, company }));
 
-    const groupById = new Map(memberships.map((membership) => [membership.groupId, membership]));
+    const groupById = new Map(selectedComponent.memberships.map((membership) => [membership.groupId, membership]));
     for (const membership of groupById.values()) {
       nodes.push({
         id: `group:${membership.groupId}`,
@@ -71,13 +108,13 @@ export default function NetworkView({
     }
 
     const links: SimLink[] = [
-      ...relationships.map((relationship) => ({
+      ...selectedComponent.relationships.map((relationship) => ({
         id: relationship.relationId,
         sourceId: relationship.sourceCompanyId,
         targetId: relationship.targetCompanyId,
         kind: "relationship" as const,
       })),
-      ...memberships.map((membership) => ({
+      ...selectedComponent.memberships.map((membership) => ({
         id: membership.membershipId,
         sourceId: membership.companyId,
         targetId: `group:${membership.groupId}`,
@@ -86,7 +123,7 @@ export default function NetworkView({
     ];
 
     return { nodes, links };
-  }, [companyById, memberships, relationships, selectedCompanyId]);
+  }, [companyById, selectedComponent]);
 
   const seeded = useMemo(() => seedSimNodes(graph.nodes, SEED_SPREAD), [graph.nodes, runId]);
 
@@ -109,18 +146,6 @@ export default function NetworkView({
   const fit = (VIEWBOX_HALF - LABEL_PADDING) / simExtent(nodes, 240);
   const size = VIEWBOX_HALF * 2;
 
-  const focusIds = useMemo(() => {
-    const ids = new Set<string>([selectedCompanyId]);
-    for (const relationship of relationships) {
-      if (relationship.sourceCompanyId === selectedCompanyId) ids.add(relationship.targetCompanyId);
-      if (relationship.targetCompanyId === selectedCompanyId) ids.add(relationship.sourceCompanyId);
-    }
-    for (const membership of memberships) {
-      if (membership.companyId === selectedCompanyId) ids.add(`group:${membership.groupId}`);
-    }
-    return ids;
-  }, [memberships, relationships, selectedCompanyId]);
-
   const normalizedQuery = query.trim().toLocaleLowerCase("ja");
   const queryMatch = (node: SimNode) =>
     normalizedQuery.length === 0 || node.label.toLocaleLowerCase("ja").includes(normalizedQuery);
@@ -128,7 +153,7 @@ export default function NetworkView({
   return (
     <div className={styles.viewFade}>
       <div className={styles.viewTools}>
-        <span>全体ネットワーク</span>
+        <span>選択企業の関係ネットワーク</span>
         <button type="button" className={styles.smallButton} onClick={() => setRunId((value) => value + 1)}>
           再配置
         </button>
@@ -145,7 +170,7 @@ export default function NetworkView({
           style={{ touchAction: panZoom.viewport.scale === 1 ? "pan-y" : "none" }}
           viewBox={`${-VIEWBOX_HALF} ${-VIEWBOX_HALF} ${size} ${size}`}
           role="img"
-          aria-label="企業関係の全体ネットワーク"
+          aria-label="選択企業につながる企業関係ネットワーク"
           onPointerDown={panZoom.onPointerDown}
           onDoubleClick={panZoom.onDoubleClick}
         >
@@ -155,13 +180,11 @@ export default function NetworkView({
             </marker>
           </defs>
           <g transform={panZoom.transform}>
-            {relationships.map((relationship) => {
+            {selectedComponent.relationships.map((relationship) => {
               const source = positions.get(relationship.sourceCompanyId);
               const target = positions.get(relationship.targetCompanyId);
               if (!source || !target) return null;
               const selected = relationship.relationId === selectedRelationId;
-              const focused = focusIds.has(relationship.sourceCompanyId) && focusIds.has(relationship.targetCompanyId);
-              const opacity = selected ? 1 : focused ? 0.85 : 0.18;
               return (
                 <g key={relationship.relationId}>
                   <line
@@ -171,32 +194,29 @@ export default function NetworkView({
                     y2={target.y * fit}
                     stroke={CATEGORY_COLOR[relationship.relationCategory]}
                     strokeWidth={selected ? 3.2 : 1.7}
-                    strokeOpacity={opacity}
+                    strokeOpacity={selected ? 1 : 0.85}
                     strokeDasharray={relationship.verificationStatus === "verified" ? undefined : "7 6"}
                     markerEnd="url(#company-relation-arrow)"
                     color={CATEGORY_COLOR[relationship.relationCategory]}
                     onClick={() => onSelectRelation(relationship.relationId)}
                     className={styles.edgeHitTarget}
                   />
-                  {focused || selected ? (
-                    <text
-                      x={((source.x + target.x) / 2) * fit}
-                      y={((source.y + target.y) / 2) * fit - 7}
-                      textAnchor="middle"
-                      className={styles.svgEdgeLabel}
-                    >
-                      {relationLabel(relationship.relationType, relationship.ownershipPct)}
-                    </text>
-                  ) : null}
+                  <text
+                    x={((source.x + target.x) / 2) * fit}
+                    y={((source.y + target.y) / 2) * fit - 7}
+                    textAnchor="middle"
+                    className={styles.svgEdgeLabel}
+                  >
+                    {relationLabel(relationship.relationType, relationship.ownershipPct)}
+                  </text>
                 </g>
               );
             })}
 
-            {memberships.map((membership) => {
+            {selectedComponent.memberships.map((membership) => {
               const source = positions.get(membership.companyId);
               const target = positions.get(`group:${membership.groupId}`);
               if (!source || !target) return null;
-              const focused = membership.companyId === selectedCompanyId;
               return (
                 <line
                   key={membership.membershipId}
@@ -205,17 +225,14 @@ export default function NetworkView({
                   x2={target.x * fit}
                   y2={target.y * fit}
                   className={styles.membershipLine}
-                  strokeOpacity={focused ? 0.9 : 0.2}
+                  strokeOpacity={membership.companyId === selectedCompanyId ? 0.95 : 0.65}
                 />
               );
             })}
 
             {nodes.map((node) => {
               const selected = node.id === selectedCompanyId;
-              const focused = focusIds.has(node.id);
-              const dimmed = normalizedQuery.length > 0
-                ? !queryMatch(node)
-                : (!focused && selectedCompanyId.length > 0);
+              const dimmed = normalizedQuery.length > 0 && !queryMatch(node);
               const radius = node.kind === "group" ? 9 : selected ? 11 : 8;
               const fill = node.kind === "group" ? "#fff7ed" : selected ? "#2554ff" : "var(--color-bg-card)";
               const stroke = node.kind === "group" ? "#d97706" : "#2554ff";
