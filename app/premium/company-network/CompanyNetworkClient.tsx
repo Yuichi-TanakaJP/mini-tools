@@ -20,6 +20,7 @@ import GroupTableView from "./views/GroupTableView";
 import HierarchyView from "./views/HierarchyView";
 import NetworkView from "./views/NetworkView";
 import RadialView from "./views/RadialView";
+import RelationshipModesView from "./views/RelationshipModesView";
 import TableView from "./views/TableView";
 
 const ALL_CATEGORIES: readonly RelationCategory[] = ["capital", "control", "historical"];
@@ -181,7 +182,7 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
             <h1 className={styles.heroTitle}>企業グループマップ</h1>
             <p className={styles.heroLead}>所属企業を並べるだけでなく、「何を担う会社か」「誰が誰を保有するか」「どこに機能の厚みがあるか」を同じ事実レイヤーから読みます。</p>
           </div>
-          <span className={styles.versionBadge}>company-network v6</span>
+          <span className={styles.versionBadge}>company-network v7</span>
         </div>
         <div className={styles.statRow}>
           <div className={styles.stat}><span>企業グループ</span><strong>{groups.length}</strong><small>件</small></div>
@@ -251,9 +252,19 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
           ) : null}
 
           {scope && view === "network" && scopeMode === "group" && activeGroup ? (
-            relationships.length === 0
-              ? <p className={styles.empty}><strong>{activeGroup.name}</strong>の所属 {memberships.length}社は確認済みですが、グループ内の企業間relationは現在未登録です。</p>
-              : <NetworkView title={`${activeGroup.name}の企業間関係`} companies={scope.companies} relationships={relationships} memberships={[]} centerCompanyId="" selection={groupNetworkSelection} selectedRelationId={selectedRelationId} query={query} onSelectCompany={selectCompany} onSelectGroup={selectGroup} onSelectRelation={setSelectedRelationId} />
+            <RelationshipModesView
+              groupName={activeGroup.name}
+              companies={scope.companies}
+              relationships={relationships}
+              functions={functions}
+              selection={groupNetworkSelection}
+              selectedRelationId={selectedRelationId}
+              focusCompanyId={displayBaseCompanyId}
+              query={query}
+              onSelectCompany={selectCompany}
+              onSelectGroup={selectGroup}
+              onSelectRelation={setSelectedRelationId}
+            />
           ) : null}
           {scope && view === "network" && scopeMode === "company" ? <NetworkView companies={scope.companies} relationships={relationships} memberships={memberships} centerCompanyId={centerCompanyId} selection={activeSelection} selectedRelationId={selectedRelationId} query={query} onSelectCompany={selectCompany} onSelectGroup={selectGroup} onSelectRelation={setSelectedRelationId} /> : null}
 
@@ -273,7 +284,7 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
         <DetailPanel groups={groups} companies={scope?.companies ?? []} selection={activeSelection} centerCompanyId={scopeMode === "company" ? centerCompanyId : ""} relationships={relationships} memberships={memberships} functions={functions} selectedRelation={selectedRelation} onSelectCompany={selectCompany} onSelectGroup={selectGroup} onSelectRelation={setSelectedRelationId} onMakeCenter={changeCenter} />
       </div>
 
-      <p className={styles.note}>構成＝事業・機能の役割分担、関係＝企業間relation、系列＝資本・支配構造、機能表＝企業×機能の厚み、表＝根拠付き一覧です。</p>
+      <p className={styles.note}>構成＝事業・機能の階層、関係＝資本relationと事業・機能の放射マップ、系列＝資本・支配構造、機能表＝企業×機能の厚み、表＝根拠付き一覧です。</p>
     </main>
   );
 }
