@@ -194,7 +194,6 @@ details[open] > summary .chevron { transform: rotate(90deg); }
   font-weight: 800;
 }
 
-/* relation network */
 .networkIntro {
   margin: -1px 0 5px;
   color: var(--color-text-muted);
@@ -207,7 +206,6 @@ details[open] > summary .chevron { transform: rotate(90deg); }
   min-height: 330px !important;
 }
 
-/* capital hierarchy */
 .hierarchyIntro {
   padding: 7px 9px !important;
   border-radius: 8px !important;
@@ -238,10 +236,7 @@ details[open] > summary .chevron { transform: rotate(90deg); }
   margin: 0 !important;
 }
 
-.hierarchyRoot strong {
-  font-size: 12px !important;
-}
-
+.hierarchyRoot strong { font-size: 12px !important; }
 .hierarchyRoot small { display: none !important; }
 
 .hierarchyNode {
@@ -256,16 +251,13 @@ details[open] > summary .chevron { transform: rotate(90deg); }
 .hierarchyCompany small { display: none !important; }
 .hierarchyRelation { padding: 3px 7px !important; font-size: 8px !important; }
 
-/* matrix */
 .legendBar {
   padding: 5px 7px !important;
   border-radius: 7px !important;
   font-size: 8px !important;
 }
 
-.matrixScroll {
-  border-radius: 8px !important;
-}
+.matrixScroll { border-radius: 8px !important; }
 
 .matrixTable th,
 .matrixTable td {
@@ -285,7 +277,6 @@ details[open] > summary .chevron { transform: rotate(90deg); }
   font-size: 9px !important;
 }
 
-/* table: desktop stays dense, mobile becomes readable cards */
 .mobileList { display: none; }
 .desktopTable { display: block; }
 
@@ -314,30 +305,30 @@ details[open] > summary .chevron { transform: rotate(90deg); }
 .mobileCardBody { color: var(--color-text-sub); font-size: 9px; line-height: 1.5; }
 .mobileCardSub { color: var(--color-text-muted); font-size: 8px; line-height: 1.45; }
 
-/* toolbar / tab strip: loaded route-wide through statically imported views */
-:global([aria-label="企業関係マップの表示条件"]) {
+/* A local .view inside :has keeps CSS Modules pure while scoping route-wide density. */
+:global(body):has(.view) :global([aria-label="企業関係マップの表示条件"]) {
   gap: 7px !important;
   padding: 9px !important;
   border-radius: 12px !important;
 }
 
-:global([aria-label="企業関係マップの表示条件"] select),
-:global([aria-label="企業関係マップの表示条件"] input[type="search"]) {
+:global(body):has(.view) :global([aria-label="企業関係マップの表示条件"] select),
+:global(body):has(.view) :global([aria-label="企業関係マップの表示条件"] input[type="search"]) {
   min-height: 34px !important;
   border-radius: 8px !important;
   font-size: 12px !important;
 }
 
-:global([role="tablist"][aria-label="表現の切り替え"]) {
+:global(body):has(.view) :global([role="tablist"][aria-label="表現の切り替え"]) {
   border-radius: 9px !important;
 }
 
-:global([role="tablist"][aria-label="表現の切り替え"] button[role="tab"]) {
+:global(body):has(.view) :global([role="tablist"][aria-label="表現の切り替え"] button[role="tab"]) {
   min-height: 34px !important;
   font-size: 10px !important;
 }
 
-:global(section[aria-busy]) {
+:global(body):has(.view) :global(section[aria-busy]) {
   min-height: 0 !important;
   padding: 10px !important;
 }
@@ -367,7 +358,7 @@ details[open] > summary .chevron { transform: rotate(90deg); }
   .matrixTable td { min-width: 56px !important; padding: 5px 4px !important; }
   .matrixTable thead button { max-height: 78px !important; font-size: 8px !important; }
 
-  :global([aria-label="企業関係マップの表示条件"]) { padding: 7px !important; gap: 6px !important; }
-  :global([role="tablist"][aria-label="表現の切り替え"] button[role="tab"]) { min-height: 32px !important; font-size: 9px !important; }
-  :global(section[aria-busy]) { padding: 7px !important; }
+  :global(body):has(.view) :global([aria-label="企業関係マップの表示条件"]) { padding: 7px !important; gap: 6px !important; }
+  :global(body):has(.view) :global([role="tablist"][aria-label="表現の切り替え"] button[role="tab"]) { min-height: 32px !important; font-size: 9px !important; }
+  :global(body):has(.view) :global(section[aria-busy]) { padding: 7px !important; }
 }
