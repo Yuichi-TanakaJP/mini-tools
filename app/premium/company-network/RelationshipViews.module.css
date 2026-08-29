@@ -1,0 +1,250 @@
+.relationIntro {
+  margin: 0 0 10px;
+  color: var(--color-text-sub);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.relationMeta {
+  margin-left: auto;
+  margin-right: 8px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.compactGraph {
+  min-height: 420px;
+}
+
+.compactGraph svg {
+  min-height: 420px;
+}
+
+.isolatedSection {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px dashed var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-input);
+}
+
+.isolatedHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.isolatedHead div {
+  display: grid;
+  gap: 2px;
+}
+
+.isolatedHead span {
+  color: var(--color-text-muted);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.isolatedHead strong {
+  font-size: 12px;
+}
+
+.isolatedHead b {
+  color: var(--color-text-sub);
+  font-size: 11px;
+}
+
+.isolatedSection p {
+  margin: 7px 0 9px;
+  color: var(--color-text-muted);
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.isolatedCompanies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.isolatedCompanies button {
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-card);
+  color: var(--color-text-sub);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.treeForest {
+  display: grid;
+  gap: 14px;
+}
+
+.treeSection {
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-bg-card);
+}
+
+.treeRoot {
+  display: inline-grid;
+  gap: 2px;
+  min-width: min(280px, 100%);
+  padding: 12px 14px;
+  border: 2px solid var(--color-accent);
+  border-radius: 12px;
+  background: var(--color-accent-sub);
+  color: var(--color-text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.treeRoot span {
+  color: var(--color-accent);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.treeRoot strong {
+  font-size: 15px;
+}
+
+.treeRoot small {
+  color: var(--color-text-muted);
+  font-size: 9px;
+}
+
+.treeChildren {
+  margin: 8px 0 0 16px;
+  padding-left: 18px;
+  border-left: 1px solid var(--color-border);
+}
+
+.treeBranch {
+  position: relative;
+  display: grid;
+  gap: 7px;
+  margin: 8px 0;
+}
+
+.treeBranch::before {
+  content: "";
+  position: absolute;
+  left: -18px;
+  top: 20px;
+  width: 14px;
+  border-top: 1px solid var(--color-border);
+}
+
+.treeBranchDim {
+  opacity: .22;
+}
+
+.treeNode {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 42px;
+  padding: 7px 8px 7px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-card);
+}
+
+.treeNodeSelected {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent-sub);
+}
+
+.treeCompany {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.treeCompany strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.treeCompany small {
+  color: var(--color-text-muted);
+  font-size: 8px;
+}
+
+.treeRelation {
+  padding: 5px 8px;
+  border: 1px solid var(--color-accent);
+  border-radius: 999px;
+  background: var(--color-bg-card);
+  color: var(--color-accent);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.treeRelationActive {
+  background: var(--color-accent);
+  color: white;
+}
+
+.treeCycle {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 8px;
+}
+
+@media (max-width: 760px) {
+  .compactGraph,
+  .compactGraph svg {
+    min-height: 360px;
+  }
+
+  .relationMeta {
+    display: none;
+  }
+
+  .treeSection {
+    padding: 10px;
+  }
+
+  .treeChildren {
+    margin-left: 8px;
+    padding-left: 14px;
+  }
+
+  .treeBranch::before {
+    left: -14px;
+    width: 11px;
+  }
+
+  .treeNode {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .treeRelation {
+    padding-inline: 7px;
+    font-size: 8px;
+  }
+}
