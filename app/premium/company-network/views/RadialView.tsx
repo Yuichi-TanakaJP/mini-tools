@@ -5,7 +5,12 @@ import { usePanZoom } from "../../industry-map/use-pan-zoom";
 import { buildReachableNetwork } from "../graph";
 import styles from "../CompanyNetwork.module.css";
 import { CATEGORY_COLOR, groupTypeLabel, relationLabel } from "../presentation";
-import type { CompanyGroupMembership, CompanyNetworkCompany, CompanyRelationship } from "../types";
+import type {
+  CompanyGroupMembership,
+  CompanyNetworkCompany,
+  CompanyNetworkNodeSelection,
+  CompanyRelationship,
+} from "../types";
 
 type Point = { x: number; y: number };
 
@@ -66,11 +71,12 @@ type Props = {
   relationships: CompanyRelationship[];
   memberships: CompanyGroupMembership[];
   centerCompanyId: string;
-  selectedCompanyId: string;
+  selection: CompanyNetworkNodeSelection | null;
   selectedRelationId: string | null;
   hops: 1 | 2;
   query: string;
   onSelectCompany: (companyId: string) => void;
+  onSelectGroup: (groupId: string) => void;
   onSelectRelation: (relationId: string) => void;
 };
 
@@ -79,11 +85,12 @@ export default function RadialView({
   relationships,
   memberships,
   centerCompanyId,
-  selectedCompanyId,
+  selection,
   selectedRelationId,
   hops,
   query,
   onSelectCompany,
+  onSelectGroup,
   onSelectRelation,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -141,17 +148,24 @@ export default function RadialView({
               const source = positions.get(membership.companyId);
               const target = groups.get(membership.groupId);
               if (!source || !target) return null;
-              return <line key={membership.membershipId} x1={source.x} y1={source.y} x2={target.x} y2={target.y} className={styles.membershipLine} />;
+              const focused = selection?.kind === "group"
+                ? selection.id === membership.groupId
+                : selection?.kind === "company"
+                  ? selection.id === membership.companyId
+                  : true;
+              return <line key={membership.membershipId} x1={source.x} y1={source.y} x2={target.x} y2={target.y} className={styles.membershipLine} strokeOpacity={focused ? 0.9 : 0.2} />;
             })}
             {[...network.depthByCompany.entries()].map(([companyId, depth]) => {
               const company = companyById.get(companyId);
               const point = positions.get(companyId);
               if (!company || !point) return null;
               const isCenter = companyId === centerCompanyId;
-              const selected = companyId === selectedCompanyId;
+              const selected = selection?.kind === "company" && companyId === selection.id;
+              const groupSelected = selection?.kind === "group" && visibleMemberships.some((membership) => membership.groupId === selection.id && membership.companyId === companyId);
               const queryDim = normalizedQuery.length > 0 && !company.name.toLocaleLowerCase("ja").includes(normalizedQuery);
+              const neighbourDim = selection?.kind === "group" && !groupSelected;
               const radius = isCenter ? 34 : selected ? 30 : 26;
-              return <g key={companyId} transform={`translate(${point.x} ${point.y})`} className={queryDim ? styles.svgNodeDim : undefined} role="button" tabIndex={0} onClick={() => { if (!panZoom.didPan()) onSelectCompany(companyId); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelectCompany(companyId); } }} style={{ cursor: "pointer" }}>
+              return <g key={companyId} transform={`translate(${point.x} ${point.y})`} className={queryDim || neighbourDim ? styles.svgNodeDim : undefined} role="button" tabIndex={0} onClick={() => { if (!panZoom.didPan()) onSelectCompany(companyId); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelectCompany(companyId); } }} style={{ cursor: "pointer" }}>
                 {selected ? <circle className={styles.pulse} r={radius + 9} fill="none" stroke="#2554ff" strokeWidth={2} /> : null}
                 <circle r={radius} fill={isCenter ? "#2554ff" : "var(--color-bg-card)"} stroke="#2554ff" strokeWidth={selected || isCenter ? 3 : 2} />
                 <text textAnchor="middle" y="-2" className={isCenter ? styles.radialCenterLabel : styles.radialNodeLabel}>{truncate(company.name, 11)}</text>
@@ -161,7 +175,28 @@ export default function RadialView({
             {[...new Map(visibleMemberships.map((membership) => [membership.groupId, membership])).values()].map((membership) => {
               const point = groups.get(membership.groupId);
               if (!point) return null;
-              return <g key={membership.groupId} transform={`translate(${point.x} ${point.y})`}><rect x="-60" y="-25" width="120" height="50" rx="14" className={styles.radialGroupNode} /><text textAnchor="middle" y="-2" className={styles.radialGroupLabel}>{truncate(membership.groupName, 13)}</text><text textAnchor="middle" y="13" className={styles.radialGroupMeta}>{groupTypeLabel(membership.groupType)}</text></g>;
+              const selected = selection?.kind === "group" && selection.id === membership.groupId;
+              const dimmed = selection !== null && !selected && selection.kind === "group";
+              return <g
+                key={membership.groupId}
+                transform={`translate(${point.x} ${point.y})`}
+                className={dimmed ? styles.svgNodeDim : undefined}
+                role="button"
+                tabIndex={0}
+                style={{ cursor: "pointer" }}
+                onClick={() => { if (!panZoom.didPan()) onSelectGroup(membership.groupId); }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onSelectGroup(membership.groupId);
+                  }
+                }}
+              >
+                {selected ? <rect x="-68" y="-33" width="136" height="66" rx="18" className={styles.radialGroupPulse} /> : null}
+                <rect x="-60" y="-25" width="120" height="50" rx="14" className={styles.radialGroupNode} />
+                <text textAnchor="middle" y="-2" className={styles.radialGroupLabel}>{truncate(membership.groupName, 13)}</text>
+                <text textAnchor="middle" y="13" className={styles.radialGroupMeta}>{groupTypeLabel(membership.groupType)}</text>
+              </g>;
             })}
           </g>
         </svg>
