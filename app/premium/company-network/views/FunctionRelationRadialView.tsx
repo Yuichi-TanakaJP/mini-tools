@@ -1,16 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { buildMapContext, selectActiveIds } from "../../industry-map/context";
-import type {
-  IndustryCompanyLink,
-  IndustryDomain,
-  IndustryEdge,
-  IndustryNode,
-  TaxonomyKind,
-} from "../../industry-map/types";
-import IndustryRadialView from "../../industry-map/views/RadialView";
+import RadialHierarchyCanvas from "../../shared/radial/RadialHierarchyCanvas";
+import type { RadialHierarchyNode } from "../../shared/radial/radial-layout";
 import styles from "../CompanyNetwork.module.css";
+import { compareFunction, compareFunctionClass } from "../function-order";
 import type {
   CompanyFunctionLink,
   CompanyNetworkCompany,
@@ -27,14 +21,9 @@ type Props = {
   onSelectCompany: (companyId: string) => void;
 };
 
-const ALL_KINDS = new Set<TaxonomyKind>([
-  "classification",
-  "product_segment",
-  "technology",
-]);
+const CLASS_TONES = ["#2563eb", "#0f9f8f", "#7c3aed", "#d97706", "#64748b", "#be123c"] as const;
 
 function presentationCompanyId(link: CompanyFunctionLink) {
-  // 同一企業が複数機能を担う場合も、各機能クラスターに1つずつ表示する。
   return `company-function:${link.linkId}`;
 }
 
@@ -46,30 +35,29 @@ function classificationNodeId(link: CompanyFunctionLink) {
   return `classification:${link.classificationId ?? link.classificationSlug ?? "other"}`;
 }
 
-function companyLinkForRadial(
-  link: CompanyFunctionLink,
-  company: CompanyNetworkCompany,
-  nodeId: string,
-): IndustryCompanyLink {
-  return {
-    linkId: `radial:${link.linkId}`,
-    companyId: company.id,
-    companyName: company.name,
-    companySlug: company.id,
-    companyStatus: company.status,
-    countryCode: company.countryCode,
-    listingStatus: company.listingStatus,
-    nodeId,
-    strategicRole: link.role === "core" ? "core" : "supporting",
-    controlType: "unknown",
-    confidence: link.confidence,
-    sourceType: link.sourceType ?? "company_function",
-    note: link.note,
-    asOf: link.asOf,
-    stockId: null,
-    stockCode: company.ticker ?? null,
-    stockName: company.name,
+function collectParentMap(roots: RadialHierarchyNode[]) {
+  const parentOf = new Map<string, string>();
+  const walk = (node: RadialHierarchyNode) => {
+    node.children.forEach((child) => {
+      parentOf.set(child.id, node.id);
+      walk(child);
+    });
   };
+  roots.forEach(walk);
+  return parentOf;
+}
+
+function withAncestors(ids: Iterable<string>, parentOf: Map<string, string>) {
+  const result = new Set<string>();
+  for (const id of ids) {
+    result.add(id);
+    let parent = parentOf.get(id);
+    while (parent && !result.has(parent)) {
+      result.add(parent);
+      parent = parentOf.get(parent);
+    }
+  }
+  return result;
 }
 
 export default function FunctionRelationRadialView({
@@ -87,108 +75,125 @@ export default function FunctionRelationRadialView({
   );
 
   const adapted = useMemo(() => {
-    const nodes = new Map<string, IndustryNode>();
-    const edges = new Map<string, IndustryEdge>();
-    const companyLinks: IndustryCompanyLink[] = [];
+    const byClass = new Map<string, CompanyFunctionLink[]>();
+    functions.forEach((link) => {
+      const key = link.classificationId ?? link.classificationSlug ?? "other";
+      byClass.set(key, [...(byClass.get(key) ?? []), link]);
+    });
+
+    const classGroups = [...byClass.entries()]
+      .map(([key, links]) => ({
+        key,
+        classificationSlug: links[0]?.classificationSlug ?? null,
+        classificationName: links[0]?.classificationName ?? "その他",
+        links,
+      }))
+      .sort(compareFunctionClass);
+
     const presentationToCompany = new Map<string, string>();
     const presentationsByCompany = new Map<string, string[]>();
-    const rootIds = new Set<string>();
 
-    for (const link of functions) {
-      const company = companyById.get(link.companyId);
-      if (!company) continue;
-
-      const classId = classificationNodeId(link);
-      const fnId = functionNodeId(link);
-      const companyNodeId = presentationCompanyId(link);
-      rootIds.add(classId);
-
-      if (!nodes.has(classId)) {
-        nodes.set(classId, {
-          id: classId,
-          domain: "company-functions",
-          kind: "classification",
-          slug: link.classificationSlug ?? classId,
-          displayName: link.classificationName ?? "その他",
-          description: `${groupName}の事業・機能大分類`,
-          status: "active",
-          layer: "function_class",
-        });
-      }
-
-      if (!nodes.has(fnId)) {
-        nodes.set(fnId, {
-          id: fnId,
-          domain: "company-functions",
-          kind: "product_segment",
-          slug: link.functionSlug,
-          displayName: link.functionName,
-          description: `${groupName}の機能領域`,
-          status: "active",
-          layer: "function",
-        });
-      }
-
-      nodes.set(companyNodeId, {
-        id: companyNodeId,
-        domain: "company-functions",
-        kind: "technology",
-        slug: company.id,
-        displayName: company.name,
-        description: `${link.role === "core" ? "主要機能" : "追加機能"}: ${link.functionName}`,
-        status: "active",
-        layer: "company",
+    const roots: RadialHierarchyNode[] = classGroups.map((group, classIndex) => {
+      const tone = CLASS_TONES[classIndex % CLASS_TONES.length];
+      const byFunction = new Map<string, CompanyFunctionLink[]>();
+      group.links.forEach((link) => {
+        byFunction.set(link.nodeId, [...(byFunction.get(link.nodeId) ?? []), link]);
       });
 
-      const classEdgeId = `${classId}->${fnId}`;
-      if (!edges.has(classEdgeId)) {
-        edges.set(classEdgeId, {
-          id: classEdgeId,
-          domain: "company-functions",
-          sourceId: classId,
-          targetId: fnId,
-          relationType: "contains",
-          note: "企業グループの事業・機能taxonomy",
-        });
-      }
+      const functionGroups = [...byFunction.values()]
+        .map((links) => ({
+          functionSlug: links[0].functionSlug,
+          functionName: links[0].functionName,
+          links,
+        }))
+        .sort(compareFunction);
 
-      const companyEdgeId = `${fnId}->${companyNodeId}`;
-      edges.set(companyEdgeId, {
-        id: companyEdgeId,
-        domain: "company-functions",
-        sourceId: fnId,
-        targetId: companyNodeId,
-        relationType: "contains",
-        note: link.role === "core" ? "主要機能" : "追加機能",
-      });
+      return {
+        id: classificationNodeId(group.links[0]),
+        label: group.classificationName,
+        title: `${group.classificationName}（事業・機能の大分類）`,
+        tone,
+        fill: tone,
+        stroke: tone,
+        strokeWidth: 2.4,
+        radius: 14,
+        labelSize: 12,
+        labelWeight: 900,
+        linkColor: tone,
+        linkWidth: 1.7,
+        children: functionGroups.map((fnGroup) => ({
+          id: functionNodeId(fnGroup.links[0]),
+          label: fnGroup.functionName,
+          title: `${fnGroup.functionName}（機能領域）`,
+          tone,
+          fill: "var(--color-bg-card)",
+          stroke: tone,
+          strokeWidth: 2,
+          radius: 8.5,
+          labelSize: 10.5,
+          labelWeight: 850,
+          linkColor: tone,
+          linkWidth: 1.25,
+          children: [...fnGroup.links]
+            .sort((a, b) => {
+              if (a.role === "core" && b.role !== "core") return -1;
+              if (a.role !== "core" && b.role === "core") return 1;
+              return (companyById.get(a.companyId)?.name ?? "").localeCompare(
+                companyById.get(b.companyId)?.name ?? "",
+                "ja",
+              );
+            })
+            .flatMap((link): RadialHierarchyNode[] => {
+              const company = companyById.get(link.companyId);
+              if (!company) return [];
+              const nodeId = presentationCompanyId(link);
+              presentationToCompany.set(nodeId, company.id);
+              presentationsByCompany.set(company.id, [
+                ...(presentationsByCompany.get(company.id) ?? []),
+                nodeId,
+              ]);
+              const core = link.role === "core";
+              return [{
+                id: nodeId,
+                label: company.name,
+                title: `${company.name} — ${core ? "主要機能" : "追加機能"}: ${fnGroup.functionName}`,
+                tone,
+                fill: "var(--color-bg-card)",
+                stroke: core ? tone : "#94a3b8",
+                strokeWidth: core ? 1.6 : 1.15,
+                radius: core ? 5.4 : 4.5,
+                labelSize: 9.4,
+                labelWeight: core ? 800 : 650,
+                linkColor: core ? tone : "#cbd5e1",
+                linkWidth: core ? 1 : 0.8,
+                children: [],
+              }];
+            }),
+        })),
+      };
+    });
 
-      presentationToCompany.set(companyNodeId, company.id);
-      presentationsByCompany.set(company.id, [
-        ...(presentationsByCompany.get(company.id) ?? []),
-        companyNodeId,
-      ]);
-      companyLinks.push(companyLinkForRadial(link, company, companyNodeId));
-    }
-
-    const domain: IndustryDomain = {
-      domain: `company-functions-${groupName}`,
-      label: `${groupName} 事業・機能`,
-      rootIds: [...rootIds],
-      nodes: [...nodes.values()],
-      edges: [...edges.values()],
-      companyLinks,
-      themeLinks: [],
+    const parentOf = collectParentMap(roots);
+    const allIds = new Set<string>();
+    const labelById = new Map<string, string>();
+    const walk = (node: RadialHierarchyNode) => {
+      allIds.add(node.id);
+      labelById.set(node.id, node.label);
+      node.children.forEach(walk);
     };
+    roots.forEach(walk);
 
     return {
-      context: buildMapContext(domain, []),
+      roots,
+      parentOf,
+      allIds,
+      labelById,
       presentationToCompany,
       presentationsByCompany,
     };
-  }, [companyById, functions, groupName]);
+  }, [companyById, functions]);
 
-  const externallySelectedCompanyId =
-    selection?.kind === "company" ? selection.id : focusCompanyId;
+  const externallySelectedCompanyId = selection?.kind === "company" ? selection.id : focusCompanyId;
   const firstSelectedPresentation = externallySelectedCompanyId
     ? adapted.presentationsByCompany.get(externallySelectedCompanyId)?.[0] ?? null
     : null;
@@ -199,22 +204,20 @@ export default function FunctionRelationRadialView({
   }, [firstSelectedPresentation]);
 
   const activeIds = useMemo(() => {
-    const base = selectActiveIds(adapted.context, ALL_KINDS, query);
-    if (!focusCompanyId || query.trim()) return base;
-
-    const focused = new Set<string>();
-    for (const nodeId of adapted.presentationsByCompany.get(focusCompanyId) ?? []) {
-      focused.add(nodeId);
-      let parent = adapted.context.parentOf.get(nodeId);
-      while (parent) {
-        focused.add(parent);
-        parent = adapted.context.parentOf.get(parent);
-      }
+    if (focusCompanyId && !query.trim()) {
+      const ids = adapted.presentationsByCompany.get(focusCompanyId) ?? [];
+      return ids.length > 0 ? withAncestors(ids, adapted.parentOf) : adapted.allIds;
     }
-    return focused.size > 0 ? focused : base;
+
+    const needle = query.trim().toLocaleLowerCase("ja");
+    if (!needle) return adapted.allIds;
+    const matches = [...adapted.labelById.entries()]
+      .filter(([, label]) => label.toLocaleLowerCase("ja").includes(needle))
+      .map(([id]) => id);
+    return withAncestors(matches, adapted.parentOf);
   }, [adapted, focusCompanyId, query]);
 
-  if (functions.length === 0 || adapted.context.domain.nodes.length === 0) {
+  if (functions.length === 0 || adapted.roots.length === 0) {
     return (
       <p className={styles.empty}>
         <strong>{groupName}</strong>には事業・機能taxonomyがまだ登録されていません。
@@ -226,15 +229,20 @@ export default function FunctionRelationRadialView({
     <div className={styles.viewFade}>
       <div className={styles.viewTools}>
         <span>{groupName}の事業・機能関係</span>
-        <span>{adapted.context.domain.rootIds.length}分類 · {functions.length}機能リンク</span>
+        <span>{adapted.roots.length}分類 · {functions.length}機能リンク</span>
       </div>
       <p className={styles.hint}>
-        Claude Code版の放射ビューと同じ描画・配置・pan/zoomを使い、大分類 → 機能領域 → 企業を複数クラスターで表示しています。同じ企業が複数機能を担う場合は複数箇所に現れます。
+        色の大きな点が大分類、白抜きの中点が機能領域、小さな点が企業です。構成ツリーと同じ分類順・色で、役割のまとまりを空間的に見ます。
       </p>
-      <IndustryRadialView
-        context={adapted.context}
+      <RadialHierarchyCanvas
+        roots={adapted.roots}
         activeIds={activeIds}
         selectedId={selectedNodeId}
+        resetKey={`${groupName}|functional-radial`}
+        ariaLabel={`${groupName}の事業・機能放射マップ`}
+        viewBoxHalf={460}
+        labelPadding={88}
+        layoutOptions={{ radiusStep: 104, satelliteOffsetDelta: -1 }}
         onSelect={(nodeId) => {
           setSelectedNodeId(nodeId);
           const companyId = adapted.presentationToCompany.get(nodeId);
