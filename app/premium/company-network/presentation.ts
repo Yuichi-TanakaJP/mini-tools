@@ -44,25 +44,25 @@ export const VIEWS: readonly {
     mode: "network",
     icon: "🕸",
     label: "関係",
-    question: "企業・企業グループのつながりを全体ネットワークで見る。",
+    question: "グループ内で確認済みの企業間relationだけを見る。",
   },
   {
     mode: "radial",
     icon: "🌐",
     label: "放射",
-    question: "選択した企業を中心に、1-hop / 2-hopの広がりを見る。",
+    question: "企業グループに誰が所属しているかを見る。",
   },
   {
     mode: "hierarchy",
     icon: "🗂",
     label: "系列",
-    question: "親会社・支配・出資の向きを保ったまま上位 / 下位をたどる。",
+    question: "出資・親会社・支配・持分法の上下構造を見る。",
   },
   {
     mode: "table",
     icon: "☰",
     label: "表",
-    question: "関係種別・比率・検証状態・根拠日を正確に確認する。",
+    question: "構成企業と確認済み事実を人が読みやすい一覧で確認する。",
   },
 ];
 
