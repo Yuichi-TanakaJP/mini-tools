@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import styles from "../CompanyNetwork.module.css";
 import functionStyles from "../FunctionViews.module.css";
+import { compareFunction, compareFunctionClass } from "../function-order";
 import type { CompanyFunctionLink, CompanyNetworkCompany } from "../types";
 
 type Props = {
@@ -23,24 +24,29 @@ export default function FunctionCoverageMatrixView({
   onSelectCompany,
 }: Props) {
   const normalized = query.trim().toLocaleLowerCase("ja");
-  const companiesSorted = useMemo(
-    () => [...companies].sort((a, b) => {
+  const companiesSorted = useMemo(() => {
+    const functionCounts = new Map<string, number>();
+    functions.forEach((link) => functionCounts.set(link.companyId, (functionCounts.get(link.companyId) ?? 0) + 1));
+    return [...companies].sort((a, b) => {
       if (focusCompanyId) {
         if (a.id === focusCompanyId) return -1;
         if (b.id === focusCompanyId) return 1;
       }
+      const countDiff = (functionCounts.get(b.id) ?? 0) - (functionCounts.get(a.id) ?? 0);
+      if (countDiff !== 0) return countDiff;
       return a.name.localeCompare(b.name, "ja");
-    }),
-    [companies, focusCompanyId],
-  );
+    });
+  }, [companies, focusCompanyId, functions]);
 
   const rows = useMemo(() => {
     const byFunction = new Map<string, CompanyFunctionLink[]>();
-    functions.forEach((link) => byFunction.set(link.functionName, [...(byFunction.get(link.functionName) ?? []), link]));
-    return [...byFunction.entries()]
-      .map(([functionName, links]) => ({
-        functionName,
-        classificationName: links[0]?.classificationName ?? "その他",
+    functions.forEach((link) => byFunction.set(link.nodeId, [...(byFunction.get(link.nodeId) ?? []), link]));
+    return [...byFunction.values()]
+      .map((links) => ({
+        functionSlug: links[0].functionSlug,
+        functionName: links[0].functionName,
+        classificationSlug: links[0].classificationSlug,
+        classificationName: links[0].classificationName ?? "その他",
         links,
       }))
       .filter((row) => {
@@ -49,14 +55,14 @@ export default function FunctionCoverageMatrixView({
           .some((value) => value.toLocaleLowerCase("ja").includes(normalized));
       })
       .sort((a, b) => {
-        const byClass = a.classificationName.localeCompare(b.classificationName, "ja");
-        return byClass !== 0 ? byClass : a.functionName.localeCompare(b.functionName, "ja");
+        const byClass = compareFunctionClass(a, b);
+        return byClass !== 0 ? byClass : compareFunction(a, b);
       });
   }, [companies, functions, normalized]);
 
   const linkByCell = useMemo(() => {
     const result = new Map<string, CompanyFunctionLink>();
-    functions.forEach((link) => result.set(`${link.functionName}:${link.companyId}`, link));
+    functions.forEach((link) => result.set(`${link.nodeId}:${link.companyId}`, link));
     return result;
   }, [functions]);
 
@@ -70,7 +76,12 @@ export default function FunctionCoverageMatrixView({
         <span>{groupName} 機能カバレッジ</span>
         <span>{rows.length}領域 × {companiesSorted.length}社</span>
       </div>
-      <p className={functionStyles.functionIntro}>行は事業・機能、列は企業です。●は主要機能、○は追加機能。横にスクロールするとグループ内の重なりと空白を比較できます。</p>
+      <div className={functionStyles.matrixLegend}>
+        <span><b className={functionStyles.legendCore}>●</b> 主要機能</span>
+        <span><b className={functionStyles.legendSupporting}>○</b> 追加機能</span>
+        <span>企業は担当機能数が多い順。表示基点を選ぶと先頭列へ固定します。</span>
+      </div>
+      <div className={functionStyles.matrixScrollHint}>← 横スクロールで全社を比較 →</div>
       <div className={functionStyles.matrixScroll}>
         <table className={functionStyles.matrixTable}>
           <thead>
@@ -86,14 +97,16 @@ export default function FunctionCoverageMatrixView({
           <tbody>
             {rows.map((row, index) => {
               const previousClass = index > 0 ? rows[index - 1].classificationName : null;
+              const newClass = previousClass !== row.classificationName;
               return (
-                <tr key={`${row.classificationName}:${row.functionName}`}>
+                <tr key={`${row.classificationSlug}:${row.functionSlug}`} className={newClass ? functionStyles.matrixClassStart : undefined}>
                   <th className={functionStyles.matrixSticky}>
-                    {previousClass !== row.classificationName ? <span className={functionStyles.matrixClass}>{row.classificationName}</span> : null}
+                    {newClass ? <span className={functionStyles.matrixClass}>{row.classificationName}</span> : null}
                     <strong>{row.functionName}</strong>
+                    <small>{new Set(row.links.map((link) => link.companyId)).size}社</small>
                   </th>
                   {companiesSorted.map((company) => {
-                    const link = linkByCell.get(`${row.functionName}:${company.id}`);
+                    const link = linkByCell.get(`${row.links[0].nodeId}:${company.id}`);
                     return (
                       <td key={company.id} className={focusCompanyId === company.id ? functionStyles.matrixFocusColumn : undefined}>
                         {link ? (
