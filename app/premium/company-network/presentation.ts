@@ -1,6 +1,6 @@
 import type { RelationCategory } from "./types";
 
-export type CompanyNetworkViewMode = "network" | "radial" | "hierarchy" | "table";
+export type CompanyNetworkViewMode = "composition" | "network" | "hierarchy" | "matrix" | "table";
 
 export const CATEGORY_LABEL: Record<RelationCategory, string> = {
   capital: "資本",
@@ -41,22 +41,28 @@ export const VIEWS: readonly {
   question: string;
 }[] = [
   {
+    mode: "composition",
+    icon: "🗂",
+    label: "構成",
+    question: "誰がこのグループに所属し、どの事業・機能を担っているかを見る。",
+  },
+  {
     mode: "network",
     icon: "🕸",
     label: "関係",
     question: "グループ内で確認済みの企業間relationだけを見る。",
   },
   {
-    mode: "radial",
-    icon: "🌐",
-    label: "放射",
-    question: "企業グループに誰が所属しているかを見る。",
-  },
-  {
     mode: "hierarchy",
-    icon: "🗂",
+    icon: "🌳",
     label: "系列",
     question: "出資・親会社・支配・持分法の上下構造を見る。",
+  },
+  {
+    mode: "matrix",
+    icon: "▦",
+    label: "機能表",
+    question: "各企業がどの事業・機能を担い、どこに厚みや空白があるかを見る。",
   },
   {
     mode: "table",

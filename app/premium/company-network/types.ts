@@ -57,6 +57,22 @@ export type CompanyGroupMembership = {
   sourceAsOf: string | null;
 };
 
+export type CompanyFunctionLink = {
+  linkId: string;
+  companyId: string;
+  nodeId: string;
+  functionSlug: string;
+  functionName: string;
+  classificationId: string | null;
+  classificationSlug: string | null;
+  classificationName: string | null;
+  role: string;
+  confidence: Confidence;
+  sourceType: string | null;
+  asOf: string | null;
+  note: string;
+};
+
 export type CompanyNetworkGroup = {
   id: string;
   name: string;
@@ -67,6 +83,7 @@ export type CompanyNetworkData = {
   companies: CompanyNetworkCompany[];
   relationships: CompanyRelationship[];
   memberships: CompanyGroupMembership[];
+  functions: CompanyFunctionLink[];
 };
 
 export type CompanyNetworkBootstrapData = {
