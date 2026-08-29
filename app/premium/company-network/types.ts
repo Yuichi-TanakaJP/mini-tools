@@ -2,6 +2,7 @@ export type RelationCategory = "capital" | "control" | "historical";
 export type VerificationStatus = "proposed" | "verified" | "rejected" | "superseded";
 export type Confidence = "high" | "medium" | "low";
 export type CompanyNetworkNodeKind = "company" | "group";
+export type CompanyNetworkScopeMode = "group" | "company";
 
 export type CompanyNetworkNodeSelection = {
   kind: CompanyNetworkNodeKind;
@@ -69,9 +70,12 @@ export type CompanyNetworkData = {
 };
 
 export type CompanyNetworkBootstrapData = {
+  /** @deprecated group-first UIでは使用しない。互換性のため残す。 */
   entryCompanies: CompanyNetworkCompany[];
   groups: CompanyNetworkGroup[];
+  /** @deprecated group-first UIでは使用しない。互換性のため残す。 */
   defaultCompanyId: string;
+  defaultGroupId: string;
 };
 
 export type CompanyNetworkBootstrapResult =
