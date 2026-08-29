@@ -7,6 +7,7 @@ import { CATEGORY_LABEL, VIEWS, type CompanyNetworkViewMode } from "./presentati
 import type {
   CompanyNetworkBootstrapResult,
   CompanyNetworkData,
+  CompanyNetworkNodeSelection,
   CompanyNetworkScopeResult,
   RelationCategory,
 } from "./types";
@@ -20,6 +21,7 @@ const ALL_CATEGORIES: readonly RelationCategory[] = ["capital", "control", "hist
 
 type ScopedState = { key: string; data: CompanyNetworkData };
 type ScopedError = { key: string; message: string };
+type ScopedSelection = CompanyNetworkNodeSelection & { key: string };
 
 function StateScreen({ title, body }: { title: string; body: string }) {
   return (
@@ -42,7 +44,7 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
 
   const [view, setView] = useState<CompanyNetworkViewMode>("network");
   const [centerCompanyId, setCenterCompanyId] = useState(defaultCompanyId);
-  const [selectedCompanyId, setSelectedCompanyId] = useState(defaultCompanyId);
+  const [selection, setSelection] = useState<ScopedSelection | null>(null);
   const [selectedRelationId, setSelectedRelationId] = useState<string | null>(null);
   const [hops, setHops] = useState<1 | 2>(2);
   const [categories, setCategories] = useState<Set<RelationCategory>>(() => new Set(ALL_CATEGORIES));
@@ -57,6 +59,10 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
   const scope = scopedState?.key === requestKey ? scopedState.data : null;
   const loadError = scopedError?.key === requestKey ? scopedError.message : null;
   const loading = Boolean(centerCompanyId) && scope === null && loadError === null;
+  const activeSelection: CompanyNetworkNodeSelection | null = selection?.key === requestKey
+    ? { kind: selection.kind, id: selection.id }
+    : null;
+  const selectedCompanyId = activeSelection?.kind === "company" ? activeSelection.id : "";
   const entryCompanyIds = useMemo(() => new Set(entryCompanies.map((company) => company.id)), [entryCompanies]);
   const temporaryCenter = entryCompanyIds.has(centerCompanyId)
     ? null
@@ -92,7 +98,13 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
         setScopedState({ key, data });
         setScopedError(null);
         setSelectedRelationId(null);
-        setSelectedCompanyId((current) => data.companies.some((company) => company.id === current) ? current : centerCompanyId);
+        setSelection((current) => {
+          if (current?.key === key) {
+            if (current.kind === "company" && data.companies.some((company) => company.id === current.id)) return current;
+            if (current.kind === "group" && data.memberships.some((membership) => membership.groupId === current.id)) return current;
+          }
+          return { key, kind: "company", id: centerCompanyId };
+        });
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
@@ -104,20 +116,24 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
 
   const relationships = scope?.relationships ?? [];
   const memberships = scope?.memberships ?? [];
-  const selectedCompany = scope?.companies.find((company) => company.id === selectedCompanyId) ?? null;
   const selectedRelation = relationships.find((relationship) => relationship.relationId === selectedRelationId) ?? null;
   const viewIndex = VIEWS.findIndex((item) => item.mode === view);
   const showHopControl = view === "radial" || view === "hierarchy";
   const showGroupControl = view === "network" || view === "radial";
 
-  const selectNode = (companyId: string) => {
-    setSelectedCompanyId(companyId);
+  const selectCompany = (companyId: string) => {
+    setSelection({ key: requestKey, kind: "company", id: companyId });
+    setSelectedRelationId(null);
+  };
+
+  const selectGroup = (groupId: string) => {
+    setSelection({ key: requestKey, kind: "group", id: groupId });
     setSelectedRelationId(null);
   };
 
   const changeCenter = (companyId: string) => {
     setCenterCompanyId(companyId);
-    setSelectedCompanyId(companyId);
+    setSelection(null);
     setSelectedRelationId(null);
   };
 
@@ -147,7 +163,7 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
         <div className={styles.heroHead}>
           <div>
             <h1 className={styles.heroTitle}>企業関係マップ</h1>
-            <p className={styles.heroLead}>企業グループと入口企業だけを先に読み込み、選択した企業の周辺データを必要な時だけ取得します。閲覧専用です。</p>
+            <p className={styles.heroLead}>企業・企業グループを選択しながら、中心企業の周辺データを必要な時だけ取得して確認します。閲覧専用です。</p>
           </div>
           <span className={styles.versionBadge}>company-network v3</span>
         </div>
@@ -219,16 +235,16 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
           {loading ? <p className={styles.empty}>選択企業の関係を読み込んでいます…</p> : null}
           {loadError ? <p className={styles.empty}>{loadError}</p> : null}
           {!loading && scope && relationships.length === 0 && memberships.length === 0 ? <p className={styles.empty}>現在の条件では表示できる関係がありません。</p> : null}
-          {scope && view === "network" ? <NetworkView companies={scope.companies} relationships={relationships} memberships={memberships} centerCompanyId={centerCompanyId} selectedCompanyId={selectedCompanyId} selectedRelationId={selectedRelationId} query={query} onSelectCompany={selectNode} onSelectRelation={setSelectedRelationId} /> : null}
-          {scope && view === "radial" ? <RadialView companies={scope.companies} relationships={relationships} memberships={memberships} centerCompanyId={centerCompanyId} selectedCompanyId={selectedCompanyId} selectedRelationId={selectedRelationId} hops={hops} query={query} onSelectCompany={selectNode} onSelectRelation={setSelectedRelationId} /> : null}
-          {scope && view === "hierarchy" ? <HierarchyView companies={scope.companies} relationships={relationships} centerCompanyId={centerCompanyId} selectedCompanyId={selectedCompanyId} selectedRelationId={selectedRelationId} hops={hops} query={query} onSelectCompany={selectNode} onSelectRelation={setSelectedRelationId} /> : null}
-          {scope && view === "table" ? <TableView relationships={relationships} selectedRelationId={selectedRelationId} query={query} onSelectRelation={setSelectedRelationId} onSelectCompany={selectNode} /> : null}
+          {scope && view === "network" ? <NetworkView companies={scope.companies} relationships={relationships} memberships={memberships} centerCompanyId={centerCompanyId} selection={activeSelection} selectedRelationId={selectedRelationId} query={query} onSelectCompany={selectCompany} onSelectGroup={selectGroup} onSelectRelation={setSelectedRelationId} /> : null}
+          {scope && view === "radial" ? <RadialView companies={scope.companies} relationships={relationships} memberships={memberships} centerCompanyId={centerCompanyId} selection={activeSelection} selectedRelationId={selectedRelationId} hops={hops} query={query} onSelectCompany={selectCompany} onSelectGroup={selectGroup} onSelectRelation={setSelectedRelationId} /> : null}
+          {scope && view === "hierarchy" ? <HierarchyView companies={scope.companies} relationships={relationships} centerCompanyId={centerCompanyId} selectedCompanyId={selectedCompanyId} selectedRelationId={selectedRelationId} hops={hops} query={query} onSelectCompany={selectCompany} onSelectRelation={setSelectedRelationId} /> : null}
+          {scope && view === "table" ? <TableView relationships={relationships} selectedRelationId={selectedRelationId} query={query} onSelectRelation={setSelectedRelationId} onSelectCompany={selectCompany} /> : null}
         </section>
 
-        <DetailPanel company={selectedCompany} centerCompanyId={centerCompanyId} relationships={relationships} memberships={memberships} selectedRelation={selectedRelation} onSelectCompany={selectNode} onSelectRelation={setSelectedRelationId} onMakeCenter={changeCenter} />
+        <DetailPanel groups={bootstrap.groups} companies={scope?.companies ?? []} selection={activeSelection} centerCompanyId={centerCompanyId} relationships={relationships} memberships={memberships} selectedRelation={selectedRelation} onSelectCompany={selectCompany} onSelectGroup={selectGroup} onSelectRelation={setSelectedRelationId} onMakeCenter={changeCenter} />
       </div>
 
-      <p className={styles.note}>ノード選択は詳細と強調だけを変え、配置は動かしません。中心企業を変える場合だけ周辺データを再取得し、「再配置」は同じノード集合の位置だけを計算し直します。</p>
+      <p className={styles.note}>企業・企業グループの選択は詳細と強調だけを変え、配置は動かしません。中心企業を変える場合だけ周辺データを再取得し、「再配置」は同じノード集合の位置だけを計算し直します。</p>
     </main>
   );
 }
