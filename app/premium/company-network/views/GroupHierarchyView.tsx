@@ -3,6 +3,7 @@
 import { useMemo, type ReactNode } from "react";
 import styles from "../CompanyNetwork.module.css";
 import relationStyles from "../RelationshipViews.module.css";
+import claudeStyles from "../ClaudeUi.module.css";
 import { relationLabel } from "../presentation";
 import type { CompanyNetworkCompany, CompanyRelationship } from "../types";
 
@@ -75,8 +76,8 @@ export default function GroupHierarchyView({
 
   if (seriesRelationships.length === 0) {
     return (
-      <div className={`${styles.seriesView} ${styles.viewFade}`}>
-        <p className={styles.seriesIntro}><strong>{groupName}</strong>の所属企業は確認済みですが、グループ内の資本・支配関係はまだ登録されていません。表示不具合ではなく、企業間relationのデータが未登録です。</p>
+      <div className={`${claudeStyles.view} ${styles.viewFade}`}>
+        <p className={`${styles.seriesIntro} ${claudeStyles.hierarchyIntro}`}><strong>{groupName}</strong>の所属企業は確認済みですが、グループ内の資本・支配関係はまだ登録されていません。</p>
       </div>
     );
   }
@@ -101,14 +102,13 @@ export default function GroupHierarchyView({
 
           return (
             <div key={relationship.relationId} className={`${relationStyles.treeBranch} ${dimmed ? relationStyles.treeBranchDim : ""}`}>
-              <div className={`${relationStyles.treeNode} ${selected ? relationStyles.treeNodeSelected : ""}`}>
-                <button type="button" className={relationStyles.treeCompany} onClick={() => onSelectCompany(target.id)} aria-pressed={selected}>
+              <div className={`${relationStyles.treeNode} ${claudeStyles.hierarchyNode} ${selected ? relationStyles.treeNodeSelected : ""}`}>
+                <button type="button" className={`${relationStyles.treeCompany} ${claudeStyles.hierarchyCompany}`} onClick={() => onSelectCompany(target.id)} aria-pressed={selected}>
                   <strong>{target.name}</strong>
-                  <small>{relationship.sourceCompanyName} からの確認済み関係</small>
                 </button>
                 <button
                   type="button"
-                  className={`${relationStyles.treeRelation} ${relationSelected ? relationStyles.treeRelationActive : ""}`}
+                  className={`${relationStyles.treeRelation} ${claudeStyles.hierarchyRelation} ${relationSelected ? relationStyles.treeRelationActive : ""}`}
                   onClick={() => onSelectRelation(relationship.relationId)}
                   aria-pressed={relationSelected}
                 >
@@ -124,15 +124,15 @@ export default function GroupHierarchyView({
   };
 
   return (
-    <div className={`${styles.seriesView} ${styles.viewFade}`}>
-      <p className={styles.seriesIntro}><strong>{groupName}</strong>内で確認済みの出資・親会社・支配・持分法関係を、起点から枝をたどるツリーとして表示します。グループ所属そのものは親子関係として扱いません。</p>
+    <div className={`${claudeStyles.view} ${styles.viewFade}`}>
+      <p className={`${styles.seriesIntro} ${claudeStyles.hierarchyIntro}`}><strong>{groupName}</strong>内の出資・親会社・支配・持分法関係だけを資本ツリーとして表示します。グループ所属は親子関係に含めません。</p>
       <div className={relationStyles.treeForest}>
         {treeModel.rootIds.map((rootId, treeIndex) => {
           const root = companyById.get(rootId);
           if (!root) return null;
           return (
-            <section key={`${rootId}:${treeIndex}`} className={relationStyles.treeSection}>
-              <button type="button" className={relationStyles.treeRoot} onClick={() => onSelectCompany(root.id)} aria-pressed={selectedCompanyId === root.id}>
+            <section key={`${rootId}:${treeIndex}`} className={`${relationStyles.treeSection} ${claudeStyles.hierarchySection}`}>
+              <button type="button" className={`${relationStyles.treeRoot} ${claudeStyles.hierarchyRoot}`} onClick={() => onSelectCompany(root.id)} aria-pressed={selectedCompanyId === root.id}>
                 <span>ROOT</span>
                 <strong>{root.name}</strong>
                 <small>確認済み資本・支配構造の起点</small>
