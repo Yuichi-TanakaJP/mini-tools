@@ -55,11 +55,20 @@ export type RadialLayoutOptions = {
   radiusStep?: number;
   /** Claude Code版は0。企業グループの少数クラスターでは-1で衛星rootを少し内側へ寄せる。 */
   satelliteOffsetDelta?: number;
+  /** 1.0で従来どおり。1未満では各親配下のfanを中心へ寄せる。 */
+  childFanRatio?: number;
+  /** fan圧縮時に各leafへ最低限確保する円周上の距離。layout座標px相当。 */
+  minLeafArc?: number;
 };
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
 
 /**
  * Claude Code版の radial tree と同じ思想の汎用レイアウト。
  * 葉数で角度を配分し、最大の木を中心、残りのrootを衛星クラスターとして外側へ配置する。
+ * childFanRatioを指定した利用側だけ、子fanを中心寄せできる。既定値1.0は従来表示と同一。
  */
 export function layoutRadialHierarchy(
   roots: RadialHierarchyNode[],
@@ -67,6 +76,8 @@ export function layoutRadialHierarchy(
 ): RadialHierarchyLayout {
   const radiusStep = options.radiusStep ?? 100;
   const satelliteOffsetDelta = options.satelliteOffsetDelta ?? 0;
+  const childFanRatio = clamp(options.childFanRatio ?? 1, 0.5, 1);
+  const minLeafArc = Math.max(0, options.minLeafArc ?? 0);
   const points: RadialHierarchyPoint[] = [];
   const links: RadialHierarchyLink[] = [];
   const parentOf = new Map<string, string>();
@@ -103,9 +114,18 @@ export function layoutRadialHierarchy(
     points.push(point);
 
     const leaves = countLeaves(item);
-    let cursor = startAngle;
+    const rawSpan = endAngle - startAngle;
+    const leafRadius = Math.max(radiusStep, leafRing * radiusStep);
+    const requestedSpan = rawSpan * childFanRatio;
+    const minimumSpan = Math.min(rawSpan, leaves * (minLeafArc / leafRadius));
+    const childSpan = item.children.length <= 1
+      ? rawSpan
+      : Math.min(rawSpan, Math.max(requestedSpan, minimumSpan));
+    const childStart = angle - childSpan / 2;
+    let cursor = childStart;
+
     for (const child of item.children) {
-      const span = ((endAngle - startAngle) * countLeaves(child)) / leaves;
+      const span = (childSpan * countLeaves(child)) / leaves;
       const childPoint = place(child, cursor, cursor + span, treeDepth + 1, depthOffset, leafRing);
       parentOf.set(child.id, item.id);
       links.push({

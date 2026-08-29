@@ -250,7 +250,12 @@ export default function FunctionRelationRadialView({
         ariaLabel={`${groupName}の事業・機能放射マップ`}
         viewBoxHalf={500}
         labelPadding={118}
-        layoutOptions={{ radiusStep: 100, satelliteOffsetDelta: 0 }}
+        layoutOptions={{
+          radiusStep: 100,
+          satelliteOffsetDelta: 0,
+          childFanRatio: 0.78,
+          minLeafArc: 28,
+        }}
         onSelect={(nodeId) => {
           setSelectedNodeId(nodeId);
           const companyId = adapted.presentationToCompany.get(nodeId);
