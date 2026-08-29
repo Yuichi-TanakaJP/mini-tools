@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import styles from "../CompanyNetwork.module.css";
+import functionStyles from "../FunctionViews.module.css";
 import type {
   CompanyFunctionLink,
   CompanyNetworkCompany,
@@ -75,32 +76,33 @@ export default function FunctionClusterView({
 
   if (functions.length === 0) {
     return (
-      <div className={`${styles.functionView} ${styles.viewFade}`}>
+      <div className={`${functionStyles.functionView} ${styles.viewFade}`}>
         <p className={styles.seriesIntro}><strong>{groupName}</strong>には所属企業がありますが、事業・機能taxonomyがまだ登録されていません。</p>
       </div>
     );
   }
 
   return (
-    <div className={`${styles.functionView} ${styles.viewFade}`}>
+    <div className={`${functionStyles.functionView} ${styles.viewFade}`}>
       <div className={styles.viewTools}>
         <span>{groupName}の事業・機能構成</span>
         <span>{mappedCompanyIds.size}/{companies.length}社 · {functions.length}機能リンク</span>
       </div>
-      <p className={styles.functionIntro}>企業を単純に並べず、公式情報から確認した「何を担う会社か」でまとめています。濃いバッジは主要機能、薄いバッジは追加機能です。</p>
+      <p className={functionStyles.functionIntro}>企業を単純に並べず、公式情報から確認した「何を担う会社か」でまとめています。濃いバッジは主要機能、薄いバッジは追加機能です。</p>
 
-      <div className={styles.functionClusterGrid}>
+      <div className={functionStyles.functionClusterGrid}>
         {clusters.map((cluster, clusterIndex) => {
           const classLinks = cluster.functions.flatMap((item) => item.links);
           const classCompanyCount = new Set(classLinks.map((link) => link.companyId)).size;
+          const toneClass = functionStyles[`functionTone${clusterIndex % 5}`] ?? "";
           return (
-            <section key={cluster.classificationName} className={`${styles.functionCluster} ${styles[`functionTone${clusterIndex % 5}`] ?? ""}`}>
-              <header className={styles.functionClusterHead}>
+            <section key={cluster.classificationName} className={`${functionStyles.functionCluster} ${toneClass}`}>
+              <header className={functionStyles.functionClusterHead}>
                 <div><span>FUNCTION CLASS</span><h3>{cluster.classificationName}</h3></div>
                 <strong>{classCompanyCount}社</strong>
               </header>
 
-              <div className={styles.functionRows}>
+              <div className={functionStyles.functionRows}>
                 {cluster.functions.map((item) => {
                   const visibleLinks = item.links.filter((link) => {
                     if (focusCompanyId && link.companyId !== focusCompanyId) return false;
@@ -111,12 +113,12 @@ export default function FunctionClusterView({
                   });
                   if (visibleLinks.length === 0) return null;
                   return (
-                    <div key={item.functionName} className={styles.functionRow}>
-                      <div className={styles.functionRowHead}>
+                    <div key={item.functionName} className={functionStyles.functionRow}>
+                      <div className={functionStyles.functionRowHead}>
                         <strong>{item.functionName}</strong>
                         <span>{visibleLinks.length}社</span>
                       </div>
-                      <div className={styles.functionCompanies}>
+                      <div className={functionStyles.functionCompanies}>
                         {visibleLinks
                           .sort((a, b) => {
                             if (a.role === "core" && b.role !== "core") return -1;
@@ -132,7 +134,7 @@ export default function FunctionClusterView({
                               <button
                                 key={link.linkId}
                                 type="button"
-                                className={`${styles.functionCompany} ${link.role === "core" ? styles.functionCompanyCore : styles.functionCompanySupporting} ${selected ? styles.functionCompanySelected : ""}`}
+                                className={`${functionStyles.functionCompany} ${link.role === "core" ? functionStyles.functionCompanyCore : functionStyles.functionCompanySupporting} ${selected ? functionStyles.functionCompanySelected : ""}`}
                                 onClick={() => onSelectCompany(company.id)}
                               >
                                 <strong>{company.name}</strong>
@@ -152,7 +154,7 @@ export default function FunctionClusterView({
       </div>
 
       {unmapped.length > 0 ? (
-        <section className={styles.unmappedBox}>
+        <section className={functionStyles.unmappedBox}>
           <div><strong>機能未分類</strong><span>{unmapped.length}社</span></div>
           <p>{unmapped.map((company) => company.name).join(" / ")}</p>
         </section>
