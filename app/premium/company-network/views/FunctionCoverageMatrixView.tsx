@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import styles from "../CompanyNetwork.module.css";
+import functionStyles from "../FunctionViews.module.css";
 import type { CompanyFunctionLink, CompanyNetworkCompany } from "../types";
 
 type Props = {
@@ -64,19 +65,19 @@ export default function FunctionCoverageMatrixView({
   }
 
   return (
-    <div className={`${styles.matrixView} ${styles.viewFade}`}>
+    <div className={`${functionStyles.matrixView} ${styles.viewFade}`}>
       <div className={styles.viewTools}>
         <span>{groupName} 機能カバレッジ</span>
         <span>{rows.length}領域 × {companiesSorted.length}社</span>
       </div>
-      <p className={styles.functionIntro}>行は事業・機能、列は企業です。●は主要機能、○は追加機能。横にスクロールするとグループ内の重なりと空白を比較できます。</p>
-      <div className={styles.matrixScroll}>
-        <table className={styles.matrixTable}>
+      <p className={functionStyles.functionIntro}>行は事業・機能、列は企業です。●は主要機能、○は追加機能。横にスクロールするとグループ内の重なりと空白を比較できます。</p>
+      <div className={functionStyles.matrixScroll}>
+        <table className={functionStyles.matrixTable}>
           <thead>
             <tr>
-              <th className={styles.matrixSticky}>機能</th>
+              <th className={functionStyles.matrixSticky}>機能</th>
               {companiesSorted.map((company) => (
-                <th key={company.id} className={focusCompanyId === company.id ? styles.matrixFocusColumn : undefined}>
+                <th key={company.id} className={focusCompanyId === company.id ? functionStyles.matrixFocusColumn : undefined}>
                   <button type="button" onClick={() => onSelectCompany(company.id)}>{company.name}</button>
                 </th>
               ))}
@@ -87,24 +88,24 @@ export default function FunctionCoverageMatrixView({
               const previousClass = index > 0 ? rows[index - 1].classificationName : null;
               return (
                 <tr key={`${row.classificationName}:${row.functionName}`}>
-                  <th className={styles.matrixSticky}>
-                    {previousClass !== row.classificationName ? <span className={styles.matrixClass}>{row.classificationName}</span> : null}
+                  <th className={functionStyles.matrixSticky}>
+                    {previousClass !== row.classificationName ? <span className={functionStyles.matrixClass}>{row.classificationName}</span> : null}
                     <strong>{row.functionName}</strong>
                   </th>
                   {companiesSorted.map((company) => {
                     const link = linkByCell.get(`${row.functionName}:${company.id}`);
                     return (
-                      <td key={company.id} className={focusCompanyId === company.id ? styles.matrixFocusColumn : undefined}>
+                      <td key={company.id} className={focusCompanyId === company.id ? functionStyles.matrixFocusColumn : undefined}>
                         {link ? (
                           <button
                             type="button"
-                            className={link.role === "core" ? styles.matrixCore : styles.matrixSupporting}
+                            className={link.role === "core" ? functionStyles.matrixCore : functionStyles.matrixSupporting}
                             title={`${company.name}: ${row.functionName} (${link.role === "core" ? "主要" : "追加"})`}
                             onClick={() => onSelectCompany(company.id)}
                           >
                             {link.role === "core" ? "●" : "○"}
                           </button>
-                        ) : <span className={styles.matrixEmpty}>—</span>}
+                        ) : <span className={functionStyles.matrixEmpty}>—</span>}
                       </td>
                     );
                   })}
