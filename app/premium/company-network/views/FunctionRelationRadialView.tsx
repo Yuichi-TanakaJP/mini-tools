@@ -21,7 +21,12 @@ type Props = {
   onSelectCompany: (companyId: string) => void;
 };
 
-const CLASS_TONES = ["#2563eb", "#0f9f8f", "#7c3aed", "#d97706", "#64748b", "#be123c"] as const;
+// Claude Code版の視覚原則をそのまま使う。
+// 色はカテゴリ数ではなく「階層の意味」に割り当て、図全体を一つの構造として読ませる。
+const LEVEL_CLASS = "#2554ff";
+const LEVEL_FUNCTION = "#0d9488";
+const LEVEL_COMPANY = "#7c3aed";
+const HIERARCHY_LINK = "#94a3b8";
 
 function presentationCompanyId(link: CompanyFunctionLink) {
   return `company-function:${link.linkId}`;
@@ -93,8 +98,7 @@ export default function FunctionRelationRadialView({
     const presentationToCompany = new Map<string, string>();
     const presentationsByCompany = new Map<string, string[]>();
 
-    const roots: RadialHierarchyNode[] = classGroups.map((group, classIndex) => {
-      const tone = CLASS_TONES[classIndex % CLASS_TONES.length];
+    const roots: RadialHierarchyNode[] = classGroups.map((group) => {
       const byFunction = new Map<string, CompanyFunctionLink[]>();
       group.links.forEach((link) => {
         byFunction.set(link.nodeId, [...(byFunction.get(link.nodeId) ?? []), link]);
@@ -112,28 +116,28 @@ export default function FunctionRelationRadialView({
         id: classificationNodeId(group.links[0]),
         label: group.classificationName,
         title: `${group.classificationName}（事業・機能の大分類）`,
-        tone,
-        fill: tone,
-        stroke: tone,
-        strokeWidth: 2.4,
-        radius: 14,
-        labelSize: 12,
+        tone: LEVEL_CLASS,
+        fill: LEVEL_CLASS,
+        stroke: LEVEL_CLASS,
+        strokeWidth: 2,
+        radius: 13,
+        labelSize: 11,
         labelWeight: 900,
-        linkColor: tone,
-        linkWidth: 1.7,
+        linkColor: HIERARCHY_LINK,
+        linkWidth: 1.2,
         children: functionGroups.map((fnGroup) => ({
           id: functionNodeId(fnGroup.links[0]),
           label: fnGroup.functionName,
           title: `${fnGroup.functionName}（機能領域）`,
-          tone,
+          tone: LEVEL_FUNCTION,
           fill: "var(--color-bg-card)",
-          stroke: tone,
+          stroke: LEVEL_FUNCTION,
           strokeWidth: 2,
-          radius: 8.5,
-          labelSize: 10.5,
-          labelWeight: 850,
-          linkColor: tone,
-          linkWidth: 1.25,
+          radius: 8,
+          labelSize: 11,
+          labelWeight: 800,
+          linkColor: HIERARCHY_LINK,
+          linkWidth: 1.2,
           children: [...fnGroup.links]
             .sort((a, b) => {
               if (a.role === "core" && b.role !== "core") return -1;
@@ -157,15 +161,16 @@ export default function FunctionRelationRadialView({
                 id: nodeId,
                 label: company.name,
                 title: `${company.name} — ${core ? "主要機能" : "追加機能"}: ${fnGroup.functionName}`,
-                tone,
-                fill: "var(--color-bg-card)",
-                stroke: core ? tone : "#94a3b8",
-                strokeWidth: core ? 1.6 : 1.15,
-                radius: core ? 5.4 : 4.5,
-                labelSize: 9.4,
-                labelWeight: core ? 800 : 650,
-                linkColor: core ? tone : "#cbd5e1",
-                linkWidth: core ? 1 : 0.8,
+                tone: LEVEL_COMPANY,
+                fill: core ? LEVEL_COMPANY : "var(--color-bg-card)",
+                stroke: LEVEL_COMPANY,
+                strokeWidth: core ? 1.8 : 1.4,
+                radius: core ? 6 : 5,
+                labelSize: 10,
+                labelWeight: core ? 750 : 700,
+                labelColor: "var(--color-text-sub)",
+                linkColor: HIERARCHY_LINK,
+                linkWidth: 1.2,
                 children: [],
               }];
             }),
@@ -232,7 +237,7 @@ export default function FunctionRelationRadialView({
         <span>{adapted.roots.length}分類 · {functions.length}機能リンク</span>
       </div>
       <p className={styles.hint}>
-        色の大きな点が大分類、白抜きの中点が機能領域、小さな点が企業です。構成ツリーと同じ分類順・色で、役割のまとまりを空間的に見ます。
+        青=大分類、緑=機能領域、紫=企業。構成ツリーと同じ階層を、Claude Code版と同じ放射レイアウトで見ます。
       </p>
       <RadialHierarchyCanvas
         roots={adapted.roots}
@@ -240,9 +245,9 @@ export default function FunctionRelationRadialView({
         selectedId={selectedNodeId}
         resetKey={`${groupName}|functional-radial`}
         ariaLabel={`${groupName}の事業・機能放射マップ`}
-        viewBoxHalf={460}
-        labelPadding={88}
-        layoutOptions={{ radiusStep: 104, satelliteOffsetDelta: -1 }}
+        viewBoxHalf={500}
+        labelPadding={118}
+        layoutOptions={{ radiusStep: 100, satelliteOffsetDelta: 0 }}
         onSelect={(nodeId) => {
           setSelectedNodeId(nodeId);
           const companyId = adapted.presentationToCompany.get(nodeId);
