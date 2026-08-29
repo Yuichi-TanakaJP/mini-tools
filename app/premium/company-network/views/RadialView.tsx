@@ -192,7 +192,7 @@ export default function RadialView({
                   }
                 }}
               >
-                {selected ? <rect x="-68" y="-33" width="136" height="66" rx="18" className={styles.radialGroupPulse} /> : null}
+                {selected ? <rect x="-68" y="-33" width="136" height="66" rx="18" className={styles.pulse} fill="none" stroke="#d97706" strokeWidth="2" /> : null}
                 <rect x="-60" y="-25" width="120" height="50" rx="14" className={styles.radialGroupNode} />
                 <text textAnchor="middle" y="-2" className={styles.radialGroupLabel}>{truncate(membership.groupName, 13)}</text>
                 <text textAnchor="middle" y="13" className={styles.radialGroupMeta}>{groupTypeLabel(membership.groupType)}</text>
