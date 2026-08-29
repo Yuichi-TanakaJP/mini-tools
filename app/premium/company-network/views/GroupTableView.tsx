@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import styles from "../CompanyNetwork.module.css";
+import functionStyles from "../FunctionViews.module.css";
 import { formatAsOf, relationLabel } from "../presentation";
 import type {
   CompanyFunctionLink,
@@ -159,7 +160,7 @@ export default function GroupTableView({
                     <tr key={membership.membershipId} className={selected || focusCompanyId === membership.companyId ? styles.tableRowSelected : undefined} onClick={() => onSelectCompany(membership.companyId)}>
                       <td><button type="button" className={styles.tableCompanyButton} onClick={(event) => { event.stopPropagation(); onSelectCompany(membership.companyId); }}>{membership.companyName}</button></td>
                       <td>{listingLabel(company?.listingStatus ?? "")}</td>
-                      <td className={styles.tableFunction}>{functionSummary}</td>
+                      <td className={functionStyles.tableFunction}>{functionSummary}</td>
                       <td className={styles.tableRelation}>{relationSummary}</td>
                       <td>{formatAsOf(latestFunctionAsOf ?? membership.sourceAsOf)}</td>
                       <td className={styles.tableSource}>
