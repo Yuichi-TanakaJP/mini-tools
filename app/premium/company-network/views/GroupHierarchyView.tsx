@@ -1,16 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import styles from "../CompanyNetwork.module.css";
+import relationStyles from "../RelationshipViews.module.css";
 import { relationLabel } from "../presentation";
 import type { CompanyNetworkCompany, CompanyRelationship } from "../types";
 
 const SERIES_TYPES = new Set(["equity_ownership", "parent_of", "controls", "equity_method_investment"]);
-
-type TreeRow = {
-  relationship: CompanyRelationship;
-  depth: number;
-};
 
 type Props = {
   groupName: string;
@@ -40,42 +36,41 @@ export default function GroupHierarchyView({
     [relationships],
   );
 
-  const forest = useMemo(() => {
+  const treeModel = useMemo(() => {
     const children = new Map<string, CompanyRelationship[]>();
     const sourceIds = new Set<string>();
     const targetIds = new Set<string>();
+
     seriesRelationships.forEach((relationship) => {
       sourceIds.add(relationship.sourceCompanyId);
       targetIds.add(relationship.targetCompanyId);
       children.set(relationship.sourceCompanyId, [...(children.get(relationship.sourceCompanyId) ?? []), relationship]);
     });
-    const roots = [...sourceIds].filter((id) => !targetIds.has(id));
-    const rootIds = roots.length > 0 ? roots : [...sourceIds].slice(0, 1);
-    const used = new Set<string>();
 
-    const walk = (companyId: string, depth: number, path: Set<string>, rows: TreeRow[]) => {
+    for (const [sourceId, links] of children) {
+      children.set(sourceId, [...links].sort((a, b) => a.targetCompanyName.localeCompare(b.targetCompanyName, "ja")));
+    }
+
+    const rootIds = [...sourceIds].filter((id) => !targetIds.has(id));
+    const visitedRelations = new Set<string>();
+    const markReachable = (companyId: string, path: Set<string>) => {
       for (const relationship of children.get(companyId) ?? []) {
-        if (used.has(relationship.relationId)) continue;
-        used.add(relationship.relationId);
-        rows.push({ relationship, depth });
+        if (visitedRelations.has(relationship.relationId)) continue;
+        visitedRelations.add(relationship.relationId);
         if (!path.has(relationship.targetCompanyId)) {
-          walk(relationship.targetCompanyId, depth + 1, new Set([...path, relationship.targetCompanyId]), rows);
+          markReachable(relationship.targetCompanyId, new Set([...path, relationship.targetCompanyId]));
         }
       }
     };
 
-    const trees = rootIds.map((rootId) => {
-      const rows: TreeRow[] = [];
-      walk(rootId, 1, new Set([rootId]), rows);
-      return { rootId, rows };
+    rootIds.forEach((rootId) => markReachable(rootId, new Set([rootId])));
+    seriesRelationships.forEach((relationship) => {
+      if (visitedRelations.has(relationship.relationId)) return;
+      if (!rootIds.includes(relationship.sourceCompanyId)) rootIds.push(relationship.sourceCompanyId);
+      markReachable(relationship.sourceCompanyId, new Set([relationship.sourceCompanyId]));
     });
 
-    const leftovers = seriesRelationships.filter((relationship) => !used.has(relationship.relationId));
-    if (leftovers.length > 0) {
-      const rows = leftovers.map((relationship) => ({ relationship, depth: 1 }));
-      trees.push({ rootId: leftovers[0].sourceCompanyId, rows });
-    }
-    return trees;
+    return { children, rootIds };
   }, [seriesRelationships]);
 
   if (seriesRelationships.length === 0) {
@@ -86,39 +81,67 @@ export default function GroupHierarchyView({
     );
   }
 
+  const renderChildren = (companyId: string, path: Set<string>): ReactNode => {
+    const links = treeModel.children.get(companyId) ?? [];
+    if (links.length === 0) return null;
+
+    return (
+      <div className={relationStyles.treeChildren}>
+        {links.map((relationship) => {
+          const target = companyById.get(relationship.targetCompanyId);
+          if (!target) return null;
+          const cycle = path.has(target.id);
+          const dimmed = normalized.length > 0 && ![
+            relationship.sourceCompanyName,
+            relationship.targetCompanyName,
+            relationLabel(relationship.relationType, relationship.ownershipPct),
+          ].some((value) => value.toLocaleLowerCase("ja").includes(normalized));
+          const selected = selectedCompanyId === target.id;
+          const relationSelected = selectedRelationId === relationship.relationId;
+
+          return (
+            <div key={relationship.relationId} className={`${relationStyles.treeBranch} ${dimmed ? relationStyles.treeBranchDim : ""}`}>
+              <div className={`${relationStyles.treeNode} ${selected ? relationStyles.treeNodeSelected : ""}`}>
+                <button type="button" className={relationStyles.treeCompany} onClick={() => onSelectCompany(target.id)} aria-pressed={selected}>
+                  <strong>{target.name}</strong>
+                  <small>{relationship.sourceCompanyName} からの確認済み関係</small>
+                </button>
+                <button
+                  type="button"
+                  className={`${relationStyles.treeRelation} ${relationSelected ? relationStyles.treeRelationActive : ""}`}
+                  onClick={() => onSelectRelation(relationship.relationId)}
+                  aria-pressed={relationSelected}
+                >
+                  {relationLabel(relationship.relationType, relationship.ownershipPct)}
+                </button>
+              </div>
+              {cycle ? <p className={relationStyles.treeCycle}>循環参照のため、ここで展開を止めています。</p> : renderChildren(target.id, new Set([...path, target.id]))}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className={`${styles.seriesView} ${styles.viewFade}`}>
-      <p className={styles.seriesIntro}><strong>{groupName}</strong>内で確認済みの出資・親会社・支配・持分法関係を、グループ全体の系列として表示します。グループ所属そのものは親子関係として扱いません。</p>
-      {forest.map((tree, treeIndex) => {
-        const root = companyById.get(tree.rootId);
-        if (!root) return null;
-        return (
-          <section key={`${tree.rootId}:${treeIndex}`} className={styles.seriesSection}>
-            <button type="button" className={styles.seriesCenter} onClick={() => onSelectCompany(root.id)}>
-              <span>ROOT</span><strong>{root.name}</strong><small>確認済み資本構造の起点</small>
-            </button>
-            <div className={styles.seriesRows}>
-              {tree.rows.map(({ relationship, depth }) => {
-                const target = companyById.get(relationship.targetCompanyId);
-                if (!target) return null;
-                const dimmed = normalized.length > 0 && ![relationship.sourceCompanyName, relationship.targetCompanyName]
-                  .some((value) => value.toLocaleLowerCase("ja").includes(normalized));
-                return (
-                  <div key={relationship.relationId} className={`${styles.seriesRow} ${dimmed ? styles.seriesRowDim : ""}`} style={{ marginLeft: Math.min(depth - 1, 4) * 18 }}>
-                    <button type="button" className={styles.seriesCompany} onClick={() => onSelectCompany(target.id)} aria-pressed={selectedCompanyId === target.id}>
-                      <span className={styles.seriesDepth}>L{depth}</span><strong>{target.name}</strong>
-                    </button>
-                    <button type="button" className={`${styles.seriesRelation} ${selectedRelationId === relationship.relationId ? styles.seriesRelationActive : ""}`} onClick={() => onSelectRelation(relationship.relationId)}>
-                      <span>{relationship.sourceCompanyName} → {relationship.targetCompanyName}</span>
-                      <strong>{relationLabel(relationship.relationType, relationship.ownershipPct)}</strong>
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })}
+      <p className={styles.seriesIntro}><strong>{groupName}</strong>内で確認済みの出資・親会社・支配・持分法関係を、起点から枝をたどるツリーとして表示します。グループ所属そのものは親子関係として扱いません。</p>
+      <div className={relationStyles.treeForest}>
+        {treeModel.rootIds.map((rootId, treeIndex) => {
+          const root = companyById.get(rootId);
+          if (!root) return null;
+          return (
+            <section key={`${rootId}:${treeIndex}`} className={relationStyles.treeSection}>
+              <button type="button" className={relationStyles.treeRoot} onClick={() => onSelectCompany(root.id)} aria-pressed={selectedCompanyId === root.id}>
+                <span>ROOT</span>
+                <strong>{root.name}</strong>
+                <small>確認済み資本・支配構造の起点</small>
+              </button>
+              {renderChildren(root.id, new Set([root.id]))}
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }
