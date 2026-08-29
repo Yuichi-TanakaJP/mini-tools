@@ -3,7 +3,10 @@ import { cookies } from "next/headers";
 import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
 import { isSyncConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { loadCompanyNetworkScope } from "@/app/premium/company-network/data-loader";
+import {
+  loadCompanyGroupScope,
+  loadCompanyNetworkScope,
+} from "@/app/premium/company-network/data-loader";
 import type { RelationCategory } from "@/app/premium/company-network/types";
 
 const VALID_CATEGORIES = new Set<RelationCategory>(["capital", "control", "historical"]);
@@ -19,6 +22,7 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
+  const groupId = url.searchParams.get("groupId")?.trim() ?? "";
   const companyId = url.searchParams.get("companyId")?.trim() ?? "";
   const hops = url.searchParams.get("hops") === "1" ? 1 : 2;
   const verifiedOnly = url.searchParams.get("verifiedOnly") !== "false";
@@ -27,8 +31,8 @@ export async function GET(request: Request) {
     .split(",")
     .filter((value): value is RelationCategory => VALID_CATEGORIES.has(value as RelationCategory));
 
-  if (!companyId) {
-    return NextResponse.json({ status: "error", data: null, message: "companyIdが必要です。" }, { status: 400 });
+  if (!groupId && !companyId) {
+    return NextResponse.json({ status: "error", data: null, message: "groupIdまたはcompanyIdが必要です。" }, { status: 400 });
   }
 
   const supabase = await createSupabaseServerClient();
@@ -37,12 +41,19 @@ export async function GET(request: Request) {
     return NextResponse.json({ status: "unauthenticated", data: null, message: "Supabaseにログインしてください。" }, { status: 401 });
   }
 
-  const result = await loadCompanyNetworkScope(supabase, {
-    companyId,
-    hops,
-    verifiedOnly,
-    categories,
-    includeGroups,
-  });
+  const result = groupId
+    ? await loadCompanyGroupScope(supabase, {
+        groupId,
+        verifiedOnly,
+        categories,
+      })
+    : await loadCompanyNetworkScope(supabase, {
+        companyId,
+        hops,
+        verifiedOnly,
+        categories,
+        includeGroups,
+      });
+
   return NextResponse.json(result, { status: result.status === "error" ? 500 : 200 });
 }
