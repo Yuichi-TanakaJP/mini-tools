@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import styles from "../CompanyNetwork.module.css";
 import functionStyles from "../FunctionViews.module.css";
+import claudeStyles from "../ClaudeUi.module.css";
 import { formatAsOf, relationLabel } from "../presentation";
 import type {
   CompanyFunctionLink,
@@ -117,8 +118,34 @@ export default function GroupTableView({
     [focusCompanyId, normalized, relationships],
   );
 
+  const companyRows = useMemo(() => visibleMemberships.map((membership) => {
+    const company = companyById.get(membership.companyId);
+    const companyRelations = relationshipsByCompany.get(membership.companyId) ?? [];
+    const companyFunctions = [...(functionsByCompany.get(membership.companyId) ?? [])]
+      .sort((a, b) => {
+        if (a.role === "core" && b.role !== "core") return -1;
+        if (a.role !== "core" && b.role === "core") return 1;
+        return a.functionName.localeCompare(b.functionName, "ja");
+      });
+    const relationSummary = companyRelations.length === 0
+      ? "企業間関係は未登録"
+      : companyRelations.slice(0, 2).map((relationship) => relationSentence(relationship, membership.companyId)).join(" / ") + (companyRelations.length > 2 ? ` ほか${companyRelations.length - 2}件` : "");
+    const functionSummary = companyFunctions.length === 0
+      ? "機能未分類"
+      : companyFunctions.map((link) => `${link.role === "core" ? "●" : "○"}${link.functionName}`).join(" / ");
+    const latestFunctionAsOf = companyFunctions.map((link) => link.asOf).filter((value): value is string => Boolean(value)).sort().at(-1) ?? null;
+    return {
+      membership,
+      company,
+      relationSummary,
+      functionSummary,
+      asOf: latestFunctionAsOf ?? membership.sourceAsOf,
+      selected: selection?.kind === "company" && selection.id === membership.companyId,
+    };
+  }), [companyById, functionsByCompany, relationshipsByCompany, selection, visibleMemberships]);
+
   return (
-    <div className={styles.viewFade}>
+    <div className={`${claudeStyles.view} ${styles.viewFade}`}>
       <div className={styles.viewTools}>
         <div className={styles.hopControl} aria-label="表の内容">
           <button type="button" className={mode === "companies" ? styles.toggleOn : styles.toggle} onClick={() => setMode("companies")}>企業一覧</button>
@@ -129,75 +156,92 @@ export default function GroupTableView({
 
       {mode === "companies" ? (
         visibleMemberships.length === 0 ? <p className={styles.empty}>条件に一致する所属企業がありません。</p> : (
-          <div className={styles.tableScroll}>
-            <table className={styles.table} style={{ minWidth: 900 }}>
-              <caption>所属 {visibleMemberships.length}社。各社が何を担うか、資本関係、根拠を同じ行で確認できます。</caption>
-              <thead>
-                <tr>
-                  <th>企業</th>
-                  <th>上場</th>
-                  <th>主な機能・事業</th>
-                  <th>グループ内の主な関係</th>
-                  <th>基準日</th>
-                  <th>根拠</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleMemberships.map((membership) => {
-                  const company = companyById.get(membership.companyId);
-                  const companyRelations = relationshipsByCompany.get(membership.companyId) ?? [];
-                  const companyFunctions = [...(functionsByCompany.get(membership.companyId) ?? [])]
-                    .sort((a, b) => {
-                      if (a.role === "core" && b.role !== "core") return -1;
-                      if (a.role !== "core" && b.role === "core") return 1;
-                      return a.functionName.localeCompare(b.functionName, "ja");
-                    });
-                  const selected = selection?.kind === "company" && selection.id === membership.companyId;
-                  const relationSummary = companyRelations.length === 0
-                    ? "企業間関係は未登録"
-                    : companyRelations.slice(0, 2).map((relationship) => relationSentence(relationship, membership.companyId)).join(" / ") + (companyRelations.length > 2 ? ` ほか${companyRelations.length - 2}件` : "");
-                  const functionSummary = companyFunctions.length === 0
-                    ? "機能未分類"
-                    : companyFunctions.map((link) => `${link.role === "core" ? "●" : "○"}${link.functionName}`).join(" / ");
-                  const latestFunctionAsOf = companyFunctions.map((link) => link.asOf).filter((value): value is string => Boolean(value)).sort().at(-1) ?? null;
-                  return (
-                    <tr key={membership.membershipId} className={selected || focusCompanyId === membership.companyId ? styles.tableRowSelected : undefined} onClick={() => onSelectCompany(membership.companyId)}>
-                      <td><button type="button" className={styles.tableCompanyButton} onClick={(event) => { event.stopPropagation(); onSelectCompany(membership.companyId); }}>{membership.companyName}</button></td>
-                      <td>{listingLabel(company)}</td>
-                      <td className={functionStyles.tableFunction}>{functionSummary}</td>
-                      <td className={styles.tableRelation}>{relationSummary}</td>
-                      <td>{formatAsOf(latestFunctionAsOf ?? membership.sourceAsOf)}</td>
+          <>
+            <div className={claudeStyles.mobileList} aria-label="所属企業一覧">
+              {companyRows.map((row) => (
+                <button
+                  key={row.membership.membershipId}
+                  type="button"
+                  className={claudeStyles.mobileCard}
+                  onClick={() => onSelectCompany(row.membership.companyId)}
+                >
+                  <span className={claudeStyles.mobileCardHead}>
+                    <strong>{row.membership.companyName}</strong>
+                    <span>{listingLabel(row.company)}</span>
+                  </span>
+                  <span className={claudeStyles.mobileCardBody}>{row.functionSummary}</span>
+                  <span className={claudeStyles.mobileCardSub}>{row.relationSummary}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className={`${styles.tableScroll} ${claudeStyles.desktopTable}`}>
+              <table className={styles.table} style={{ minWidth: 820 }}>
+                <caption>所属 {visibleMemberships.length}社。機能・資本関係・根拠を同じ行で確認できます。</caption>
+                <thead>
+                  <tr>
+                    <th>企業</th>
+                    <th>上場</th>
+                    <th>主な機能・事業</th>
+                    <th>グループ内の主な関係</th>
+                    <th>基準日</th>
+                    <th>根拠</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {companyRows.map((row) => (
+                    <tr key={row.membership.membershipId} className={row.selected || focusCompanyId === row.membership.companyId ? styles.tableRowSelected : undefined} onClick={() => onSelectCompany(row.membership.companyId)}>
+                      <td><button type="button" className={styles.tableCompanyButton} onClick={(event) => { event.stopPropagation(); onSelectCompany(row.membership.companyId); }}>{row.membership.companyName}</button></td>
+                      <td>{listingLabel(row.company)}</td>
+                      <td className={functionStyles.tableFunction}>{row.functionSummary}</td>
+                      <td className={styles.tableRelation}>{row.relationSummary}</td>
+                      <td>{formatAsOf(row.asOf)}</td>
                       <td className={styles.tableSource}>
-                        {membership.sourceUrl ? <a className={styles.sourceLink} href={membership.sourceUrl} target="_blank" rel="noreferrer">グループ根拠</a> : membership.sourceTitle ?? "—"}
+                        {row.membership.sourceUrl ? <a className={styles.sourceLink} href={row.membership.sourceUrl} target="_blank" rel="noreferrer">グループ根拠</a> : row.membership.sourceTitle ?? "—"}
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )
       ) : visibleRelationships.length === 0 ? (
         <p className={styles.empty}>{group.name}内の確認済み企業間関係は現在登録されていません。所属企業データとは別レイヤーです。</p>
       ) : (
-        <div className={styles.tableScroll}>
-          <table className={styles.table} style={{ minWidth: 760 }}>
-            <caption>{visibleRelationships.length}件の企業間関係を表示</caption>
-            <thead><tr><th>起点企業</th><th>関係</th><th>相手企業</th><th>比率</th><th>基準日</th><th>根拠</th></tr></thead>
-            <tbody>
-              {visibleRelationships.map((relationship) => (
-                <tr key={relationship.relationId} className={selectedRelationId === relationship.relationId ? styles.tableRowSelected : undefined} onClick={() => onSelectRelation(relationship.relationId)}>
-                  <td><button type="button" className={styles.tableCompanyButton} onClick={(event) => { event.stopPropagation(); onSelectCompany(relationship.sourceCompanyId); }}>{relationship.sourceCompanyName}</button></td>
-                  <td className={styles.tableRelation}>{relationLabel(relationship.relationType, null)}</td>
-                  <td><button type="button" className={styles.tableCompanyButton} onClick={(event) => { event.stopPropagation(); onSelectCompany(relationship.targetCompanyId); }}>{relationship.targetCompanyName}</button></td>
-                  <td>{relationship.ownershipPct === null ? "—" : `${relationship.ownershipPct}%`}</td>
-                  <td>{formatAsOf(relationship.sourceAsOf)}</td>
-                  <td className={styles.tableSource}>{relationship.sourceUrl ? <a className={styles.sourceLink} href={relationship.sourceUrl} target="_blank" rel="noreferrer">公式根拠</a> : relationship.sourceTitle ?? "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <div className={claudeStyles.mobileList} aria-label="企業間関係一覧">
+            {visibleRelationships.map((relationship) => (
+              <button key={relationship.relationId} type="button" className={claudeStyles.mobileCard} onClick={() => onSelectRelation(relationship.relationId)}>
+                <span className={claudeStyles.mobileCardHead}>
+                  <strong>{relationship.sourceCompanyName}</strong>
+                  <span>{relationship.ownershipPct === null ? relationLabel(relationship.relationType, null) : `${relationship.ownershipPct}%`}</span>
+                </span>
+                <span className={claudeStyles.mobileCardBody}>→ {relationship.targetCompanyName}</span>
+                <span className={claudeStyles.mobileCardSub}>{relationLabel(relationship.relationType, relationship.ownershipPct)} · {formatAsOf(relationship.sourceAsOf)}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className={`${styles.tableScroll} ${claudeStyles.desktopTable}`}>
+            <table className={styles.table} style={{ minWidth: 700 }}>
+              <caption>{visibleRelationships.length}件の企業間関係を表示</caption>
+              <thead><tr><th>起点企業</th><th>関係</th><th>相手企業</th><th>比率</th><th>基準日</th><th>根拠</th></tr></thead>
+              <tbody>
+                {visibleRelationships.map((relationship) => (
+                  <tr key={relationship.relationId} className={selectedRelationId === relationship.relationId ? styles.tableRowSelected : undefined} onClick={() => onSelectRelation(relationship.relationId)}>
+                    <td><button type="button" className={styles.tableCompanyButton} onClick={(event) => { event.stopPropagation(); onSelectCompany(relationship.sourceCompanyId); }}>{relationship.sourceCompanyName}</button></td>
+                    <td className={styles.tableRelation}>{relationLabel(relationship.relationType, null)}</td>
+                    <td><button type="button" className={styles.tableCompanyButton} onClick={(event) => { event.stopPropagation(); onSelectCompany(relationship.targetCompanyId); }}>{relationship.targetCompanyName}</button></td>
+                    <td>{relationship.ownershipPct === null ? "—" : `${relationship.ownershipPct}%`}</td>
+                    <td>{formatAsOf(relationship.sourceAsOf)}</td>
+                    <td className={styles.tableSource}>{relationship.sourceUrl ? <a className={styles.sourceLink} href={relationship.sourceUrl} target="_blank" rel="noreferrer">公式根拠</a> : relationship.sourceTitle ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );
