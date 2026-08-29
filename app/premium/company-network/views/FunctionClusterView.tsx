@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import styles from "../CompanyNetwork.module.css";
 import functionStyles from "../FunctionViews.module.css";
+import { compareFunction, compareFunctionClass } from "../function-order";
 import type {
   CompanyFunctionLink,
   CompanyNetworkCompany,
@@ -52,23 +53,36 @@ export default function FunctionClusterView({
   }, [relationships]);
 
   const mappedCompanyIds = useMemo(() => new Set(functions.map((link) => link.companyId)), [functions]);
+  const multiFunctionCompanies = useMemo(() => {
+    const counts = new Map<string, number>();
+    functions.forEach((link) => counts.set(link.companyId, (counts.get(link.companyId) ?? 0) + 1));
+    return [...counts.values()].filter((count) => count > 1).length;
+  }, [functions]);
+
   const clusters = useMemo(() => {
-    const byClassification = new Map<string, Map<string, CompanyFunctionLink[]>>();
+    const byClassification = new Map<string, { slug: string | null; links: CompanyFunctionLink[] }>();
     functions.forEach((link) => {
-      const className = link.classificationName ?? "その他";
-      const functionsInClass = byClassification.get(className) ?? new Map<string, CompanyFunctionLink[]>();
-      functionsInClass.set(link.functionName, [...(functionsInClass.get(link.functionName) ?? []), link]);
-      byClassification.set(className, functionsInClass);
+      const key = link.classificationId ?? "other";
+      const current = byClassification.get(key) ?? { slug: link.classificationSlug, links: [] };
+      current.links.push(link);
+      byClassification.set(key, current);
     });
 
     return [...byClassification.entries()]
-      .map(([classificationName, functionMap]) => ({
-        classificationName,
-        functions: [...functionMap.entries()]
-          .map(([functionName, links]) => ({ functionName, links }))
-          .sort((a, b) => a.functionName.localeCompare(b.functionName, "ja")),
-      }))
-      .sort((a, b) => a.classificationName.localeCompare(b.classificationName, "ja"));
+      .map(([classificationId, value]) => {
+        const functionMap = new Map<string, CompanyFunctionLink[]>();
+        value.links.forEach((link) => functionMap.set(link.nodeId, [...(functionMap.get(link.nodeId) ?? []), link]));
+        const first = value.links[0];
+        return {
+          classificationId,
+          classificationSlug: value.slug,
+          classificationName: first?.classificationName ?? "その他",
+          functions: [...functionMap.values()]
+            .map((links) => ({ functionSlug: links[0].functionSlug, functionName: links[0].functionName, links }))
+            .sort(compareFunction),
+        };
+      })
+      .sort(compareFunctionClass);
   }, [functions]);
 
   const unmapped = companies.filter((company) => !mappedCompanyIds.has(company.id));
@@ -88,17 +102,24 @@ export default function FunctionClusterView({
         <span>{groupName}の事業・機能構成</span>
         <span>{mappedCompanyIds.size}/{companies.length}社 · {functions.length}機能リンク</span>
       </div>
-      <p className={functionStyles.functionIntro}>企業を単純に並べず、公式情報から確認した「何を担う会社か」でまとめています。濃いバッジは主要機能、薄いバッジは追加機能です。</p>
+      <p className={functionStyles.functionIntro}>企業名簿ではなく「何を担う会社か」で整理しています。同じ会社が複数領域に現れる場合、それは複数の公式事業機能を持つことを示します。</p>
+      <div className={functionStyles.functionSummary}>
+        <div><strong>{clusters.length}</strong><span>大分類</span></div>
+        <div><strong>{new Set(functions.map((link) => link.nodeId)).size}</strong><span>機能領域</span></div>
+        <div><strong>{multiFunctionCompanies}</strong><span>複数機能を担う企業</span></div>
+        <div><strong>{relationships.filter((relationship) => relationship.relationType === "equity_ownership" && relationship.ownershipPct === 100).length}</strong><span>100%出資関係</span></div>
+      </div>
 
       <div className={functionStyles.functionClusterGrid}>
         {clusters.map((cluster, clusterIndex) => {
           const classLinks = cluster.functions.flatMap((item) => item.links);
           const classCompanyCount = new Set(classLinks.map((link) => link.companyId)).size;
-          const toneClass = functionStyles[`functionTone${clusterIndex % 5}`] ?? "";
+          const coreCount = classLinks.filter((link) => link.role === "core").length;
+          const toneClass = functionStyles[`functionTone${clusterIndex % 6}`] ?? "";
           return (
-            <section key={cluster.classificationName} className={`${functionStyles.functionCluster} ${toneClass}`}>
+            <section key={cluster.classificationId} className={`${functionStyles.functionCluster} ${toneClass}`}>
               <header className={functionStyles.functionClusterHead}>
-                <div><span>FUNCTION CLASS</span><h3>{cluster.classificationName}</h3></div>
+                <div><span>FUNCTION CLASS</span><h3>{cluster.classificationName}</h3><small>{cluster.functions.length}領域 · 主要機能 {coreCount}件</small></div>
                 <strong>{classCompanyCount}社</strong>
               </header>
 
@@ -113,10 +134,10 @@ export default function FunctionClusterView({
                   });
                   if (visibleLinks.length === 0) return null;
                   return (
-                    <div key={item.functionName} className={functionStyles.functionRow}>
+                    <div key={item.functionSlug} className={functionStyles.functionRow}>
                       <div className={functionStyles.functionRowHead}>
                         <strong>{item.functionName}</strong>
-                        <span>{visibleLinks.length}社</span>
+                        <span>{new Set(visibleLinks.map((link) => link.companyId)).size}社</span>
                       </div>
                       <div className={functionStyles.functionCompanies}>
                         {visibleLinks
@@ -138,7 +159,7 @@ export default function FunctionClusterView({
                                 onClick={() => onSelectCompany(company.id)}
                               >
                                 <strong>{company.name}</strong>
-                                <span>{listingLabel(company.listingStatus)}</span>
+                                <span>{link.role === "core" ? "主要機能" : "追加機能"} · {listingLabel(company.listingStatus)}</span>
                                 {whollyOwnedParent ? <small>{whollyOwnedParent} 100%出資</small> : null}
                               </button>
                             );
