@@ -24,7 +24,8 @@ async function enrichListings(
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   result: CompanyNetworkScopeResult,
 ): Promise<CompanyNetworkScopeResult> {
-  if (!result.data || result.data.companies.length === 0) return result;
+  if (result.status !== "ok" && result.status !== "empty") return result;
+  if (result.data.companies.length === 0) return result;
 
   const companyIds = result.data.companies.map((company) => company.id);
   const listingResult = await supabase
