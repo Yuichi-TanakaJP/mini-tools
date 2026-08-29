@@ -2,21 +2,27 @@
 
 import { useMemo, useRef } from "react";
 import { usePanZoom } from "../../industry-map/use-pan-zoom";
-import { buildSelectedNeighbourIds, groupGraphNodeId, selectedGraphNodeId } from "../node-selection";
+import { groupGraphNodeId, selectedGraphNodeId } from "../node-selection";
 import styles from "../CompanyNetwork.module.css";
-import { CATEGORY_COLOR, groupTypeLabel, relationLabel } from "../presentation";
+import { groupTypeLabel } from "../presentation";
 import type {
   CompanyGroupMembership,
   CompanyNetworkCompany,
   CompanyNetworkGroup,
   CompanyNetworkNodeSelection,
-  CompanyRelationship,
 } from "../types";
 
 type Point = { x: number; y: number };
 
 function truncate(value: string, max = 12) {
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+}
+
+function listingLabel(value: string) {
+  if (value === "domestic_listed") return "上場";
+  if (value === "foreign_listed") return "海外上場";
+  if (value === "private") return "非上場";
+  return "未確認";
 }
 
 function placeMembers(memberships: CompanyGroupMembership[]): Map<string, Point> {
@@ -37,27 +43,23 @@ function placeMembers(memberships: CompanyGroupMembership[]): Map<string, Point>
 type Props = {
   group: CompanyNetworkGroup;
   companies: CompanyNetworkCompany[];
-  relationships: CompanyRelationship[];
   memberships: CompanyGroupMembership[];
   selection: CompanyNetworkNodeSelection | null;
-  selectedRelationId: string | null;
+  focusCompanyId: string;
   query: string;
   onSelectCompany: (companyId: string) => void;
   onSelectGroup: (groupId: string) => void;
-  onSelectRelation: (relationId: string) => void;
 };
 
 export default function GroupRadialView({
   group,
   companies,
-  relationships,
   memberships,
   selection,
-  selectedRelationId,
+  focusCompanyId,
   query,
   onSelectCompany,
   onSelectGroup,
-  onSelectRelation,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const panZoom = usePanZoom(svgRef, `group:${group.id}`);
@@ -67,10 +69,6 @@ export default function GroupRadialView({
     [group.id, memberships],
   );
   const positions = useMemo(() => placeMembers(groupMemberships), [groupMemberships]);
-  const neighbourIds = useMemo(
-    () => buildSelectedNeighbourIds(selection, relationships, groupMemberships),
-    [groupMemberships, relationships, selection],
-  );
   const selectedNodeId = selectedGraphNodeId(selection);
   const normalizedQuery = query.trim().toLocaleLowerCase("ja");
   const groupNodeId = groupGraphNodeId(group.id);
@@ -79,7 +77,7 @@ export default function GroupRadialView({
     <div className={styles.viewFade}>
       <div className={styles.viewTools}>
         <span>{group.name}の所属企業</span>
-        <span>{groupMemberships.length}社 / {relationships.length}企業間関係</span>
+        <span>{groupMemberships.length}社</span>
       </div>
       <div className={styles.svgWrap}>
         <div className={styles.zoomControls}>
@@ -93,15 +91,10 @@ export default function GroupRadialView({
           style={{ touchAction: panZoom.viewport.scale === 1 ? "pan-y" : "none" }}
           viewBox="-520 -520 1040 1040"
           role="img"
-          aria-label={`${group.name}を中心にした企業グループ放射マップ`}
+          aria-label={`${group.name}の所属企業を示す放射マップ`}
           onPointerDown={panZoom.onPointerDown}
           onDoubleClick={panZoom.onDoubleClick}
         >
-          <defs>
-            <marker id="group-radial-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-              <path d="M 0 0 L 8 4 L 0 8 z" fill="currentColor" />
-            </marker>
-          </defs>
           <g transform={panZoom.transform}>
             {groupMemberships.length > 12 ? <circle r="405" className={styles.radialGroupRing} /> : null}
             <circle r={groupMemberships.length > 12 ? 245 : 300} className={styles.radialGroupRing} />
@@ -109,7 +102,7 @@ export default function GroupRadialView({
             {groupMemberships.map((membership) => {
               const point = positions.get(membership.companyId);
               if (!point) return null;
-              const focused = neighbourIds === null || (neighbourIds.has(groupNodeId) && neighbourIds.has(membership.companyId));
+              const focused = !focusCompanyId || focusCompanyId === membership.companyId;
               return (
                 <line
                   key={membership.membershipId}
@@ -118,37 +111,8 @@ export default function GroupRadialView({
                   x2={point.x}
                   y2={point.y}
                   className={styles.membershipLine}
-                  strokeOpacity={focused ? 0.72 : 0.12}
+                  strokeOpacity={focused ? 0.72 : 0.22}
                 />
-              );
-            })}
-
-            {relationships.map((relationship) => {
-              const source = positions.get(relationship.sourceCompanyId);
-              const target = positions.get(relationship.targetCompanyId);
-              if (!source || !target) return null;
-              const selected = relationship.relationId === selectedRelationId;
-              const focused = neighbourIds === null || (neighbourIds.has(relationship.sourceCompanyId) && neighbourIds.has(relationship.targetCompanyId));
-              return (
-                <g key={relationship.relationId} onClick={() => onSelectRelation(relationship.relationId)} className={styles.edgeHitTarget}>
-                  <line
-                    x1={source.x}
-                    y1={source.y}
-                    x2={target.x}
-                    y2={target.y}
-                    stroke={CATEGORY_COLOR[relationship.relationCategory]}
-                    strokeWidth={selected ? 3.2 : focused ? 1.8 : 1}
-                    strokeOpacity={selected ? 1 : focused ? 0.8 : 0.14}
-                    strokeDasharray={relationship.verificationStatus === "verified" ? undefined : "7 6"}
-                    markerEnd="url(#group-radial-arrow)"
-                    color={CATEGORY_COLOR[relationship.relationCategory]}
-                  />
-                  {(selected || focused) ? (
-                    <text x={(source.x + target.x) / 2} y={(source.y + target.y) / 2 - 7} textAnchor="middle" className={styles.svgEdgeLabel}>
-                      {relationLabel(relationship.relationType, relationship.ownershipPct)}
-                    </text>
-                  ) : null}
-                </g>
               );
             })}
 
@@ -157,13 +121,13 @@ export default function GroupRadialView({
               const point = positions.get(membership.companyId);
               if (!company || !point) return null;
               const selected = selectedNodeId === company.id;
+              const focused = !focusCompanyId || focusCompanyId === company.id;
               const queryDimmed = normalizedQuery.length > 0 && !company.name.toLocaleLowerCase("ja").includes(normalizedQuery);
-              const neighbourDimmed = neighbourIds !== null && !neighbourIds.has(company.id);
               return (
                 <g
                   key={company.id}
                   transform={`translate(${point.x} ${point.y})`}
-                  className={queryDimmed || neighbourDimmed ? styles.svgNodeDim : undefined}
+                  className={queryDimmed || !focused ? styles.svgNodeDim : undefined}
                   role="button"
                   tabIndex={0}
                   style={{ cursor: "pointer" }}
@@ -176,9 +140,9 @@ export default function GroupRadialView({
                   }}
                 >
                   {selected ? <circle className={styles.pulse} r="35" fill="none" stroke="#2554ff" strokeWidth={2} /> : null}
-                  <circle r="25" fill="var(--color-bg-card)" stroke="#2554ff" strokeWidth={selected ? 3 : 2} />
+                  <circle r="25" fill="var(--color-bg-card)" stroke="#2554ff" strokeWidth={selected || focusCompanyId === company.id ? 3 : 2} />
                   <text textAnchor="middle" y="-2" className={styles.radialNodeLabel}>{truncate(company.name)}</text>
-                  <text textAnchor="middle" y="13" className={styles.radialNodeMeta}>{company.listingStatus || membership.membershipRole}</text>
+                  <text textAnchor="middle" y="13" className={styles.radialNodeMeta}>{listingLabel(company.listingStatus)}</text>
                 </g>
               );
             })}

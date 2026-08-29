@@ -31,6 +31,7 @@ type Props = {
   selection: CompanyNetworkNodeSelection | null;
   selectedRelationId: string | null;
   query: string;
+  title?: string;
   onSelectCompany: (companyId: string) => void;
   onSelectGroup: (groupId: string) => void;
   onSelectRelation: (relationId: string) => void;
@@ -44,6 +45,7 @@ export default function NetworkView({
   selection,
   selectedRelationId,
   query,
+  title = "中心企業の関係ネットワーク",
   onSelectCompany,
   onSelectGroup,
   onSelectRelation,
@@ -100,7 +102,7 @@ export default function NetworkView({
   return (
     <div className={styles.viewFade}>
       <div className={styles.viewTools}>
-        <span>中心企業の関係ネットワーク</span>
+        <span>{title}</span>
         <button type="button" className={styles.smallButton} onClick={() => setRunId((value) => value + 1)}>再配置</button>
       </div>
       <div className={styles.svgWrap}>
