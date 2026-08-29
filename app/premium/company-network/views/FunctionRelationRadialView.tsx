@@ -21,12 +21,11 @@ type Props = {
   onSelectCompany: (companyId: string) => void;
 };
 
-// Claude Code版の視覚原則をそのまま使う。
-// 色はカテゴリ数ではなく「階層の意味」に割り当て、図全体を一つの構造として読ませる。
-const LEVEL_CLASS = "#2554ff";
-const LEVEL_FUNCTION = "#0d9488";
-const LEVEL_COMPANY = "#7c3aed";
+// 色は階層ではなくクラスター（大分類）のまとまりに使う。
+// 階層は塗り/白抜き・ノードサイズ・ラベル強度で表現する。
+const CLUSTER_TONES = ["#2554ff", "#0d9488", "#7c3aed"] as const;
 const HIERARCHY_LINK = "#94a3b8";
+const LABEL_MUTED = "var(--color-text-sub)";
 
 function presentationCompanyId(link: CompanyFunctionLink) {
   return `company-function:${link.linkId}`;
@@ -98,7 +97,8 @@ export default function FunctionRelationRadialView({
     const presentationToCompany = new Map<string, string>();
     const presentationsByCompany = new Map<string, string[]>();
 
-    const roots: RadialHierarchyNode[] = classGroups.map((group) => {
+    const roots: RadialHierarchyNode[] = classGroups.map((group, classIndex) => {
+      const clusterTone = CLUSTER_TONES[classIndex % CLUSTER_TONES.length];
       const byFunction = new Map<string, CompanyFunctionLink[]>();
       group.links.forEach((link) => {
         byFunction.set(link.nodeId, [...(byFunction.get(link.nodeId) ?? []), link]);
@@ -116,26 +116,28 @@ export default function FunctionRelationRadialView({
         id: classificationNodeId(group.links[0]),
         label: group.classificationName,
         title: `${group.classificationName}（事業・機能の大分類）`,
-        tone: LEVEL_CLASS,
-        fill: LEVEL_CLASS,
-        stroke: LEVEL_CLASS,
+        tone: clusterTone,
+        fill: clusterTone,
+        stroke: clusterTone,
         strokeWidth: 2,
         radius: 13,
         labelSize: 11,
         labelWeight: 900,
+        labelColor: LABEL_MUTED,
         linkColor: HIERARCHY_LINK,
         linkWidth: 1.2,
         children: functionGroups.map((fnGroup) => ({
           id: functionNodeId(fnGroup.links[0]),
           label: fnGroup.functionName,
           title: `${fnGroup.functionName}（機能領域）`,
-          tone: LEVEL_FUNCTION,
+          tone: clusterTone,
           fill: "var(--color-bg-card)",
-          stroke: LEVEL_FUNCTION,
+          stroke: clusterTone,
           strokeWidth: 2,
           radius: 8,
-          labelSize: 11,
+          labelSize: 10,
           labelWeight: 800,
+          labelColor: LABEL_MUTED,
           linkColor: HIERARCHY_LINK,
           linkWidth: 1.2,
           children: [...fnGroup.links]
@@ -161,16 +163,17 @@ export default function FunctionRelationRadialView({
                 id: nodeId,
                 label: company.name,
                 title: `${company.name} — ${core ? "主要機能" : "追加機能"}: ${fnGroup.functionName}`,
-                tone: LEVEL_COMPANY,
-                fill: core ? LEVEL_COMPANY : "var(--color-bg-card)",
-                stroke: LEVEL_COMPANY,
-                strokeWidth: core ? 1.8 : 1.4,
-                radius: core ? 6 : 5,
-                labelSize: 10,
-                labelWeight: core ? 750 : 700,
-                labelColor: "var(--color-text-sub)",
+                tone: clusterTone,
+                fill: "var(--color-bg-card)",
+                stroke: clusterTone,
+                strokeWidth: core ? 1.7 : 1.2,
+                radius: 4.8,
+                labelSize: 9,
+                labelWeight: core ? 700 : 650,
+                labelColor: LABEL_MUTED,
                 linkColor: HIERARCHY_LINK,
                 linkWidth: 1.2,
+                markerColor: core ? clusterTone : null,
                 children: [],
               }];
             }),
@@ -237,7 +240,7 @@ export default function FunctionRelationRadialView({
         <span>{adapted.roots.length}分類 · {functions.length}機能リンク</span>
       </div>
       <p className={styles.hint}>
-        青=大分類、緑=機能領域、紫=企業。構成ツリーと同じ階層を、Claude Code版と同じ放射レイアウトで見ます。
+        色は大分類ごとのまとまり、点の大きさと塗り分けは階層を表します。大分類から機能、企業まで同じ色の枝としてたどれます。
       </p>
       <RadialHierarchyCanvas
         roots={adapted.roots}
