@@ -7,9 +7,59 @@ import {
   loadCompanyGroupScope,
   loadCompanyNetworkScope,
 } from "@/app/premium/company-network/data-loader";
-import type { RelationCategory } from "@/app/premium/company-network/types";
+import type { CompanyNetworkScopeResult, RelationCategory } from "@/app/premium/company-network/types";
 
 const VALID_CATEGORIES = new Set<RelationCategory>(["capital", "control", "historical"]);
+
+type ListingRow = {
+  company_entity_id: string;
+  exchange_code: string | null;
+  exchange_name: string | null;
+  ticker: string | null;
+  listing_role: string | null;
+  is_preferred: boolean | null;
+};
+
+async function enrichListings(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  result: CompanyNetworkScopeResult,
+): Promise<CompanyNetworkScopeResult> {
+  if (!result.data || result.data.companies.length === 0) return result;
+
+  const companyIds = result.data.companies.map((company) => company.id);
+  const listingResult = await supabase
+    .from("stock_notes_company_listings")
+    .select("company_entity_id,exchange_code,exchange_name,ticker,listing_role,is_preferred")
+    .in("company_entity_id", companyIds)
+    .is("valid_to", null)
+    .order("is_preferred", { ascending: false });
+
+  if (listingResult.error) return result;
+
+  const listingByCompany = new Map<string, ListingRow>();
+  for (const row of (listingResult.data ?? []) as ListingRow[]) {
+    const current = listingByCompany.get(row.company_entity_id);
+    if (!current || row.is_preferred || row.listing_role === "primary") {
+      listingByCompany.set(row.company_entity_id, row);
+    }
+  }
+
+  return {
+    ...result,
+    data: {
+      ...result.data,
+      companies: result.data.companies.map((company) => {
+        const listing = listingByCompany.get(company.id);
+        return {
+          ...company,
+          ticker: listing?.ticker ?? null,
+          exchangeCode: listing?.exchange_code ?? null,
+          exchangeName: listing?.exchange_name ?? null,
+        };
+      }),
+    },
+  };
+}
 
 export async function GET(request: Request) {
   const cookieStore = await cookies();
@@ -55,5 +105,6 @@ export async function GET(request: Request) {
         includeGroups,
       });
 
-  return NextResponse.json(result, { status: result.status === "error" ? 500 : 200 });
+  const enriched = await enrichListings(supabase, result);
+  return NextResponse.json(enriched, { status: enriched.status === "error" ? 500 : 200 });
 }
