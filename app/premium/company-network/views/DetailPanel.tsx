@@ -2,22 +2,106 @@
 
 import styles from "../CompanyNetwork.module.css";
 import { CATEGORY_LABEL, formatAsOf, groupTypeLabel, relationLabel } from "../presentation";
-import type { CompanyGroupMembership, CompanyNetworkCompany, CompanyRelationship } from "../types";
+import type {
+  CompanyGroupMembership,
+  CompanyNetworkCompany,
+  CompanyNetworkGroup,
+  CompanyNetworkNodeSelection,
+  CompanyRelationship,
+} from "../types";
 
 type Props = {
-  company: CompanyNetworkCompany | null;
+  groups: CompanyNetworkGroup[];
+  companies: CompanyNetworkCompany[];
+  selection: CompanyNetworkNodeSelection | null;
   centerCompanyId: string;
   relationships: CompanyRelationship[];
   memberships: CompanyGroupMembership[];
   selectedRelation: CompanyRelationship | null;
   onSelectCompany: (companyId: string) => void;
+  onSelectGroup: (groupId: string) => void;
   onSelectRelation: (relationId: string) => void;
   onMakeCenter: (companyId: string) => void;
 };
 
-export default function DetailPanel({ company, centerCompanyId, relationships, memberships, selectedRelation, onSelectCompany, onSelectRelation, onMakeCenter }: Props) {
+export default function DetailPanel({
+  groups,
+  companies,
+  selection,
+  centerCompanyId,
+  relationships,
+  memberships,
+  selectedRelation,
+  onSelectCompany,
+  onSelectGroup,
+  onSelectRelation,
+  onMakeCenter,
+}: Props) {
+  const company = selection?.kind === "company"
+    ? companies.find((item) => item.id === selection.id) ?? null
+    : null;
+  const group = selection?.kind === "group"
+    ? groups.find((item) => item.id === selection.id) ?? null
+    : null;
+
+  if (selection?.kind === "group" && group) {
+    const groupMemberships = memberships
+      .filter((membership) => membership.groupId === group.id)
+      .sort((a, b) => a.companyName.localeCompare(b.companyName, "ja"));
+    const evidence = groupMemberships.find((membership) => membership.sourceUrl || membership.sourceTitle) ?? groupMemberships[0] ?? null;
+
+    return (
+      <aside className={styles.detailPanel}>
+        <section className={styles.detailSection}>
+          <span className={styles.detailKicker}>SELECTED GROUP</span>
+          <h2>{group.name}</h2>
+          <div className={styles.badges}>
+            <span>{groupTypeLabel(group.groupType)}</span>
+            <span>所属 {groupMemberships.length}社</span>
+          </div>
+        </section>
+
+        <section className={styles.detailSection}>
+          <div className={styles.detailSectionHead}>
+            <h3>所属企業</h3>
+            <span>{groupMemberships.length}社</span>
+          </div>
+          {groupMemberships.length > 0 ? (
+            <div className={styles.detailRelations}>
+              {groupMemberships.map((membership) => (
+                <button
+                  type="button"
+                  key={membership.membershipId}
+                  className={styles.detailRelationButton}
+                  onClick={() => onSelectCompany(membership.companyId)}
+                >
+                  <strong>{membership.companyName}</strong>
+                  <span>{membership.membershipRole} · {membership.membershipBasis}</span>
+                  <small>{membership.verificationStatus} · {formatAsOf(membership.sourceAsOf)}</small>
+                </button>
+              ))}
+            </div>
+          ) : <p className={styles.empty}>現在の条件で表示できる所属企業はありません。</p>}
+        </section>
+
+        {evidence ? (
+          <section className={styles.detailSection}>
+            <div className={styles.detailSectionHead}><h3>所属の根拠</h3><span>{evidence.confidence}</span></div>
+            <dl className={styles.detailList}>
+              <div><dt>basis</dt><dd>{evidence.membershipBasis}</dd></div>
+              <div><dt>基準日</dt><dd>{formatAsOf(evidence.sourceAsOf)}</dd></div>
+              <div><dt>source type</dt><dd>{evidence.sourceType ?? "—"}</dd></div>
+            </dl>
+            {evidence.note ? <p className={styles.detailNote}>{evidence.note}</p> : null}
+            {evidence.sourceUrl ? <a className={styles.sourceLink} href={evidence.sourceUrl} target="_blank" rel="noreferrer">{evidence.sourceTitle ?? "根拠を開く"} ↗</a> : null}
+          </section>
+        ) : null}
+      </aside>
+    );
+  }
+
   if (!company) {
-    return <aside className={styles.detailPanel}><p className={styles.empty}>企業を選択すると詳細を表示します。</p></aside>;
+    return <aside className={styles.detailPanel}><p className={styles.empty}>企業または企業グループを選択すると詳細を表示します。</p></aside>;
   }
 
   const related = relationships.filter((relationship) => relationship.sourceCompanyId === company.id || relationship.targetCompanyId === company.id);
@@ -78,7 +162,22 @@ export default function DetailPanel({ company, centerCompanyId, relationships, m
       <section className={styles.detailSection}>
         <div className={styles.detailSectionHead}><h3>企業グループ所属</h3><span>{companyMemberships.length}件</span></div>
         {companyMemberships.length > 0 ? (
-          <div className={styles.groupList}>{companyMemberships.map((membership) => <article key={membership.membershipId}><strong>{membership.groupName}</strong><span>{groupTypeLabel(membership.groupType)} / {membership.membershipBasis}</span><small>{membership.verificationStatus} · {formatAsOf(membership.sourceAsOf)}</small>{membership.sourceUrl ? <a href={membership.sourceUrl} target="_blank" rel="noreferrer">根拠 ↗</a> : null}</article>)}</div>
+          <div className={styles.groupList}>
+            {companyMemberships.map((membership) => (
+              <article key={membership.membershipId}>
+                <button
+                  type="button"
+                  onClick={() => onSelectGroup(membership.groupId)}
+                  style={{ display: "grid", gap: 3, width: "100%", border: 0, padding: 0, background: "transparent", color: "inherit", textAlign: "left", font: "inherit", cursor: "pointer" }}
+                >
+                  <strong>{membership.groupName}</strong>
+                  <span>{groupTypeLabel(membership.groupType)} / {membership.membershipBasis}</span>
+                  <small>{membership.verificationStatus} · {formatAsOf(membership.sourceAsOf)}</small>
+                </button>
+                {membership.sourceUrl ? <a href={membership.sourceUrl} target="_blank" rel="noreferrer">根拠 ↗</a> : null}
+              </article>
+            ))}
+          </div>
         ) : <p className={styles.empty}>現在の条件で確認できるグループ所属はありません。</p>}
       </section>
     </aside>

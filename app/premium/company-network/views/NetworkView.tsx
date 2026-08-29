@@ -4,8 +4,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePanZoom } from "../../industry-map/use-pan-zoom";
 import styles from "../CompanyNetwork.module.css";
 import { seedSimNodes, simExtent, stepForce, type SimLink, type SimNode, type VisualNode } from "../graph-layout";
+import { buildSelectedNeighbourIds, groupGraphNodeId, selectedGraphNodeId } from "../node-selection";
 import { CATEGORY_COLOR, groupTypeLabel, relationLabel } from "../presentation";
-import type { CompanyGroupMembership, CompanyNetworkCompany, CompanyRelationship } from "../types";
+import type {
+  CompanyGroupMembership,
+  CompanyNetworkCompany,
+  CompanyNetworkNodeSelection,
+  CompanyRelationship,
+} from "../types";
 
 const TOTAL_STEPS = 300;
 const STEPS_PER_FRAME = 3;
@@ -22,10 +28,11 @@ type Props = {
   relationships: CompanyRelationship[];
   memberships: CompanyGroupMembership[];
   centerCompanyId: string;
-  selectedCompanyId: string;
+  selection: CompanyNetworkNodeSelection | null;
   selectedRelationId: string | null;
   query: string;
   onSelectCompany: (companyId: string) => void;
+  onSelectGroup: (groupId: string) => void;
   onSelectRelation: (relationId: string) => void;
 };
 
@@ -34,10 +41,11 @@ export default function NetworkView({
   relationships,
   memberships,
   centerCompanyId,
-  selectedCompanyId,
+  selection,
   selectedRelationId,
   query,
   onSelectCompany,
+  onSelectGroup,
   onSelectRelation,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -50,11 +58,11 @@ export default function NetworkView({
     const nodes: VisualNode[] = companies.map((company) => ({ id: company.id, label: company.name, kind: "company" as const, company }));
     const groupById = new Map(memberships.map((membership) => [membership.groupId, membership]));
     for (const membership of groupById.values()) {
-      nodes.push({ id: `group:${membership.groupId}`, label: membership.groupName, kind: "group" as const, groupId: membership.groupId, groupType: membership.groupType });
+      nodes.push({ id: groupGraphNodeId(membership.groupId), label: membership.groupName, kind: "group" as const, groupId: membership.groupId, groupType: membership.groupType });
     }
     const links: SimLink[] = [
       ...relationships.map((relationship) => ({ id: relationship.relationId, sourceId: relationship.sourceCompanyId, targetId: relationship.targetCompanyId, kind: "relationship" as const })),
-      ...memberships.map((membership) => ({ id: membership.membershipId, sourceId: membership.companyId, targetId: `group:${membership.groupId}`, kind: "membership" as const })),
+      ...memberships.map((membership) => ({ id: membership.membershipId, sourceId: membership.companyId, targetId: groupGraphNodeId(membership.groupId), kind: "membership" as const })),
     ];
     return { nodes, links };
   }, [companies, memberships, relationships]);
@@ -83,18 +91,11 @@ export default function NetworkView({
   const fit = (VIEWBOX_HALF - LABEL_PADDING) / simExtent(nodes, 240);
   const size = VIEWBOX_HALF * 2;
   const normalizedQuery = query.trim().toLocaleLowerCase("ja");
-
-  const selectedNeighbours = useMemo(() => {
-    const ids = new Set<string>(selectedCompanyId ? [selectedCompanyId] : []);
-    relationships.forEach((relationship) => {
-      if (relationship.sourceCompanyId === selectedCompanyId) ids.add(relationship.targetCompanyId);
-      if (relationship.targetCompanyId === selectedCompanyId) ids.add(relationship.sourceCompanyId);
-    });
-    memberships.forEach((membership) => {
-      if (membership.companyId === selectedCompanyId) ids.add(`group:${membership.groupId}`);
-    });
-    return ids;
-  }, [memberships, relationships, selectedCompanyId]);
+  const selectedNodeId = selectedGraphNodeId(selection);
+  const selectedNeighbours = useMemo(
+    () => buildSelectedNeighbourIds(selection, relationships, memberships),
+    [memberships, relationships, selection],
+  );
 
   return (
     <div className={styles.viewFade}>
@@ -116,7 +117,7 @@ export default function NetworkView({
               const target = positions.get(relationship.targetCompanyId);
               if (!source || !target) return null;
               const selected = relationship.relationId === selectedRelationId;
-              const focused = selectedNeighbours.has(relationship.sourceCompanyId) && selectedNeighbours.has(relationship.targetCompanyId);
+              const focused = selectedNeighbours === null || (selectedNeighbours.has(relationship.sourceCompanyId) && selectedNeighbours.has(relationship.targetCompanyId));
               return <g key={relationship.relationId}>
                 <line x1={source.x * fit} y1={source.y * fit} x2={target.x * fit} y2={target.y * fit} stroke={CATEGORY_COLOR[relationship.relationCategory]} strokeWidth={selected ? 3.2 : focused ? 1.8 : 1} strokeOpacity={selected ? 1 : focused ? 0.85 : 0.2} strokeDasharray={relationship.verificationStatus === "verified" ? undefined : "7 6"} markerEnd="url(#company-relation-arrow)" color={CATEGORY_COLOR[relationship.relationCategory]} onClick={() => onSelectRelation(relationship.relationId)} className={styles.edgeHitTarget} />
                 {(focused || selected) ? <text x={((source.x + target.x) / 2) * fit} y={((source.y + target.y) / 2) * fit - 7} textAnchor="middle" className={styles.svgEdgeLabel}>{relationLabel(relationship.relationType, relationship.ownershipPct)}</text> : null}
@@ -124,23 +125,45 @@ export default function NetworkView({
             })}
             {memberships.map((membership) => {
               const source = positions.get(membership.companyId);
-              const target = positions.get(`group:${membership.groupId}`);
+              const target = positions.get(groupGraphNodeId(membership.groupId));
               if (!source || !target) return null;
-              const focused = membership.companyId === selectedCompanyId;
-              return <line key={membership.membershipId} x1={source.x * fit} y1={source.y * fit} x2={target.x * fit} y2={target.y * fit} className={styles.membershipLine} strokeOpacity={focused ? 0.9 : 0.25} />;
+              const focused = selection?.kind === "group"
+                ? selection.id === membership.groupId
+                : selection?.kind === "company"
+                  ? selection.id === membership.companyId
+                  : true;
+              return <line key={membership.membershipId} x1={source.x * fit} y1={source.y * fit} x2={target.x * fit} y2={target.y * fit} className={styles.membershipLine} strokeOpacity={focused ? 0.9 : 0.2} />;
             })}
             {nodes.map((node) => {
-              const selected = node.id === selectedCompanyId;
-              const center = node.id === centerCompanyId;
+              const selected = node.id === selectedNodeId;
+              const center = node.kind === "company" && node.id === centerCompanyId;
               const queryDimmed = normalizedQuery.length > 0 && !node.label.toLocaleLowerCase("ja").includes(normalizedQuery);
-              const neighbourDimmed = selectedCompanyId.length > 0 && !selectedNeighbours.has(node.id);
+              const neighbourDimmed = selectedNeighbours !== null && !selectedNeighbours.has(node.id);
               const dimmed = queryDimmed || neighbourDimmed;
-              const radius = node.kind === "group" ? 9 : center ? 11 : selected ? 10 : 8;
+              const radius = node.kind === "group" ? (selected ? 11 : 9) : center ? 11 : selected ? 10 : 8;
               const fill = node.kind === "group" ? "#fff7ed" : center ? "#2554ff" : "var(--color-bg-card)";
               const stroke = node.kind === "group" ? "#d97706" : "#2554ff";
-              return <g key={node.id} transform={`translate(${node.x * fit} ${node.y * fit})`} className={dimmed ? styles.svgNodeDim : undefined} style={{ cursor: node.kind === "company" ? "pointer" : "default" }} onClick={() => { if (node.kind === "company" && !panZoom.didPan()) onSelectCompany(node.id); }} role={node.kind === "company" ? "button" : undefined} tabIndex={node.kind === "company" ? 0 : undefined} onKeyDown={(event) => { if (node.kind === "company" && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onSelectCompany(node.id); } }}>
+              return <g
+                key={node.id}
+                transform={`translate(${node.x * fit} ${node.y * fit})`}
+                className={dimmed ? styles.svgNodeDim : undefined}
+                style={{ cursor: "pointer" }}
+                onClick={() => {
+                  if (panZoom.didPan()) return;
+                  if (node.kind === "company") onSelectCompany(node.id);
+                  else if (node.groupId) onSelectGroup(node.groupId);
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter" && event.key !== " ") return;
+                  event.preventDefault();
+                  if (node.kind === "company") onSelectCompany(node.id);
+                  else if (node.groupId) onSelectGroup(node.groupId);
+                }}
+              >
                 <title>{node.kind === "group" ? `${node.label}（${groupTypeLabel(node.groupType ?? "")}）` : node.label}</title>
-                {selected ? <circle className={styles.pulse} r={radius + 8} fill="none" stroke="#2554ff" strokeWidth={2} /> : null}
+                {selected ? <circle className={styles.pulse} r={radius + 8} fill="none" stroke={stroke} strokeWidth={2} /> : null}
                 <circle r={radius} fill={fill} stroke={stroke} strokeWidth={selected || center ? 3 : 2} />
                 <text className={styles.svgLabel} x={radius + 6} dominantBaseline="middle">{truncate(node.label)}</text>
               </g>;
