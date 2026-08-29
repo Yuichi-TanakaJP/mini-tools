@@ -1,6 +1,7 @@
 "use client";
 
 import styles from "../CompanyNetwork.module.css";
+import functionStyles from "../FunctionViews.module.css";
 import { CATEGORY_LABEL, formatAsOf, groupTypeLabel, relationLabel } from "../presentation";
 import type {
   CompanyFunctionLink,
@@ -142,9 +143,9 @@ export default function DetailPanel({
       <section className={styles.detailSection}>
         <div className={styles.detailSectionHead}><h3>担う事業・機能</h3><span>{companyFunctions.length}件</span></div>
         {companyFunctions.length > 0 ? (
-          <div className={styles.functionDetailList}>
+          <div className={functionStyles.functionDetailList}>
             {companyFunctions.map((link) => (
-              <article key={link.linkId} className={link.role === "core" ? styles.functionDetailCore : styles.functionDetailSupporting}>
+              <article key={link.linkId} className={link.role === "core" ? functionStyles.functionDetailCore : functionStyles.functionDetailSupporting}>
                 <div><strong>{link.functionName}</strong><span>{link.role === "core" ? "主要機能" : "追加機能"}</span></div>
                 {link.classificationName ? <small>{link.classificationName}</small> : null}
                 <small>{formatAsOf(link.asOf)} · confidence {link.confidence}</small>
