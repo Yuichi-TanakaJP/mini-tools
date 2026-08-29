@@ -67,12 +67,12 @@ export default function DetailPanel({
             <span>{groupMemberships.length}社</span>
           </div>
           {groupMemberships.length > 0 ? (
-            <div className={styles.groupMemberList}>
+            <div className={styles.detailRelations}>
               {groupMemberships.map((membership) => (
                 <button
                   type="button"
                   key={membership.membershipId}
-                  className={styles.groupMemberButton}
+                  className={styles.detailRelationButton}
                   onClick={() => onSelectCompany(membership.companyId)}
                 >
                   <strong>{membership.companyName}</strong>
@@ -165,7 +165,11 @@ export default function DetailPanel({
           <div className={styles.groupList}>
             {companyMemberships.map((membership) => (
               <article key={membership.membershipId}>
-                <button type="button" className={styles.groupSelectButton} onClick={() => onSelectGroup(membership.groupId)}>
+                <button
+                  type="button"
+                  onClick={() => onSelectGroup(membership.groupId)}
+                  style={{ display: "grid", gap: 3, width: "100%", border: 0, padding: 0, background: "transparent", color: "inherit", textAlign: "left", font: "inherit", cursor: "pointer" }}
+                >
                   <strong>{membership.groupName}</strong>
                   <span>{groupTypeLabel(membership.groupType)} / {membership.membershipBasis}</span>
                   <small>{membership.verificationStatus} · {formatAsOf(membership.sourceAsOf)}</small>
