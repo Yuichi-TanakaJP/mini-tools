@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
+  CompanyFunctionLink,
   CompanyGroupMembership,
   CompanyNetworkBootstrapResult,
   CompanyNetworkCompany,
@@ -25,8 +26,19 @@ const MEMBERSHIP_SELECT =
   "membership_id,company_entity_id,company_name,group_id,group_slug,group_name,group_type," +
   "membership_role,membership_basis,relation_note,verification_status,confidence," +
   "source_title,source_url,source_type,source_as_of,valid_to";
+const FUNCTION_LINK_SELECT =
+  "id,company_entity_id,node_id,strategic_role,relation_note,source_type,confidence,as_of,valid_to";
+const FUNCTION_NODE_SELECT = "id,slug,display_name,kind";
+const FUNCTION_EDGE_SELECT = "source_node_id,target_node_id,relation_type";
 
 type Row = Record<string, unknown>;
+
+type FunctionNode = {
+  id: string;
+  slug: string;
+  name: string;
+  kind: string;
+};
 
 function stringValue(row: Row, key: string): string {
   const value = row[key];
@@ -144,6 +156,14 @@ function parseGroup(row: Row): CompanyNetworkGroup | null {
   return { id, name, groupType: stringValue(row, "group_type") };
 }
 
+function parseFunctionNode(row: Row): FunctionNode | null {
+  const id = nullableString(row, "id");
+  const slug = nullableString(row, "slug");
+  const name = nullableString(row, "display_name");
+  if (!id || !slug || !name) return null;
+  return { id, slug, name, kind: stringValue(row, "kind") };
+}
+
 async function loadCompaniesByIds(supabase: SupabaseClient, companyIds: string[]) {
   if (companyIds.length === 0) return [] as CompanyNetworkCompany[];
   const result = await supabase
@@ -156,6 +176,89 @@ async function loadCompaniesByIds(supabase: SupabaseClient, companyIds: string[]
   return ((result.data ?? []) as unknown as Row[])
     .map(parseCompany)
     .filter((row): row is CompanyNetworkCompany => row !== null);
+}
+
+async function loadCompanyFunctionLinks(
+  supabase: SupabaseClient,
+  companyIds: string[],
+): Promise<CompanyFunctionLink[] | null> {
+  if (companyIds.length === 0) return [];
+
+  const nodesResult = await supabase
+    .from("stock_notes_taxonomy_nodes")
+    .select(FUNCTION_NODE_SELECT)
+    .eq("domain", "company-functions")
+    .eq("status", "active")
+    .order("display_name", { ascending: true })
+    .limit(ROW_LIMIT);
+  if (nodesResult.error) return null;
+
+  const nodes = ((nodesResult.data ?? []) as unknown as Row[])
+    .map(parseFunctionNode)
+    .filter((row): row is FunctionNode => row !== null);
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const functionNodeIds = nodes.filter((node) => node.kind === "product_segment").map((node) => node.id);
+  if (functionNodeIds.length === 0) return [];
+
+  const edgesResult = await supabase
+    .from("stock_notes_taxonomy_edges")
+    .select(FUNCTION_EDGE_SELECT)
+    .eq("domain", "company-functions")
+    .eq("relation_type", "contains")
+    .in("target_node_id", functionNodeIds)
+    .limit(ROW_LIMIT);
+  if (edgesResult.error) return null;
+
+  const parentByNodeId = new Map<string, string>();
+  ((edgesResult.data ?? []) as unknown as Row[]).forEach((row) => {
+    const source = nullableString(row, "source_node_id");
+    const target = nullableString(row, "target_node_id");
+    if (source && target) parentByNodeId.set(target, source);
+  });
+
+  const linksResult = await supabase
+    .from("stock_notes_company_taxonomy_links")
+    .select(FUNCTION_LINK_SELECT)
+    .in("company_entity_id", companyIds)
+    .in("node_id", functionNodeIds)
+    .is("valid_to", null)
+    .limit(ROW_LIMIT);
+  if (linksResult.error) return null;
+
+  return ((linksResult.data ?? []) as unknown as Row[])
+    .map((row): CompanyFunctionLink | null => {
+      const linkId = nullableString(row, "id");
+      const companyId = nullableString(row, "company_entity_id");
+      const nodeId = nullableString(row, "node_id");
+      const confidence = oneOf<Confidence>(row, "confidence", CONFIDENCES);
+      const node = nodeId ? nodeById.get(nodeId) : null;
+      if (!linkId || !companyId || !nodeId || !node || !confidence) return null;
+      const parentId = parentByNodeId.get(nodeId) ?? null;
+      const parent = parentId ? nodeById.get(parentId) ?? null : null;
+      return {
+        linkId,
+        companyId,
+        nodeId,
+        functionSlug: node.slug,
+        functionName: node.name,
+        classificationId: parent?.id ?? null,
+        classificationSlug: parent?.slug ?? null,
+        classificationName: parent?.name ?? null,
+        role: stringValue(row, "strategic_role"),
+        confidence,
+        sourceType: nullableString(row, "source_type"),
+        asOf: nullableString(row, "as_of"),
+        note: stringValue(row, "relation_note"),
+      };
+    })
+    .filter((row): row is CompanyFunctionLink => row !== null)
+    .sort((a, b) => {
+      const byClass = (a.classificationName ?? "").localeCompare(b.classificationName ?? "", "ja");
+      if (byClass !== 0) return byClass;
+      const byFunction = a.functionName.localeCompare(b.functionName, "ja");
+      if (byFunction !== 0) return byFunction;
+      return a.companyId.localeCompare(b.companyId);
+    });
 }
 
 export function companyNetworkUnconfigured(): CompanyNetworkBootstrapResult {
@@ -251,8 +354,12 @@ export async function loadCompanyGroupScope(
   if (companies === null) {
     return { status: "error", data: null, message: "グループ所属企業の情報を取得できませんでした。" };
   }
+  const functions = await loadCompanyFunctionLinks(supabase, companyIds);
+  if (functions === null) {
+    return { status: "error", data: null, message: "グループ企業の事業・機能分類を取得できませんでした。" };
+  }
 
-  const data: CompanyNetworkData = { companies, relationships, memberships };
+  const data: CompanyNetworkData = { companies, relationships, memberships, functions };
   return {
     status: memberships.length === 0 ? "empty" : "ok",
     data,
@@ -352,12 +459,17 @@ export async function loadCompanyNetworkScope(
   });
   memberships.forEach((membership) => companyIds.add(membership.companyId));
 
-  const companies = await loadCompaniesByIds(supabase, [...companyIds]);
+  const companyIdList = [...companyIds];
+  const companies = await loadCompaniesByIds(supabase, companyIdList);
   if (companies === null) {
     return { status: "error", data: null, message: "表示対象企業の情報を取得できませんでした。" };
   }
+  const functions = await loadCompanyFunctionLinks(supabase, companyIdList);
+  if (functions === null) {
+    return { status: "error", data: null, message: "表示企業の事業・機能分類を取得できませんでした。" };
+  }
 
-  const data: CompanyNetworkData = { companies, relationships, memberships };
-  const empty = relationships.length === 0 && memberships.length === 0;
-  return { status: empty ? "empty" : "ok", data, message: empty ? "この企業には現在の条件で表示できる関係がありません。" : null };
+  const data: CompanyNetworkData = { companies, relationships, memberships, functions };
+  const empty = relationships.length === 0 && memberships.length === 0 && functions.length === 0;
+  return { status: empty ? "empty" : "ok", data, message: empty ? "この企業には現在の条件で表示できる関係・機能情報がありません。" : null };
 }
