@@ -1,6 +1,12 @@
 export type RelationCategory = "capital" | "control" | "historical";
 export type VerificationStatus = "proposed" | "verified" | "rejected" | "superseded";
 export type Confidence = "high" | "medium" | "low";
+export type CompanyNetworkNodeKind = "company" | "group";
+
+export type CompanyNetworkNodeSelection = {
+  kind: CompanyNetworkNodeKind;
+  id: string;
+};
 
 export type CompanyNetworkCompany = {
   id: string;
