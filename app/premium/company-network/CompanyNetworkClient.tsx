@@ -13,6 +13,7 @@ import type {
   RelationCategory,
 } from "./types";
 import DetailPanel from "./views/DetailPanel";
+import GroupHierarchyView from "./views/GroupHierarchyView";
 import GroupRadialView from "./views/GroupRadialView";
 import GroupTableView from "./views/GroupTableView";
 import HierarchyView from "./views/HierarchyView";
@@ -29,13 +30,8 @@ type ScopedSelection = CompanyNetworkNodeSelection & { key: string };
 function StateScreen({ title, body }: { title: string; body: string }) {
   return (
     <main className={styles.page}>
-      <nav className={styles.topNav}>
-        <Link href="/premium" className={styles.topNavLink}>← Premium ホーム</Link>
-      </nav>
-      <section className={styles.state}>
-        <h1>{title}</h1>
-        <p>{body}</p>
-      </section>
+      <nav className={styles.topNav}><Link href="/premium" className={styles.topNavLink}>← Premium ホーム</Link></nav>
+      <section className={styles.state}><h1>{title}</h1><p>{body}</p></section>
     </main>
   );
 }
@@ -48,6 +44,7 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
   const [view, setView] = useState<CompanyNetworkViewMode>("network");
   const [scopeMode, setScopeMode] = useState<CompanyNetworkScopeMode>("group");
   const [selectedGroupId, setSelectedGroupId] = useState(defaultGroupId);
+  const [displayBaseCompanyId, setDisplayBaseCompanyId] = useState("");
   const [centerCompanyId, setCenterCompanyId] = useState("");
   const [selection, setSelection] = useState<ScopedSelection | null>(null);
   const [selectedRelationId, setSelectedRelationId] = useState<string | null>(null);
@@ -73,33 +70,25 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
   const selectedCompanyId = activeSelection?.kind === "company" ? activeSelection.id : "";
   const activeGroup = groups.find((group) => group.id === selectedGroupId) ?? groups[0] ?? null;
   const centerCompany = scope?.companies.find((company) => company.id === centerCompanyId) ?? null;
+  const displayBaseCompany = scope?.companies.find((company) => company.id === displayBaseCompanyId) ?? null;
+  const groupNetworkSelection = scopeMode === "group" && activeSelection?.kind === "group" ? null : activeSelection;
 
   useEffect(() => {
     if (!targetId) return;
     const controller = new AbortController();
-    const params = new URLSearchParams({
-      verifiedOnly: String(verifiedOnly),
-      categories: categoryKey,
-    });
-    if (scopeMode === "group") {
-      params.set("groupId", selectedGroupId);
-    } else {
+    const params = new URLSearchParams({ verifiedOnly: String(verifiedOnly), categories: categoryKey });
+    if (scopeMode === "group") params.set("groupId", selectedGroupId);
+    else {
       params.set("companyId", centerCompanyId);
       params.set("hops", String(hops));
       params.set("includeGroups", String(showGroups));
     }
     const key = requestKey;
 
-    fetch(`/api/premium/company-network?${params.toString()}`, {
-      credentials: "same-origin",
-      signal: controller.signal,
-      cache: "no-store",
-    })
+    fetch(`/api/premium/company-network?${params.toString()}`, { credentials: "same-origin", signal: controller.signal, cache: "no-store" })
       .then(async (response) => {
         const payload = await response.json() as CompanyNetworkScopeResult;
-        if (!response.ok || payload.status === "error" || payload.status === "unauthenticated" || payload.status === "unconfigured") {
-          throw new Error(payload.message);
-        }
+        if (!response.ok || payload.status === "error" || payload.status === "unauthenticated" || payload.status === "unconfigured") throw new Error(payload.message);
         return payload.data;
       })
       .then((data) => {
@@ -108,13 +97,9 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
         setScopedError(null);
         setSelectedRelationId(null);
         setSelection((current) => {
-          if (current?.key === key) {
-            if (current.kind === "company" && data.companies.some((company) => company.id === current.id)) return current;
-            if (current.kind === "group" && data.memberships.some((membership) => membership.groupId === current.id)) return current;
-          }
-          return scopeMode === "group"
-            ? { key, kind: "group", id: selectedGroupId }
-            : { key, kind: "company", id: centerCompanyId };
+          if (current?.kind === "company" && data.companies.some((company) => company.id === current.id)) return { key, kind: "company", id: current.id };
+          if (current?.kind === "group" && data.memberships.some((membership) => membership.groupId === current.id)) return { key, kind: "group", id: current.id };
+          return scopeMode === "group" ? { key, kind: "group", id: selectedGroupId } : { key, kind: "company", id: centerCompanyId };
         });
       })
       .catch((error: unknown) => {
@@ -131,45 +116,45 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
   const viewIndex = VIEWS.findIndex((item) => item.mode === view);
   const showHopControl = scopeMode === "company" && (view === "radial" || view === "hierarchy");
   const showGroupControl = scopeMode === "company" && (view === "network" || view === "radial");
-  const hierarchyCenterId = scopeMode === "company" ? centerCompanyId : selectedCompanyId;
+  const showRelationFilters = scopeMode === "company" || view !== "radial";
 
   const selectCompany = (companyId: string) => {
     setSelection({ key: requestKey, kind: "company", id: companyId });
     setSelectedRelationId(null);
   };
-
   const selectGroup = (groupId: string) => {
     setSelection({ key: requestKey, kind: "group", id: groupId });
     setSelectedRelationId(null);
   };
-
   const changeGroup = (groupId: string) => {
     setSelectedGroupId(groupId);
     setScopeMode("group");
+    setDisplayBaseCompanyId("");
     setCenterCompanyId("");
     setSelection(null);
     setSelectedRelationId(null);
   };
-
+  const changeDisplayBase = (companyId: string) => {
+    setDisplayBaseCompanyId(companyId);
+    setSelectedRelationId(null);
+    setSelection(companyId ? { key: requestKey, kind: "company", id: companyId } : { key: requestKey, kind: "group", id: selectedGroupId });
+  };
   const changeCenter = (companyId: string) => {
     setScopeMode("company");
     setCenterCompanyId(companyId);
     setSelection(null);
     setSelectedRelationId(null);
   };
-
   const returnToGroup = () => {
     setScopeMode("group");
     setCenterCompanyId("");
     setSelection(null);
     setSelectedRelationId(null);
   };
-
   const toggleCategory = (category: RelationCategory) => {
     setCategories((current) => {
       const next = new Set(current);
-      if (next.has(category)) next.delete(category);
-      else next.add(category);
+      if (next.has(category)) next.delete(category); else next.add(category);
       return next;
     });
     setSelectedRelationId(null);
@@ -189,17 +174,14 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
 
       <header className={styles.hero}>
         <div className={styles.heroHead}>
-          <div>
-            <h1 className={styles.heroTitle}>企業関係マップ</h1>
-            <p className={styles.heroLead}>企業グループを入口に全体像を確認し、必要な企業だけ1-hop / 2-hopで深掘りします。閲覧専用です。</p>
-          </div>
-          <span className={styles.versionBadge}>company-network v4</span>
+          <div><h1 className={styles.heroTitle}>企業関係マップ</h1><p className={styles.heroLead}>企業グループを入口に、所属・企業間関係・資本系列を目的別に切り替えて確認します。閲覧専用です。</p></div>
+          <span className={styles.versionBadge}>company-network v5</span>
         </div>
         <div className={styles.statRow}>
           <div className={styles.stat}><span>企業グループ</span><strong>{groups.length}</strong><small>件</small></div>
           <div className={styles.stat}><span>{scopeMode === "group" ? "所属企業" : "表示企業"}</span><strong>{scope?.companies.length ?? 0}</strong><small>社</small></div>
           <div className={styles.stat}><span>企業間関係</span><strong>{relationships.length}</strong><small>件</small></div>
-          <div className={styles.stat}><span>表示モード</span><strong style={{ fontSize: 13 }}>{scopeMode === "group" ? "GROUP" : "DEEP"}</strong></div>
+          <div className={styles.stat}><span>表示基点</span><strong style={{ fontSize: 12 }}>{scopeMode === "company" ? centerCompany?.name ?? "読込中" : displayBaseCompany?.name ?? "グループ全体"}</strong></div>
         </div>
       </header>
 
@@ -207,12 +189,17 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
         <div className={styles.controlRow}>
           <label className={styles.companySelect}>
             <span>企業グループ</span>
-            <select value={selectedGroupId} onChange={(event) => changeGroup(event.target.value)}>
-              {groups.map((group) => (
-                <option key={group.id} value={group.id}>{group.name}</option>
-              ))}
-            </select>
+            <select value={selectedGroupId} onChange={(event) => changeGroup(event.target.value)}>{groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</select>
           </label>
+          {scopeMode === "group" ? (
+            <label className={styles.companySelect}>
+              <span>表示基点</span>
+              <select value={displayBaseCompanyId} onChange={(event) => changeDisplayBase(event.target.value)}>
+                <option value="">グループ全体</option>
+                {(scope?.companies ?? []).map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+              </select>
+            </label>
+          ) : null}
           <input className={styles.search} type="search" value={query} placeholder="企業名・関係を検索" aria-label="企業関係を検索" onChange={(event) => setQuery(event.target.value)} />
         </div>
 
@@ -225,41 +212,21 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
 
         <details style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: "0 10px", background: "var(--color-bg-input)" }}>
           <summary style={{ minHeight: 38, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, cursor: "pointer", fontSize: 11, fontWeight: 800, color: "var(--color-text-sub)" }}>
-            <span>絞り込み・表示設定</span>
-            <span style={{ color: "var(--color-text-muted)", fontWeight: 700 }}>{verifiedOnly ? "verified" : "全状態"} · {categories.size}種別</span>
+            <span>絞り込み・表示設定</span><span style={{ color: "var(--color-text-muted)", fontWeight: 700 }}>{verifiedOnly ? "確認済み" : "全状態"}{showRelationFilters ? ` · ${categories.size}種別` : ""}</span>
           </summary>
           <div style={{ display: "grid", gap: 10, padding: "4px 0 10px" }}>
-            {showHopControl ? (
-              <div className={styles.controlRow}>
-                <span style={{ fontSize: 10, fontWeight: 800, color: "var(--color-text-muted)" }}>探索範囲</span>
-                <div className={styles.hopControl} aria-label="探索の深さ">
-                  {[1, 2].map((value) => (
-                    <button key={value} type="button" className={hops === value ? styles.toggleOn : styles.toggle} onClick={() => setHops(value as 1 | 2)}>{value}-hop</button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
+            {showHopControl ? <div className={styles.controlRow}><span style={{ fontSize: 10, fontWeight: 800, color: "var(--color-text-muted)" }}>探索範囲</span><div className={styles.hopControl} aria-label="探索の深さ">{[1, 2].map((value) => <button key={value} type="button" className={hops === value ? styles.toggleOn : styles.toggle} onClick={() => setHops(value as 1 | 2)}>{value}-hop</button>)}</div></div> : null}
             <div className={styles.filterRow}>
-              {ALL_CATEGORIES.map((category) => (
-                <button key={category} type="button" className={`${styles.toggle} ${categories.has(category) ? styles.toggleOn : ""}`} aria-pressed={categories.has(category)} onClick={() => toggleCategory(category)}>
-                  <span className={styles.toggleDot} />{CATEGORY_LABEL[category]}
-                </button>
-              ))}
-              <button type="button" className={`${styles.toggle} ${verifiedOnly ? styles.toggleOn : ""}`} aria-pressed={verifiedOnly} onClick={() => { setVerifiedOnly((value) => !value); setSelectedRelationId(null); }}>verifiedのみ</button>
-              {showGroupControl ? (
-                <button type="button" className={`${styles.toggle} ${showGroups ? styles.toggleOn : ""}`} aria-pressed={showGroups} onClick={() => setShowGroups((value) => !value)}>グループ表示</button>
-              ) : null}
+              {showRelationFilters ? ALL_CATEGORIES.map((category) => <button key={category} type="button" className={`${styles.toggle} ${categories.has(category) ? styles.toggleOn : ""}`} aria-pressed={categories.has(category)} onClick={() => toggleCategory(category)}><span className={styles.toggleDot} />{CATEGORY_LABEL[category]}</button>) : null}
+              <button type="button" className={`${styles.toggle} ${verifiedOnly ? styles.toggleOn : ""}`} aria-pressed={verifiedOnly} onClick={() => { setVerifiedOnly((value) => !value); setSelectedRelationId(null); }}>確認済みのみ</button>
+              {showGroupControl ? <button type="button" className={`${styles.toggle} ${showGroups ? styles.toggleOn : ""}`} aria-pressed={showGroups} onClick={() => setShowGroups((value) => !value)}>グループ表示</button> : null}
             </div>
           </div>
         </details>
 
         <div className={styles.segmented} role="tablist" aria-label="表現の切り替え">
           <span className={styles.segmentedIndicator} style={{ left: `calc(3px + (100% - 6px) * ${Math.max(viewIndex, 0)} / ${VIEWS.length})`, width: `calc((100% - 6px) / ${VIEWS.length})` }} aria-hidden />
-          {VIEWS.map((item) => (
-            <button key={item.mode} type="button" role="tab" aria-selected={item.mode === view} className={`${styles.segmentButton} ${item.mode === view ? styles.segmentButtonActive : ""}`} onClick={() => setView(item.mode)} title={item.question}>
-              <span aria-hidden>{item.icon}</span><span>{item.label}</span>
-            </button>
-          ))}
+          {VIEWS.map((item) => <button key={item.mode} type="button" role="tab" aria-selected={item.mode === view} className={`${styles.segmentButton} ${item.mode === view ? styles.segmentButtonActive : ""}`} onClick={() => setView(item.mode)} title={item.question}><span aria-hidden>{item.icon}</span><span>{item.label}</span></button>)}
         </div>
       </section>
 
@@ -267,37 +234,29 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
         <section className={styles.canvas} aria-busy={loading}>
           {loading ? <p className={styles.empty}>{scopeMode === "group" ? "企業グループを読み込んでいます…" : "選択企業の関係を読み込んでいます…"}</p> : null}
           {loadError ? <p className={styles.empty}>{loadError}</p> : null}
-          {!loading && scope && relationships.length === 0 && memberships.length === 0 ? <p className={styles.empty}>現在の条件では表示できる関係がありません。</p> : null}
 
-          {scope && view === "network" ? (
-            <NetworkView companies={scope.companies} relationships={relationships} memberships={memberships} centerCompanyId={scopeMode === "company" ? centerCompanyId : ""} selection={activeSelection} selectedRelationId={selectedRelationId} query={query} onSelectCompany={selectCompany} onSelectGroup={selectGroup} onSelectRelation={setSelectedRelationId} />
+          {scope && view === "network" && scopeMode === "group" && activeGroup ? (
+            relationships.length === 0
+              ? <p className={styles.empty}><strong>{activeGroup.name}</strong>の所属 {memberships.length}社は確認済みですが、グループ内の企業間relationは現在未登録です。</p>
+              : <NetworkView title={`${activeGroup.name}の企業間関係`} companies={scope.companies} relationships={relationships} memberships={[]} centerCompanyId="" selection={groupNetworkSelection} selectedRelationId={selectedRelationId} query={query} onSelectCompany={selectCompany} onSelectGroup={selectGroup} onSelectRelation={setSelectedRelationId} />
           ) : null}
+          {scope && view === "network" && scopeMode === "company" ? <NetworkView companies={scope.companies} relationships={relationships} memberships={memberships} centerCompanyId={centerCompanyId} selection={activeSelection} selectedRelationId={selectedRelationId} query={query} onSelectCompany={selectCompany} onSelectGroup={selectGroup} onSelectRelation={setSelectedRelationId} /> : null}
 
-          {scope && view === "radial" && scopeMode === "group" && activeGroup ? (
-            <GroupRadialView group={activeGroup} companies={scope.companies} relationships={relationships} memberships={memberships} selection={activeSelection} selectedRelationId={selectedRelationId} query={query} onSelectCompany={selectCompany} onSelectGroup={selectGroup} onSelectRelation={setSelectedRelationId} />
-          ) : null}
+          {scope && view === "radial" && scopeMode === "group" && activeGroup ? <GroupRadialView group={activeGroup} companies={scope.companies} memberships={memberships} selection={activeSelection} focusCompanyId={displayBaseCompanyId} query={query} onSelectCompany={selectCompany} onSelectGroup={selectGroup} /> : null}
+          {scope && view === "radial" && scopeMode === "company" ? <RadialView companies={scope.companies} relationships={relationships} memberships={memberships} centerCompanyId={centerCompanyId} selection={activeSelection} selectedRelationId={selectedRelationId} hops={hops} query={query} onSelectCompany={selectCompany} onSelectGroup={selectGroup} onSelectRelation={setSelectedRelationId} /> : null}
 
-          {scope && view === "radial" && scopeMode === "company" ? (
-            <RadialView companies={scope.companies} relationships={relationships} memberships={memberships} centerCompanyId={centerCompanyId} selection={activeSelection} selectedRelationId={selectedRelationId} hops={hops} query={query} onSelectCompany={selectCompany} onSelectGroup={selectGroup} onSelectRelation={setSelectedRelationId} />
-          ) : null}
+          {scope && view === "hierarchy" && scopeMode === "group" && activeGroup && !displayBaseCompanyId ? <GroupHierarchyView groupName={activeGroup.name} companies={scope.companies} relationships={relationships} query={query} selectedCompanyId={selectedCompanyId} selectedRelationId={selectedRelationId} onSelectCompany={selectCompany} onSelectRelation={setSelectedRelationId} /> : null}
+          {scope && view === "hierarchy" && scopeMode === "group" && displayBaseCompanyId ? <HierarchyView companies={scope.companies} relationships={relationships} centerCompanyId={displayBaseCompanyId} selectedCompanyId={selectedCompanyId || displayBaseCompanyId} selectedRelationId={selectedRelationId} hops={2} query={query} onSelectCompany={selectCompany} onSelectRelation={setSelectedRelationId} /> : null}
+          {scope && view === "hierarchy" && scopeMode === "company" ? <HierarchyView companies={scope.companies} relationships={relationships} centerCompanyId={centerCompanyId} selectedCompanyId={selectedCompanyId} selectedRelationId={selectedRelationId} hops={hops} query={query} onSelectCompany={selectCompany} onSelectRelation={setSelectedRelationId} /> : null}
 
-          {scope && view === "hierarchy" ? (
-            <HierarchyView companies={scope.companies} relationships={relationships} centerCompanyId={hierarchyCenterId} selectedCompanyId={selectedCompanyId} selectedRelationId={selectedRelationId} hops={hops} query={query} onSelectCompany={selectCompany} onSelectRelation={setSelectedRelationId} />
-          ) : null}
-
-          {scope && view === "table" && scopeMode === "group" && activeGroup ? (
-            <GroupTableView group={activeGroup} companies={scope.companies} memberships={memberships} relationships={relationships} selection={activeSelection} query={query} onSelectCompany={selectCompany} />
-          ) : null}
-
-          {scope && view === "table" && scopeMode === "company" ? (
-            <TableView relationships={relationships} selectedRelationId={selectedRelationId} query={query} onSelectRelation={setSelectedRelationId} onSelectCompany={selectCompany} />
-          ) : null}
+          {scope && view === "table" && scopeMode === "group" && activeGroup ? <GroupTableView group={activeGroup} companies={scope.companies} memberships={memberships} relationships={relationships} selection={activeSelection} selectedRelationId={selectedRelationId} focusCompanyId={displayBaseCompanyId} query={query} onSelectCompany={selectCompany} onSelectRelation={setSelectedRelationId} /> : null}
+          {scope && view === "table" && scopeMode === "company" ? <TableView relationships={relationships} selectedRelationId={selectedRelationId} query={query} onSelectRelation={setSelectedRelationId} onSelectCompany={selectCompany} /> : null}
         </section>
 
         <DetailPanel groups={groups} companies={scope?.companies ?? []} selection={activeSelection} centerCompanyId={scopeMode === "company" ? centerCompanyId : ""} relationships={relationships} memberships={memberships} selectedRelation={selectedRelation} onSelectCompany={selectCompany} onSelectGroup={selectGroup} onSelectRelation={setSelectedRelationId} onMakeCenter={changeCenter} />
       </div>
 
-      <p className={styles.note}>企業グループが主入口です。企業ノードの選択は詳細と強調だけを変え、配置は動かしません。「この企業を中心に見る」を押した場合だけ1-hop / 2-hopの企業深掘りへ切り替わります。</p>
+      <p className={styles.note}>関係＝企業間relation、放射＝グループ所属、系列＝資本・支配構造、表＝人が読む確認一覧です。企業ノードのクリックは詳細選択だけで、配置やデータ取得範囲は変えません。</p>
     </main>
   );
 }
