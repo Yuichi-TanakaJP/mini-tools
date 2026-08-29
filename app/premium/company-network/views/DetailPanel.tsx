@@ -27,10 +27,12 @@ type Props = {
   onMakeCenter: (companyId: string) => void;
 };
 
-function listingLabel(value: string) {
-  if (value === "domestic_listed") return "上場";
-  if (value === "foreign_listed") return "海外上場";
-  if (value === "private") return "非上場";
+function listingLabel(company: CompanyNetworkCompany | undefined | null) {
+  if (!company) return "上場区分未確認";
+  const ticker = company.ticker ? ` ${company.ticker}` : "";
+  if (company.listingStatus === "domestic_listed") return `上場${ticker}`;
+  if (company.listingStatus === "foreign_listed") return `海外上場${ticker}`;
+  if (company.listingStatus === "private") return "非上場";
   return "上場区分未確認";
 }
 
@@ -87,13 +89,16 @@ export default function DetailPanel({
           <div className={styles.detailSectionHead}><h3>所属企業</h3><span>{groupMemberships.length}社</span></div>
           {groupMemberships.length > 0 ? (
             <div className={styles.detailRelations}>
-              {groupMemberships.map((membership) => (
-                <button type="button" key={membership.membershipId} className={styles.detailRelationButton} onClick={() => onSelectCompany(membership.companyId)}>
-                  <strong>{membership.companyName}</strong>
-                  <span>{listingLabel(companies.find((item) => item.id === membership.companyId)?.listingStatus ?? "")}</span>
-                  <small>{formatAsOf(membership.sourceAsOf)}</small>
-                </button>
-              ))}
+              {groupMemberships.map((membership) => {
+                const memberCompany = companies.find((item) => item.id === membership.companyId);
+                return (
+                  <button type="button" key={membership.membershipId} className={styles.detailRelationButton} onClick={() => onSelectCompany(membership.companyId)}>
+                    <strong>{membership.companyName}</strong>
+                    <span>{listingLabel(memberCompany)}</span>
+                    <small>{formatAsOf(membership.sourceAsOf)}</small>
+                  </button>
+                );
+              })}
             </div>
           ) : <p className={styles.empty}>現在の条件で表示できる所属企業はありません。</p>}
         </section>
@@ -133,7 +138,8 @@ export default function DetailPanel({
         <span className={styles.detailKicker}>{isCenter ? "CENTER COMPANY" : "SELECTED COMPANY"}</span>
         <h2>{company.name}</h2>
         <div className={styles.badges}>
-          <span>{listingLabel(company.listingStatus)}</span>
+          <span>{listingLabel(company)}</span>
+          {company.exchangeCode ? <span>{company.exchangeCode}</span> : null}
           {company.countryCode ? <span>{company.countryCode}</span> : null}
           <span>機能 {companyFunctions.length}件</span>
         </div>

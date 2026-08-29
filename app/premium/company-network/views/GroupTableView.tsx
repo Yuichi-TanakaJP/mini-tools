@@ -29,10 +29,12 @@ type Props = {
 
 type TableMode = "companies" | "relations";
 
-function listingLabel(value: string) {
-  if (value === "domestic_listed") return "上場";
-  if (value === "foreign_listed") return "海外上場";
-  if (value === "private") return "非上場";
+function listingLabel(company: CompanyNetworkCompany | undefined) {
+  if (!company) return "未確認";
+  const ticker = company.ticker ? ` ${company.ticker}` : "";
+  if (company.listingStatus === "domestic_listed") return `上場${ticker}`;
+  if (company.listingStatus === "foreign_listed") return `海外上場${ticker}`;
+  if (company.listingStatus === "private") return "非上場";
   return "未確認";
 }
 
@@ -83,11 +85,13 @@ export default function GroupTableView({
     () => memberships
       .filter((membership) => membership.groupId === group.id)
       .filter((membership) => {
+        const company = companyById.get(membership.companyId);
         const companyRelations = relationshipsByCompany.get(membership.companyId) ?? [];
         const companyFunctions = functionsByCompany.get(membership.companyId) ?? [];
         const searchable = [
           membership.companyName,
-          listingLabel(companyById.get(membership.companyId)?.listingStatus ?? ""),
+          listingLabel(company),
+          company?.ticker ?? "",
           ...companyFunctions.flatMap((link) => [link.functionName, link.classificationName ?? ""]),
           ...companyRelations.map((relationship) => relationSentence(relationship, membership.companyId)),
         ].join(" ").toLocaleLowerCase("ja");
@@ -159,7 +163,7 @@ export default function GroupTableView({
                   return (
                     <tr key={membership.membershipId} className={selected || focusCompanyId === membership.companyId ? styles.tableRowSelected : undefined} onClick={() => onSelectCompany(membership.companyId)}>
                       <td><button type="button" className={styles.tableCompanyButton} onClick={(event) => { event.stopPropagation(); onSelectCompany(membership.companyId); }}>{membership.companyName}</button></td>
-                      <td>{listingLabel(company?.listingStatus ?? "")}</td>
+                      <td>{listingLabel(company)}</td>
                       <td className={functionStyles.tableFunction}>{functionSummary}</td>
                       <td className={styles.tableRelation}>{relationSummary}</td>
                       <td>{formatAsOf(latestFunctionAsOf ?? membership.sourceAsOf)}</td>

@@ -15,6 +15,9 @@ export type CompanyNetworkCompany = {
   countryCode: string | null;
   listingStatus: string;
   status: string;
+  ticker?: string | null;
+  exchangeCode?: string | null;
+  exchangeName?: string | null;
 };
 
 export type CompanyRelationship = {
