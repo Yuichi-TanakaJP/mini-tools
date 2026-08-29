@@ -76,6 +76,9 @@ export default function NetworkView({
     () => relationsOnly ? companies.filter((company) => !participatingCompanyIds.has(company.id)) : [],
     [companies, participatingCompanyIds, relationsOnly],
   );
+  const graphSelection = relationsOnly && selection?.kind === "company" && !participatingCompanyIds.has(selection.id)
+    ? null
+    : selection;
 
   const graphKey = `${relationsOnly ? "compact" : "full"}|${centerCompanyId}|${relationships.map((item) => item.relationId).join(":")}|${memberships.map((item) => item.membershipId).join(":")}`;
   const panZoom = usePanZoom(svgRef, graphKey);
@@ -117,10 +120,10 @@ export default function NetworkView({
   const fit = (VIEWBOX_HALF - LABEL_PADDING) / simExtent(nodes, relationsOnly ? 135 : 240);
   const size = VIEWBOX_HALF * 2;
   const normalizedQuery = query.trim().toLocaleLowerCase("ja");
-  const selectedNodeId = selectedGraphNodeId(selection);
+  const selectedNodeId = selectedGraphNodeId(graphSelection);
   const selectedNeighbours = useMemo(
-    () => buildSelectedNeighbourIds(selection, relationships, memberships),
-    [memberships, relationships, selection],
+    () => buildSelectedNeighbourIds(graphSelection, relationships, memberships),
+    [graphSelection, memberships, relationships],
   );
 
   return (
@@ -157,10 +160,10 @@ export default function NetworkView({
               const source = positions.get(membership.companyId);
               const target = positions.get(groupGraphNodeId(membership.groupId));
               if (!source || !target) return null;
-              const focused = selection?.kind === "group"
-                ? selection.id === membership.groupId
-                : selection?.kind === "company"
-                  ? selection.id === membership.companyId
+              const focused = graphSelection?.kind === "group"
+                ? graphSelection.id === membership.groupId
+                : graphSelection?.kind === "company"
+                  ? graphSelection.id === membership.companyId
                   : true;
               return <line key={membership.membershipId} x1={source.x * fit} y1={source.y * fit} x2={target.x * fit} y2={target.y * fit} className={styles.membershipLine} strokeOpacity={focused ? 0.9 : 0.2} />;
             })}
