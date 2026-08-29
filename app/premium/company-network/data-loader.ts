@@ -144,6 +144,20 @@ function parseGroup(row: Row): CompanyNetworkGroup | null {
   return { id, name, groupType: stringValue(row, "group_type") };
 }
 
+async function loadCompaniesByIds(supabase: SupabaseClient, companyIds: string[]) {
+  if (companyIds.length === 0) return [] as CompanyNetworkCompany[];
+  const result = await supabase
+    .from("stock_notes_company_entities")
+    .select(COMPANY_SELECT)
+    .in("id", companyIds)
+    .neq("status", "archived")
+    .order("display_name", { ascending: true });
+  if (result.error) return null;
+  return ((result.data ?? []) as unknown as Row[])
+    .map(parseCompany)
+    .filter((row): row is CompanyNetworkCompany => row !== null);
+}
+
 export function companyNetworkUnconfigured(): CompanyNetworkBootstrapResult {
   return { status: "unconfigured", data: null, message: "Supabase 連携が未設定のため企業関係マップを取得できません。" };
 }
@@ -153,72 +167,97 @@ export function companyNetworkAuthRequired(): CompanyNetworkBootstrapResult {
 }
 
 export async function loadCompanyNetworkBootstrap(supabase: SupabaseClient): Promise<CompanyNetworkBootstrapResult> {
-  const [outboundResult, membershipIdsResult, groupsResult] = await Promise.all([
-    supabase
-      .from("stock_notes_company_relationship_edges_v")
-      .select("source_company_id")
-      .is("valid_to", null)
-      .in("verification_status", ["verified", "proposed"])
-      .limit(ROW_LIMIT),
-    supabase
-      .from("stock_notes_company_group_memberships_v")
-      .select("company_entity_id")
-      .is("valid_to", null)
-      .in("verification_status", ["verified", "proposed"])
-      .limit(ROW_LIMIT),
-    supabase
-      .from("stock_notes_corporate_groups")
-      .select("id,display_name,group_type")
-      .eq("status", "active")
-      .is("valid_to", null)
-      .in("verification_status", ["verified", "proposed"])
-      .order("display_name", { ascending: true })
-      .limit(ROW_LIMIT),
-  ]);
+  const groupsResult = await supabase
+    .from("stock_notes_corporate_groups")
+    .select("id,display_name,group_type")
+    .eq("status", "active")
+    .is("valid_to", null)
+    .in("verification_status", ["verified", "proposed"])
+    .order("display_name", { ascending: true })
+    .limit(ROW_LIMIT);
 
-  if (outboundResult.error || membershipIdsResult.error || groupsResult.error) {
-    return { status: "error", data: null, message: "企業関係マップの入口一覧を取得できませんでした。" };
+  if (groupsResult.error) {
+    return { status: "error", data: null, message: "企業グループ一覧を取得できませんでした。" };
   }
 
-  const outboundIds = new Set(
-    ((outboundResult.data ?? []) as unknown as Row[])
-      .map((row) => nullableString(row, "source_company_id"))
-      .filter((id): id is string => Boolean(id)),
-  );
-  const membershipIds = ((membershipIdsResult.data ?? []) as unknown as Row[])
-    .map((row) => nullableString(row, "company_entity_id"))
-    .filter((id): id is string => Boolean(id));
-  const candidateIds = [...new Set([...outboundIds, ...membershipIds])];
-
-  let candidates: CompanyNetworkCompany[] = [];
-  if (candidateIds.length > 0) {
-    const candidatesResult = await supabase
-      .from("stock_notes_company_entities")
-      .select(COMPANY_SELECT)
-      .in("id", candidateIds)
-      .neq("status", "archived")
-      .order("display_name", { ascending: true });
-    if (candidatesResult.error) {
-      return { status: "error", data: null, message: "中心企業候補を取得できませんでした。" };
-    }
-    candidates = ((candidatesResult.data ?? []) as unknown as Row[])
-      .map(parseCompany)
-      .filter((row): row is CompanyNetworkCompany => row !== null);
-  }
-
-  const entryCompanies = candidates
-    .filter((company) => company.listingStatus === "domestic_listed" || outboundIds.has(company.id))
-    .sort((a, b) => a.name.localeCompare(b.name, "ja"));
   const groups = ((groupsResult.data ?? []) as unknown as Row[])
     .map(parseGroup)
     .filter((row): row is CompanyNetworkGroup => row !== null);
 
-  if (entryCompanies.length === 0) {
-    return { status: "empty", data: { entryCompanies: [], groups, defaultCompanyId: "" }, message: "中心企業候補がまだありません。" };
+  if (groups.length === 0) {
+    return {
+      status: "empty",
+      data: { entryCompanies: [], groups: [], defaultCompanyId: "", defaultGroupId: "" },
+      message: "企業グループがまだありません。",
+    };
   }
 
-  const defaultCompanyId = entryCompanies.find((company) => company.name === "トヨタ自動車")?.id ?? entryCompanies[0].id;
-  return { status: "ok", data: { entryCompanies, groups, defaultCompanyId }, message: null };
+  const defaultGroupId = groups.find((group) => group.name === "トヨタグループ")?.id ?? groups[0].id;
+  return {
+    status: "ok",
+    data: { entryCompanies: [], groups, defaultCompanyId: "", defaultGroupId },
+    message: null,
+  };
+}
+
+export async function loadCompanyGroupScope(
+  supabase: SupabaseClient,
+  options: {
+    groupId: string;
+    verifiedOnly: boolean;
+    categories: RelationCategory[];
+  },
+): Promise<CompanyNetworkScopeResult> {
+  const statuses = options.verifiedOnly ? ["verified"] : ["verified", "proposed"];
+  const membershipResult = await supabase
+    .from("stock_notes_company_group_memberships_v")
+    .select(MEMBERSHIP_SELECT)
+    .eq("group_id", options.groupId)
+    .is("valid_to", null)
+    .in("verification_status", statuses)
+    .order("company_name", { ascending: true })
+    .limit(ROW_LIMIT);
+
+  if (membershipResult.error) {
+    return { status: "error", data: null, message: "選択した企業グループの所属企業を取得できませんでした。" };
+  }
+
+  const memberships = ((membershipResult.data ?? []) as unknown as Row[])
+    .map(parseMembership)
+    .filter((row): row is CompanyGroupMembership => row !== null);
+  const companyIds = [...new Set(memberships.map((membership) => membership.companyId))];
+  const companyIdSet = new Set(companyIds);
+
+  let relationships: CompanyRelationship[] = [];
+  if (companyIds.length > 0 && options.categories.length > 0) {
+    const relationshipResult = await supabase
+      .from("stock_notes_company_relationship_edges_v")
+      .select(RELATIONSHIP_SELECT)
+      .in("source_company_id", companyIds)
+      .in("relation_category", options.categories)
+      .is("valid_to", null)
+      .in("verification_status", statuses)
+      .order("source_company_name", { ascending: true })
+      .limit(ROW_LIMIT);
+    if (relationshipResult.error) {
+      return { status: "error", data: null, message: "グループ内の企業間関係を取得できませんでした。" };
+    }
+    relationships = ((relationshipResult.data ?? []) as unknown as Row[])
+      .map(parseRelationship)
+      .filter((row): row is CompanyRelationship => row !== null && companyIdSet.has(row.targetCompanyId));
+  }
+
+  const companies = await loadCompaniesByIds(supabase, companyIds);
+  if (companies === null) {
+    return { status: "error", data: null, message: "グループ所属企業の情報を取得できませんでした。" };
+  }
+
+  const data: CompanyNetworkData = { companies, relationships, memberships };
+  return {
+    status: memberships.length === 0 ? "empty" : "ok",
+    data,
+    message: memberships.length === 0 ? "このグループには現在の条件で表示できる所属企業がありません。" : null,
+  };
 }
 
 export async function loadCompanyNetworkScope(
@@ -313,20 +352,11 @@ export async function loadCompanyNetworkScope(
   });
   memberships.forEach((membership) => companyIds.add(membership.companyId));
 
-  const companiesResult = await supabase
-    .from("stock_notes_company_entities")
-    .select(COMPANY_SELECT)
-    .in("id", [...companyIds])
-    .neq("status", "archived")
-    .order("display_name", { ascending: true });
-
-  if (companiesResult.error) {
+  const companies = await loadCompaniesByIds(supabase, [...companyIds]);
+  if (companies === null) {
     return { status: "error", data: null, message: "表示対象企業の情報を取得できませんでした。" };
   }
 
-  const companies = ((companiesResult.data ?? []) as unknown as Row[])
-    .map(parseCompany)
-    .filter((row): row is CompanyNetworkCompany => row !== null);
   const data: CompanyNetworkData = { companies, relationships, memberships };
   const empty = relationships.length === 0 && memberships.length === 0;
   return { status: empty ? "empty" : "ok", data, message: empty ? "この企業には現在の条件で表示できる関係がありません。" : null };
