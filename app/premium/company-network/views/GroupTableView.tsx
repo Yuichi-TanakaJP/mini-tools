@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import styles from "../CompanyNetwork.module.css";
 import { formatAsOf, relationLabel } from "../presentation";
 import type {
+  CompanyFunctionLink,
   CompanyGroupMembership,
   CompanyNetworkCompany,
   CompanyNetworkGroup,
@@ -16,6 +17,7 @@ type Props = {
   companies: CompanyNetworkCompany[];
   memberships: CompanyGroupMembership[];
   relationships: CompanyRelationship[];
+  functions: CompanyFunctionLink[];
   selection: CompanyNetworkNodeSelection | null;
   selectedRelationId: string | null;
   focusCompanyId: string;
@@ -51,6 +53,7 @@ export default function GroupTableView({
   companies,
   memberships,
   relationships,
+  functions,
   selection,
   selectedRelationId,
   focusCompanyId,
@@ -68,6 +71,11 @@ export default function GroupTableView({
     });
     return result;
   }, [relationships]);
+  const functionsByCompany = useMemo(() => {
+    const result = new Map<string, CompanyFunctionLink[]>();
+    functions.forEach((link) => result.set(link.companyId, [...(result.get(link.companyId) ?? []), link]));
+    return result;
+  }, [functions]);
   const normalized = query.trim().toLocaleLowerCase("ja");
 
   const visibleMemberships = useMemo(
@@ -75,9 +83,11 @@ export default function GroupTableView({
       .filter((membership) => membership.groupId === group.id)
       .filter((membership) => {
         const companyRelations = relationshipsByCompany.get(membership.companyId) ?? [];
+        const companyFunctions = functionsByCompany.get(membership.companyId) ?? [];
         const searchable = [
           membership.companyName,
           listingLabel(companyById.get(membership.companyId)?.listingStatus ?? ""),
+          ...companyFunctions.flatMap((link) => [link.functionName, link.classificationName ?? ""]),
           ...companyRelations.map((relationship) => relationSentence(relationship, membership.companyId)),
         ].join(" ").toLocaleLowerCase("ja");
         return !normalized || searchable.includes(normalized);
@@ -89,7 +99,7 @@ export default function GroupTableView({
         }
         return a.companyName.localeCompare(b.companyName, "ja");
       }),
-    [companyById, focusCompanyId, group.id, memberships, normalized, relationshipsByCompany],
+    [companyById, focusCompanyId, functionsByCompany, group.id, memberships, normalized, relationshipsByCompany],
   );
 
   const visibleRelationships = useMemo(
@@ -115,12 +125,13 @@ export default function GroupTableView({
       {mode === "companies" ? (
         visibleMemberships.length === 0 ? <p className={styles.empty}>条件に一致する所属企業がありません。</p> : (
           <div className={styles.tableScroll}>
-            <table className={styles.table} style={{ minWidth: 720 }}>
-              <caption>所属 {visibleMemberships.length}社。DB内部コードではなく、判断に使う情報だけを表示しています。</caption>
+            <table className={styles.table} style={{ minWidth: 900 }}>
+              <caption>所属 {visibleMemberships.length}社。各社が何を担うか、資本関係、根拠を同じ行で確認できます。</caption>
               <thead>
                 <tr>
                   <th>企業</th>
                   <th>上場</th>
+                  <th>主な機能・事業</th>
                   <th>グループ内の主な関係</th>
                   <th>基準日</th>
                   <th>根拠</th>
@@ -130,18 +141,29 @@ export default function GroupTableView({
                 {visibleMemberships.map((membership) => {
                   const company = companyById.get(membership.companyId);
                   const companyRelations = relationshipsByCompany.get(membership.companyId) ?? [];
+                  const companyFunctions = [...(functionsByCompany.get(membership.companyId) ?? [])]
+                    .sort((a, b) => {
+                      if (a.role === "core" && b.role !== "core") return -1;
+                      if (a.role !== "core" && b.role === "core") return 1;
+                      return a.functionName.localeCompare(b.functionName, "ja");
+                    });
                   const selected = selection?.kind === "company" && selection.id === membership.companyId;
-                  const summary = companyRelations.length === 0
+                  const relationSummary = companyRelations.length === 0
                     ? "企業間関係は未登録"
                     : companyRelations.slice(0, 2).map((relationship) => relationSentence(relationship, membership.companyId)).join(" / ") + (companyRelations.length > 2 ? ` ほか${companyRelations.length - 2}件` : "");
+                  const functionSummary = companyFunctions.length === 0
+                    ? "機能未分類"
+                    : companyFunctions.map((link) => `${link.role === "core" ? "●" : "○"}${link.functionName}`).join(" / ");
+                  const latestFunctionAsOf = companyFunctions.map((link) => link.asOf).filter((value): value is string => Boolean(value)).sort().at(-1) ?? null;
                   return (
                     <tr key={membership.membershipId} className={selected || focusCompanyId === membership.companyId ? styles.tableRowSelected : undefined} onClick={() => onSelectCompany(membership.companyId)}>
                       <td><button type="button" className={styles.tableCompanyButton} onClick={(event) => { event.stopPropagation(); onSelectCompany(membership.companyId); }}>{membership.companyName}</button></td>
                       <td>{listingLabel(company?.listingStatus ?? "")}</td>
-                      <td className={styles.tableRelation}>{summary}</td>
-                      <td>{formatAsOf(membership.sourceAsOf)}</td>
+                      <td className={styles.tableFunction}>{functionSummary}</td>
+                      <td className={styles.tableRelation}>{relationSummary}</td>
+                      <td>{formatAsOf(latestFunctionAsOf ?? membership.sourceAsOf)}</td>
                       <td className={styles.tableSource}>
-                        {membership.sourceUrl ? <a className={styles.sourceLink} href={membership.sourceUrl} target="_blank" rel="noreferrer">公式根拠</a> : membership.sourceTitle ?? "—"}
+                        {membership.sourceUrl ? <a className={styles.sourceLink} href={membership.sourceUrl} target="_blank" rel="noreferrer">グループ根拠</a> : membership.sourceTitle ?? "—"}
                       </td>
                     </tr>
                   );
