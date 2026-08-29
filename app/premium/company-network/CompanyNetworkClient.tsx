@@ -199,7 +199,7 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
           <div className={styles.stat}><span>企業グループ</span><strong>{groups.length}</strong><small>件</small></div>
           <div className={styles.stat}><span>{scopeMode === "group" ? "所属企業" : "表示企業"}</span><strong>{scope?.companies.length ?? 0}</strong><small>社</small></div>
           <div className={styles.stat}><span>企業間関係</span><strong>{relationships.length}</strong><small>件</small></div>
-          <div className={styles.stat}><span>表示モード</span><strong className={styles.statText}>{scopeMode === "group" ? "GROUP" : "DEEP"}</strong></div>
+          <div className={styles.stat}><span>表示モード</span><strong style={{ fontSize: 13 }}>{scopeMode === "group" ? "GROUP" : "DEEP"}</strong></div>
         </div>
       </header>
 
@@ -217,21 +217,21 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
         </div>
 
         {scopeMode === "company" ? (
-          <div className={styles.deepDiveBar}>
-            <span>企業深掘り中: <strong>{centerCompany?.name ?? "読み込み中"}</strong></span>
+          <div className={styles.controlRow} style={{ justifyContent: "space-between", padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: 10, background: "var(--color-bg-input)" }}>
+            <span style={{ fontSize: 11, color: "var(--color-text-sub)" }}>企業深掘り中: <strong>{centerCompany?.name ?? "読み込み中"}</strong></span>
             <button type="button" className={styles.smallButton} onClick={returnToGroup}>← {activeGroup?.name ?? "企業グループ"}に戻る</button>
           </div>
         ) : null}
 
-        <details className={styles.filterDetails}>
-          <summary className={styles.filterSummary}>
+        <details style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: "0 10px", background: "var(--color-bg-input)" }}>
+          <summary style={{ minHeight: 38, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, cursor: "pointer", fontSize: 11, fontWeight: 800, color: "var(--color-text-sub)" }}>
             <span>絞り込み・表示設定</span>
-            <span>{verifiedOnly ? "verified" : "全状態"} · {categories.size}種別</span>
+            <span style={{ color: "var(--color-text-muted)", fontWeight: 700 }}>{verifiedOnly ? "verified" : "全状態"} · {categories.size}種別</span>
           </summary>
-          <div className={styles.filterDetailsBody}>
+          <div style={{ display: "grid", gap: 10, padding: "4px 0 10px" }}>
             {showHopControl ? (
               <div className={styles.controlRow}>
-                <span className={styles.controlLabel}>探索範囲</span>
+                <span style={{ fontSize: 10, fontWeight: 800, color: "var(--color-text-muted)" }}>探索範囲</span>
                 <div className={styles.hopControl} aria-label="探索の深さ">
                   {[1, 2].map((value) => (
                     <button key={value} type="button" className={hops === value ? styles.toggleOn : styles.toggle} onClick={() => setHops(value as 1 | 2)}>{value}-hop</button>
@@ -270,75 +270,23 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
           {!loading && scope && relationships.length === 0 && memberships.length === 0 ? <p className={styles.empty}>現在の条件では表示できる関係がありません。</p> : null}
 
           {scope && view === "network" ? (
-            <NetworkView
-              companies={scope.companies}
-              relationships={relationships}
-              memberships={memberships}
-              centerCompanyId={scopeMode === "company" ? centerCompanyId : ""}
-              selection={activeSelection}
-              selectedRelationId={selectedRelationId}
-              query={query}
-              onSelectCompany={selectCompany}
-              onSelectGroup={selectGroup}
-              onSelectRelation={setSelectedRelationId}
-            />
+            <NetworkView companies={scope.companies} relationships={relationships} memberships={memberships} centerCompanyId={scopeMode === "company" ? centerCompanyId : ""} selection={activeSelection} selectedRelationId={selectedRelationId} query={query} onSelectCompany={selectCompany} onSelectGroup={selectGroup} onSelectRelation={setSelectedRelationId} />
           ) : null}
 
           {scope && view === "radial" && scopeMode === "group" && activeGroup ? (
-            <GroupRadialView
-              group={activeGroup}
-              companies={scope.companies}
-              relationships={relationships}
-              memberships={memberships}
-              selection={activeSelection}
-              selectedRelationId={selectedRelationId}
-              query={query}
-              onSelectCompany={selectCompany}
-              onSelectGroup={selectGroup}
-              onSelectRelation={setSelectedRelationId}
-            />
+            <GroupRadialView group={activeGroup} companies={scope.companies} relationships={relationships} memberships={memberships} selection={activeSelection} selectedRelationId={selectedRelationId} query={query} onSelectCompany={selectCompany} onSelectGroup={selectGroup} onSelectRelation={setSelectedRelationId} />
           ) : null}
 
           {scope && view === "radial" && scopeMode === "company" ? (
-            <RadialView
-              companies={scope.companies}
-              relationships={relationships}
-              memberships={memberships}
-              centerCompanyId={centerCompanyId}
-              selection={activeSelection}
-              selectedRelationId={selectedRelationId}
-              hops={hops}
-              query={query}
-              onSelectCompany={selectCompany}
-              onSelectGroup={selectGroup}
-              onSelectRelation={setSelectedRelationId}
-            />
+            <RadialView companies={scope.companies} relationships={relationships} memberships={memberships} centerCompanyId={centerCompanyId} selection={activeSelection} selectedRelationId={selectedRelationId} hops={hops} query={query} onSelectCompany={selectCompany} onSelectGroup={selectGroup} onSelectRelation={setSelectedRelationId} />
           ) : null}
 
           {scope && view === "hierarchy" ? (
-            <HierarchyView
-              companies={scope.companies}
-              relationships={relationships}
-              centerCompanyId={hierarchyCenterId}
-              selectedCompanyId={selectedCompanyId}
-              selectedRelationId={selectedRelationId}
-              hops={hops}
-              query={query}
-              onSelectCompany={selectCompany}
-              onSelectRelation={setSelectedRelationId}
-            />
+            <HierarchyView companies={scope.companies} relationships={relationships} centerCompanyId={hierarchyCenterId} selectedCompanyId={selectedCompanyId} selectedRelationId={selectedRelationId} hops={hops} query={query} onSelectCompany={selectCompany} onSelectRelation={setSelectedRelationId} />
           ) : null}
 
           {scope && view === "table" && scopeMode === "group" && activeGroup ? (
-            <GroupTableView
-              group={activeGroup}
-              companies={scope.companies}
-              memberships={memberships}
-              relationships={relationships}
-              selection={activeSelection}
-              query={query}
-              onSelectCompany={selectCompany}
-            />
+            <GroupTableView group={activeGroup} companies={scope.companies} memberships={memberships} relationships={relationships} selection={activeSelection} query={query} onSelectCompany={selectCompany} />
           ) : null}
 
           {scope && view === "table" && scopeMode === "company" ? (
@@ -346,19 +294,7 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
           ) : null}
         </section>
 
-        <DetailPanel
-          groups={groups}
-          companies={scope?.companies ?? []}
-          selection={activeSelection}
-          centerCompanyId={scopeMode === "company" ? centerCompanyId : ""}
-          relationships={relationships}
-          memberships={memberships}
-          selectedRelation={selectedRelation}
-          onSelectCompany={selectCompany}
-          onSelectGroup={selectGroup}
-          onSelectRelation={setSelectedRelationId}
-          onMakeCenter={changeCenter}
-        />
+        <DetailPanel groups={groups} companies={scope?.companies ?? []} selection={activeSelection} centerCompanyId={scopeMode === "company" ? centerCompanyId : ""} relationships={relationships} memberships={memberships} selectedRelation={selectedRelation} onSelectCompany={selectCompany} onSelectGroup={selectGroup} onSelectRelation={setSelectedRelationId} onMakeCenter={changeCenter} />
       </div>
 
       <p className={styles.note}>企業グループが主入口です。企業ノードの選択は詳細と強調だけを変え、配置は動かしません。「この企業を中心に見る」を押した場合だけ1-hop / 2-hopの企業深掘りへ切り替わります。</p>
