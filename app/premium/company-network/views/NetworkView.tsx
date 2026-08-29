@@ -57,6 +57,7 @@ export default function NetworkView({
   const svgRef = useRef<SVGSVGElement>(null);
   const [frame, setFrame] = useState<{ source: SimNode[]; nodes: SimNode[] } | null>(null);
   const [runId, setRunId] = useState(0);
+  const relationsOnly = compactRelationsOnly || (centerCompanyId.length === 0 && memberships.length === 0);
 
   const participatingCompanyIds = useMemo(() => {
     const ids = new Set<string>();
@@ -68,15 +69,15 @@ export default function NetworkView({
   }, [relationships]);
 
   const visibleCompanies = useMemo(
-    () => compactRelationsOnly ? companies.filter((company) => participatingCompanyIds.has(company.id)) : companies,
-    [companies, compactRelationsOnly, participatingCompanyIds],
+    () => relationsOnly ? companies.filter((company) => participatingCompanyIds.has(company.id)) : companies,
+    [companies, participatingCompanyIds, relationsOnly],
   );
   const isolatedCompanies = useMemo(
-    () => compactRelationsOnly ? companies.filter((company) => !participatingCompanyIds.has(company.id)) : [],
-    [companies, compactRelationsOnly, participatingCompanyIds],
+    () => relationsOnly ? companies.filter((company) => !participatingCompanyIds.has(company.id)) : [],
+    [companies, participatingCompanyIds, relationsOnly],
   );
 
-  const graphKey = `${compactRelationsOnly ? "compact" : "full"}|${centerCompanyId}|${relationships.map((item) => item.relationId).join(":")}|${memberships.map((item) => item.membershipId).join(":")}`;
+  const graphKey = `${relationsOnly ? "compact" : "full"}|${centerCompanyId}|${relationships.map((item) => item.relationId).join(":")}|${memberships.map((item) => item.membershipId).join(":")}`;
   const panZoom = usePanZoom(svgRef, graphKey);
 
   const graph = useMemo(() => {
@@ -94,8 +95,8 @@ export default function NetworkView({
 
   const seeded = useMemo(() => {
     void runId;
-    return seedSimNodes(graph.nodes, compactRelationsOnly ? COMPACT_SEED_SPREAD : SEED_SPREAD);
-  }, [compactRelationsOnly, graph.nodes, runId]);
+    return seedSimNodes(graph.nodes, relationsOnly ? COMPACT_SEED_SPREAD : SEED_SPREAD);
+  }, [graph.nodes, relationsOnly, runId]);
 
   useEffect(() => {
     const working = seeded.map((node) => ({ ...node }));
@@ -113,7 +114,7 @@ export default function NetworkView({
 
   const nodes = frame?.source === seeded ? frame.nodes : seeded;
   const positions = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
-  const fit = (VIEWBOX_HALF - LABEL_PADDING) / simExtent(nodes, compactRelationsOnly ? 135 : 240);
+  const fit = (VIEWBOX_HALF - LABEL_PADDING) / simExtent(nodes, relationsOnly ? 135 : 240);
   const size = VIEWBOX_HALF * 2;
   const normalizedQuery = query.trim().toLocaleLowerCase("ja");
   const selectedNodeId = selectedGraphNodeId(selection);
@@ -129,10 +130,10 @@ export default function NetworkView({
         <span className={relationStyles.relationMeta}>{visibleCompanies.length}社 · {relationships.length}関係</span>
         <button type="button" className={styles.smallButton} onClick={() => setRunId((value) => value + 1)}>再配置</button>
       </div>
-      {compactRelationsOnly ? (
+      {relationsOnly ? (
         <p className={relationStyles.relationIntro}>企業間relationが確認できている会社だけをグラフ本体に表示しています。所属しているだけの会社は下の「関係未登録」に分け、線の意味を読みやすくしています。</p>
       ) : null}
-      <div className={`${styles.svgWrap} ${compactRelationsOnly ? relationStyles.compactGraph : ""}`}>
+      <div className={`${styles.svgWrap} ${relationsOnly ? relationStyles.compactGraph : ""}`}>
         <div className={styles.zoomControls}>
           <button type="button" onClick={panZoom.zoomIn} aria-label="拡大">＋</button>
           <button type="button" onClick={panZoom.zoomOut} aria-label="縮小">−</button>
@@ -169,7 +170,7 @@ export default function NetworkView({
               const queryDimmed = normalizedQuery.length > 0 && !node.label.toLocaleLowerCase("ja").includes(normalizedQuery);
               const neighbourDimmed = selectedNeighbours !== null && !selectedNeighbours.has(node.id);
               const dimmed = queryDimmed || neighbourDimmed;
-              const baseRadius = compactRelationsOnly ? 10 : 8;
+              const baseRadius = relationsOnly ? 10 : 8;
               const radius = node.kind === "group" ? (selected ? 11 : 9) : center ? 11 : selected ? baseRadius + 2 : baseRadius;
               const fill = node.kind === "group" ? "#fff7ed" : center ? "#2554ff" : "var(--color-bg-card)";
               const stroke = node.kind === "group" ? "#d97706" : "#2554ff";
