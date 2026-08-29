@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePanZoom } from "../../industry-map/use-pan-zoom";
 import styles from "../CompanyNetwork.module.css";
 import relationStyles from "../RelationshipViews.module.css";
+import claudeStyles from "../ClaudeUi.module.css";
 import { seedSimNodes, simExtent, stepForce, type SimLink, type SimNode, type VisualNode } from "../graph-layout";
 import { buildSelectedNeighbourIds, groupGraphNodeId, selectedGraphNodeId } from "../node-selection";
 import { CATEGORY_COLOR, groupTypeLabel, relationLabel } from "../presentation";
@@ -16,10 +17,10 @@ import type {
 
 const TOTAL_STEPS = 300;
 const STEPS_PER_FRAME = 3;
-const VIEWBOX_HALF = 500;
-const LABEL_PADDING = 120;
+const FULL_VIEWBOX_HALF = 500;
+const COMPACT_VIEWBOX_HALF = 320;
 const SEED_SPREAD = 270;
-const COMPACT_SEED_SPREAD = 170;
+const COMPACT_SEED_SPREAD = 150;
 
 function truncate(value: string, max = 16) {
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
@@ -117,8 +118,11 @@ export default function NetworkView({
 
   const nodes = frame?.source === seeded ? frame.nodes : seeded;
   const positions = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
-  const fit = (VIEWBOX_HALF - LABEL_PADDING) / simExtent(nodes, relationsOnly ? 135 : 240);
-  const size = VIEWBOX_HALF * 2;
+  const viewBoxHalf = relationsOnly ? COMPACT_VIEWBOX_HALF : FULL_VIEWBOX_HALF;
+  const labelPadding = relationsOnly ? 72 : 120;
+  const minimumExtent = relationsOnly ? 105 : 240;
+  const fit = (viewBoxHalf - labelPadding) / simExtent(nodes, minimumExtent);
+  const size = viewBoxHalf * 2;
   const normalizedQuery = query.trim().toLocaleLowerCase("ja");
   const selectedNodeId = selectedGraphNodeId(graphSelection);
   const selectedNeighbours = useMemo(
@@ -127,22 +131,31 @@ export default function NetworkView({
   );
 
   return (
-    <div className={styles.viewFade}>
+    <div className={`${claudeStyles.view} ${styles.viewFade}`}>
       <div className={styles.viewTools}>
         <span>{title}</span>
         <span className={relationStyles.relationMeta}>{visibleCompanies.length}社 · {relationships.length}関係</span>
         <button type="button" className={styles.smallButton} onClick={() => setRunId((value) => value + 1)}>再配置</button>
       </div>
       {relationsOnly ? (
-        <p className={relationStyles.relationIntro}>企業間relationが確認できている会社だけをグラフ本体に表示しています。所属しているだけの会社は下の「関係未登録」に分け、線の意味を読みやすくしています。</p>
+        <p className={claudeStyles.networkIntro}>確認済みの企業間relationだけを主図に表示。所属のみの企業は下へ分離しています。</p>
       ) : null}
-      <div className={`${styles.svgWrap} ${relationsOnly ? relationStyles.compactGraph : ""}`}>
+      <div className={`${styles.svgWrap} ${relationsOnly ? relationStyles.compactGraph : ""} ${relationsOnly ? claudeStyles.networkCanvas : ""}`}>
         <div className={styles.zoomControls}>
           <button type="button" onClick={panZoom.zoomIn} aria-label="拡大">＋</button>
           <button type="button" onClick={panZoom.zoomOut} aria-label="縮小">−</button>
           <button type="button" onClick={panZoom.reset} disabled={!panZoom.canReset}>戻す</button>
         </div>
-        <svg ref={svgRef} className={`${styles.svg} ${panZoom.panning ? styles.svgGrabbing : styles.svgGrab}`} style={{ touchAction: panZoom.viewport.scale === 1 ? "pan-y" : "none" }} viewBox={`${-VIEWBOX_HALF} ${-VIEWBOX_HALF} ${size} ${size}`} role="img" aria-label="企業関係ネットワーク" onPointerDown={panZoom.onPointerDown} onDoubleClick={panZoom.onDoubleClick}>
+        <svg
+          ref={svgRef}
+          className={`${styles.svg} ${relationsOnly ? claudeStyles.networkSvg : ""} ${panZoom.panning ? styles.svgGrabbing : styles.svgGrab}`}
+          style={{ touchAction: panZoom.viewport.scale === 1 ? "pan-y" : "none" }}
+          viewBox={`${-viewBoxHalf} ${-viewBoxHalf} ${size} ${size}`}
+          role="img"
+          aria-label="企業関係ネットワーク"
+          onPointerDown={panZoom.onPointerDown}
+          onDoubleClick={panZoom.onDoubleClick}
+        >
           <defs><marker id="company-relation-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 8 4 L 0 8 z" fill="currentColor" /></marker></defs>
           <g transform={panZoom.transform}>
             {relationships.map((relationship) => {
@@ -153,7 +166,7 @@ export default function NetworkView({
               const focused = selectedNeighbours === null || (selectedNeighbours.has(relationship.sourceCompanyId) && selectedNeighbours.has(relationship.targetCompanyId));
               return <g key={relationship.relationId}>
                 <line x1={source.x * fit} y1={source.y * fit} x2={target.x * fit} y2={target.y * fit} stroke={CATEGORY_COLOR[relationship.relationCategory]} strokeWidth={selected ? 3.6 : focused ? 2.2 : 1.2} strokeOpacity={selected ? 1 : focused ? 0.9 : 0.22} strokeDasharray={relationship.verificationStatus === "verified" ? undefined : "7 6"} markerEnd="url(#company-relation-arrow)" color={CATEGORY_COLOR[relationship.relationCategory]} onClick={() => onSelectRelation(relationship.relationId)} className={styles.edgeHitTarget} />
-                {(focused || selected) ? <text x={((source.x + target.x) / 2) * fit} y={((source.y + target.y) / 2) * fit - 9} textAnchor="middle" className={styles.svgEdgeLabel}>{relationLabel(relationship.relationType, relationship.ownershipPct)}</text> : null}
+                {(focused || selected) ? <text x={((source.x + target.x) / 2) * fit} y={((source.y + target.y) / 2) * fit - (relationsOnly ? 13 : 9)} textAnchor="middle" className={styles.svgEdgeLabel} style={relationsOnly ? { fontSize: 12 } : undefined}>{relationLabel(relationship.relationType, relationship.ownershipPct)}</text> : null}
               </g>;
             })}
             {memberships.map((membership) => {
@@ -173,7 +186,7 @@ export default function NetworkView({
               const queryDimmed = normalizedQuery.length > 0 && !node.label.toLocaleLowerCase("ja").includes(normalizedQuery);
               const neighbourDimmed = selectedNeighbours !== null && !selectedNeighbours.has(node.id);
               const dimmed = queryDimmed || neighbourDimmed;
-              const baseRadius = relationsOnly ? 10 : 8;
+              const baseRadius = relationsOnly ? 14 : 8;
               const radius = node.kind === "group" ? (selected ? 11 : 9) : center ? 11 : selected ? baseRadius + 2 : baseRadius;
               const fill = node.kind === "group" ? "#fff7ed" : center ? "#2554ff" : "var(--color-bg-card)";
               const stroke = node.kind === "group" ? "#d97706" : "#2554ff";
@@ -199,7 +212,7 @@ export default function NetworkView({
                 <title>{node.kind === "group" ? `${node.label}（${groupTypeLabel(node.groupType ?? "")}）` : node.label}</title>
                 {selected ? <circle className={styles.pulse} r={radius + 8} fill="none" stroke={stroke} strokeWidth={2} /> : null}
                 <circle r={radius} fill={fill} stroke={stroke} strokeWidth={selected || center ? 3 : 2} />
-                <text className={styles.svgLabel} x={radius + 7} dominantBaseline="middle">{truncate(node.label)}</text>
+                <text className={styles.svgLabel} x={radius + 7} dominantBaseline="middle" style={relationsOnly ? { fontSize: 14 } : undefined}>{truncate(node.label)}</text>
               </g>;
             })}
           </g>

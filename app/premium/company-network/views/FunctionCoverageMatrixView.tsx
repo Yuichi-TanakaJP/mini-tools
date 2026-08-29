@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import styles from "../CompanyNetwork.module.css";
 import functionStyles from "../FunctionViews.module.css";
+import claudeStyles from "../ClaudeUi.module.css";
 import { compareFunction, compareFunctionClass } from "../function-order";
 import type { CompanyFunctionLink, CompanyNetworkCompany } from "../types";
 
@@ -71,19 +72,19 @@ export default function FunctionCoverageMatrixView({
   }
 
   return (
-    <div className={`${functionStyles.matrixView} ${styles.viewFade}`}>
+    <div className={`${functionStyles.matrixView} ${claudeStyles.view} ${styles.viewFade}`}>
       <div className={styles.viewTools}>
         <span>{groupName} 機能カバレッジ</span>
         <span>{rows.length}領域 × {companiesSorted.length}社</span>
       </div>
-      <div className={functionStyles.matrixLegend}>
+      <div className={`${functionStyles.matrixLegend} ${claudeStyles.legendBar}`}>
         <span><b className={functionStyles.legendCore}>●</b> 主要機能</span>
         <span><b className={functionStyles.legendSupporting}>○</b> 追加機能</span>
-        <span>企業は担当機能数が多い順。表示基点を選ぶと先頭列へ固定します。</span>
+        <span>担当機能数が多い企業を左側へ配置</span>
       </div>
       <div className={functionStyles.matrixScrollHint}>← 横スクロールで全社を比較 →</div>
-      <div className={functionStyles.matrixScroll}>
-        <table className={functionStyles.matrixTable}>
+      <div className={`${functionStyles.matrixScroll} ${claudeStyles.matrixScroll}`}>
+        <table className={`${functionStyles.matrixTable} ${claudeStyles.matrixTable}`}>
           <thead>
             <tr>
               <th className={functionStyles.matrixSticky}>機能</th>
@@ -112,7 +113,7 @@ export default function FunctionCoverageMatrixView({
                         {link ? (
                           <button
                             type="button"
-                            className={link.role === "core" ? functionStyles.matrixCore : functionStyles.matrixSupporting}
+                            className={`${link.role === "core" ? functionStyles.matrixCore : functionStyles.matrixSupporting} ${claudeStyles.matrixCellButton}`}
                             title={`${company.name}: ${row.functionName} (${link.role === "core" ? "主要" : "追加"})`}
                             onClick={() => onSelectCompany(company.id)}
                           >
