@@ -22,11 +22,12 @@ type Props = {
   onSelectCompany: (companyId: string) => void;
 };
 
-function listingLabel(value: string) {
-  if (value === "domestic_listed") return "上場";
-  if (value === "foreign_listed") return "海外上場";
-  if (value === "private") return "非上場";
-  return "未確認";
+function listingLabel(company: CompanyNetworkCompany) {
+  const ticker = company.ticker ? ` ${company.ticker}` : "";
+  if (company.listingStatus === "domestic_listed") return `上場${ticker}`;
+  if (company.listingStatus === "foreign_listed") return `海外上場${ticker}`;
+  if (company.listingStatus === "private") return "非上場";
+  return "上場区分未確認";
 }
 
 export default function FunctionClusterView({
@@ -159,7 +160,8 @@ export default function FunctionClusterView({
                                 onClick={() => onSelectCompany(company.id)}
                               >
                                 <strong>{company.name}</strong>
-                                <span>{link.role === "core" ? "主要機能" : "追加機能"} · {listingLabel(company.listingStatus)}</span>
+                                <span>{link.role === "core" ? "主要機能" : "追加機能"}</span>
+                                <small>{listingLabel(company)}</small>
                                 {whollyOwnedParent ? <small>{whollyOwnedParent} 100%出資</small> : null}
                               </button>
                             );
