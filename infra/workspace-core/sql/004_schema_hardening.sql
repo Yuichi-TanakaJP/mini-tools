@@ -19,6 +19,16 @@ alter table registry.service_instances
 comment on column registry.service_instances.account_scope is
   'Organization/team/account scope within the provider. Use a stable external scope ID when available; personal is the V1 fallback.';
 
+-- The existing mini-tools Supabase project is verified to belong to this
+-- organization. Store the stable organization ID rather than relying on a
+-- display label; no credentials are stored.
+update registry.service_instances si
+set account_scope = 'vqrpqdxaxzclhapylbbs'
+from registry.service_providers sp
+where si.provider_id = sp.id
+  and sp.slug = 'supabase'
+  and si.external_id = 'uqnkjitvuebwhjvmaddb';
+
 -- Secondary-side FK indexes keep reverse graph traversal efficient and avoid
 -- unnecessary sequential scans as the registry grows.
 create index if not exists products_domain_id_idx
