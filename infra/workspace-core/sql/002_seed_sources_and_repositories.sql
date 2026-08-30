@@ -65,8 +65,9 @@ select
   now()
 from registry.service_providers sp
 where sp.slug = 'supabase'
-on conflict (provider_id, name, environment) do update
-set external_id = excluded.external_id,
+on conflict (provider_id, external_id) where external_id is not null do update
+set name = excluded.name,
+    environment = excluded.environment,
     region = excluded.region,
     status = excluded.status,
     metadata = registry.service_instances.metadata || excluded.metadata,
