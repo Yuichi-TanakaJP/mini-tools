@@ -108,43 +108,167 @@
 .unmappedBox > div { display: flex; justify-content: space-between; gap: 8px; }
 .unmappedBox p { margin: 0; line-height: 1.6; }
 
+/* Claude/Industry Map Matrixの原則を採用: 読める幅を確保し、狭い画面では圧縮せず横スクロールする。 */
 .matrixLegend {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 14px;
   align-items: center;
-  padding: 8px 10px;
+  padding: 9px 10px;
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: var(--color-bg-input);
   color: var(--color-text-muted);
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1.5;
 }
-.matrixLegend span { display: inline-flex; align-items: center; gap: 5px; }
-.legendCore { color: var(--color-accent); }
-.legendSupporting { color: var(--color-accent); }
-.matrixScrollHint { display: none; color: var(--color-text-muted); font-size: 9px; text-align: center; }
+.matrixLegend span { display: inline-flex; align-items: center; gap: 6px; }
+.legendCore,
+.legendSupporting {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 7px;
+  font-size: 9px;
+  font-weight: 900;
+}
+.legendCore { color: white; background: var(--color-accent); border: 1px solid var(--color-accent); }
+.legendSupporting { color: var(--color-accent); background: var(--color-bg-card); border: 1px solid var(--color-accent); }
+.matrixScrollHint { display: none; color: var(--color-text-muted); font-size: 10px; text-align: center; }
 
-.matrixScroll { overflow: auto; width: 100%; border: 1px solid var(--color-border); border-radius: 12px; box-shadow: inset -18px 0 18px -20px rgba(15, 23, 42, .35); }
-.matrixTable { border-collapse: separate; border-spacing: 0; min-width: 100%; width: max-content; font-size: 10px; }
+.matrixScroll {
+  overflow: auto;
+  width: 100%;
+  max-height: min(68vh, 720px);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: inset -18px 0 18px -20px rgba(15, 23, 42, .28);
+  scrollbar-gutter: stable;
+}
+
+.matrixTable {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+  min-width: 100%;
+  font-size: 12px;
+}
+
 .matrixTable th,
-.matrixTable td { min-width: 82px; padding: 8px 7px; border-right: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); text-align: center; background: var(--color-bg-card); }
-.matrixTable thead th { position: sticky; top: 0; z-index: 2; background: var(--color-bg-input); }
-.matrixTable thead button { border: 0; background: transparent; color: var(--color-text-sub); font: inherit; font-weight: 800; cursor: pointer; writing-mode: vertical-rl; max-height: 115px; }
-.matrixSticky { position: sticky !important; left: 0; z-index: 3 !important; min-width: 158px !important; text-align: left !important; box-shadow: 5px 0 10px -9px rgba(15, 23, 42, .45); }
-.matrixSticky strong { display: block; margin-top: 3px; font-size: 10px; }
-.matrixSticky small { display: block; margin-top: 3px; color: var(--color-text-muted); font-size: 8px; font-weight: 700; }
-.matrixClass { color: var(--color-text-muted); }
-.matrixClassStart > th,
-.matrixClassStart > td { border-top: 2px solid var(--color-border); }
+.matrixTable td {
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+}
+
+.matrixTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 12px;
+  background: var(--color-bg-input);
+  color: var(--color-text-sub);
+  font-size: 10px;
+  font-weight: 900;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.matrixTable thead th:not(.matrixSticky),
+.matrixTable tbody td {
+  min-width: 118px;
+}
+
+.matrixTable thead button {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.4;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.matrixTable thead button:hover { color: var(--color-accent); }
+
+.matrixSticky {
+  position: sticky !important;
+  left: 0;
+  z-index: 3 !important;
+  min-width: 168px !important;
+  max-width: 220px;
+  padding: 8px 10px;
+  text-align: left !important;
+  box-shadow: 5px 0 10px -9px rgba(15, 23, 42, .4);
+}
+
+.matrixTable thead .matrixSticky {
+  z-index: 4 !important;
+  background: var(--color-bg-input);
+}
+
+.matrixSticky strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--color-text);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.matrixSticky small {
+  display: block;
+  margin-top: 3px;
+  color: var(--color-text-muted);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.matrixClass {
+  color: var(--color-text-muted);
+  font-size: 9px;
+  letter-spacing: .04em;
+}
+
+/* 分類境界は太い罫線ではなく余白で示す。 */
+.matrixClassStart > .matrixSticky { padding-top: 14px; }
+.matrixClassStart > td { padding-top: 10px; }
+
+.matrixTable tbody td {
+  padding: 6px 10px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.matrixTable tbody tr:hover > th,
+.matrixTable tbody tr:hover > td {
+  background: var(--color-bg-input);
+}
+
 .matrixFocusColumn { background: var(--color-accent-sub) !important; }
 
 .matrixCore,
-.matrixSupporting { width: 28px; height: 28px; border-radius: 8px; font: inherit; font-weight: 900; cursor: pointer; }
+.matrixSupporting {
+  min-width: 42px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 900;
+  cursor: pointer;
+}
 .matrixCore { border: 1px solid var(--color-accent); background: var(--color-accent); color: white; }
 .matrixSupporting { border: 1px solid var(--color-accent); background: var(--color-bg-card); color: var(--color-accent); }
-.matrixEmpty { color: var(--color-border); }
+.matrixCore:hover,
+.matrixSupporting:hover { box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 18%, transparent); }
+.matrixEmpty { color: var(--color-border-strong); font-size: 11px; }
 
 .tableFunction { min-width: 190px; color: var(--color-text-sub); font-weight: 700; line-height: 1.6; }
 .functionDetailList { display: grid; gap: 7px; }
@@ -168,7 +292,9 @@
   .functionClusterGrid { grid-template-columns: 1fr; }
   .functionCompany { min-width: min(150px, 100%); flex: 1 1 130px; }
   .matrixScrollHint { display: block; }
-  .matrixSticky { min-width: 128px !important; }
-  .matrixTable th, .matrixTable td { min-width: 64px; padding: 7px 5px; }
-  .matrixTable thead button { max-height: 96px; font-size: 9px; }
+  .matrixSticky { min-width: 146px !important; }
+  .matrixTable thead th:not(.matrixSticky),
+  .matrixTable tbody td { min-width: 112px; }
+  .matrixTable thead th { padding: 8px 10px; }
+  .matrixTable thead button { font-size: 10px; }
 }
