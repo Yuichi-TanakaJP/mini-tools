@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 import Link from "next/link";
 import ShareButtons from "@/components/ShareButtonsSuspended";
 import NavDrawer from "@/components/NavDrawer";
+import ColorThemeSelector from "@/components/ColorThemeSelector";
 
 type HeaderProps = {
   title?: string;
@@ -136,12 +137,15 @@ export default function Header({ title, subtitle }: HeaderProps) {
             </div>
           )}
 
-          <ShareButtons
-            text="mini-tools"
-            methods={["premium", "qr"]}
-            tone="light"
-            inline
-          />
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+            <ColorThemeSelector />
+            <ShareButtons
+              text="mini-tools"
+              methods={["premium", "qr"]}
+              tone="light"
+              inline
+            />
+          </div>
         </div>
 
         {/* アクセントライン */}

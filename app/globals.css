@@ -1,6 +1,6 @@
 /* ============================================================
-   Design tokens — Pattern A: Light Blue
-   パターンを変更する場合は docs/design-color-palette.md を参照
+   Design tokens — user-selectable Light / Dark themes
+   仕様は docs/specs/cross-cutting/ui-color-palette.md を参照
    ============================================================ */
 :root {
   /* 背景 — 決算カレンダーのカラーパレットを基準に統一 */
@@ -30,6 +30,31 @@
   /* モバイル下部固定ナビ(MobileBottomNav)が占める高さ。デスクトップは 0。
      sticky なパネル等が 100dvh 基準で高さを計算する際に差し引くために使う。 */
   --bottom-nav-space:    0px;
+
+  color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  --color-bg:            #0d1117;
+  --color-bg-card:       #161b22;
+  --color-bg-input:      #21262d;
+
+  --color-text:          #e6edf3;
+  --color-text-sub:      #b7c0ca;
+  --color-text-muted:    #8b949e;
+
+  --color-border:        #30363d;
+  --color-border-strong: #484f58;
+
+  --color-accent:        #58a6ff;
+  --color-accent-sub:    #1c2d3e;
+  --color-accent-hover:  #79baff;
+
+  --color-error:         #ff7b72;
+  --color-success:       #3fb950;
+  --color-warning:       #d29922;
+
+  color-scheme: dark;
 }
 
 *,
