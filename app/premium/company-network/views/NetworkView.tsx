@@ -197,10 +197,7 @@ export default function NetworkView({
   }, [graph.nodes, relationsOnly, runId]);
 
   useEffect(() => {
-    if (highDegreeNodes) {
-      setFrame(null);
-      return;
-    }
+    if (highDegreeNodes) return;
     const working = seeded.map((node) => ({ ...node }));
     let steps = 0;
     let handle = 0;
