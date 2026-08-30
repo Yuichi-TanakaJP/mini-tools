@@ -117,6 +117,8 @@ set role = excluded.role,
     notes = excluded.notes;
 
 -- Verified relationship: mini-tools uses the existing mini-tools Supabase project.
+-- Pin by Supabase project ref, not display name, so a future same-name project in
+-- another account/team cannot be linked accidentally.
 insert into registry.product_service_links (
   product_id,
   service_instance_id,
@@ -131,13 +133,13 @@ select
   p.id,
   si.id,
   'uses_database',
-  'production',
+  si.environment,
   'supabase_connector+mini-tools_env',
   1.000,
   now(),
   'Verified from the connected Supabase project inventory and mini-tools Supabase environment configuration.'
 from registry.products p
-join registry.service_instances si on si.name = 'mini-tools' and si.environment = 'production'
+join registry.service_instances si on si.external_id = 'uqnkjitvuebwhjvmaddb'
 join registry.service_providers sp on sp.id = si.provider_id and sp.slug = 'supabase'
 where p.slug = 'mini-tools'
 on conflict (product_id, service_instance_id, relation_type) do update
