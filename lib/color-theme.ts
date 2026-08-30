@@ -19,18 +19,24 @@ export function resolveColorTheme(
 
 export function createColorThemeInitScript(): string {
   return `(() => {
+    const apply = (resolved) => {
+      document.documentElement.dataset.theme = resolved;
+      document.documentElement.style.colorScheme = resolved;
+      const themeColor = resolved === "dark" ? "#0d1117" : "#eef2f7";
+      document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+        meta.setAttribute("content", themeColor);
+      });
+    };
     try {
       const saved = localStorage.getItem(${JSON.stringify(COLOR_THEME_STORAGE_KEY)});
       const preference = saved === "light" || saved === "dark" ? saved : "system";
       const resolved = preference === "system"
         ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
         : preference;
-      document.documentElement.dataset.theme = resolved;
-      document.documentElement.style.colorScheme = resolved;
+      apply(resolved);
     } catch {
       const resolved = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-      document.documentElement.dataset.theme = resolved;
-      document.documentElement.style.colorScheme = resolved;
+      apply(resolved);
     }
   })();`;
 }

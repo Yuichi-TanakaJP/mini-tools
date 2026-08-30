@@ -27,5 +27,6 @@ describe("color theme preference", () => {
     expect(script).toContain(COLOR_THEME_STORAGE_KEY);
     expect(script).toContain("prefers-color-scheme: dark");
     expect(script).toContain("document.documentElement.dataset.theme");
+    expect(script).toContain('meta[name="theme-color"]');
   });
 });
