@@ -63,6 +63,10 @@ Never store secrets, API keys, passwords, access tokens, service-role keys, or p
   - explicitly marks Product classifications as provisional
   - links known multi-repository products (`todo-app`, `market-info`)
   - adds verified mini-tools relationships supported by current repository configuration
+- `sql/004_schema_hardening.sql`
+  - adds provider account/team scope to service instances
+  - hardens uniqueness so identical project names can exist in different provider accounts
+  - adds reverse-FK indexes and operational counter checks
 
 ## Bootstrap order
 
@@ -71,13 +75,16 @@ Do not apply these files to the existing `mini-tools` Supabase project.
 After the dedicated Workspace Core project is explicitly created:
 
 1. Apply `001_registry_schema.sql`.
-2. Verify schemas/tables and run Supabase security/performance advisors.
-3. Apply `002_seed_sources_and_repositories.sql`.
-4. Verify exactly 20 GitHub repository rows are present.
-5. Review provisional Product classification.
-6. Apply `003_seed_products_provisional.sql`.
-7. Verify Product ↔ Repository and Product ↔ Service relations.
-8. Only then begin technology/service auto-discovery.
+2. Apply `002_seed_sources_and_repositories.sql`.
+3. Verify exactly 20 GitHub repository rows are present.
+4. Review provisional Product classification.
+5. Apply `003_seed_products_provisional.sql`.
+6. Apply `004_schema_hardening.sql`.
+7. Run Supabase security/performance advisors and fix any meaningful findings.
+8. Verify Product ↔ Repository, Product ↔ Service, and Product ↔ Product relations.
+9. Only then begin technology/service auto-discovery.
+
+The seed files use stable external identifiers wherever available so future refreshes can upsert rather than duplicate records.
 
 ## V1 acceptance checks
 
@@ -103,6 +110,16 @@ from registry.product_relations rel
 join registry.products src on src.id = rel.source_product_id
 join registry.products dst on dst.id = rel.target_product_id
 order by src.slug, rel.relation_type, dst.slug;
+
+select sp.slug as provider,
+       si.account_scope,
+       si.name,
+       si.environment,
+       si.external_id,
+       si.region
+from registry.service_instances si
+join registry.service_providers sp on sp.id = si.provider_id
+order by sp.slug, si.account_scope, si.name, si.environment;
 ```
 
 ## Non-goals for V1
