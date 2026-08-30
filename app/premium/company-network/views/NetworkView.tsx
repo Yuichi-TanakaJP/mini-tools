@@ -23,9 +23,62 @@ const SEED_SPREAD = 270;
 const COMPACT_SEED_SPREAD = 150;
 const HIGH_DEGREE_MIN_RELATIONS = 10;
 const HIGH_DEGREE_RATIO = 0.6;
+const STAR_LABEL_LINE_LENGTH = 9;
+const STAR_LABEL_FONT_SIZE = 11;
+const STAR_LABEL_RADIUS = 11;
+const STAR_LABEL_GAP = 7;
 
 function truncate(value: string, max = 16) {
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+}
+
+function wrapStarLabel(value: string) {
+  const characters = Array.from(value.trim());
+  if (characters.length <= STAR_LABEL_LINE_LENGTH) return [characters.join("")];
+
+  let splitAt = STAR_LABEL_LINE_LENGTH;
+  const firstWindow = characters.slice(0, STAR_LABEL_LINE_LENGTH + 1).join("");
+  const lastSpace = firstWindow.lastIndexOf(" ");
+  if (lastSpace >= 4) splitAt = Array.from(firstWindow.slice(0, lastSpace)).length;
+
+  const first = characters.slice(0, splitAt).join("").trim();
+  const remaining = characters.slice(splitAt).join("").trim();
+  const remainingCharacters = Array.from(remaining);
+  const second = remainingCharacters.length <= STAR_LABEL_LINE_LENGTH
+    ? remaining
+    : `${remainingCharacters.slice(0, STAR_LABEL_LINE_LENGTH - 1).join("")}…`;
+
+  return second ? [first, second] : [first];
+}
+
+function estimateSvgTextWidth(value: string, fontSize = STAR_LABEL_FONT_SIZE) {
+  return Array.from(value).reduce((width, character) => {
+    if (character === " ") return width + fontSize * 0.35;
+    if (/^[\u0000-\u00ff]$/.test(character)) return width + fontSize * 0.6;
+    return width + fontSize;
+  }, 0);
+}
+
+function fitHighDegreeLabels(
+  nodes: SimNode[],
+  hubId: string,
+  viewBoxHalf: number,
+  geometryFit: number,
+) {
+  let labelFit = geometryFit;
+  const edgeSafeArea = 10;
+  const labelOffset = STAR_LABEL_RADIUS + STAR_LABEL_GAP;
+
+  for (const node of nodes) {
+    if (node.id === hubId || Math.abs(node.x) < 1) continue;
+    const lines = wrapStarLabel(node.label);
+    const labelWidth = Math.max(...lines.map((line) => estimateSvgTextWidth(line)));
+    const availableForNodeX = viewBoxHalf - edgeSafeArea - labelOffset - labelWidth;
+    if (availableForNodeX <= 0) continue;
+    labelFit = Math.min(labelFit, availableForNodeX / Math.abs(node.x));
+  }
+
+  return Math.max(0.36, labelFit);
 }
 
 function findHighDegreeHub(relationships: CompanyRelationship[]) {
@@ -214,9 +267,12 @@ export default function NetworkView({
   const nodes = highDegreeNodes ?? (frame?.source === seeded ? frame.nodes : seeded);
   const positions = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const viewBoxHalf = relationsOnly ? COMPACT_VIEWBOX_HALF : FULL_VIEWBOX_HALF;
-  const labelPadding = highDegreeHubId ? 82 : relationsOnly ? 72 : 120;
+  const labelPadding = highDegreeHubId ? 64 : relationsOnly ? 72 : 120;
   const minimumExtent = highDegreeHubId ? 260 : relationsOnly ? 105 : 240;
-  const fit = (viewBoxHalf - labelPadding) / simExtent(nodes, minimumExtent);
+  const geometryFit = (viewBoxHalf - labelPadding) / simExtent(nodes, minimumExtent);
+  const fit = highDegreeHubId
+    ? fitHighDegreeLabels(nodes, highDegreeHubId, viewBoxHalf, geometryFit)
+    : geometryFit;
   const size = viewBoxHalf * 2;
   const normalizedQuery = query.trim().toLocaleLowerCase("ja");
   const selectedNodeId = selectedGraphNodeId(graphSelection);
@@ -296,13 +352,14 @@ export default function NetworkView({
               const queryDimmed = normalizedQuery.length > 0 && !node.label.toLocaleLowerCase("ja").includes(normalizedQuery);
               const neighbourDimmed = selectedNeighbours !== null && !selectedNeighbours.has(node.id);
               const dimmed = queryDimmed || neighbourDimmed;
-              const baseRadius = highDegreeHubId ? 11 : relationsOnly ? 14 : 8;
+              const baseRadius = highDegreeHubId ? STAR_LABEL_RADIUS : relationsOnly ? 14 : 8;
               const radius = node.kind === "group" ? (selected ? 11 : 9) : hubCenter ? 17 : center ? 11 : selected ? baseRadius + 2 : baseRadius;
               const fill = node.kind === "group" ? "#fff7ed" : center ? "#2554ff" : "var(--color-bg-card)";
               const stroke = node.kind === "group" ? "#d97706" : "#2554ff";
               const outwardLeft = Boolean(highDegreeHubId && !hubCenter && node.x < 0);
-              const labelX = hubCenter ? 0 : outwardLeft ? -(radius + 7) : radius + 7;
-              const labelY = hubCenter ? radius + 14 : 0;
+              const labelX = hubCenter ? 0 : outwardLeft ? -(radius + STAR_LABEL_GAP) : radius + STAR_LABEL_GAP;
+              const labelLines = highDegreeHubId && !hubCenter ? wrapStarLabel(node.label) : [truncate(node.label, 16)];
+              const labelY = hubCenter ? radius + 14 : labelLines.length > 1 ? -6 : 0;
               const labelAnchor = hubCenter ? "middle" : outwardLeft ? "end" : "start";
               return <g
                 key={node.id}
@@ -332,9 +389,11 @@ export default function NetworkView({
                   y={labelY}
                   textAnchor={labelAnchor}
                   dominantBaseline={hubCenter ? "hanging" : "middle"}
-                  style={relationsOnly ? { fontSize: highDegreeHubId ? (hubCenter ? 13 : 11) : 14 } : undefined}
+                  style={relationsOnly ? { fontSize: highDegreeHubId ? (hubCenter ? 13 : STAR_LABEL_FONT_SIZE) : 14 } : undefined}
                 >
-                  {truncate(node.label, highDegreeHubId ? (hubCenter ? 16 : 12) : 16)}
+                  {labelLines.map((line, index) => (
+                    <tspan key={`${node.id}:${index}`} x={labelX} dy={index === 0 ? 0 : 12}>{line}</tspan>
+                  ))}
                 </text>
               </g>;
             })}

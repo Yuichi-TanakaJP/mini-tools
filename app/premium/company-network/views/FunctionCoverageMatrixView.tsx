@@ -77,20 +77,20 @@ export default function FunctionCoverageMatrixView({
         <span>{groupName} 機能カバレッジ</span>
         <span>{rows.length}領域 × {companiesSorted.length}社</span>
       </div>
-      <div className={`${functionStyles.matrixLegend} ${claudeStyles.legendBar}`}>
-        <span><b className={functionStyles.legendCore}>●</b> 主要機能</span>
-        <span><b className={functionStyles.legendSupporting}>○</b> 追加機能</span>
+      <div className={functionStyles.matrixLegend}>
+        <span><b className={functionStyles.legendCore}>主要</b> 主担当・中核機能</span>
+        <span><b className={functionStyles.legendSupporting}>追加</b> 補完・追加機能</span>
         <span>担当機能数が多い企業を左側へ配置</span>
       </div>
-      <div className={functionStyles.matrixScrollHint}>← 横スクロールで全社を比較 →</div>
-      <div className={`${functionStyles.matrixScroll} ${claudeStyles.matrixScroll}`}>
-        <table className={`${functionStyles.matrixTable} ${claudeStyles.matrixTable}`}>
+      <div className={functionStyles.matrixScrollHint}>← 横にスクロールすると残りの企業を比較できます →</div>
+      <div className={functionStyles.matrixScroll}>
+        <table className={functionStyles.matrixTable}>
           <thead>
             <tr>
               <th className={functionStyles.matrixSticky}>機能</th>
               {companiesSorted.map((company) => (
                 <th key={company.id} className={focusCompanyId === company.id ? functionStyles.matrixFocusColumn : undefined}>
-                  <button type="button" onClick={() => onSelectCompany(company.id)}>{company.name}</button>
+                  <button type="button" onClick={() => onSelectCompany(company.id)} title={company.name}>{company.name}</button>
                 </th>
               ))}
             </tr>
@@ -99,8 +99,9 @@ export default function FunctionCoverageMatrixView({
             {rows.map((row, index) => {
               const previousClass = index > 0 ? rows[index - 1].classificationName : null;
               const newClass = previousClass !== row.classificationName;
+              const classBreak = index > 0 && newClass;
               return (
-                <tr key={`${row.classificationSlug}:${row.functionSlug}`} className={newClass ? functionStyles.matrixClassStart : undefined}>
+                <tr key={`${row.classificationSlug}:${row.functionSlug}`} className={classBreak ? functionStyles.matrixClassStart : undefined}>
                   <th className={functionStyles.matrixSticky}>
                     {newClass ? <span className={functionStyles.matrixClass}>{row.classificationName}</span> : null}
                     <strong>{row.functionName}</strong>
@@ -113,11 +114,11 @@ export default function FunctionCoverageMatrixView({
                         {link ? (
                           <button
                             type="button"
-                            className={`${link.role === "core" ? functionStyles.matrixCore : functionStyles.matrixSupporting} ${claudeStyles.matrixCellButton}`}
+                            className={link.role === "core" ? functionStyles.matrixCore : functionStyles.matrixSupporting}
                             title={`${company.name}: ${row.functionName} (${link.role === "core" ? "主要" : "追加"})`}
                             onClick={() => onSelectCompany(company.id)}
                           >
-                            {link.role === "core" ? "●" : "○"}
+                            {link.role === "core" ? "主要" : "追加"}
                           </button>
                         ) : <span className={functionStyles.matrixEmpty}>—</span>}
                       </td>
