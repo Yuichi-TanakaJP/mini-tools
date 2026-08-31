@@ -22,7 +22,7 @@ create table if not exists registry.product_service_provider_links (
 comment on table registry.product_service_provider_links is
   'Evidence-backed product-to-provider relationships used when a concrete service instance is not yet known. Do not create placeholder service instances merely to represent provider usage.';
 
-create index if not exists product_service_provider_links_provider_idx
+create index if not exists product_service_provider_links_provider_id_idx
   on registry.product_service_provider_links(provider_id);
 
 alter table registry.product_service_provider_links enable row level security;
