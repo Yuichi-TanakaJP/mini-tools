@@ -16,6 +16,7 @@
 | [Phase 1 クロスデバイス同期 実装計画](./phase1-cross-device-sync-plan.md) | 任意ログイン + Supabase でツールデータをデバイス間同期する段階実装計画 |
 | [優待統合ダッシュボード（PC）実装計画](./yutai-dashboard-plan.md) | 優待候補の発掘と運用管理を PC 向けテーブルで統合する段階実装計画 |
 | [ポートフォリオ意思決定ワークスペース実装計画](./portfolio-decision-workspace-plan.md) | ChatGPT起点の相談・保存・表示・銘柄連携を完成させるクロスリポジトリ計画 |
+| [Workspace Core V1 実装計画](./workspace-core-v1.md) | 完了済みV1 DB基盤の境界・inventory・監査結果と、Product Mapへ進む次工程 |
 
 ## 更新ルール
 
