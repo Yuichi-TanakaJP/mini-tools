@@ -1,8 +1,17 @@
 # Workspace Core Supabase
 
-This directory contains the bootstrap design for the **future second Supabase project** used as a personal structured control plane.
+This directory contains the reproducible schema and evidence-backed seed set for the dedicated **Workspace Core** Supabase project.
 
-It is deliberately **not** named `product-db` or `dev-db`. The project should be able to host additional domains later without making development inventory the root concept.
+The project is deliberately **not** named `product-db` or `dev-db`. It can host additional structured domains later without making development inventory the root concept.
+
+Current project:
+
+- Supabase project: `workspace-core`
+- project ref: `vtqceobocbetkkatycxw`
+- region: `ap-northeast-1`
+- V1 schemas: `platform`, `registry`, `ops`
+
+Do **not** apply these files to the existing `mini-tools` Supabase project.
 
 ## Boundary
 
@@ -14,7 +23,7 @@ Workspace Core Supabase project
 └─ future     # knowledge / automation / research / other domains as needed
 ```
 
-Only the first three schemas are created in V1. Future schemas should be added only when an actual use case exists.
+Only the first three schemas exist in V1. Future schemas should be added only when an actual use case exists.
 
 ## Source-of-truth policy
 
@@ -22,17 +31,32 @@ Workspace Core is a **catalog and relationship graph**, not a content warehouse.
 
 - GitHub stays authoritative for code, repositories, Issues, PRs, Actions, and repository metadata.
 - Supabase projects stay authoritative for their operational database state.
-- Notion can remain a source/archive for long-form text and historical notes when the original lives there, but it is not required to be the daily human UI.
-- Runtime platforms such as Vercel / Google Cloud / Cloudflare remain authoritative for their live deployment configuration.
-- ChatGPT is expected to become the primary conversational interface that traverses these systems.
+- Notion can remain a source/archive for long-form text and historical notes when the original lives there.
+- Runtime platforms such as Vercel / Google Cloud / Cloudflare remain authoritative for live deployment state.
+- ChatGPT / AI agents are expected to be the primary conversational interface across these systems.
+- Workspace Core is authoritative for Product identity and cross-system relationships that do not naturally belong to another source system.
 
-Workspace Core stores structured identity, location, relationship, provenance, confidence, and sync metadata so an agent can answer questions such as:
+Workspace Core stores structured identity, location, relationship, provenance, confidence, and verification metadata so an agent can answer questions such as:
 
 - Which products use Supabase?
 - Which repositories belong to this product?
-- What consumes the Market Info API?
+- What consumes Market Info data or APIs?
 - Which services would be affected if a provider is unavailable?
-- Where is the original design note / Issue / decision for this product?
+- Which repositories use Python + Playwright?
+- Which service relationships are runtime dependencies versus monitoring targets?
+
+## Relationship model
+
+Provider and concrete instance are deliberately separate.
+
+- `service_providers`: Supabase, Vercel, Cloudflare, Google Cloud, Neon, etc.
+- `service_instances`: a concrete project/deployment when its stable identity is known.
+- `product_service_links`: Product -> concrete service instance.
+- `product_service_provider_links`: Product -> provider when usage is evidence-backed but the concrete instance has not yet been identified.
+
+Do not invent placeholder instances merely to represent provider usage.
+
+Relationship meaning also matters. For example, `monitors_service` is not equivalent to `deployment_target` or `uses_database_platform`.
 
 ## Security model (V1)
 
@@ -49,51 +73,82 @@ If mini-tools later needs browser/client access, prefer a small dedicated `api` 
 
 Never store secrets, API keys, passwords, access tokens, service-role keys, or private credentials in registry metadata.
 
-## Files
+## SQL files
 
-- `sql/001_registry_schema.sql`
+Apply in numeric order.
+
+- `001_registry_schema.sql`
   - creates `platform`, `registry`, and `ops`
-  - creates the V1 tables, constraints, indexes, RLS, and private grants
-- `sql/002_seed_sources_and_repositories.sql`
-  - seeds source systems / service providers
+  - creates V1 tables, constraints, indexes, RLS, private grants
+- `002_seed_sources_and_repositories.sql`
+  - seeds source systems / initial service providers
   - records the verified existing mini-tools Supabase service instance
   - imports the 20 GitHub repositories discovered on 2026-08-30
-- `sql/003_seed_products_provisional.sql`
-  - creates an initial Product layer separately from repository facts
-  - explicitly marks Product classifications as provisional
+- `003_seed_products_provisional.sql`
+  - creates Product concepts separately from repository facts
   - links known multi-repository products (`todo-app`, `market-info`)
-  - adds verified mini-tools relationships supported by current repository configuration
-- `sql/004_schema_hardening.sql`
+  - adds verified initial mini-tools relationships
+- `004_schema_hardening.sql`
   - adds provider account/team scope to service instances
-  - hardens uniqueness so identical project names can exist in different provider accounts
-  - adds reverse-FK indexes and operational counter checks
+  - hardens uniqueness and reverse-FK indexes
+  - adds operational counter checks
+- `005_add_provider_level_service_discovery.sql`
+  - adds evidence-backed Product -> Provider relations when a concrete instance is unknown
+- `006_seed_discovered_assets.sql`
+  - adds discovered technologies/providers/relations from repository evidence
+- `007_seed_trade_research_discovery.sql`
+  - adds the evidence-backed AI Trade Research Lab / market-data discovery set
+- `008_reconcile_discovery_snapshot.sql`
+  - reconciles technology/provider masters and discovery rows that were first found interactively
+  - makes the repository seed set independent of live-only discovery state
+- `009_finalize_discovery_links.sql`
+  - re-applies incremental discovery links after reconciliation
+  - ensures an ordered fresh bootstrap reaches the intended final graph
 
-## Bootstrap order
+`008` and `009` exist because discovery initially happened interactively against the live registry. They preserve reproducibility without pretending those earlier rows were part of the original bootstrap. A future cleanup may squash these discovery seeds after V1 is stable.
 
-Do not apply these files to the existing `mini-tools` Supabase project.
+## Reproducible bootstrap order
 
-After the dedicated Workspace Core project is explicitly created:
+For a fresh Workspace Core database with the V1 schema:
 
 1. Apply `001_registry_schema.sql`.
 2. Apply `002_seed_sources_and_repositories.sql`.
-3. Verify exactly 20 GitHub repository rows are present.
-4. Review provisional Product classification.
-5. Apply `003_seed_products_provisional.sql`.
-6. Apply `004_schema_hardening.sql`.
-7. Run Supabase security/performance advisors and fix any meaningful findings.
-8. Verify Product ↔ Repository, Product ↔ Service, and Product ↔ Product relations.
-9. Only then begin technology/service auto-discovery.
+3. Apply `003_seed_products_provisional.sql`.
+4. Apply `004_schema_hardening.sql`.
+5. Apply `005_add_provider_level_service_discovery.sql`.
+6. Apply `006_seed_discovered_assets.sql`.
+7. Apply `007_seed_trade_research_discovery.sql`.
+8. Apply `008_reconcile_discovery_snapshot.sql`.
+9. Apply `009_finalize_discovery_links.sql`.
+10. Run acceptance queries and Supabase security/performance advisors.
 
-The seed files use stable external identifiers wherever available so future refreshes can upsert rather than duplicate records.
+All discovery seeds are designed to be idempotent through upserts.
 
-## V1 acceptance checks
+## Current V1 live snapshot
+
+As of the V1 discovery audit:
+
+- 18 Products
+- 20 GitHub repositories
+- 26 Technologies
+- 55 Product -> Technology links
+- 15 Service Providers
+- 23 Product -> Provider links
+- 6 Product -> Product relations
+
+Counts are an audit snapshot, not permanent schema invariants. Repository discovery can legitimately increase them later.
+
+## Acceptance checks
 
 ```sql
 select count(*) from registry.repositories;
--- expected: 20 immediately after the initial GitHub seed
+-- initial inventory expectation: 20
 
 select count(*) from registry.products;
--- expected: 18 after provisional product seed
+-- V1 product expectation: 18
+
+select count(*) from registry.product_repositories;
+-- expectation: all 20 repositories mapped to a Product in the current V1 inventory
 
 select p.slug, r.full_name, pr.role, pr.confidence
 from registry.product_repositories pr
@@ -110,6 +165,16 @@ from registry.product_relations rel
 join registry.products src on src.id = rel.source_product_id
 join registry.products dst on dst.id = rel.target_product_id
 order by src.slug, rel.relation_type, dst.slug;
+
+select p.slug as product,
+       sp.slug as provider,
+       l.relation_type,
+       l.confidence,
+       l.evidence_uri
+from registry.product_service_provider_links l
+join registry.products p on p.id = l.product_id
+join registry.service_providers sp on sp.id = l.provider_id
+order by p.slug, sp.slug, l.relation_type;
 
 select sp.slug as provider,
        si.account_scope,
@@ -129,13 +194,15 @@ order by sp.slug, si.account_scope, si.name, si.environment;
 - Storing secrets.
 - Two-way sync with every provider.
 - A generic EAV database for arbitrary future data.
-- Building a separate UI before the registry proves useful through agent queries.
+- Treating a monitoring target as a runtime dependency.
+- Exposing the whole registry directly to a browser client.
 
-## Next implementation step
+## Next stage
 
-After database bootstrap, implement the first discovery loop:
+The database bootstrap and first repository discovery pass are sufficiently populated to support the next layer.
 
-1. GitHub repository sync.
-2. Manifest/config inspection (`package.json`, lockfiles, Python dependency files, Dockerfiles, workflows, env examples).
-3. Evidence-backed `product_technologies` / service link upserts.
-4. Optional mini-tools Product Map UI once the graph contains enough useful relations.
+Before Product Map UI implementation:
+
+1. keep PR #552 unmerged until the repository/live-state audit is complete and the requested code review path is resolved;
+2. keep discovery evidence-backed and incremental rather than trying to reach artificial 100% coverage;
+3. then build a read-oriented Product Map / Development Map in mini-tools using Product, Repository, Technology, Provider, and Product Relation data.
