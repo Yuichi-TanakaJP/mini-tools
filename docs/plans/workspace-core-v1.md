@@ -17,6 +17,23 @@ Workspace Core
 
 関連 Issue: #551
 
+## 現在状態
+
+2026-08-30 に dedicated Supabase Project `workspace-core` を作成し、V1 schema と初期 inventory を適用済み。
+
+- project ref: `vtqceobocbetkkatycxw`
+- region: `ap-northeast-1`
+- schemas: `platform`, `registry`, `ops`
+- GitHub repositories: 20
+- Products: 18
+- Technologies: 26
+- Product -> Technology links: 55
+- Service Providers: 15
+- Product -> Provider links: 23
+- Product -> Product relations: 6
+
+現在の主作業は「DBを作ること」ではなく、**再現可能なSQLとlive DBの整合監査を終え、V1 bootstrapを一区切りにすること**。
+
 ## 背景
 
 GitHub、Supabase、Notion、Vercel、Google Cloud 等に情報が分散しているため、次の質問に横断的に答えにくい。
@@ -82,9 +99,12 @@ V1 の中心。
 - `service_providers`
 - `service_instances`
 - `product_service_links`
+- `product_service_provider_links`
 - `product_relations`
 - `external_resources`
 - `product_resources`
+
+`product_service_provider_links` は、Provider 利用が証拠付きで分かっているが concrete instance ID までは分からない場合に使う。仮の instance を捏造しないための層。
 
 ### `ops`
 
@@ -99,11 +119,12 @@ V1 の中心。
 2. 原文を無条件に複製しない。
 3. Product と Repository を 1:1 に固定しない。
 4. Provider と concrete instance を分離する。
-5. 関係には `source` / `confidence` / `verified_at` を残す。
+5. 関係には `source` / `confidence` / verification timestamp を残す。
 6. 推測リンクを確定事実として扱わない。
 7. secret / token を格納しない。
 8. V1 の custom schemas は Data API に直接公開しない。
 9. 将来用途のために generic EAV を作らず、実需要が出た domain だけ追加する。
+10. `monitors_service` と runtime dependency を混同しない。
 
 ## 初期 GitHub inventory
 
@@ -112,9 +133,9 @@ V1 の中心。
 事実 inventory と Product classification は分離する。
 
 - Repository facts: GitHub connector 由来として同期可能
-- Product classification: Workspace Core の人間/AI判断として provisional から開始
+- Product classification: Workspace Core の人間/AI判断として provenance を保持
 
-初期 mapping では以下の multi-repository Product を明示する。
+multi-repository Product:
 
 - `todo-app`
   - `todo-app` = frontend
@@ -122,8 +143,6 @@ V1 の中心。
 - `market-info`
   - `market_info` = data pipeline
   - `market-info-api` = API
-
-その他はまず同名/明示的な Repository を Product に 1:1 で仮紐付けし、後続の棚卸しで統合・分割を判断する。
 
 ## V1 phase
 
@@ -133,24 +152,27 @@ V1 の中心。
 - [x] V1 schema SQL を作成
 - [x] private grants / RLS 方針を組み込む
 - [x] provenance / confidence を関係テーブルへ組み込む
-- [ ] dedicated Supabase Project を作成
-- [ ] schema SQL を適用
-- [ ] security / performance advisors を確認
+- [x] dedicated Supabase Project `workspace-core` を作成
+- [x] schema SQL を適用
+- [x] security / performance advisors を確認
+
+Advisor は重大指摘なし。`rls_enabled_no_policy` は private schema + client grantなしというV1設計に対応する INFO、unused index は新規DBでまだ利用履歴が少ないことによる INFO と判断している。
 
 ### Phase 2: Initial inventory
 
 - [x] GitHub 20 repositories を取得
 - [x] authoritative repository seed を作成
 - [x] Product classification を別 seed として作成
-- [ ] dedicated Project に repository seed を適用
-- [ ] 20件であることを検証
-- [ ] provisional Product mapping をレビュー・適用
+- [x] dedicated Project に repository seed を適用
+- [x] 20件であることを検証
+- [x] provisional Product mapping を適用・初回レビュー
+- [x] Product != Repository を multi-repository mapping で確認
 
 ### Phase 3: Discovery
 
-Repository の manifest / config から証拠付きで検出する。
+Repository の manifest / config / README から証拠付きで検出する。
 
-候補:
+主な evidence:
 
 - `package.json`
 - lockfiles
@@ -160,14 +182,27 @@ Repository の manifest / config から証拠付きで検出する。
 - `.github/workflows/*`
 - `.env*.example`
 - framework config
+- README（役割・deployment・monitoring target 等、manifestでは表現できない事実）
 
 保存先:
 
 - `product_technologies`
 - `service_instances`
 - `product_service_links`
+- `product_service_provider_links`
+- `product_relations`
 
-自動検出は `source` と `evidence_uri` を必須とし、コード上に証拠がないものを推測登録しない。
+進捗:
+
+- [x] 主要20 repository を一巡
+- [x] Technology master / usage を証拠付き登録
+- [x] provider-level relationship を導入
+- [x] monitoring target と runtime dependency を区別
+- [x] Product relation（API / data / content / workflow asset / source-of-truth参照）を登録
+- [x] live-only discovery を SQL 008/009 で再現可能な形へ戻す
+- [ ] 今後の新規・変更 repository を定期同期する discovery loop の自動化
+
+自動検出は `source` と `evidence_uri` を基本とし、コード上または明示ドキュメントに証拠がないものを推測登録しない。
 
 ### Phase 4: External resources
 
@@ -175,41 +210,60 @@ GitHub Issue / PR / docs / Notion page を `external_resources` としてリン�
 
 原則は本文コピーではなく pointer + summary。
 
+- [ ] Issue #551 / PR #552 を最初の external resource として登録するか判断
+- [ ] Notion等を大量同期せず、必要な設計原文のみpointer化する運用を決める
+
+Phase 4 は Product Map UI の前提ではない。V1 bootstrapの完了を阻害しない。
+
 ### Phase 5: UI
 
-グラフに有用な relation が十分蓄積してから mini-tools に Product Map を追加する。
+グラフに有用な relation が十分蓄積したため、DB bootstrap完了後は mini-tools の Product Map / Development Map を次候補とする。
 
-V1 database bootstrap より UI を先に作らない。
+想定表示:
+
+- Product
+- Repository
+- Technology
+- Service Provider / Instance
+- Product dependency / data flow
+- evidence / confidence
+
+UIからregistry全体を直接公開せず、server-side route または専用 `api` schema を優先する。
 
 ## Security
 
-Supabase の 2026 年の Data API 変更を踏まえ、新規 Project では custom schema を private のまま開始する。
+custom schema は private のまま開始している。
 
 - `anon` / `authenticated` へ schema/table grant を与えない
 - RLS enabled
 - client policy なし
 - `service_role` / privileged server-side path のみ
+- secret / token は保存しない
 
 将来 UI が必要になった場合は、registry 全体を公開するのではなく dedicated `api` schema または server route を優先する。
 
-## Project 作成前のゲート
+Repository棚卸しで見つかった個別セキュリティ課題は、そのProduct側のIssueとして分離する。例: `test_ISN` のproduction認証情報fallback改善 Issue #12。
 
-Supabase Project の作成は最後の Free 枠を消費するため、以下が揃ってから実行する。
+## Reproducibility
 
-- schema SQL がレビュー可能
-- initial inventory が確認可能
-- Project の organization / region / cost confirmation が明示済み
+GitHub branch `feature/workspace-core-v1` の `infra/workspace-core/sql/001`〜`009` を順番に適用すると、V1 discovery graphを再構築できる形を目指す。
 
-Project 名は用途固定名を避け、現時点の第一候補を `workspace-core` とする。
+`008` / `009` は、初期 discovery が live DB に対して対話的に進んだ結果をrepository側へreconcileするための移行用seed。V1安定後に必要ならsquashを検討する。
 
 ## Done criteria for V1 bootstrap
 
-- dedicated Workspace Core Supabase Project が存在する
-- `platform / registry / ops` が作成済み
-- security advisor の重大指摘がない
-- 20 GitHub repositories が authoritative inventory として登録済み
-- Product classification が repository facts と分離されている
-- `mini-tools -> Supabase mini-tools` relation が登録済み
-- `mini-tools -> market-info` / `mini-tools -> stock-notes` API relation が登録済み
-- secret が一切保存されていない
-- ChatGPT から SQL query で Product / Repository / Service relation を辿れる
+- [x] dedicated Workspace Core Supabase Project が存在する
+- [x] `platform / registry / ops` が作成済み
+- [x] security advisor の重大指摘がない
+- [x] 20 GitHub repositories が authoritative inventory として登録済み
+- [x] Product classification が repository facts と分離されている
+- [x] `mini-tools -> Supabase mini-tools` concrete relation が登録済み
+- [x] `mini-tools -> market-info` / `mini-tools -> stock-notes` API relation が登録済み
+- [x] provider-level relationship と instance-level relationship を分離済み
+- [x] monitoring target と runtime dependency を区別済み
+- [x] secret を Workspace Core に保存していない
+- [x] ChatGPT から SQL query で Product / Repository / Technology / Service relation を辿れる
+- [ ] repositoryの001〜009とlive DBの最終整合監査を完了
+- [ ] requested review path（Codex等）を解決し、PR #552のmerge可否を判断
+
+上記最後の2点を満たした時点で **Workspace Core V1 bootstrapを一区切り** とし、継続的discoveryとUIをV2/次段階として扱う。
