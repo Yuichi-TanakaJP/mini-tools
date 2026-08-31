@@ -12,6 +12,7 @@ import type {
   RelationCategory,
   VerificationStatus,
 } from "./types";
+import { mergeFunctionLinks } from "./function-link-resolution";
 
 const ROW_LIMIT = 2000;
 const RELATION_CATEGORIES: readonly string[] = ["capital", "control", "historical"];
@@ -178,9 +179,52 @@ async function loadCompaniesByIds(supabase: SupabaseClient, companyIds: string[]
     .filter((row): row is CompanyNetworkCompany => row !== null);
 }
 
+async function loadRootCompanyIdsForGroups(
+  supabase: SupabaseClient,
+  groupIds: string[],
+): Promise<Set<string> | null> {
+  if (groupIds.length === 0) return new Set();
+
+  const groupsResult = await supabase
+    .from("stock_notes_corporate_groups")
+    .select("metadata")
+    .in("id", groupIds)
+    .eq("status", "active")
+    .is("valid_to", null)
+    .limit(ROW_LIMIT);
+  if (groupsResult.error) return null;
+
+  const rootSlugs = [...new Set(
+    ((groupsResult.data ?? []) as unknown as Row[])
+      .map((row) => {
+        const metadata = row.metadata;
+        if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+        const slug = (metadata as Record<string, unknown>).root_company_slug;
+        return typeof slug === "string" && slug.trim().length > 0 ? slug.trim() : null;
+      })
+      .filter((slug): slug is string => Boolean(slug)),
+  )];
+  if (rootSlugs.length === 0) return new Set();
+
+  const companiesResult = await supabase
+    .from("stock_notes_company_entities")
+    .select("id,slug")
+    .in("slug", rootSlugs)
+    .neq("status", "archived")
+    .limit(ROW_LIMIT);
+  if (companiesResult.error) return null;
+
+  return new Set(
+    ((companiesResult.data ?? []) as unknown as Row[])
+      .map((row) => nullableString(row, "id"))
+      .filter((id): id is string => Boolean(id)),
+  );
+}
+
 async function loadCompanyFunctionLinks(
   supabase: SupabaseClient,
   companyIds: string[],
+  derivedExcludedCompanyIds: ReadonlySet<string> = new Set(),
 ): Promise<CompanyFunctionLink[] | null> {
   if (companyIds.length === 0) return [];
 
@@ -216,49 +260,93 @@ async function loadCompanyFunctionLinks(
     if (source && target) parentByNodeId.set(target, source);
   });
 
-  const linksResult = await supabase
+  const toFunctionLink = (
+    row: Row,
+    nodeIdOverride?: string,
+    linkIdOverride?: string,
+  ): CompanyFunctionLink | null => {
+    const linkId = linkIdOverride ?? nullableString(row, "id");
+    const companyId = nullableString(row, "company_entity_id");
+    const nodeId = nodeIdOverride ?? nullableString(row, "node_id");
+    const confidence = oneOf<Confidence>(row, "confidence", CONFIDENCES);
+    const node = nodeId ? nodeById.get(nodeId) : null;
+    if (!linkId || !companyId || !nodeId || !node || !confidence) return null;
+    const parentId = parentByNodeId.get(nodeId) ?? null;
+    const parent = parentId ? nodeById.get(parentId) ?? null : null;
+    return {
+      linkId,
+      companyId,
+      nodeId,
+      functionSlug: node.slug,
+      functionName: node.name,
+      classificationId: parent?.id ?? null,
+      classificationSlug: parent?.slug ?? null,
+      classificationName: parent?.name ?? null,
+      role: stringValue(row, "strategic_role"),
+      confidence,
+      sourceType: nullableString(row, "source_type"),
+      asOf: nullableString(row, "as_of"),
+      note: stringValue(row, "relation_note"),
+    };
+  };
+
+  const directResult = await supabase
     .from("stock_notes_company_taxonomy_links")
     .select(FUNCTION_LINK_SELECT)
     .in("company_entity_id", companyIds)
     .in("node_id", functionNodeIds)
     .is("valid_to", null)
     .limit(ROW_LIMIT);
-  if (linksResult.error) return null;
+  if (directResult.error) return null;
 
-  return ((linksResult.data ?? []) as unknown as Row[])
-    .map((row): CompanyFunctionLink | null => {
-      const linkId = nullableString(row, "id");
-      const companyId = nullableString(row, "company_entity_id");
-      const nodeId = nullableString(row, "node_id");
-      const confidence = oneOf<Confidence>(row, "confidence", CONFIDENCES);
-      const node = nodeId ? nodeById.get(nodeId) : null;
-      if (!linkId || !companyId || !nodeId || !node || !confidence) return null;
-      const parentId = parentByNodeId.get(nodeId) ?? null;
-      const parent = parentId ? nodeById.get(parentId) ?? null : null;
-      return {
-        linkId,
-        companyId,
-        nodeId,
-        functionSlug: node.slug,
-        functionName: node.name,
-        classificationId: parent?.id ?? null,
-        classificationSlug: parent?.slug ?? null,
-        classificationName: parent?.name ?? null,
-        role: stringValue(row, "strategic_role"),
-        confidence,
-        sourceType: nullableString(row, "source_type"),
-        asOf: nullableString(row, "as_of"),
-        note: stringValue(row, "relation_note"),
-      };
-    })
-    .filter((row): row is CompanyFunctionLink => row !== null)
-    .sort((a, b) => {
-      const byClass = (a.classificationName ?? "").localeCompare(b.classificationName ?? "", "ja");
-      if (byClass !== 0) return byClass;
-      const byFunction = a.functionName.localeCompare(b.functionName, "ja");
-      if (byFunction !== 0) return byFunction;
-      return a.companyId.localeCompare(b.companyId);
-    });
+  const directLinks = ((directResult.data ?? []) as unknown as Row[])
+    .map((row) => toFunctionLink(row))
+    .filter((row): row is CompanyFunctionLink => row !== null);
+
+  const normalizationEdgesResult = await supabase
+    .from("stock_notes_taxonomy_edges")
+    .select(FUNCTION_EDGE_SELECT)
+    .eq("domain", "cross-domain")
+    .eq("relation_type", "related_to")
+    .in("target_node_id", functionNodeIds)
+    .limit(ROW_LIMIT);
+  if (normalizationEdgesResult.error) return null;
+
+  const targetNodeIdsBySource = new Map<string, string[]>();
+  ((normalizationEdgesResult.data ?? []) as unknown as Row[]).forEach((row) => {
+    const source = nullableString(row, "source_node_id");
+    const target = nullableString(row, "target_node_id");
+    if (!source || !target || !nodeById.has(target)) return;
+    const targets = targetNodeIdsBySource.get(source) ?? [];
+    if (!targets.includes(target)) targets.push(target);
+    targetNodeIdsBySource.set(source, targets);
+  });
+
+  const sourceNodeIds = [...targetNodeIdsBySource.keys()];
+  if (sourceNodeIds.length === 0) return directLinks;
+
+  const sourceLinksResult = await supabase
+    .from("stock_notes_company_taxonomy_links")
+    .select(FUNCTION_LINK_SELECT)
+    .in("company_entity_id", companyIds)
+    .in("node_id", sourceNodeIds)
+    .is("valid_to", null)
+    .limit(ROW_LIMIT);
+  if (sourceLinksResult.error) return null;
+
+  const derivedLinks: CompanyFunctionLink[] = [];
+  for (const row of (sourceLinksResult.data ?? []) as unknown as Row[]) {
+    const sourceLinkId = nullableString(row, "id");
+    const sourceNodeId = nullableString(row, "node_id");
+    const companyId = nullableString(row, "company_entity_id");
+    if (!sourceLinkId || !sourceNodeId || !companyId || derivedExcludedCompanyIds.has(companyId)) continue;
+    for (const targetNodeId of targetNodeIdsBySource.get(sourceNodeId) ?? []) {
+      const derived = toFunctionLink(row, targetNodeId, `derived:${sourceLinkId}:${targetNodeId}`);
+      if (derived) derivedLinks.push(derived);
+    }
+  }
+
+  return mergeFunctionLinks(directLinks, derivedLinks);
 }
 
 export function companyNetworkUnconfigured(): CompanyNetworkBootstrapResult {
@@ -354,7 +442,11 @@ export async function loadCompanyGroupScope(
   if (companies === null) {
     return { status: "error", data: null, message: "グループ所属企業の情報を取得できませんでした。" };
   }
-  const functions = await loadCompanyFunctionLinks(supabase, companyIds);
+  const rootCompanyIds = await loadRootCompanyIdsForGroups(supabase, [options.groupId]);
+  if (rootCompanyIds === null) {
+    return { status: "error", data: null, message: "企業グループの基点企業を取得できませんでした。" };
+  }
+  const functions = await loadCompanyFunctionLinks(supabase, companyIds, rootCompanyIds);
   if (functions === null) {
     return { status: "error", data: null, message: "グループ企業の事業・機能分類を取得できませんでした。" };
   }
@@ -416,6 +508,7 @@ export async function loadCompanyNetworkScope(
   }
 
   let memberships: CompanyGroupMembership[] = [];
+  let groupIds: string[] = [];
   if (options.includeGroups) {
     const centerMembershipResult = await supabase
       .from("stock_notes_company_group_memberships_v")
@@ -432,7 +525,7 @@ export async function loadCompanyNetworkScope(
     const centerMemberships = ((centerMembershipResult.data ?? []) as unknown as Row[])
       .map(parseMembership)
       .filter((row): row is CompanyGroupMembership => row !== null);
-    const groupIds = [...new Set(centerMemberships.map((membership) => membership.groupId))];
+    groupIds = [...new Set(centerMemberships.map((membership) => membership.groupId))];
 
     if (groupIds.length > 0) {
       const groupMembershipResult = await supabase
@@ -464,7 +557,11 @@ export async function loadCompanyNetworkScope(
   if (companies === null) {
     return { status: "error", data: null, message: "表示対象企業の情報を取得できませんでした。" };
   }
-  const functions = await loadCompanyFunctionLinks(supabase, companyIdList);
+  const rootCompanyIds = await loadRootCompanyIdsForGroups(supabase, groupIds);
+  if (rootCompanyIds === null) {
+    return { status: "error", data: null, message: "所属グループの基点企業を取得できませんでした。" };
+  }
+  const functions = await loadCompanyFunctionLinks(supabase, companyIdList, rootCompanyIds);
   if (functions === null) {
     return { status: "error", data: null, message: "表示企業の事業・機能分類を取得できませんでした。" };
   }
