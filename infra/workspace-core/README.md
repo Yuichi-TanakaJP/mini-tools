@@ -122,69 +122,73 @@ For a fresh Workspace Core database with the V1 schema:
 9. Apply `009_finalize_discovery_links.sql`.
 10. Run acceptance queries and Supabase security/performance advisors.
 
-All discovery seeds are designed to be idempotent through upserts.
+Discovery seeds use upserts and are intended to be idempotent.
 
 ## Current V1 live snapshot
 
-As of the V1 discovery audit:
+Verified 2026-09-01:
 
 - 18 Products
 - 20 GitHub repositories
+- 20 Product -> Repository links
 - 26 Technologies
 - 55 Product -> Technology links
 - 15 Service Providers
 - 23 Product -> Provider links
+- 1 Product -> concrete Service Instance link
 - 6 Product -> Product relations
 
 Counts are an audit snapshot, not permanent schema invariants. Repository discovery can legitimately increase them later.
 
+Evidence audit:
+
+- GitHub-derived Product -> Technology links missing `evidence_uri`: 0
+- GitHub-derived Product -> Provider links missing `evidence_uri`: 0
+- unverified Product -> Repository links: 0
+- unverified Product -> Product relations: 0
+
+## Validation performed
+
+The dedicated `workspace-core` project was created and the base DDL/schema bootstrap was applied successfully during V1 construction.
+
+Before merge:
+
+- live-state counts were reconciled with the repository seed set;
+- the dependency-order issue in 006/007 was corrected by 008/009;
+- `006` -> `009` were then re-run unchanged against the live database;
+- all four seed files completed successfully;
+- all counts remained unchanged after the replay, confirming the discovery seed layer is idempotent;
+- the feature branch was synchronized with the latest `main` and is behind by 0 commits;
+- Vercel status for the merge candidate succeeded.
+
+A fully isolated Supabase branch replay was considered. The organization reported a branch cost of `$0.01344/hour`; no paid branch was created because the live DDL execution history, dependency audit, exact discovery-seed replay, and state reconciliation were sufficient for the V1 merge gate.
+
+## Advisor state
+
+Security advisor:
+
+- ERROR/WARN: none
+- INFO: `rls_enabled_no_policy` on private schemas, intentional in the V1 access model
+- remediation reference: https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy
+
+Performance advisor:
+
+- ERROR/WARN: none
+- INFO: unused reverse indexes on the new database; retained for intended graph traversal
+- remediation reference: https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index
+
 ## Acceptance checks
 
 ```sql
-select count(*) from registry.repositories;
--- initial inventory expectation: 20
-
-select count(*) from registry.products;
--- V1 product expectation: 18
-
-select count(*) from registry.product_repositories;
--- expectation: all 20 repositories mapped to a Product in the current V1 inventory
-
-select p.slug, r.full_name, pr.role, pr.confidence
-from registry.product_repositories pr
-join registry.products p on p.id = pr.product_id
-join registry.repositories r on r.id = pr.repository_id
-order by p.slug, pr.is_primary desc, r.full_name;
-
-select src.slug as source_product,
-       rel.relation_type,
-       dst.slug as target_product,
-       rel.source,
-       rel.confidence
-from registry.product_relations rel
-join registry.products src on src.id = rel.source_product_id
-join registry.products dst on dst.id = rel.target_product_id
-order by src.slug, rel.relation_type, dst.slug;
-
-select p.slug as product,
-       sp.slug as provider,
-       l.relation_type,
-       l.confidence,
-       l.evidence_uri
-from registry.product_service_provider_links l
-join registry.products p on p.id = l.product_id
-join registry.service_providers sp on sp.id = l.provider_id
-order by p.slug, sp.slug, l.relation_type;
-
-select sp.slug as provider,
-       si.account_scope,
-       si.name,
-       si.environment,
-       si.external_id,
-       si.region
-from registry.service_instances si
-join registry.service_providers sp on sp.id = si.provider_id
-order by sp.slug, si.account_scope, si.name, si.environment;
+select count(*) from registry.repositories;          -- 20
+select count(*) from registry.products;              -- 18
+select count(*) from registry.product_repositories;  -- 20
+select count(*) from registry.technologies;          -- 26
+select count(*) from registry.product_technologies;  -- 55
+select count(*) from registry.service_providers;     -- 15
+select count(*) from registry.product_service_provider_links; -- 23
+select count(*) from registry.product_service_links; -- 1
+select count(*) from registry.product_relations;     -- 6
 ```
 
 ## Non-goals for V1
@@ -199,10 +203,11 @@ order by sp.slug, si.account_scope, si.name, si.environment;
 
 ## Next stage
 
-The database bootstrap and first repository discovery pass are sufficiently populated to support the next layer.
+V1 bootstrap and the first evidence-backed discovery pass are complete enough to move from construction to usage.
 
-Before Product Map UI implementation:
+Next work should focus on:
 
-1. keep PR #552 unmerged until the repository/live-state audit is complete and the requested code review path is resolved;
-2. keep discovery evidence-backed and incremental rather than trying to reach artificial 100% coverage;
-3. then build a read-oriented Product Map / Development Map in mini-tools using Product, Repository, Technology, Provider, and Product Relation data.
+1. defining read/query contracts for common Product-map questions;
+2. deciding between a mini-tools server route and a dedicated read-only `api` schema;
+3. implementing the first Product Map / Development Map using only evidenced relations;
+4. adding recurring repository/provider synchronization only after the read model proves useful.
