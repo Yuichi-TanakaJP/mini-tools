@@ -179,9 +179,52 @@ async function loadCompaniesByIds(supabase: SupabaseClient, companyIds: string[]
     .filter((row): row is CompanyNetworkCompany => row !== null);
 }
 
+async function loadRootCompanyIdsForGroups(
+  supabase: SupabaseClient,
+  groupIds: string[],
+): Promise<Set<string> | null> {
+  if (groupIds.length === 0) return new Set();
+
+  const groupsResult = await supabase
+    .from("stock_notes_corporate_groups")
+    .select("metadata")
+    .in("id", groupIds)
+    .eq("status", "active")
+    .is("valid_to", null)
+    .limit(ROW_LIMIT);
+  if (groupsResult.error) return null;
+
+  const rootSlugs = [...new Set(
+    ((groupsResult.data ?? []) as unknown as Row[])
+      .map((row) => {
+        const metadata = row.metadata;
+        if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+        const slug = (metadata as Record<string, unknown>).root_company_slug;
+        return typeof slug === "string" && slug.trim().length > 0 ? slug.trim() : null;
+      })
+      .filter((slug): slug is string => Boolean(slug)),
+  )];
+  if (rootSlugs.length === 0) return new Set();
+
+  const companiesResult = await supabase
+    .from("stock_notes_company_entities")
+    .select("id,slug")
+    .in("slug", rootSlugs)
+    .neq("status", "archived")
+    .limit(ROW_LIMIT);
+  if (companiesResult.error) return null;
+
+  return new Set(
+    ((companiesResult.data ?? []) as unknown as Row[])
+      .map((row) => nullableString(row, "id"))
+      .filter((id): id is string => Boolean(id)),
+  );
+}
+
 async function loadCompanyFunctionLinks(
   supabase: SupabaseClient,
   companyIds: string[],
+  derivedExcludedCompanyIds: ReadonlySet<string> = new Set(),
 ): Promise<CompanyFunctionLink[] | null> {
   if (companyIds.length === 0) return [];
 
@@ -295,7 +338,8 @@ async function loadCompanyFunctionLinks(
   for (const row of (sourceLinksResult.data ?? []) as unknown as Row[]) {
     const sourceLinkId = nullableString(row, "id");
     const sourceNodeId = nullableString(row, "node_id");
-    if (!sourceLinkId || !sourceNodeId) continue;
+    const companyId = nullableString(row, "company_entity_id");
+    if (!sourceLinkId || !sourceNodeId || !companyId || derivedExcludedCompanyIds.has(companyId)) continue;
     for (const targetNodeId of targetNodeIdsBySource.get(sourceNodeId) ?? []) {
       const derived = toFunctionLink(row, targetNodeId, `derived:${sourceLinkId}:${targetNodeId}`);
       if (derived) derivedLinks.push(derived);
@@ -398,7 +442,11 @@ export async function loadCompanyGroupScope(
   if (companies === null) {
     return { status: "error", data: null, message: "グループ所属企業の情報を取得できませんでした。" };
   }
-  const functions = await loadCompanyFunctionLinks(supabase, companyIds);
+  const rootCompanyIds = await loadRootCompanyIdsForGroups(supabase, [options.groupId]);
+  if (rootCompanyIds === null) {
+    return { status: "error", data: null, message: "企業グループの基点企業を取得できませんでした。" };
+  }
+  const functions = await loadCompanyFunctionLinks(supabase, companyIds, rootCompanyIds);
   if (functions === null) {
     return { status: "error", data: null, message: "グループ企業の事業・機能分類を取得できませんでした。" };
   }
@@ -460,6 +508,7 @@ export async function loadCompanyNetworkScope(
   }
 
   let memberships: CompanyGroupMembership[] = [];
+  let groupIds: string[] = [];
   if (options.includeGroups) {
     const centerMembershipResult = await supabase
       .from("stock_notes_company_group_memberships_v")
@@ -476,7 +525,7 @@ export async function loadCompanyNetworkScope(
     const centerMemberships = ((centerMembershipResult.data ?? []) as unknown as Row[])
       .map(parseMembership)
       .filter((row): row is CompanyGroupMembership => row !== null);
-    const groupIds = [...new Set(centerMemberships.map((membership) => membership.groupId))];
+    groupIds = [...new Set(centerMemberships.map((membership) => membership.groupId))];
 
     if (groupIds.length > 0) {
       const groupMembershipResult = await supabase
@@ -508,7 +557,11 @@ export async function loadCompanyNetworkScope(
   if (companies === null) {
     return { status: "error", data: null, message: "表示対象企業の情報を取得できませんでした。" };
   }
-  const functions = await loadCompanyFunctionLinks(supabase, companyIdList);
+  const rootCompanyIds = await loadRootCompanyIdsForGroups(supabase, groupIds);
+  if (rootCompanyIds === null) {
+    return { status: "error", data: null, message: "所属グループの基点企業を取得できませんでした。" };
+  }
+  const functions = await loadCompanyFunctionLinks(supabase, companyIdList, rootCompanyIds);
   if (functions === null) {
     return { status: "error", data: null, message: "表示企業の事業・機能分類を取得できませんでした。" };
   }
