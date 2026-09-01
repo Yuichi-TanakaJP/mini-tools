@@ -1,26 +1,13 @@
 -- Workspace Core Product Map V1 read model.
 --
 -- Keeps registry private while exposing a narrow set of SECURITY INVOKER views
--- through the already-exposed public schema. Only service_role may SELECT them.
+-- through the already-exposed public schema. Browser roles are explicitly revoked.
+-- The V1 bootstrap already grants service_role access to registry and Supabase's
+-- public-schema defaults grant service_role access to newly created views.
 -- Browser clients must never receive the service-role key; mini-tools reads these
 -- views from server-only code and returns only the JSON required by Product Map.
 
 begin;
-
--- service_role is the only runtime role allowed to traverse the private registry.
-grant usage on schema registry to service_role;
-grant select on table
-  registry.products,
-  registry.repositories,
-  registry.product_repositories,
-  registry.technologies,
-  registry.product_technologies,
-  registry.service_providers,
-  registry.service_instances,
-  registry.product_service_links,
-  registry.product_service_provider_links,
-  registry.product_relations
-  to service_role;
 
 create or replace view public.workspace_core_product_summary_v
 with (security_invoker = true)
@@ -166,8 +153,9 @@ from registry.product_relations rel
 join registry.products src on src.id = rel.source_product_id
 join registry.products dst on dst.id = rel.target_product_id;
 
--- Supabase projects may have permissive default privileges in public. Make the
--- intended surface explicit after every CREATE/REPLACE VIEW.
+-- Public-schema default privileges are intentionally narrowed immediately after
+-- view creation. service_role keeps its Supabase default privilege; browser roles
+-- cannot query these read models directly.
 revoke all on table
   public.workspace_core_product_summary_v,
   public.workspace_core_product_repository_v,
@@ -176,15 +164,6 @@ revoke all on table
   public.workspace_core_product_instance_v,
   public.workspace_core_product_relation_v
   from public, anon, authenticated;
-
-grant select on table
-  public.workspace_core_product_summary_v,
-  public.workspace_core_product_repository_v,
-  public.workspace_core_product_technology_v,
-  public.workspace_core_product_provider_v,
-  public.workspace_core_product_instance_v,
-  public.workspace_core_product_relation_v
-  to service_role;
 
 comment on view public.workspace_core_product_summary_v is
   'Workspace Core Product Map read model. Server-only service_role access.';
