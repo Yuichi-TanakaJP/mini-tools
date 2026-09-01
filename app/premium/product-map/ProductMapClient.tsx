@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type {
   WorkspaceCoreApiResponse,
   WorkspaceCoreOverview,
@@ -128,7 +128,7 @@ export default function ProductMapClient() {
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [message, setMessage] = useState("");
   const [selectedSlug, setSelectedSlug] = useState("");
-  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [providerFilter, setProviderFilter] = useState("all");
@@ -161,7 +161,6 @@ export default function ProductMapClient() {
   useEffect(() => {
     if (!selectedSlug || loadState !== "ok") return;
     let cancelled = false;
-    setDetailLoading(true);
     fetchWorkspaceCore<WorkspaceCoreProductDetail>(`mode=product&slug=${encodeURIComponent(selectedSlug)}`)
       .then((result) => {
         if (cancelled) return;
@@ -291,14 +290,7 @@ export default function ProductMapClient() {
           <StatCard label="Providers" value={totals.providers} note="used / monitored providers" />
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(290px, 340px) minmax(0, 1fr)",
-            gap: 16,
-            alignItems: "start",
-          }}
-        >
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-start" }}>
           <aside
             style={{
               background: "#fff",
@@ -307,8 +299,8 @@ export default function ProductMapClient() {
               padding: 14,
               display: "grid",
               gap: 12,
-              position: "sticky",
-              top: 14,
+              flex: "0 1 340px",
+              minWidth: 280,
             }}
           >
             <div style={{ display: "grid", gap: 8 }}>
@@ -327,7 +319,7 @@ export default function ProductMapClient() {
                   color: "var(--color-text)",
                 }}
               />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))", gap: 7 }}>
                 <select
                   value={typeFilter}
                   onChange={(event) => setTypeFilter(event.target.value)}
@@ -391,7 +383,7 @@ export default function ProductMapClient() {
             </div>
           </aside>
 
-          <section style={{ minWidth: 0, display: "grid", gap: 14 }}>
+          <section style={{ minWidth: 0, display: "grid", gap: 14, flex: "1 1 560px" }}>
             {detailLoading && !detail ? (
               <div style={{ padding: 24, borderRadius: 20, background: "#fff", border: "1px solid var(--color-border)" }}>読み込み中…</div>
             ) : detail ? (
@@ -442,7 +434,7 @@ function ProductDetail({
           <div style={{ fontWeight: 950, fontSize: 15 }}>1-hop Product Map</div>
           <div style={{ color: "var(--color-text-sub)", fontSize: 11, marginTop: 3 }}>Product間の確認済みrelationのみ。Provider監視はここには混ぜません。</div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(170px,.8fr) minmax(0,1fr)", gap: 10, alignItems: "center" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10, alignItems: "center" }}>
           <div style={{ display: "grid", gap: 7 }}>
             <div style={{ fontSize: 10, color: "var(--color-text-sub)", fontWeight: 850 }}>INCOMING</div>
             {detail.incomingRelations.length ? detail.incomingRelations.map((relation) => (
@@ -552,7 +544,7 @@ function ProviderRow({ link, monitoring = false }: { link: WorkspaceCoreProvider
   );
 }
 
-function AssetPanel({ children, title, tone = "default" }: { children: React.ReactNode; title: string; tone?: "default" | "monitoring" }) {
+function AssetPanel({ children, title, tone = "default" }: { children: ReactNode; title: string; tone?: "default" | "monitoring" }) {
   return (
     <div style={{ background: tone === "monitoring" ? "#fffbeb" : "#fff", border: `1px solid ${tone === "monitoring" ? "#fde68a" : "var(--color-border)"}`, borderRadius: 20, padding: 15, minWidth: 0 }}>
       <div style={{ fontWeight: 950, fontSize: 14, marginBottom: 5 }}>{title}</div>
