@@ -2,10 +2,10 @@
 --
 -- Keeps registry private while exposing a narrow set of SECURITY INVOKER views
 -- through the already-exposed public schema. Browser roles are explicitly revoked.
--- The V1 bootstrap already grants service_role access to registry. Public-schema
--- defaults are narrowed here so the server runtime keeps SELECT only on the views.
--- Browser clients must never receive the service-role/secret key; mini-tools reads
--- these views from server-only code and returns only Product Map JSON.
+-- The V1 bootstrap already grants service_role access to registry and Supabase's
+-- public-schema defaults grant service_role access to newly created views.
+-- Browser clients must never receive the service-role key; mini-tools reads these
+-- views from server-only code and returns only the JSON required by Product Map.
 
 begin;
 
@@ -153,8 +153,9 @@ from registry.product_relations rel
 join registry.products src on src.id = rel.source_product_id
 join registry.products dst on dst.id = rel.target_product_id;
 
--- Public-schema defaults are permissive on this project. Browser roles get no
--- access, and the server runtime is deliberately reduced to SELECT only.
+-- Public-schema default privileges are intentionally narrowed immediately after
+-- view creation. service_role keeps its Supabase default privilege; browser roles
+-- cannot query these read models directly.
 revoke all on table
   public.workspace_core_product_summary_v,
   public.workspace_core_product_repository_v,
@@ -164,26 +165,17 @@ revoke all on table
   public.workspace_core_product_relation_v
   from public, anon, authenticated;
 
-revoke insert, update, delete, truncate, references, trigger on table
-  public.workspace_core_product_summary_v,
-  public.workspace_core_product_repository_v,
-  public.workspace_core_product_technology_v,
-  public.workspace_core_product_provider_v,
-  public.workspace_core_product_instance_v,
-  public.workspace_core_product_relation_v
-  from service_role;
-
 comment on view public.workspace_core_product_summary_v is
-  'Workspace Core Product Map read model. Server-only service_role SELECT access.';
+  'Workspace Core Product Map read model. Server-only service_role access.';
 comment on view public.workspace_core_product_repository_v is
-  'Workspace Core Product to Repository read model. Server-only service_role SELECT access.';
+  'Workspace Core Product to Repository read model. Server-only service_role access.';
 comment on view public.workspace_core_product_technology_v is
-  'Workspace Core Product to Technology read model with provenance. Server-only service_role SELECT access.';
+  'Workspace Core Product to Technology read model with provenance. Server-only service_role access.';
 comment on view public.workspace_core_product_provider_v is
-  'Workspace Core Product to provider-level service read model with provenance. Server-only service_role SELECT access.';
+  'Workspace Core Product to provider-level service read model with provenance. Server-only service_role access.';
 comment on view public.workspace_core_product_instance_v is
-  'Workspace Core Product to concrete service instance read model. Server-only service_role SELECT access.';
+  'Workspace Core Product to concrete service instance read model. Server-only service_role access.';
 comment on view public.workspace_core_product_relation_v is
-  'Workspace Core Product relation read model. Server-only service_role SELECT access.';
+  'Workspace Core Product dependency/content/workflow relation read model. Server-only service_role access.';
 
 commit;
