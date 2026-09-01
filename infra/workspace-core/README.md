@@ -1,15 +1,14 @@
 # Workspace Core Supabase
 
-This directory contains the reproducible schema and evidence-backed seed set for the dedicated **Workspace Core** Supabase project.
-
-The project is deliberately **not** named `product-db` or `dev-db`. It can host additional structured domains later without making development inventory the root concept.
+This directory contains the reproducible schema, evidence-backed seed set, and read model for the dedicated **Workspace Core** Supabase project.
 
 Current project:
 
 - Supabase project: `workspace-core`
 - project ref: `vtqceobocbetkkatycxw`
 - region: `ap-northeast-1`
-- V1 schemas: `platform`, `registry`, `ops`
+- private schemas: `platform`, `registry`, `ops`
+- Product Map read views: narrow `public.workspace_core_*_v` views with browser-role access revoked
 
 Do **not** apply these files to the existing `mini-tools` Supabase project.
 
@@ -18,16 +17,14 @@ Do **not** apply these files to the existing `mini-tools` Supabase project.
 ```text
 Workspace Core Supabase project
 ├─ platform   # source systems, domains, shared metadata/governance primitives
-├─ registry   # V1: products, repos, technologies, services, resources, relations
+├─ registry   # products, repos, technologies, services, resources, relations
 ├─ ops        # sync/import state
-└─ future     # knowledge / automation / research / other domains as needed
+└─ public     # only narrow server-read views required by Product Map
 ```
 
-Only the first three schemas exist in V1. Future schemas should be added only when an actual use case exists.
+Workspace Core is a **catalog and relationship graph**, not a content warehouse.
 
 ## Source-of-truth policy
-
-Workspace Core is a **catalog and relationship graph**, not a content warehouse.
 
 - GitHub stays authoritative for code, repositories, Issues, PRs, Actions, and repository metadata.
 - Supabase projects stay authoritative for their operational database state.
@@ -36,7 +33,7 @@ Workspace Core is a **catalog and relationship graph**, not a content warehouse.
 - ChatGPT / AI agents are expected to be the primary conversational interface across these systems.
 - Workspace Core is authoritative for Product identity and cross-system relationships that do not naturally belong to another source system.
 
-Workspace Core stores structured identity, location, relationship, provenance, confidence, and verification metadata so an agent can answer questions such as:
+Workspace Core stores identity, relationship, provenance, confidence, and verification metadata so an agent or the mini-tools Product Map can answer questions such as:
 
 - Which products use Supabase?
 - Which repositories belong to this product?
@@ -56,20 +53,33 @@ Provider and concrete instance are deliberately separate.
 
 Do not invent placeholder instances merely to represent provider usage.
 
-Relationship meaning also matters. For example, `monitors_service` is not equivalent to `deployment_target` or `uses_database_platform`.
+Relationship meaning also matters. `monitors_service` is a monitoring target and must not be treated as a runtime dependency such as `deployment_target` or `uses_database_platform`.
 
-## Security model (V1)
+## Security model
 
-`platform`, `registry`, and `ops` are private custom schemas.
+`platform`, `registry`, and `ops` remain private custom schemas.
 
-V1 intentionally does **not** expose them to `anon` or `authenticated` through the Supabase Data API. RLS is enabled as defense in depth, but no client policies are created yet.
+- RLS is enabled as defense in depth.
+- `public`, `anon`, and `authenticated` are explicitly revoked from the private registry tables.
+- Product Map does not query the registry directly from the browser.
+- `010_product_map_read_model.sql` creates only the six read views required by the UI.
+- Every Product Map view uses `security_invoker = true`.
+- `public`, `anon`, and `authenticated` are explicitly revoked from those views after creation.
+- mini-tools reads the views with a **server-only** Supabase secret/service-role client.
+- The secret is never put in a `NEXT_PUBLIC_*` variable and is never returned to the browser.
+- The browser talks only to the premium-protected Next.js route `/api/premium/workspace-core`.
 
-Initial access is intended through:
+Runtime path:
 
-1. Supabase management/database tooling used by ChatGPT or development agents.
-2. Server-side service access when a sync/import job is introduced.
-
-If mini-tools later needs browser/client access, prefer a small dedicated `api` schema or server route rather than exposing the entire registry directly.
+```text
+Browser
+  ↓ premium cookie + JSON request
+mini-tools / Vercel
+  ↓ Next.js Route Handler (server-only secret)
+public.workspace_core_*_v
+  ↓ SECURITY INVOKER
+private registry
+```
 
 Never store secrets, API keys, passwords, access tokens, service-role keys, or private credentials in registry metadata.
 
@@ -100,16 +110,19 @@ Apply in numeric order.
   - adds the evidence-backed AI Trade Research Lab / market-data discovery set
 - `008_reconcile_discovery_snapshot.sql`
   - reconciles technology/provider masters and discovery rows that were first found interactively
-  - makes the repository seed set independent of live-only discovery state
 - `009_finalize_discovery_links.sql`
   - re-applies incremental discovery links after reconciliation
   - ensures an ordered fresh bootstrap reaches the intended final graph
+- `010_product_map_read_model.sql`
+  - creates the Product Map read contract as six `SECURITY INVOKER` views
+  - keeps the private registry hidden from browser roles
+  - revokes direct `public` / `anon` / `authenticated` access to the read views
 
-`008` and `009` exist because discovery initially happened interactively against the live registry. They preserve reproducibility without pretending those earlier rows were part of the original bootstrap. A future cleanup may squash these discovery seeds after V1 is stable.
+`008` and `009` exist because discovery initially happened interactively against the live registry. They preserve reproducibility without pretending those earlier rows were part of the original bootstrap.
 
 ## Reproducible bootstrap order
 
-For a fresh Workspace Core database with the V1 schema:
+For a fresh Workspace Core database:
 
 1. Apply `001_registry_schema.sql`.
 2. Apply `002_seed_sources_and_repositories.sql`.
@@ -120,13 +133,14 @@ For a fresh Workspace Core database with the V1 schema:
 7. Apply `007_seed_trade_research_discovery.sql`.
 8. Apply `008_reconcile_discovery_snapshot.sql`.
 9. Apply `009_finalize_discovery_links.sql`.
-10. Run acceptance queries and Supabase security/performance advisors.
+10. Apply `010_product_map_read_model.sql`.
+11. Run acceptance queries and Supabase security/performance advisors.
 
 Discovery seeds use upserts and are intended to be idempotent.
 
-## Current V1 live snapshot
+## Current live snapshot
 
-Verified 2026-09-01:
+Verified during Product Map V1 implementation:
 
 - 18 Products
 - 20 GitHub repositories
@@ -138,37 +152,64 @@ Verified 2026-09-01:
 - 1 Product -> concrete Service Instance link
 - 6 Product -> Product relations
 
-Counts are an audit snapshot, not permanent schema invariants. Repository discovery can legitimately increase them later.
+The Product Map read views independently returned:
 
-Evidence audit:
+- `workspace_core_product_summary_v`: 18
+- `workspace_core_product_repository_v`: 20
+- `workspace_core_product_technology_v`: 55
+- `workspace_core_product_provider_v`: 23
+- `workspace_core_product_instance_v`: 1
+- `workspace_core_product_relation_v`: 6
+
+Counts are audit snapshots, not permanent schema invariants.
+
+Evidence audit from V1:
 
 - GitHub-derived Product -> Technology links missing `evidence_uri`: 0
 - GitHub-derived Product -> Provider links missing `evidence_uri`: 0
 - unverified Product -> Repository links: 0
 - unverified Product -> Product relations: 0
 
-## Validation performed
+## Product Map application contract
 
-The dedicated `workspace-core` project was created and the base DDL/schema bootstrap was applied successfully during V1 construction.
+mini-tools owns the presentation/API boundary; no separate Cloud Run API is required in V1.
 
-Before merge:
+Server-only environment variables:
 
-- live-state counts were reconciled with the repository seed set;
-- the dependency-order issue in 006/007 was corrected by 008/009;
-- `006` -> `009` were then re-run unchanged against the live database;
-- all four seed files completed successfully;
-- all counts remained unchanged after the replay, confirming the discovery seed layer is idempotent;
-- the feature branch was synchronized with the latest `main` and is behind by 0 commits;
-- Vercel status for the merge candidate succeeded.
+```env
+WORKSPACE_CORE_SUPABASE_URL=
+WORKSPACE_CORE_SUPABASE_SECRET_KEY=
+```
 
-A fully isolated Supabase branch replay was considered. The organization reported a branch cost of `$0.01344/hour`; no paid branch was created because the live DDL execution history, dependency audit, exact discovery-seed replay, and state reconciliation were sufficient for the V1 merge gate.
+`WORKSPACE_CORE_SUPABASE_SECRET_KEY` should use a modern Supabase `sb_secret_...` key where available. The implementation also accepts `WORKSPACE_CORE_SUPABASE_SERVICE_ROLE_KEY` as a legacy fallback, but secrets must never be committed.
+
+Next.js read API:
+
+- `GET /api/premium/workspace-core?mode=overview`
+- `GET /api/premium/workspace-core?mode=product&slug=<product-slug>`
+- `GET /api/premium/workspace-core?mode=provider&slug=<provider-slug>`
+
+The route:
+
+- requires the existing mini-tools premium session;
+- returns `private, no-store` responses;
+- creates a separate `@supabase/supabase-js` server client, not the cookie-sharing SSR client used by the original mini-tools Supabase project;
+- returns only the read-contract JSON required by Product Map.
+
+UI route:
+
+- `/premium/product-map`
+
+V1 UI includes Product search/filtering, Product detail, Repository/Technology/Provider evidence, provider impact, and a selected-Product 1-hop relation view. `monitors_service` is shown in a separate monitoring section rather than dependency impact.
 
 ## Advisor state
+
+After the Product Map read model migration:
 
 Security advisor:
 
 - ERROR/WARN: none
-- INFO: `rls_enabled_no_policy` on private schemas, intentional in the V1 access model
+- INFO: `rls_enabled_no_policy` on private schemas, intentional in the current access model
 - remediation reference: https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy
 
 Performance advisor:
@@ -189,25 +230,22 @@ select count(*) from registry.service_providers;     -- 15
 select count(*) from registry.product_service_provider_links; -- 23
 select count(*) from registry.product_service_links; -- 1
 select count(*) from registry.product_relations;     -- 6
+
+select count(*) from public.workspace_core_product_summary_v;    -- 18
+select count(*) from public.workspace_core_product_repository_v; -- 20
+select count(*) from public.workspace_core_product_technology_v; -- 55
+select count(*) from public.workspace_core_product_provider_v;   -- 23
+select count(*) from public.workspace_core_product_instance_v;   -- 1
+select count(*) from public.workspace_core_product_relation_v;   -- 6
 ```
 
-## Non-goals for V1
+## Non-goals for Product Map V1
 
-- Copying all Notion page bodies into Supabase.
-- Copying all GitHub Issue / PR bodies into Supabase.
-- Storing secrets.
-- Two-way sync with every provider.
-- A generic EAV database for arbitrary future data.
-- Treating a monitoring target as a runtime dependency.
-- Exposing the whole registry directly to a browser client.
-
-## Next stage
-
-V1 bootstrap and the first evidence-backed discovery pass are complete enough to move from construction to usage.
-
-Next work should focus on:
-
-1. defining read/query contracts for common Product-map questions;
-2. deciding between a mini-tools server route and a dedicated read-only `api` schema;
-3. implementing the first Product Map / Development Map using only evidenced relations;
-4. adding recurring repository/provider synchronization only after the read model proves useful.
+- Copying Notion or GitHub Issue bodies into Workspace Core.
+- Storing secrets in the registry.
+- Browser-side direct database writes.
+- Exposing the entire private registry to the Supabase Data API.
+- A giant all-node graph as the default UI.
+- Treating monitoring targets as runtime dependencies.
+- Creating a separate API service solely for this UI.
+- Automatic provider/repository synchronization before the read model proves useful.

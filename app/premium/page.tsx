@@ -69,6 +69,14 @@ const FEATURE_CARDS: FeatureCard[] = [
     tone: "violet",
   },
   {
+    href: "/premium/product-map",
+    icon: "🧩",
+    title: "Product Map",
+    description:
+      "Workspace Coreに登録したProduct・Repository・Technology・Service・依存関係を、根拠付きで横断します。",
+    tone: "slate",
+  },
+  {
     href: "/premium/routines",
     icon: "🗓",
     title: "ルーティン一覧",
