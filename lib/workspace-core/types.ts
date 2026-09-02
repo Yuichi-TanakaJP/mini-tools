@@ -92,7 +92,10 @@ export type WorkspaceCoreProductRelation = {
 
 export type WorkspaceCoreOverview = {
   products: WorkspaceCoreProductSummary[];
+  repositories: WorkspaceCoreRepositoryLink[];
+  technologies: WorkspaceCoreTechnologyLink[];
   providerLinks: WorkspaceCoreProviderLink[];
+  serviceInstances: WorkspaceCoreServiceInstanceLink[];
   relations: WorkspaceCoreProductRelation[];
 };
 

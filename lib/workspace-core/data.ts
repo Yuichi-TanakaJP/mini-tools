@@ -145,31 +145,54 @@ function assertResult(label: string, error: { message: string } | null) {
 }
 
 export async function loadWorkspaceCoreOverview(supabase: SupabaseClient): Promise<WorkspaceCoreOverview> {
-  const [productsResult, providersResult, relationsResult] = await Promise.all([
-    supabase
-      .from("workspace_core_product_summary_v")
-      .select("*")
-      .order("importance", { ascending: false })
-      .order("name", { ascending: true }),
-    supabase
-      .from("workspace_core_product_provider_v")
-      .select("*")
-      .order("provider_name", { ascending: true })
-      .order("product_slug", { ascending: true }),
-    supabase
-      .from("workspace_core_product_relation_v")
-      .select("*")
-      .order("source_product_name", { ascending: true })
-      .order("target_product_name", { ascending: true }),
-  ]);
+  const [productsResult, repositoriesResult, technologiesResult, providersResult, instancesResult, relationsResult] =
+    await Promise.all([
+      supabase
+        .from("workspace_core_product_summary_v")
+        .select("*")
+        .order("importance", { ascending: false })
+        .order("name", { ascending: true }),
+      supabase
+        .from("workspace_core_product_repository_v")
+        .select("*")
+        .order("product_slug", { ascending: true })
+        .order("is_primary", { ascending: false })
+        .order("full_name", { ascending: true }),
+      supabase
+        .from("workspace_core_product_technology_v")
+        .select("*")
+        .order("technology_name", { ascending: true })
+        .order("product_slug", { ascending: true }),
+      supabase
+        .from("workspace_core_product_provider_v")
+        .select("*")
+        .order("provider_name", { ascending: true })
+        .order("product_slug", { ascending: true }),
+      supabase
+        .from("workspace_core_product_instance_v")
+        .select("*")
+        .order("provider_name", { ascending: true })
+        .order("product_slug", { ascending: true }),
+      supabase
+        .from("workspace_core_product_relation_v")
+        .select("*")
+        .order("source_product_name", { ascending: true })
+        .order("target_product_name", { ascending: true }),
+    ]);
 
   assertResult("Product一覧の取得に失敗しました", productsResult.error);
+  assertResult("Repository一覧の取得に失敗しました", repositoriesResult.error);
+  assertResult("Technology一覧の取得に失敗しました", technologiesResult.error);
   assertResult("Provider一覧の取得に失敗しました", providersResult.error);
+  assertResult("Service instance一覧の取得に失敗しました", instancesResult.error);
   assertResult("Product relationの取得に失敗しました", relationsResult.error);
 
   return {
     products: ((productsResult.data ?? []) as Row[]).map(productSummary),
+    repositories: ((repositoriesResult.data ?? []) as Row[]).map(repositoryLink),
+    technologies: ((technologiesResult.data ?? []) as Row[]).map(technologyLink),
     providerLinks: ((providersResult.data ?? []) as Row[]).map(providerLink),
+    serviceInstances: ((instancesResult.data ?? []) as Row[]).map(serviceInstanceLink),
     relations: ((relationsResult.data ?? []) as Row[]).map(productRelation),
   };
 }
