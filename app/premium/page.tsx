@@ -69,11 +69,19 @@ const FEATURE_CARDS: FeatureCard[] = [
     tone: "violet",
   },
   {
+    href: "/premium/product-map/dashboard",
+    icon: "▦",
+    title: "Workspace Dashboard",
+    description:
+      "Product・Repository・Technology・Provider・依存関係を、KPIと横断フィルタ付きの一覧でまとめて確認します。",
+    tone: "slate",
+  },
+  {
     href: "/premium/product-map",
     icon: "🧩",
     title: "Product Map",
     description:
-      "Workspace Coreに登録したProduct・Repository・Technology・Service・依存関係を、根拠付きで横断します。",
+      "Workspace Coreに登録したProduct・Repository・Technology・Service・依存関係を、Product単位で根拠付き確認します。",
     tone: "slate",
   },
   {
