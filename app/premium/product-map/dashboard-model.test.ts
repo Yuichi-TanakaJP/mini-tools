@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { WorkspaceCoreOverview } from "@/lib/workspace-core/types";
 import {
-  buildProductRows,
-  dashboardTotals,
+  buildProductPortfolio,
   filterWorkspaceOverview,
-  providerUsage,
-  technologyUsage,
+  focusProducts,
+  portfolioStatus,
+  productTypeBreakdown,
+  reviewQueue,
 } from "./dashboard-model";
 
 const overview: WorkspaceCoreOverview = {
@@ -13,14 +14,14 @@ const overview: WorkspaceCoreOverview = {
     {
       productId: "p1",
       slug: "mini-tools",
-      name: "mini-tools",
-      description: "dashboard",
+      name: "Mini Tools",
+      description: "central application",
       productType: "application",
       lifecycleStatus: "active",
-      importance: 90,
-      updatedAt: null,
+      importance: 5,
+      updatedAt: "2026-09-01T00:00:00Z",
       repositoryCount: 1,
-      technologyCount: 2,
+      technologyCount: 1,
       providerCount: 1,
       relationCount: 1,
     },
@@ -31,11 +32,25 @@ const overview: WorkspaceCoreOverview = {
       description: "watch SaaS",
       productType: "application",
       lifecycleStatus: "experimental",
-      importance: 60,
-      updatedAt: null,
+      importance: 3,
+      updatedAt: "2026-08-30T00:00:00Z",
       repositoryCount: 1,
       technologyCount: 1,
       providerCount: 1,
+      relationCount: 1,
+    },
+    {
+      productId: "p3",
+      slug: "archived-lab",
+      name: "Archived Lab",
+      description: null,
+      productType: "experiment",
+      lifecycleStatus: "archived",
+      importance: 0,
+      updatedAt: "2026-01-01T00:00:00Z",
+      repositoryCount: 1,
+      technologyCount: 0,
+      providerCount: 0,
       relationCount: 0,
     },
   ],
@@ -47,7 +62,7 @@ const overview: WorkspaceCoreOverview = {
       visibility: "public",
       defaultBranch: "main",
       archived: false,
-      htmlUrl: null,
+      htmlUrl: "https://github.com/Yuichi-TanakaJP/mini-tools",
       role: "primary",
       isPrimary: true,
       source: "github",
@@ -62,6 +77,21 @@ const overview: WorkspaceCoreOverview = {
       visibility: "private",
       defaultBranch: "main",
       archived: false,
+      htmlUrl: "https://github.com/Yuichi-TanakaJP/pc-saas-health-monitor",
+      role: "primary",
+      isPrimary: true,
+      source: "github",
+      confidence: 1,
+      verifiedAt: null,
+      notes: null,
+    },
+    {
+      productSlug: "archived-lab",
+      repositoryId: "r3",
+      fullName: "Yuichi-TanakaJP/archived-lab",
+      visibility: "private",
+      defaultBranch: "main",
+      archived: true,
       htmlUrl: null,
       role: "primary",
       isPrimary: true,
@@ -107,10 +137,10 @@ const overview: WorkspaceCoreOverview = {
     {
       productSlug: "mini-tools",
       providerId: "s1",
-      providerSlug: "supabase",
-      providerName: "Supabase",
-      providerCategory: "database-platform",
-      relationType: "uses_database_platform",
+      providerSlug: "vercel",
+      providerName: "Vercel",
+      providerCategory: "hosting",
+      relationType: "deployment_target",
       source: "github",
       confidence: 1,
       evidenceUri: null,
@@ -119,7 +149,7 @@ const overview: WorkspaceCoreOverview = {
     },
     {
       productSlug: "health-monitor",
-      providerId: "s1",
+      providerId: "s2",
       providerSlug: "supabase",
       providerName: "Supabase",
       providerCategory: "database-platform",
@@ -135,7 +165,7 @@ const overview: WorkspaceCoreOverview = {
   relations: [
     {
       sourceProductSlug: "mini-tools",
-      sourceProductName: "mini-tools",
+      sourceProductName: "Mini Tools",
       targetProductSlug: "health-monitor",
       targetProductName: "Health Monitor",
       relationType: "consumes_api",
@@ -147,8 +177,8 @@ const overview: WorkspaceCoreOverview = {
   ],
 };
 
-describe("Workspace Dashboard model", () => {
-  it("repository / technology / provider名も横断検索対象にする", () => {
+describe("Workspace Dashboard product portfolio model", () => {
+  it("search/filterはProductを軸にしつつ関連Repoも検索できる", () => {
     const result = filterWorkspaceOverview(overview, {
       query: "pc-saas-health-monitor",
       productType: "all",
@@ -158,36 +188,42 @@ describe("Workspace Dashboard model", () => {
     expect(result.products.map((product) => product.slug)).toEqual(["health-monitor"]);
   });
 
-  it("provider filterでruntimeとmonitoringの両方をproduct scopeに含める", () => {
-    const result = filterWorkspaceOverview(overview, {
-      query: "",
-      productType: "all",
-      lifecycle: "all",
-      providerSlug: "supabase",
+  it("portfolio rowへprimary repo / runtime / monitoring / relationを集約する", () => {
+    const rows = buildProductPortfolio(overview);
+    const miniTools = rows.find((product) => product.slug === "mini-tools");
+    const health = rows.find((product) => product.slug === "health-monitor");
+
+    expect(miniTools).toMatchObject({
+      primaryRepository: { fullName: "Yuichi-TanakaJP/mini-tools" },
+      relatedProductSlugs: ["health-monitor"],
     });
-    expect(result.products.map((product) => product.slug)).toEqual(["mini-tools", "health-monitor"]);
-    expect(buildProductRows(result).map((product) => [product.runtimeProviderCount, product.monitoringProviderCount])).toEqual([
-      [1, 0],
-      [0, 1],
-    ]);
+    expect(miniTools?.runtimeProviders.map((provider) => provider.providerSlug)).toEqual(["vercel"]);
+    expect(health?.runtimeProviders).toEqual([]);
+    expect(health?.monitoringProviders.map((provider) => provider.providerSlug)).toEqual(["supabase"]);
   });
 
-  it("technology/provider usageとKPIを重複Productなしで集計する", () => {
-    const scope = filterWorkspaceOverview(overview, {
-      query: "",
-      productType: "all",
-      lifecycle: "all",
-      providerSlug: "all",
+  it("top cockpitはProduct lifecycleとimportanceを表す", () => {
+    expect(portfolioStatus(overview)).toEqual({
+      products: 3,
+      active: 1,
+      experimental: 1,
+      inactive: 1,
+      highImportance: 1,
     });
-    expect(technologyUsage(scope)[0]).toMatchObject({ slug: "nextjs", count: 2 });
-    expect(providerUsage(scope)[0]).toMatchObject({ slug: "supabase", count: 2, monitoringCount: 1 });
-    expect(dashboardTotals(scope)).toEqual({
-      products: 2,
-      activeProducts: 1,
-      repositories: 2,
-      technologies: 1,
-      providers: 1,
-      relations: 1,
-    });
+    expect(focusProducts(overview).map((product) => product.slug)).toEqual(["mini-tools", "health-monitor"]);
+  });
+
+  it("review queueは障害ではなく見直し候補を返す", () => {
+    const queue = reviewQueue(overview);
+    expect(queue.map((product) => product.slug)).toEqual(["health-monitor", "archived-lab"]);
+    expect(queue[0].reviewSignals.map((signal) => signal.label)).toContain("実験中");
+    expect(queue[1].reviewSignals.map((signal) => signal.label)).toContain("Archive");
+  });
+
+  it("product type breakdownはポートフォリオ構成を返す", () => {
+    expect(productTypeBreakdown(overview)).toEqual([
+      { slug: "application", name: "application", count: 2, products: ["mini-tools", "health-monitor"] },
+      { slug: "experiment", name: "experiment", count: 1, products: ["archived-lab"] },
+    ]);
   });
 });
