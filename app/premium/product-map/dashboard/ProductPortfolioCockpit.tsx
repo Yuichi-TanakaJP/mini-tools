@@ -150,6 +150,6 @@ export default function ProductPortfolioCockpit() {
 
     <section><Heading step="05 / CONTEXT" title="Portfolio context" description="Product判断を補助する構成情報。生テーブルではなく要約だけを見る。" /><div className={styles.context}><div><h3>Product mix</h3><p>どんな種類の資産に偏っているか。</p><Breakdown items={types} labels={TYPE} /></div><div><h3>Infrastructure footprint</h3><p>外部サービス依存の広がり。monitoringも含む登録ベース。</p><Breakdown items={providers} /></div><div><h3>Shared technology</h3><p>複数Productで再利用される主要スタック。</p><Breakdown items={technologies} /></div></div></section>
 
-    <footer>この画面は「全体判断」が目的です。依存関係・Evidence・Technologyの詳細は <Link href="/premium/product-map">Product Map</Link> へ分離しています。</footer>
+    <footer className={styles.footer}>この画面は「全体判断」が目的です。依存関係・Evidence・Technologyの詳細は <Link href="/premium/product-map">Product Map</Link> へ分離しています。</footer>
   </div></main>;
 }
