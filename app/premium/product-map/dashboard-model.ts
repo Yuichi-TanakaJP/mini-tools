@@ -1,6 +1,5 @@
 import type {
   WorkspaceCoreOverview,
-  WorkspaceCoreProductRelation,
   WorkspaceCoreProductSummary,
   WorkspaceCoreProviderLink,
   WorkspaceCoreRepositoryLink,
@@ -16,18 +15,24 @@ export type WorkspaceDashboardFilters = {
   providerSlug: string;
 };
 
-export type WorkspaceDashboardScope = {
-  products: WorkspaceCoreProductSummary[];
-  repositories: WorkspaceCoreRepositoryLink[];
-  technologies: WorkspaceCoreTechnologyLink[];
-  providerLinks: WorkspaceCoreProviderLink[];
-  serviceInstances: WorkspaceCoreServiceInstanceLink[];
-  relations: WorkspaceCoreProductRelation[];
+export type WorkspaceDashboardScope = WorkspaceCoreOverview;
+
+export type ReviewSignal = {
+  code: "lifecycle" | "missing_repo" | "missing_runtime" | "isolated";
+  label: string;
+  detail: string;
+  tone: "warning" | "muted";
 };
 
-export type ProductDashboardRow = WorkspaceCoreProductSummary & {
-  runtimeProviderCount: number;
-  monitoringProviderCount: number;
+export type ProductPortfolioRow = WorkspaceCoreProductSummary & {
+  primaryRepository: WorkspaceCoreRepositoryLink | null;
+  repositories: WorkspaceCoreRepositoryLink[];
+  technologies: WorkspaceCoreTechnologyLink[];
+  runtimeProviders: WorkspaceCoreProviderLink[];
+  monitoringProviders: WorkspaceCoreProviderLink[];
+  serviceInstances: WorkspaceCoreServiceInstanceLink[];
+  relatedProductSlugs: string[];
+  reviewSignals: ReviewSignal[];
 };
 
 export type UsageBreakdown = {
@@ -41,6 +46,16 @@ export type UsageBreakdown = {
 
 function normalized(value: string): string {
   return value.trim().toLocaleLowerCase();
+}
+
+function uniqueBy<T>(items: T[], key: (item: T) => string): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const value = key(item);
+    if (seen.has(value)) return false;
+    seen.add(value);
+    return true;
+  });
 }
 
 export function filterWorkspaceOverview(
@@ -62,59 +77,185 @@ export function filterWorkspaceOverview(
     if (providerProducts && !providerProducts.has(product.slug)) return false;
     if (!query) return true;
 
-    const relatedRepositories = overview.repositories
+    const repositories = overview.repositories
       .filter((link) => link.productSlug === product.slug)
       .map((link) => link.fullName);
-    const relatedTechnologies = overview.technologies
-      .filter((link) => link.productSlug === product.slug)
-      .map((link) => link.technologyName);
-    const relatedProviders = overview.providerLinks
+    const providers = overview.providerLinks
       .filter((link) => link.productSlug === product.slug)
       .map((link) => link.providerName);
+    const technologies = overview.technologies
+      .filter((link) => link.productSlug === product.slug)
+      .map((link) => link.technologyName);
 
     return normalized([
       product.name,
       product.slug,
       product.description ?? "",
-      ...relatedRepositories,
-      ...relatedTechnologies,
-      ...relatedProviders,
+      ...repositories,
+      ...providers,
+      ...technologies,
     ].join(" ")).includes(query);
   });
 
-  const productSlugs = new Set(products.map((product) => product.slug));
-
+  const slugs = new Set(products.map((product) => product.slug));
   return {
     products,
-    repositories: overview.repositories.filter((link) => productSlugs.has(link.productSlug)),
-    technologies: overview.technologies.filter((link) => productSlugs.has(link.productSlug)),
-    providerLinks: overview.providerLinks.filter((link) => productSlugs.has(link.productSlug)),
-    serviceInstances: overview.serviceInstances.filter((link) => productSlugs.has(link.productSlug)),
+    repositories: overview.repositories.filter((link) => slugs.has(link.productSlug)),
+    technologies: overview.technologies.filter((link) => slugs.has(link.productSlug)),
+    providerLinks: overview.providerLinks.filter((link) => slugs.has(link.productSlug)),
+    serviceInstances: overview.serviceInstances.filter((link) => slugs.has(link.productSlug)),
     relations: overview.relations.filter(
-      (relation) => productSlugs.has(relation.sourceProductSlug) || productSlugs.has(relation.targetProductSlug),
+      (relation) => slugs.has(relation.sourceProductSlug) || slugs.has(relation.targetProductSlug),
     ),
   };
 }
 
-export function buildProductRows(scope: WorkspaceDashboardScope): ProductDashboardRow[] {
-  return scope.products.map((product) => {
-    const providerLinks = scope.providerLinks.filter((link) => link.productSlug === product.slug);
-    return {
-      ...product,
-      runtimeProviderCount: new Set(
-        providerLinks.filter((link) => !isMonitoringRelation(link.relationType)).map((link) => link.providerSlug),
-      ).size,
-      monitoringProviderCount: new Set(
-        providerLinks.filter((link) => isMonitoringRelation(link.relationType)).map((link) => link.providerSlug),
-      ).size,
+function productReviewSignals(
+  product: WorkspaceCoreProductSummary,
+  repositories: WorkspaceCoreRepositoryLink[],
+  runtimeProviders: WorkspaceCoreProviderLink[],
+  relatedProductSlugs: string[],
+): ReviewSignal[] {
+  const signals: ReviewSignal[] = [];
+
+  if (product.lifecycleStatus === "experimental") {
+    signals.push({
+      code: "lifecycle",
+      label: "実験中",
+      detail: "継続・昇格・停止を定期的に見直す対象です。",
+      tone: "warning",
+    });
+  } else if (product.lifecycleStatus === "paused") {
+    signals.push({
+      code: "lifecycle",
+      label: "停止中",
+      detail: "再開するか、整理するかを確認する対象です。",
+      tone: "warning",
+    });
+  } else if (product.lifecycleStatus === "archived") {
+    signals.push({
+      code: "lifecycle",
+      label: "Archive",
+      detail: "現役ポートフォリオから外れている資産です。",
+      tone: "muted",
+    });
+  }
+
+  if (repositories.length === 0) {
+    signals.push({
+      code: "missing_repo",
+      label: "Repo未登録",
+      detail: "Workspace Core上でRepositoryとの接続が確認できません。",
+      tone: "warning",
+    });
+  }
+
+  const shouldHaveRuntime = ["application", "service", "automation"].includes(product.productType);
+  if (product.importance >= 4 && product.lifecycleStatus === "active" && shouldHaveRuntime && runtimeProviders.length === 0) {
+    signals.push({
+      code: "missing_runtime",
+      label: "運用先未登録",
+      detail: "重要Productですが、Workspace Coreにruntime/deploy Providerが登録されていません。障害判定ではありません。",
+      tone: "warning",
+    });
+  }
+
+  if (product.importance >= 4 && product.lifecycleStatus === "active" && relatedProductSlugs.length === 0) {
+    signals.push({
+      code: "isolated",
+      label: "接続未登録",
+      detail: "重要Productですが、他Productとの関係がWorkspace Coreに登録されていません。",
+      tone: "muted",
+    });
+  }
+
+  return signals;
+}
+
+export function buildProductPortfolio(scope: WorkspaceDashboardScope): ProductPortfolioRow[] {
+  return scope.products
+    .map((product) => {
+      const repositories = scope.repositories.filter((link) => link.productSlug === product.slug);
+      const providerLinks = scope.providerLinks.filter((link) => link.productSlug === product.slug);
+      const runtimeProviders = uniqueBy(
+        providerLinks.filter((link) => !isMonitoringRelation(link.relationType)),
+        (link) => link.providerSlug,
+      );
+      const monitoringProviders = uniqueBy(
+        providerLinks.filter((link) => isMonitoringRelation(link.relationType)),
+        (link) => link.providerSlug,
+      );
+      const relatedProductSlugs = [...new Set(
+        scope.relations.flatMap((relation) => {
+          if (relation.sourceProductSlug === product.slug) return [relation.targetProductSlug];
+          if (relation.targetProductSlug === product.slug) return [relation.sourceProductSlug];
+          return [];
+        }),
+      )];
+
+      return {
+        ...product,
+        primaryRepository: repositories.find((link) => link.isPrimary) ?? repositories[0] ?? null,
+        repositories,
+        technologies: scope.technologies.filter((link) => link.productSlug === product.slug),
+        runtimeProviders,
+        monitoringProviders,
+        serviceInstances: scope.serviceInstances.filter((link) => link.productSlug === product.slug),
+        relatedProductSlugs,
+        reviewSignals: productReviewSignals(product, repositories, runtimeProviders, relatedProductSlugs),
+      };
+    })
+    .sort((a, b) => b.importance - a.importance || a.name.localeCompare(b.name));
+}
+
+export function portfolioStatus(scope: WorkspaceDashboardScope) {
+  return {
+    products: scope.products.length,
+    active: scope.products.filter((product) => product.lifecycleStatus === "active").length,
+    experimental: scope.products.filter((product) => product.lifecycleStatus === "experimental").length,
+    inactive: scope.products.filter((product) => ["paused", "archived"].includes(product.lifecycleStatus)).length,
+    highImportance: scope.products.filter(
+      (product) => product.importance >= 4 && ["active", "experimental"].includes(product.lifecycleStatus),
+    ).length,
+  };
+}
+
+export function focusProducts(scope: WorkspaceDashboardScope, limit = 4): ProductPortfolioRow[] {
+  return buildProductPortfolio(scope)
+    .filter((product) => ["active", "experimental"].includes(product.lifecycleStatus))
+    .slice(0, limit);
+}
+
+export function reviewQueue(scope: WorkspaceDashboardScope): ProductPortfolioRow[] {
+  return buildProductPortfolio(scope)
+    .filter((product) => product.reviewSignals.length > 0)
+    .sort((a, b) => {
+      const warningA = a.reviewSignals.filter((signal) => signal.tone === "warning").length;
+      const warningB = b.reviewSignals.filter((signal) => signal.tone === "warning").length;
+      return warningB - warningA || b.importance - a.importance || a.name.localeCompare(b.name);
+    });
+}
+
+export function productTypeBreakdown(scope: WorkspaceDashboardScope): UsageBreakdown[] {
+  const map = new Map<string, UsageBreakdown>();
+  for (const product of scope.products) {
+    const current = map.get(product.productType) ?? {
+      slug: product.productType,
+      name: product.productType,
+      count: 0,
+      products: [],
     };
-  });
+    current.products.push(product.slug);
+    current.count += 1;
+    map.set(product.productType, current);
+  }
+  return [...map.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
 export function technologyUsage(scope: WorkspaceDashboardScope): UsageBreakdown[] {
-  const usage = new Map<string, UsageBreakdown>();
+  const map = new Map<string, UsageBreakdown>();
   for (const link of scope.technologies) {
-    const current = usage.get(link.technologySlug) ?? {
+    const current = map.get(link.technologySlug) ?? {
       slug: link.technologySlug,
       name: link.technologyName,
       count: 0,
@@ -123,15 +264,15 @@ export function technologyUsage(scope: WorkspaceDashboardScope): UsageBreakdown[
     };
     if (!current.products.includes(link.productSlug)) current.products.push(link.productSlug);
     current.count = current.products.length;
-    usage.set(link.technologySlug, current);
+    map.set(link.technologySlug, current);
   }
-  return [...usage.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  return [...map.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
 export function providerUsage(scope: WorkspaceDashboardScope): UsageBreakdown[] {
-  const usage = new Map<string, UsageBreakdown>();
+  const map = new Map<string, UsageBreakdown>();
   for (const link of scope.providerLinks) {
-    const current = usage.get(link.providerSlug) ?? {
+    const current = map.get(link.providerSlug) ?? {
       slug: link.providerSlug,
       name: link.providerName,
       count: 0,
@@ -142,18 +283,7 @@ export function providerUsage(scope: WorkspaceDashboardScope): UsageBreakdown[] 
     if (!current.products.includes(link.productSlug)) current.products.push(link.productSlug);
     current.count = current.products.length;
     if (isMonitoringRelation(link.relationType)) current.monitoringCount = (current.monitoringCount ?? 0) + 1;
-    usage.set(link.providerSlug, current);
+    map.set(link.providerSlug, current);
   }
-  return [...usage.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-}
-
-export function dashboardTotals(scope: WorkspaceDashboardScope) {
-  return {
-    products: scope.products.length,
-    activeProducts: scope.products.filter((product) => product.lifecycleStatus === "active").length,
-    repositories: scope.repositories.length,
-    technologies: new Set(scope.technologies.map((link) => link.technologySlug)).size,
-    providers: new Set(scope.providerLinks.map((link) => link.providerSlug)).size,
-    relations: scope.relations.length,
-  };
+  return [...map.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }

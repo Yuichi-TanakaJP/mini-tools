@@ -73,7 +73,7 @@ const FEATURE_CARDS: FeatureCard[] = [
     icon: "▦",
     title: "Workspace Dashboard",
     description:
-      "Product・Repository・Technology・Provider・依存関係を、KPIと横断フィルタ付きの一覧でまとめて確認します。",
+      "複数の個人開発Productを、状態・重要度・運用先・接続の観点から俯瞰し、次に見るべき対象を判断します。",
     tone: "slate",
   },
   {
