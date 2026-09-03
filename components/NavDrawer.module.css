@@ -2,7 +2,7 @@
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(8, 10, 18, 0.45);
+  background: var(--color-bg-overlay);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
@@ -25,7 +25,7 @@
   flex-direction: column;
   background: var(--color-bg);
   border-right: 1px solid var(--color-border-strong);
-  box-shadow: 6px 0 28px rgba(15, 23, 42, 0.18);
+  box-shadow: var(--shadow-panel);
   transform: translateX(-100%);
   transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -155,7 +155,7 @@
 
 .itemActive .itemIcon {
   background: var(--color-bg);
-  border-color: rgba(37, 84, 255, 0.18);
+  border-color: var(--color-border-accent);
 }
 
 .itemLabel {

@@ -36,7 +36,7 @@ export default async function HomePage() {
             left: -16,
             right: -16,
             bottom: 0,
-            background: "radial-gradient(ellipse 700px 300px at 10% 50%, rgba(37,84,255,0.06) 0%, transparent 70%)",
+            background: "radial-gradient(ellipse 700px 300px at 10% 50%, var(--color-accent-glow) 0%, transparent 70%)",
             pointerEvents: "none",
           }} />
 
@@ -72,7 +72,7 @@ export default async function HomePage() {
             }}>
               個人投資家向けの<br />
               <span style={{
-                background: "linear-gradient(135deg, var(--color-accent) 0%, #60a5fa 100%)",
+                background: "linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-highlight) 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
               }}>
@@ -214,7 +214,7 @@ export default async function HomePage() {
 
           <style>{`
             .ofuse-wrap:hover {
-              box-shadow: 0 4px 16px rgba(15,23,42,0.08) !important;
+              box-shadow: var(--shadow-card-hover) !important;
               transform: translateY(-1px);
             }
           `}</style>

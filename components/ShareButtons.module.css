@@ -22,7 +22,7 @@
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  color: var(--share-button-color, rgba(0, 0, 0, 0.78));
+  color: var(--share-button-color, var(--color-text-sub));
   cursor: pointer;
   user-select: none;
   transition: transform 0.12s ease, opacity 0.12s ease;
@@ -36,7 +36,7 @@
 .iconButton:focus,
 .iconButton:focus-visible {
   outline: none;
-  box-shadow: var(--share-button-focus-ring, 0 0 0 3px rgba(37, 84, 255, 0.28));
+  box-shadow: var(--share-button-focus-ring, 0 0 0 3px var(--color-focus-ring));
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -51,7 +51,7 @@
 }
 
 .iconButtonPremium {
-  color: #f59e0b;
+  color: var(--color-warning);
   opacity: 0.92;
 }
 
@@ -65,7 +65,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--color-bg-overlay);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -76,11 +76,12 @@
 
 /* QR Modal */
 .modal {
-  background: #fff;
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
   padding: 16px;
   border-radius: 12px;
   width: min(92vw, 360px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-panel);
   text-align: center;
 }
 
@@ -103,8 +104,9 @@
 }
 
 .modalBtn {
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-input);
+  color: var(--color-text);
   padding: 8px 12px;
   border-radius: 10px;
   cursor: pointer;

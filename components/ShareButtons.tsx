@@ -200,11 +200,11 @@ export default function ShareButtons({
         {
           marginTop: inline ? 0 : 12,
           "--share-button-color":
-            tone === "light" ? "rgba(255,255,255,0.88)" : "rgba(0,0,0,0.78)",
+            tone === "light" ? "var(--color-header-text)" : "var(--color-text-sub)",
           "--share-button-focus-ring":
             tone === "light"
-              ? "0 0 0 3px rgba(110,168,254,0.45)"
-              : "0 0 0 3px rgba(37,84,255,0.28)",
+              ? "0 0 0 3px var(--color-border-accent)"
+              : "0 0 0 3px var(--color-focus-ring)",
         } as React.CSSProperties
       }
     >

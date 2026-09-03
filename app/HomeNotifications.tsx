@@ -546,7 +546,7 @@ export default function HomeNotifications() {
           border: 1px solid var(--color-border);
           border-radius: 16px;
           background: linear-gradient(180deg, var(--color-bg-card) 0%, var(--color-bg-input) 100%);
-          box-shadow: 0 8px 24px rgba(15,23,42,0.06);
+          box-shadow: var(--shadow-card);
           margin: 0 0 28px;
           padding: 18px;
         }
@@ -581,7 +581,7 @@ export default function HomeNotifications() {
           align-items: center;
           border-radius: 999px;
           background: var(--color-accent);
-          color: #fff;
+          color: var(--color-accent-text);
           font-size: 12px;
           font-weight: 900;
           padding: 5px 10px;
@@ -677,7 +677,7 @@ export default function HomeNotifications() {
           min-height: 38px;
           border-radius: 8px;
           background: var(--color-accent);
-          color: #fff;
+          color: var(--color-accent-text);
           font-size: 13px;
           font-weight: 900;
           padding: 8px 13px;
