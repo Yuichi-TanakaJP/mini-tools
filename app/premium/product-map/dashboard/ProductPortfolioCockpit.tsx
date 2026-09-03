@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { WorkspaceCoreApiResponse, WorkspaceCoreOverview } from "@/lib/workspace-core/types";
 import {
   buildProductPortfolio,
+  buildServicePortfolio,
   filterWorkspaceOverview,
   focusProducts,
   portfolioStatus,
@@ -13,6 +14,7 @@ import {
   reviewQueue,
   technologyUsage,
   type ProductPortfolioRow,
+  type ServicePortfolioRow,
   type UsageBreakdown,
 } from "../dashboard-model";
 import styles from "./ProductPortfolioCockpit.module.css";
@@ -25,6 +27,20 @@ const TYPE: Record<string, string> = {
 };
 const LIFE: Record<string, string> = {
   planned: "Planned", experimental: "Experimental", active: "Active", paused: "Paused", archived: "Archived", unknown: "Unknown",
+};
+const STAGE: Record<string, string> = {
+  idea: "Idea", prototype: "Prototype", internal: "Internal", public: "Public", monetizing: "Monetizing", retired: "Retired",
+};
+const ROLE: Record<string, string> = {
+  user_interface: "User interface",
+  data_service: "Data service",
+  data_collection: "Data collection",
+  distribution: "Distribution",
+  operations_interface: "Operations interface",
+  workflow_asset: "Workflow asset",
+  development_template: "Development template",
+  knowledge_source: "Knowledge source",
+  experimentation: "Experimentation",
 };
 
 async function fetchOverview(): Promise<WorkspaceCoreApiResponse<WorkspaceCoreOverview>> {
@@ -70,6 +86,46 @@ function ProductIdentity({ product }: { product: ProductPortfolioRow }) {
   </div>;
 }
 
+function ServiceValueCard({ service }: { service: ServicePortfolioRow }) {
+  return <article className={styles.serviceCard}>
+    <div className={styles.serviceHeader}>
+      <div>
+        <div className={styles.serviceMeta}><span>{STAGE[service.stage] ?? service.stage}</span><span>Priority {service.importance}/5</span>{service.modelStatus === "provisional" ? <span className={styles.provisional}>Provisional</span> : null}</div>
+        <h3>{service.name}</h3>
+        <p>{service.summary ?? "Service概要未登録"}</p>
+      </div>
+      <div className={styles.serviceCount}>{service.products.length} Products</div>
+    </div>
+
+    <div className={styles.valueFlow}>
+      <div className={styles.flowNode}>
+        <span className={styles.flowLabel}>USER / JOB</span>
+        <strong>{service.targetUser ?? "対象ユーザー未登録"}</strong>
+        <p>{service.userJob ?? "解決するJob / Problem未登録"}</p>
+      </div>
+      <div className={styles.flowArrow} aria-hidden="true">→</div>
+      <div className={styles.flowNode}>
+        <span className={styles.flowLabel}>PRODUCT COMBINATION</span>
+        <div className={styles.productChips}>{service.products.map((link) => <div className={styles.productChip} key={`${service.slug}-${link.productSlug}`} title={link.contribution ?? undefined}><b>{link.productName}</b><small>{ROLE[link.role] ?? link.role}</small></div>)}</div>
+      </div>
+      <div className={styles.flowArrow} aria-hidden="true">→</div>
+      <div className={`${styles.flowNode} ${styles.valueNode}`}>
+        <span className={styles.flowLabel}>USER VALUE</span>
+        <strong>{service.valueProposition ?? "価値提案未登録"}</strong>
+        <p>{service.expectedOutcome ?? "期待Outcome未登録"}</p>
+      </div>
+    </div>
+
+    <div className={styles.deliveryArea}>
+      <div className={styles.deliveryLabel}>VALUE DELIVERY</div>
+      <div className={styles.deliveryGrid}>{service.deliveryModes.map((mode) => <div className={styles.deliveryItem} key={`${service.slug}-${mode.mode}-${mode.productSlug ?? "service"}`} title={mode.description ?? undefined}>
+        <div><strong>{mode.label}</strong>{mode.productName ? <span>{mode.productName}</span> : null}</div>
+        <small>{mode.touchpoint ?? (mode.isUserFacing ? "Direct touchpoint" : "Supporting channel")}</small>
+      </div>)}</div>
+    </div>
+  </article>;
+}
+
 function FocusCard({ product }: { product: ProductPortfolioRow }) {
   return <article className={styles.focusCard}>
     <div className={styles.focusTop}><span className={styles.priority}>{priorityLabel(product.importance)} · {product.importance}/5</span><span>{TYPE[product.productType] ?? product.productType}</span></div>
@@ -108,6 +164,7 @@ export default function ProductPortfolioCockpit() {
   }, []);
 
   const scope = useMemo(() => overview ? filterWorkspaceOverview(overview, { query, productType, lifecycle, providerSlug }) : null, [overview, query, productType, lifecycle, providerSlug]);
+  const services = useMemo(() => overview ? buildServicePortfolio(overview) : [], [overview]);
   const portfolio = useMemo(() => scope ? buildProductPortfolio(scope) : [], [scope]);
   const status = useMemo(() => overview ? portfolioStatus(overview) : null, [overview]);
   const focus = useMemo(() => overview ? focusProducts(overview) : [], [overview]);
@@ -123,14 +180,18 @@ export default function ProductPortfolioCockpit() {
   const productTypes = useMemo(() => [...new Set((overview?.products ?? []).map((p) => p.productType))].sort(), [overview]);
   const lifecycles = useMemo(() => [...new Set((overview?.products ?? []).map((p) => p.lifecycleStatus))].sort(), [overview]);
 
-  if (state !== "ok" || !overview || !scope || !status) return <main className={styles.page}><div className={styles.shell}><Link className={styles.back} href="/premium">← Premium</Link><div className={state === "loading" ? styles.loading : styles.error}>{state === "loading" ? "Product portfolioを読み込んでいます…" : message}</div></div></main>;
+  if (state !== "ok" || !overview || !scope || !status) return <main className={styles.page}><div className={styles.shell}><Link className={styles.back} href="/premium">← Premium</Link><div className={state === "loading" ? styles.loading : styles.error}>{state === "loading" ? "Service / Product portfolioを読み込んでいます…" : message}</div></div></main>;
 
   return <main className={styles.page}><div className={styles.shell}>
     <div className={styles.topbar}><div><Link className={styles.back} href="/premium">Premium</Link><span> / Workspace Dashboard</span></div><Link className={styles.button} href="/premium/product-map">Product Mapを開く</Link></div>
 
-    <header className={styles.hero}><div><div className={styles.heroLabel}>DEVELOPMENT PORTFOLIO</div><h1>プロダクト全体を、判断できる形で見る。</h1><p>何を持っていて、何が中核で、何を見直すべきかを最初に確認する画面です。Repository・Technology・ProviderはProduct判断の根拠として下位に置きます。</p></div><div className={styles.connected}><i /> Workspace Core connected</div></header>
+    <header className={styles.hero}><div><div className={styles.heroLabel}>SERVICE & PRODUCT PORTFOLIO</div><h1>作ったものではなく、届けている価値から見る。</h1><p>複数Productがどう組み合わさり、誰のどんな課題を解き、どんな形で価値を届けているかを最初に見ます。その下でProductの状態と技術構成へ降ります。</p></div><div className={styles.connected}><i /> Workspace Core connected</div></header>
 
-    <section><Heading step="01 / STATUS" title="Portfolio status" description="まず、今のプロダクト群がどんな状態かだけを見る。" /><div className={styles.metrics}>
+    <section className={styles.serviceSection}><Heading step="01 / SERVICES" title="Service portfolio / Value map" description="ServiceはProductの上位カテゴリではなく、Productを組み合わせた結果として成立する価値提供単位。現在はモデル検証中の暫定定義です。" action={<span className={styles.count}>{services.length} Services</span>} />
+      <div className={styles.serviceList}>{services.map((service) => <ServiceValueCard service={service} key={service.slug} />)}</div>
+    </section>
+
+    <section><Heading step="02 / PRODUCT STATUS" title="Product portfolio status" description="Serviceを実現する開発物が、今どんな状態にあるかを見る。" /><div className={styles.metrics}>
       <div><span>All products</span><b>{status.products}</b><small>registered</small></div>
       <div className={styles.metricActive}><span>Active</span><b>{status.active}</b><small>現役Product</small></div>
       <div><span>High priority</span><b>{status.highImportance}</b><small>importance 4–5</small></div>
@@ -139,17 +200,17 @@ export default function ProductPortfolioCockpit() {
     </div></section>
 
     <section className={styles.cockpit}>
-      <div className={styles.panel}><Heading step="02 / FOCUS" title="Focus products" description="重要度とlifecycleから、先に目に入れる中核Product。" /><div className={styles.focusGrid}>{focus.map((product) => <FocusCard product={product} key={product.slug} />)}</div></div>
-      <div className={styles.panel}><Heading step="03 / REVIEW" title="Review queue" description="障害ではなく、整理・判断が必要な候補。" /><div className={styles.reviewList}>{reviews.length ? reviews.slice(0, 6).map((product) => <div className={styles.reviewItem} key={product.slug}><div><strong>{product.name}</strong><div>{product.reviewSignals.map((signal) => <span className={signal.tone === "warning" ? styles.signalWarning : styles.signalMuted} key={`${product.slug}-${signal.code}`} title={signal.detail}>{signal.label}</span>)}</div></div><b>{product.importance}/5</b></div>) : <div className={styles.empty}>レビュー候補はありません。</div>}</div><div className={styles.note}>「運用先未登録」はWorkspace Core上の登録状況であり、サービス停止を意味しません。</div></div>
+      <div className={styles.panel}><Heading step="03 / FOCUS" title="Focus products" description="重要度とlifecycleから、Serviceを支える中核Productを確認。" /><div className={styles.focusGrid}>{focus.map((product) => <FocusCard product={product} key={product.slug} />)}</div></div>
+      <div className={styles.panel}><Heading step="03 / REVIEW" title="Review queue" description="障害ではなく、整理・判断が必要なProduct候補。" /><div className={styles.reviewList}>{reviews.length ? reviews.slice(0, 6).map((product) => <div className={styles.reviewItem} key={product.slug}><div><strong>{product.name}</strong><div>{product.reviewSignals.map((signal) => <span className={signal.tone === "warning" ? styles.signalWarning : styles.signalMuted} key={`${product.slug}-${signal.code}`} title={signal.detail}>{signal.label}</span>)}</div></div><b>{product.importance}/5</b></div>) : <div className={styles.empty}>レビュー候補はありません。</div>}</div><div className={styles.note}>「運用先未登録」はWorkspace Core上の登録状況であり、サービス停止を意味しません。</div></div>
     </section>
 
-    <section className={styles.portfolio}><Heading step="04 / PORTFOLIO" title="Product portfolio" description="主一覧。目的・状態・重要度・運用先・Repository・接続だけを比較する。" action={<span className={styles.count}>{portfolio.length} / {overview.products.length}</span>} />
+    <section className={styles.portfolio}><Heading step="04 / PRODUCTS" title="Product portfolio" description="Serviceの下位で、目的・状態・重要度・運用先・Repository・接続を比較する。" action={<span className={styles.count}>{portfolio.length} / {overview.products.length}</span>} />
       <div className={styles.toolbar}><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Product / Repo / Technology / Provider を検索" /><select value={productType} onChange={(e) => setProductType(e.target.value)}><option value="all">全Type</option>{productTypes.map((type) => <option value={type} key={type}>{TYPE[type] ?? type}</option>)}</select><select value={lifecycle} onChange={(e) => setLifecycle(e.target.value)}><option value="all">全Lifecycle</option>{lifecycles.map((life) => <option value={life} key={life}>{LIFE[life] ?? life}</option>)}</select><select value={providerSlug} onChange={(e) => setProviderSlug(e.target.value)}><option value="all">全Provider</option>{providerOptions.map(([slug, name]) => <option value={slug} key={slug}>{name}</option>)}</select></div>
       <div className={styles.tableWrap}><table><thead><tr><th>Product / purpose</th><th>Priority</th><th>Type</th><th>Runtime / deploy</th><th>Primary repo</th><th>Connected</th><th>Registry update</th></tr></thead><tbody>{portfolio.map((product) => <tr key={product.slug}><td className={styles.productCell}><ProductIdentity product={product} /></td><td><b>{product.importance}/5</b><small>{priorityLabel(product.importance)}</small></td><td><span className={styles.typePill}>{TYPE[product.productType] ?? product.productType}</span></td><td><b>{runtimeNames(product)}</b>{product.serviceInstances.length ? <small>{product.serviceInstances.length} concrete instance</small> : null}</td><td>{product.primaryRepository?.htmlUrl ? <a href={product.primaryRepository.htmlUrl} target="_blank" rel="noreferrer">{product.primaryRepository.fullName.replace("Yuichi-TanakaJP/", "")}</a> : <span className={styles.unregistered}>未登録</span>}</td><td><b>{product.relatedProductSlugs.length}</b><small> Product</small></td><td>{formatDate(product.updatedAt)}</td></tr>)}</tbody></table>{!portfolio.length ? <div className={styles.empty}>条件に一致するProductはありません。</div> : null}</div>
     </section>
 
-    <section><Heading step="05 / CONTEXT" title="Portfolio context" description="Product判断を補助する構成情報。生テーブルではなく要約だけを見る。" /><div className={styles.context}><div><h3>Product mix</h3><p>どんな種類の資産に偏っているか。</p><Breakdown items={types} labels={TYPE} /></div><div><h3>Infrastructure footprint</h3><p>外部サービス依存の広がり。monitoringも含む登録ベース。</p><Breakdown items={providers} /></div><div><h3>Shared technology</h3><p>複数Productで再利用される主要スタック。</p><Breakdown items={technologies} /></div></div></section>
+    <section><Heading step="05 / CONTEXT" title="Implementation context" description="Service / Product判断を補助する技術・外部サービス構成。詳細ではなく要約だけを見る。" /><div className={styles.context}><div><h3>Product mix</h3><p>どんな種類の開発資産に偏っているか。</p><Breakdown items={types} labels={TYPE} /></div><div><h3>Infrastructure footprint</h3><p>外部サービス依存の広がり。monitoringも含む登録ベース。</p><Breakdown items={providers} /></div><div><h3>Shared technology</h3><p>複数Productで再利用される主要スタック。</p><Breakdown items={technologies} /></div></div></section>
 
-    <footer className={styles.footer}>この画面は「全体判断」が目的です。依存関係・Evidence・Technologyの詳細は <Link href="/premium/product-map">Product Map</Link> へ分離しています。</footer>
+    <footer className={styles.footer}>この画面は <strong>Service → Product → Implementation</strong> の順で全体判断するための入口です。依存関係・Evidence・Technologyの詳細は <Link href="/premium/product-map">Product Map</Link> へ分離しています。</footer>
   </div></main>;
 }
