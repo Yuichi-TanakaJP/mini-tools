@@ -124,10 +124,10 @@ export default function ColorThemeSelector() {
           align-items: center;
           gap: 6px;
           padding: 0 7px 0 9px;
-          border: 1px solid rgba(255,255,255,0.14);
+          border: 1px solid var(--color-header-border);
           border-radius: 9px;
-          background: rgba(255,255,255,0.04);
-          color: rgba(255,255,255,0.82);
+          background: var(--color-header-control);
+          color: var(--color-header-text);
         }
 
         .color-theme-selector__icon {
@@ -152,14 +152,14 @@ export default function ColorThemeSelector() {
         }
 
         .color-theme-selector select:focus-visible {
-          outline: 2px solid #6ea8fe;
+          outline: 2px solid var(--color-accent-highlight);
           outline-offset: 2px;
           border-radius: 4px;
         }
 
         .color-theme-selector option {
-          background: #161b22;
-          color: #e6edf3;
+          background: var(--color-bg-card);
+          color: var(--color-text);
         }
 
         @media (max-width: 640px) {

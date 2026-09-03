@@ -1,5 +1,7 @@
 # カラーパレット設計書
 
+この文書は色の実装契約を定める。画面全体の視覚原則は [UI デザインコンセプト](./ui-design-concept.md) を正とする。
+
 ## 採用テーマ
 
 ユーザーが共通ヘッダーから次の表示テーマを選べる。
@@ -62,8 +64,8 @@ GitHub / Bloomberg ライクなプロ感。「かっこいい・クール」重�
 --color-bg-input:     #21262d;
 
 --color-text:         #e6edf3;
---color-text-sub:     #8b949e;
---color-text-muted:   #6e7681;
+--color-text-sub:     #b7c0ca;
+--color-text-muted:   #8b949e;
 
 --color-border:       #30363d;
 --color-border-strong:#484f58;
@@ -72,7 +74,7 @@ GitHub / Bloomberg ライクなプロ感。「かっこいい・クール」重�
 --color-accent-sub:   #1c2d3e;
 --color-accent-hover: #79baff;
 
---color-error:        #f85149;
+--color-error:        #ff7b72;
 --color-success:      #3fb950;
 --color-warning:      #d29922;
 ```
@@ -114,11 +116,32 @@ GitHub / Bloomberg ライクなプロ感。「かっこいい・クール」重�
 
 ## 実装ルール
 
-1. ライトのトークンは `app/globals.css` の `:root`、ダークのトークンは `html[data-theme="dark"]` に定義する。
-2. 共通 UI とホーム画面は、原則として直書き色ではなく `--color-*` トークンを参照する。
-3. テーマ選択 UI は `components/ColorThemeSelector.tsx`、初回描画前の適用は `lib/color-theme.ts` と `app/layout.tsx` が担当する。
-4. 保存値が壊れている場合や LocalStorage が利用できない場合は `端末設定` と同じ解決方法へフォールバックする。
-5. 新しいテーマを追加するときは、本文・カード・入力欄・境界線・フォーカス表示が各テーマで判読できることを確認する。
+### トークン分類
+
+各トークンの実値は `app/globals.css` を実装上の正本とし、この文書では役割と使用規約を固定する。
+
+| 分類 | 用途 | 代表トークン |
+|---|---|---|
+| Surface | ページ、弱い面、入力、カード、モーダル、overlay | `--color-bg*` |
+| Text | 本文、補助、muted、反転文字 | `--color-text*` |
+| Border / focus | 通常境界、強調境界、focus | `--color-border*`, `--color-focus-ring` |
+| Action | ブランド、リンク、主要操作 | `--color-accent*` |
+| Semantic | info / success / warning / error / neutral | `--color-*-bg/text/border` |
+| Financial direction | 上昇 / 下落 | `--color-rise*`, `--color-fall*` |
+| Data visualization | グラフ系列 | `--color-chart-1` ～ `6` |
+| Elevation | カード、hover、モーダルの影 | `--shadow-*` |
+| Global header | 固定ナビゲーション帯 | `--color-header-*` |
+
+### 適用規約
+
+1. ライトのトークンは `app/globals.css` の `:root`、ダークのトークンは `html[data-theme="dark"]` に同じ役割名で定義する。
+2. 共通 UI と各画面は、面・本文・境界線・主要操作に色リテラルを使わず、役割トークンを参照する。
+3. 状態表示は `bg / text / border` の組を使用し、単一の色を別背景へ流用しない。
+4. `--color-error` を標準名とし、既存の `--color-danger` は移行中の互換 alias とする。
+5. グラフ系列色、ロゴ、ゲーム固有色などは直書きを許容できるが、本文やカードへ流用しない。
+6. テーマ選択 UI は `components/ColorThemeSelector.tsx`、初回描画前の適用は `lib/color-theme.ts` と `app/layout.tsx` が担当する。
+7. 保存値が壊れている場合や LocalStorage が利用できない場合は `端末設定` と同じ解決方法へフォールバックする。
+8. 新しいテーマを追加するときは、本文・カード・入力欄・境界線・focus・状態色が各テーマで判読できることを確認する。
 
 ## 確認項目
 
@@ -132,6 +155,8 @@ GitHub / Bloomberg ライクなプロ感。「かっこいい・クール」重�
 ## 関連
 
 - [表示テーマ切替の設計判断](../../decision-log/2026-08-30-global-color-theme-selector.md)
+- [テーマトークン基盤の設計判断](../../decision-log/2026-09-03-theme-token-foundation.md)
+- [UI デザインコンセプト](./ui-design-concept.md)
 - [Product Spec](../../product-spec.md)
 
 ---

@@ -28,8 +28,8 @@ export default function Header({ title, subtitle }: HeaderProps) {
       <div
         style={{
           backdropFilter: "blur(14px)",
-          background: "rgba(8, 10, 18, 0.90)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          background: "var(--color-header-bg)",
+          borderBottom: "1px solid var(--color-header-border)",
         }}
       >
         <div
@@ -59,10 +59,10 @@ export default function Header({ title, subtitle }: HeaderProps) {
               height: 34,
               marginLeft: -6,
               flexShrink: 0,
-              border: "1px solid rgba(255,255,255,0.14)",
+              border: "1px solid var(--color-header-border)",
               borderRadius: 9,
-              background: "rgba(255,255,255,0.04)",
-              color: "rgba(255,255,255,0.90)",
+              background: "var(--color-header-control)",
+              color: "var(--color-header-text)",
               cursor: "pointer",
               padding: 0,
             }}
@@ -95,7 +95,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
           >
             <span
               style={{
-                color: "rgba(255,255,255,0.90)",
+                color: "var(--color-header-text)",
                 fontWeight: 900,
                 fontSize: 17,
                 letterSpacing: -0.4,
@@ -105,7 +105,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
             </span>
             <span
               style={{
-                color: "#6ea8fe",
+                color: "var(--color-accent-highlight)",
                 fontWeight: 900,
                 fontSize: 17,
                 letterSpacing: -0.4,
@@ -123,7 +123,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
                 flex: 1,
                 paddingLeft: 12,
                 fontSize: 12,
-                color: "rgba(255,255,255,0.55)",
+                color: "var(--color-header-muted)",
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -153,7 +153,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
           style={{
             height: 2,
             background:
-              "linear-gradient(90deg, #2554ff 0%, #60a5fa 60%, transparent 100%)",
+              "linear-gradient(90deg, var(--color-accent) 0%, var(--color-accent-highlight) 60%, transparent 100%)",
             opacity: 0.65,
           }}
         />

@@ -9,6 +9,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 
 ## 📘 Decision Log（設計判断）
 
+- [2026-09-03 全画面テーマ統一のトークン基盤](./decision-log/2026-09-03-theme-token-foundation.md)
 - [2026-08-30 共通ヘッダーに表示テーマ切替を置く](./decision-log/2026-08-30-global-color-theme-selector.md)
 - [2026-08-11 パスワードのリセット・変更機能の追加](./decision-log/2026-08-11-password-reset-and-change.md)
 - [2026-08-11 銘柄分析ダッシュボード（stock-notes連携）の設計判断](./decision-log/2026-08-11-stock-notes-dashboard-design.md)
@@ -148,6 +149,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
   - [Market Tools データ取得経路一覧](./specs/cross-cutting/market-tools-data-fetch-paths.md)（market_info / market-info-api への横断参照入口を含む）
   - [QR 共有 URL 仕様](./specs/cross-cutting/share-url-spec.md)
   - [UI カラーパレット仕様](./specs/cross-cutting/ui-color-palette.md)
+  - [UI デザインコンセプト](./specs/cross-cutting/ui-design-concept.md)
   - [株価ランキング UI JSON CLI 仕様](./specs/cross-cutting/stock-ranking-ui-json-cli-spec.md)
 
 ---

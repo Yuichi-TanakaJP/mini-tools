@@ -44,6 +44,7 @@
 
 - 全ページ共通のヘッダーを使う
 - 共通ヘッダーの表示テーマ選択から「端末設定」「ライト」「ダーク」を切り替えられる。選択はブラウザの LocalStorage に保存し、「端末設定」では OS / ブラウザの配色変更にも追従する
+- 全画面の配色は [UI デザインコンセプト](./specs/cross-cutting/ui-design-concept.md) と [UI カラーパレット仕様](./specs/cross-cutting/ui-color-palette.md) に従い、Light / Dark で同じ情報構造と意味を保つ
 - ツール固有の UI は `ToolClient.tsx` などに分ける
 - 入力系・操作系は Client Component を使う
 - 初回データ取得やアクセス制御が必要な画面は Server Component で初期データを組み立てる

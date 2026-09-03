@@ -286,7 +286,7 @@ export default function ToolGridClient({ tools }: Props) {
           border: 1px solid var(--color-accent);
           border-radius: 8px;
           background: var(--color-accent);
-          color: #fff;
+          color: var(--color-accent-text);
           font-size: 12px;
           font-weight: 800;
           padding: 7px 12px;
@@ -323,7 +323,7 @@ export default function ToolGridClient({ tools }: Props) {
           border-radius: 18px;
           border: 1px solid var(--color-border);
           background: var(--color-bg-card);
-          box-shadow: 0 4px 16px rgba(15,23,42,0.05);
+          box-shadow: var(--shadow-card);
           text-decoration: none;
           color: inherit;
           transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
@@ -356,7 +356,7 @@ export default function ToolGridClient({ tools }: Props) {
         @media (hover: hover) and (pointer: fine) {
           .tool-card--link:hover {
             transform: translateY(-2px);
-            box-shadow: 0 12px 32px rgba(15,23,42,0.10);
+            box-shadow: var(--shadow-card-hover);
             border-color: var(--color-border-strong);
           }
           .tool-card--link:hover::before {
@@ -374,7 +374,7 @@ export default function ToolGridClient({ tools }: Props) {
           height: 44px;
           border-radius: 14px;
           background: var(--color-accent-sub);
-          border: 1px solid rgba(37,84,255,0.12);
+          border: 1px solid var(--color-border-accent);
           display: grid;
           place-items: center;
           font-size: 22px;
