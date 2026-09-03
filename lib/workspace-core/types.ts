@@ -90,6 +90,55 @@ export type WorkspaceCoreProductRelation = {
   notes: string | null;
 };
 
+export type WorkspaceCoreServiceSummary = {
+  serviceId: string;
+  slug: string;
+  name: string;
+  summary: string | null;
+  targetUser: string | null;
+  userJob: string | null;
+  valueProposition: string | null;
+  expectedOutcome: string | null;
+  stage: string;
+  importance: number;
+  modelStatus: string;
+  updatedAt: string | null;
+  productCount: number;
+  deliveryModeCount: number;
+};
+
+export type WorkspaceCoreServiceProductLink = {
+  serviceSlug: string;
+  serviceName: string;
+  productSlug: string;
+  productName: string;
+  role: string;
+  contribution: string | null;
+  isPrimary: boolean;
+  source: string;
+  confidence: number;
+  evidenceUri: string | null;
+  verifiedAt: string | null;
+  notes: string | null;
+};
+
+export type WorkspaceCoreServiceDeliveryMode = {
+  serviceSlug: string;
+  serviceName: string;
+  productSlug: string | null;
+  productName: string | null;
+  mode: string;
+  label: string;
+  description: string | null;
+  touchpoint: string | null;
+  isUserFacing: boolean;
+  source: string;
+  confidence: number;
+  evidenceUri: string | null;
+  verifiedAt: string | null;
+  notes: string | null;
+};
+
 export type WorkspaceCoreOverview = {
   products: WorkspaceCoreProductSummary[];
   repositories: WorkspaceCoreRepositoryLink[];
@@ -97,6 +146,9 @@ export type WorkspaceCoreOverview = {
   providerLinks: WorkspaceCoreProviderLink[];
   serviceInstances: WorkspaceCoreServiceInstanceLink[];
   relations: WorkspaceCoreProductRelation[];
+  services: WorkspaceCoreServiceSummary[];
+  serviceProducts: WorkspaceCoreServiceProductLink[];
+  serviceDeliveryModes: WorkspaceCoreServiceDeliveryMode[];
 };
 
 export type WorkspaceCoreProductDetail = {
