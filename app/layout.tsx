@@ -1,8 +1,9 @@
 // app/layout.tsx
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import Script from "next/script";
 import Header from "@/components/Header";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import { createColorThemeInitScript } from "@/lib/color-theme";
 import "./globals.css";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
@@ -38,18 +39,25 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
 };
 
-export const viewport: Viewport = {
-  themeColor: "#ffffff",
-};
-
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ja">
+    <html lang="ja" suppressHydrationWarning>
       <head>
+        <meta
+          name="theme-color"
+          media="(prefers-color-scheme: light)"
+          content="#eef2f7"
+        />
+        <meta
+          name="theme-color"
+          media="(prefers-color-scheme: dark)"
+          content="#0d1117"
+        />
+        <script dangerouslySetInnerHTML={{ __html: createColorThemeInitScript() }} />
         {GA_ID ? (
           <>
             <Script

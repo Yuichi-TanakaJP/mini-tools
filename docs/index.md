@@ -9,6 +9,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 
 ## 📘 Decision Log（設計判断）
 
+- [2026-08-30 共通ヘッダーに表示テーマ切替を置く](./decision-log/2026-08-30-global-color-theme-selector.md)
 - [2026-08-11 パスワードのリセット・変更機能の追加](./decision-log/2026-08-11-password-reset-and-change.md)
 - [2026-08-11 銘柄分析ダッシュボード（stock-notes連携）の設計判断](./decision-log/2026-08-11-stock-notes-dashboard-design.md)
 - [2026-08-13 銘柄分析ダッシュボードの銘柄単位差分同期](./decision-log/2026-08-13-stock-notes-delta-sync.md)
