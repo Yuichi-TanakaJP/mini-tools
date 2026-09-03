@@ -5,8 +5,8 @@ import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
 import ProductPortfolioCockpit from "./ProductPortfolioCockpit";
 
 export const metadata: Metadata = {
-  title: "Development Portfolio | mini-tools",
-  description: "複数の個人開発Productを、状態・重要度・運用先・接続の観点から俯瞰して次の判断につなげます。",
+  title: "Service & Product Portfolio | mini-tools",
+  description: "複数Productの組み合わせが誰にどんな価値をどんな形で届けるかをService単位で可視化し、Productと実装へ掘り下げます。",
   alternates: { canonical: "/premium/product-map/dashboard" },
   robots: { index: false, follow: false },
 };
