@@ -142,10 +142,10 @@ with defs(flow_slug,outcome_type,title,description,importance) as (
  values
  ('data-gallery-vote-flow','user_value','安全に作品へ投票できる','Browserへ秘密Keyを出さず投票と集計が成立する。',2),
  ('todo-app-crud-flow','learning','Frontend/Backend API境界を実装で理解する','2-repo構成でUIとREST APIの責務を分離した経験を残す。',2),
- ('notion-script-enrichment-flow','productivity','Notion補完作業をBatch化する','大量の空欄を1件ずつLLM/MCP処理せず再現可能なPipelineで補完する。',3),
+ ('notion-script-enrichment-flow','system_result','Notion補完作業をBatch化する','大量の空欄を1件ずつLLM/MCP処理せず再現可能なPipelineで補完する。',3),
  ('test-trade-research-flow','learning','採用だけでなく棄却知見を蓄積する','仮説が成立しないことも再利用可能な研究結果として残す。',4),
  ('sensoria-public-portfolio-flow','user_value','活動・実績を外部へ伝える','読者・編集者・協業候補が世界観と実績を一箇所で理解できる。',3),
- ('test-isn-approval-flow','governance','変更を承認・監査可能にする','誰が何を申請し誰が承認して何が変わったかを追跡できる。',3)
+ ('test-isn-approval-flow','system_result','変更を承認・監査可能にする','誰が何を申請し誰が承認して何が変わったかを追跡できる。',3)
 )
 insert into flow.flow_outcomes (flow_id,outcome_type,title,description,importance)
 select f.id,d.outcome_type,d.title,d.description,d.importance from defs d join flow.value_flows f on f.slug=d.flow_slug
