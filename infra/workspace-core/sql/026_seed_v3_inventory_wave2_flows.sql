@@ -90,7 +90,7 @@ where f.slug in ('data-gallery-vote-flow','todo-app-crud-flow','notion-script-en
 on conflict (version_id,source_step_id,target_step_id,edge_type) do nothing;
 
 -- Reclassify edges that are primarily human/value hand-offs rather than machine transfers.
-update flow.flow_edges e set edge_type='human_value', updated_at=now()
+update flow.flow_edges e set edge_type='human_handoff', updated_at=now()
 from flow.flow_steps s1, flow.flow_steps s2, flow.flow_versions v, flow.value_flows f
 where e.source_step_id=s1.id and e.target_step_id=s2.id and e.version_id=v.id and v.flow_id=f.id
 and (
