@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import type { Cycle } from "../../lib/yutai/contracts";
 
 const date = "2026-09-09T00:00:00Z";
 const owner = "00000000-0000-4000-8000-000000000001";
@@ -16,6 +17,12 @@ test(`calendar reads/saves without legacy writes (lost response: ${loseFirstResp
   const writes: Record<string, unknown>[] = [];
   const tags: { id: string; name: string; revision: number; created_at: string; updated_at: string }[] = [];
   let profileTags: { profile_id: string; tag_id: string; created_at: string }[] = [];
+  const oldCycle: Cycle = { id: "old-cycle", profile_id: "profile", entitlement_year: 2025, entitlement_month: 9,
+    status: "received", planned_at: null, prepared_at: "2025-08-01T00:00:00.123456Z", rights_secured_at: null,
+    settled_at: null, received_at: null, skipped_at: null, quantity: 100, account_label: null, note: "前年記録を保持",
+    revision: 4, created_at: date, updated_at: date };
+  const cycles: Cycle[] = [{ ...oldCycle }];
+  let lostCycleResponse = false;
   const token = [Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"),
     Buffer.from(JSON.stringify({ sub: owner, exp: 4_000_000_000, role: "authenticated" })).toString("base64url"), "synthetic"].join(".");
   const session = { access_token: token, refresh_token: "synthetic", expires_at: 4_000_000_000, expires_in: 3600, token_type: "bearer",
@@ -42,15 +49,20 @@ test(`calendar reads/saves without legacy writes (lost response: ${loseFirstResp
       else if (!replayed && command.command_type === "set_profile_tags") {
         profileTags = command.payload.tag_ids.map((id: string) => ({ profile_id: profile.id, tag_id: id, created_at: date })); profile.revision++; tags[0].revision++;
       } else if (!replayed && command.command_type === "delete_tag") { tags.splice(0); profileTags = []; }
+      else if (!replayed && command.command_type === "create_cycle") { cycles.push({ ...command.payload, id: "new-cycle", revision: 1, created_at: date, updated_at: date }); }
+      else if (!replayed && command.command_type === "update_cycle") { const cycle = cycles.find(c => c.id === command.target.id)!; Object.assign(cycle, command.payload); cycle.revision++; }
+      else if (!replayed && command.command_type === "delete_cycle") { cycles.splice(cycles.findIndex(c => c.id === command.target.id), 1); }
       if (loseFirstResponse && writes.length === 1) { await route.abort("failed"); return; }
-      await route.fulfill({ json: { schema_version: 1, command_type: command.command_type, request_id: command.request_id, target_id: "target", revision: command.command_type === "delete_tag" ? null : 1, event_id: "audit", replayed, before: null, after: command.command_type === "delete_tag" ? null : {} } }); return;
+      if (loseFirstResponse && command.command_type === "create_cycle" && !lostCycleResponse) { lostCycleResponse = true; await route.abort("failed"); return; }
+      const deleted = command.command_type.startsWith("delete_");
+      await route.fulfill({ json: { schema_version: 1, command_type: command.command_type, request_id: command.request_id, target_id: "target", revision: deleted ? null : 1, event_id: "audit", replayed, before: null, after: deleted ? null : {} } }); return;
     }
     const month = args.p_month;
     const monthly = selections.filter(s => s.entitlement_month === month).at(-1);
     await route.fulfill({ json: { schema_version: 1, selected_month: month, as_of: date,
-      counts: { profiles: 1, month_states: 1, cycles: 0, tags: tags.length, profile_tags: profileTags.length, rewards: 0, reward_events: 0, selections: selections.length, effective_selections: 1 },
+      counts: { profiles: 1, month_states: 1, cycles: cycles.length, tags: tags.length, profile_tags: profileTags.length, rewards: 0, reward_events: 0, selections: selections.length, effective_selections: 1 },
       profiles: [profile], month_states: [monthState],
-      cycles: [], tags, profile_tags: profileTags, rewards: [], reward_events: [], selections,
+      cycles, tags, profile_tags: profileTags, rewards: [], reward_events: [], selections,
       effective_selections: [{ stock_code: "1234", selection_status: monthly?.selection_status ?? "picked", selection_scope: monthly ? "monthly" : "global" }],
     } });
   });
@@ -110,6 +122,44 @@ test(`calendar reads/saves without legacy writes (lost response: ${loseFirstResp
   page.once("dialog", dialog => dialog.accept());
   await page.getByRole("button", { name: "タグを削除", exact: true }).click();
   await expect(page.getByText("タグ: なし", { exact: true })).toBeVisible();
+  await page.getByText("全年度の仕込み履歴（1件）", { exact: true }).click();
+  await page.getByRole("button", { name: "履歴を追加", exact: true }).click();
+  await expect(page.getByLabel("権利年", { exact: true })).toBeEmpty();
+  await page.getByLabel("権利年", { exact: true }).fill("2026");
+  await page.getByLabel("権利月", { exact: true }).selectOption("9");
+  await page.getByLabel("履歴の状態").selectOption("prepared");
+  await page.getByRole("button", { name: "履歴を保存", exact: true }).click();
+  await expect(page.getByText("仕込み済みには仕込み日時が必要です。", { exact: true })).toBeVisible();
+  expect(writes.filter(c => c.command_type === "create_cycle")).toHaveLength(0);
+  await page.getByLabel("仕込み日時", { exact: true }).fill("2026-08-15T12:30");
+  await page.getByLabel("仕込み株数", { exact: true }).fill("200");
+  await page.getByLabel("履歴メモ", { exact: true }).fill("検証履歴");
+  await page.getByRole("dialog", { name: "仕込み履歴編集" }).screenshot({ path: ".tmp/yutai-cycle-editor.png" });
+  await page.getByRole("button", { name: "履歴を保存", exact: true }).click();
+  if (loseFirstResponse) {
+    await expect(page.getByText(/今回の保存結果は不明/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "履歴を保存", exact: true })).toBeDisabled();
+    await page.getByRole("button", { name: "同じ要求を再確認・続行" }).click();
+  }
+  await expect(page.getByRole("dialog", { name: "仕込み履歴編集" })).toHaveCount(0);
+  expect(cycles).toHaveLength(2);
+  const createRequests = writes.filter(c => c.command_type === "create_cycle");
+  if (loseFirstResponse) expect(createRequests[0]).toEqual(createRequests[1]);
+  const savedTimestamp = cycles[1].prepared_at;
+  await page.getByRole("button", { name: "2026年9月の履歴を編集", exact: true }).click();
+  await page.getByLabel("履歴の状態").selectOption("settled");
+  await page.getByRole("button", { name: "履歴を保存", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "仕込み履歴編集" })).toHaveCount(0);
+  expect(writes.at(-1)).toMatchObject({ command_type: "update_cycle", target: { id: "new-cycle" }, expected_revision: 1, payload: { status: "settled" } });
+  expect(writes.at(-1)?.payload).toEqual({ status: "settled" });
+  expect(cycles[1].prepared_at).toBe(savedTimestamp);
+  await page.getByRole("button", { name: "2026年9月の履歴を編集", exact: true }).click();
+  await page.getByText("この履歴を削除", { exact: true }).click();
+  await page.getByLabel("削除理由", { exact: true }).fill("合成テスト記録の削除");
+  page.once("dialog", dialog => dialog.accept());
+  await page.getByRole("button", { name: "履歴を削除", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "仕込み履歴編集" })).toHaveCount(0);
+  expect(cycles).toEqual([oldCycle]);
   await expect(page.getByRole("button", { name: "9月：200株 / 6000.5円", exact: true })).toBeVisible();
   const memoKeys = await page.evaluate(() => ["yutai_memo_items_v1", "yutai_memo_tags_v1", "yutai_memo_archives_v1", "yutai_memo_migrated_tags_v1"].map(key => localStorage.getItem(key)));
   expect(memoKeys).toEqual(Array(4).fill("legacy-sentinel"));

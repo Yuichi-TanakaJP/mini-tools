@@ -5,7 +5,9 @@ import { useYutaiWorkspace } from "@/lib/yutai/browser";
 import { isSyncConfigured } from "@/lib/supabase/config";
 import { useCalendarConnection, YutaiConnectionStatus } from "@/lib/yutai/calendar-connection";
 import type { ViewState } from "@/lib/yutai/repository";
-import type { CommandDraft, MonthState, Profile, Workspace } from "@/lib/yutai/contracts";
+import type { CommandDraft, Cycle, MonthState, Profile, Workspace } from "@/lib/yutai/contracts";
+import { cycleStatuses } from "@/lib/yutai/cycles";
+import { DatabaseCycles } from "./DatabaseCycles";
 import { DatabaseTags } from "./DatabaseTags";
 import { monthDraft, optionalNumber, profileDraft, saveMonth, saveProfile, setProfileActive } from "@/lib/yutai/memo";
 import { CROSS_TYPES } from "./types";
@@ -30,28 +32,29 @@ function ConnectedMemo({ view }: { view: ViewState }) {
   const [monthEditor, setMonthEditor] = useState<{ profile: Profile; month: number; original: MonthState | null } | null>(null);
   const [notice, setNotice] = useState("");
   const [tagEditor, setTagEditor] = useState<{ snapshot: Workspace; profileId: string | null } | null>(null);
+  const [cycleEditor, setCycleEditor] = useState<{ snapshot: Workspace; profileId: string; original: Cycle | null } | null>(null);
   const data = view.data!;
   useEffect(() => {
     if (connection.action.status !== "saved" && connection.action.status !== "idle") return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- close revision-bound drafts after external command completion
-    setEditor(null); setMonthEditor(null); setTagEditor(null);
+    setEditor(null); setMonthEditor(null); setTagEditor(null); setCycleEditor(null);
   }, [connection.action.status]);
   const run = (command: CommandDraft | null) => {
-    if (!command) { setEditor(null); setMonthEditor(null); setTagEditor(null); setNotice("変更はありません。"); return; }
+    if (!command) { setEditor(null); setMonthEditor(null); setTagEditor(null); setCycleEditor(null); setNotice("変更はありません。"); return; }
     setNotice(""); void connection.save([() => command]);
   };
   const profiles = data.profiles.filter(p => (showInactive || p.active) && `${p.stock_code} ${p.display_name} ${p.memo}`.toLowerCase().includes(query.toLowerCase()));
   return <main className={styles.page}>
     <h1>優待銘柄メモ帳</h1>
     <YutaiConnectionStatus connection={connection} scope="メモ帳の基本編集" />
-    <p>月別の株数・優待価値・タグを含めDBへ保存します。全年度の仕込み履歴は表示のみです。
-      一括操作・履歴編集・入出力・通知は未接続です。本番切替は未完了です。</p>
+    <p>月別の株数・優待価値・タグ・全年度の仕込み履歴をDBへ保存します。
+      一括操作・入出力・通知は未接続です。本番切替は未完了です。</p>
     {notice && <p role="status">{notice}</p>}
     <fieldset className={styles.panel} disabled={connection.blocked || view.stale}>
       <div className={styles.row}><label>検索<input value={query} onChange={e => setQuery(e.target.value)} /></label>
         <label><input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />非表示も表示</label>
-        <button onClick={() => { setEditor({ profile: null }); setMonthEditor(null); setTagEditor(null); }}>銘柄を追加</button></div>
-      <button onClick={() => { setTagEditor({ snapshot: data, profileId: null }); setEditor(null); setMonthEditor(null); }}>タグ管理</button>
+        <button onClick={() => { setEditor({ profile: null }); setMonthEditor(null); setTagEditor(null); setCycleEditor(null); }}>銘柄を追加</button></div>
+      <button onClick={() => { setTagEditor({ snapshot: data, profileId: null }); setEditor(null); setMonthEditor(null); setCycleEditor(null); }}>タグ管理</button>
       {tagEditor && <DatabaseTags key={tagEditor.profileId ?? "catalog"} {...tagEditor} onSave={run} onClose={() => setTagEditor(null)} />}
       <p>{profiles.length}銘柄</p>
       {profiles.map(profile => <article className={styles.card} key={profile.id}>
@@ -60,22 +63,27 @@ function ConnectedMemo({ view }: { view: ViewState }) {
         <p className={styles.memo}>{profile.memo || "メモ未設定"}</p>
         <p>1株開始: {profile.one_share_started_on ?? profile.one_share_started_legacy_text ?? "未設定"}</p>
         <p>タグ: {data.profile_tags.filter(t => t.profile_id === profile.id).map(t => data.tags.find(tag => tag.id === t.tag_id)?.name ?? "名称不明").join("、") || "なし"}</p>
-        <button onClick={() => { setTagEditor({ snapshot: data, profileId: profile.id }); setEditor(null); setMonthEditor(null); }}>タグを編集</button>
-        <div className={styles.row}><button onClick={() => { setEditor({ profile }); setMonthEditor(null); setTagEditor(null); }}>メモ編集</button>
+        <button onClick={() => { setTagEditor({ snapshot: data, profileId: profile.id }); setEditor(null); setMonthEditor(null); setCycleEditor(null); }}>タグを編集</button>
+        <div className={styles.row}><button onClick={() => { setEditor({ profile }); setMonthEditor(null); setTagEditor(null); setCycleEditor(null); }}>メモ編集</button>
           <button onClick={() => {
             if (window.confirm(`${profile.display_name}を${profile.active ? "非表示" : "再表示"}にします。月別設定・メモ・仕込み履歴・残高は削除しません。`)) run(setProfileActive(profile, !profile.active));
           }}>{profile.active ? "非表示にする" : "再表示する"}</button></div>
         <div className={styles.row}>{Array.from({ length: 12 }, (_, i) => i + 1).map(month => {
           const state = data.month_states.find(s => s.profile_id === profile.id && s.entitlement_month === month);
-          return <button key={month} disabled={!profile.active} onClick={() => { setMonthEditor({ profile, month, original: state ?? null }); setEditor(null); setTagEditor(null); }}>
+          return <button key={month} disabled={!profile.active} onClick={() => { setMonthEditor({ profile, month, original: state ?? null }); setEditor(null); setTagEditor(null); setCycleEditor(null); }}>
             {month}月{state ? `：${state.required_shares ?? "未設定"}株 / ${state.benefit_value_yen ?? "未設定"}円` : "を追加"}</button>;
         })}</div>
         <details><summary>全年度の仕込み履歴（{data.cycles.filter(c => c.profile_id === profile.id).length}件）</summary>
-          {data.cycles.filter(c => c.profile_id === profile.id).map(c => <p key={c.id}>{c.entitlement_year}年{c.entitlement_month}月 / {c.status} / {c.prepared_at ?? "仕込み日未設定"} / {c.note}</p>)}
+          <button onClick={() => { setCycleEditor({ snapshot: data, profileId: profile.id, original: null }); setEditor(null); setMonthEditor(null); setTagEditor(null); }}>履歴を追加</button>
+          {data.cycles.filter(c => c.profile_id === profile.id).sort((a, b) => b.entitlement_year - a.entitlement_year || b.entitlement_month - a.entitlement_month).map(c => <div key={c.id}>
+            <p>{c.entitlement_year}年{c.entitlement_month}月 / {cycleStatuses[c.status]} / {c.prepared_at ?? "仕込み日未設定"} / {c.quantity ?? "未設定"}株 / {c.account_label ?? "口座未設定"} / {c.note}</p>
+            <button onClick={() => { setCycleEditor({ snapshot: data, profileId: profile.id, original: c }); setEditor(null); setMonthEditor(null); setTagEditor(null); }}>{c.entitlement_year}年{c.entitlement_month}月の履歴を編集</button>
+          </div>)}
         </details>
       </article>)}
       {editor && <ProfileEditor key={editor.profile?.id ?? "new"} original={editor.profile} onSave={run} onCancel={() => setEditor(null)} />}
       {monthEditor && <MonthEditor key={`${monthEditor.profile.id}:${monthEditor.month}`} {...monthEditor} onSave={run} onCancel={() => setMonthEditor(null)} />}
+      {cycleEditor && <DatabaseCycles key={cycleEditor.original?.id ?? `new:${cycleEditor.profileId}`} {...cycleEditor} onSave={run} onClose={() => setCycleEditor(null)} />}
     </fieldset>
   </main>;
 }
