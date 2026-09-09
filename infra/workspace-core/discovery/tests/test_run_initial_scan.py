@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -47,6 +48,35 @@ class InitialScanRunnerTests(unittest.TestCase):
 
             rendered = json.dumps(summary, ensure_ascii=False, sort_keys=True)
             self.assertNotIn(str(root), rendered)
+
+    def test_untracked_scannable_file_marks_repository_dirty(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            repo = Path(temp) / "repo"
+            repo.mkdir()
+            subprocess.run(["git", "init", "-q", str(repo)], check=True)
+            subprocess.run(["git", "-C", str(repo), "config", "user.name", "Fixture"], check=True)
+            subprocess.run(
+                ["git", "-C", str(repo), "config", "user.email", "fixture@example.invalid"],
+                check=True,
+            )
+            (repo / "package.json").write_text(
+                json.dumps({"scripts": {"test": "vitest run"}}),
+                encoding="utf-8",
+            )
+            subprocess.run(["git", "-C", str(repo), "add", "package.json"], check=True)
+            subprocess.run(
+                ["git", "-C", str(repo), "commit", "-q", "-m", "fixture"],
+                check=True,
+            )
+            (repo / "untracked_tool.py").write_text(
+                'if __name__ == "__main__":\n    print("fixture")\n',
+                encoding="utf-8",
+            )
+
+            head, state = runner.repository_state(repo)
+
+            self.assertNotEqual("unknown", head)
+            self.assertEqual("dirty", state)
 
 
 if __name__ == "__main__":
