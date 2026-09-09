@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import DatabaseMemo from "./DatabaseMemo";
 import styles from "./ToolClient.module.css";
 import type {
   ArchivedMemoItem,
@@ -201,7 +202,12 @@ const CROSS_TYPE_DESCRIPTIONS: Record<CrossType, string> = {
 
 type ShortBalanceRequestState = "idle" | "loading" | "done" | "error";
 
-export default function ToolClient({
+export default function ToolClient(props: { shortBalance: NikkoShortBalanceData }) {
+  if (process.env.NEXT_PUBLIC_YUTAI_MEMO_DB_PREVIEW === "true") return <DatabaseMemo />;
+  return <LegacyToolClient {...props} />;
+}
+
+function LegacyToolClient({
   shortBalance,
 }: {
   shortBalance: NikkoShortBalanceData;
