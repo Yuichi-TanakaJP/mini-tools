@@ -1,19 +1,26 @@
 """Conservative normalization policy for raw executable candidates.
 
 Detection and acceptance are intentionally separate. This module only removes
-known parser noise and improves candidate typing. It never marks a candidate as
-accepted and never executes repository code.
+known parser noise, applies a final command-output safety filter, and improves
+candidate typing. It never marks a candidate as accepted and never executes
+repository code.
 """
 
 from __future__ import annotations
 
 import ast
+import re
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
-NORMALIZATION_VERSION = "0.1"
+from command_safety import sanitize_command
+
+NORMALIZATION_VERSION = "0.2"
 YAML_BLOCK_MARKERS = frozenset({"|", "|-", ">", ">-"})
+RUN_BLOCK_RE = re.compile(
+    r"^(?P<indent>\s*)(?:-\s*)?run:\s*(?P<marker>[|>][+-]?)\s*(?:#.*)?$"
+)
 
 
 def _assignment_names(node: ast.AST) -> set[str]:
@@ -53,6 +60,65 @@ def _is_test_path(relative_path: str) -> bool:
     )
 
 
+def _extract_workflow_block_runs(path: Path) -> list[str]:
+    """Extract conservative command strings from YAML block-style run steps."""
+
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return []
+
+    commands: list[str] = []
+    index = 0
+    while index < len(lines):
+        match = RUN_BLOCK_RE.match(lines[index])
+        if not match:
+            index += 1
+            continue
+
+        base_indent = len(match.group("indent"))
+        marker = match.group("marker")
+        block: list[str] = []
+        cursor = index + 1
+        while cursor < len(lines):
+            line = lines[cursor]
+            if not line.strip():
+                block.append("")
+                cursor += 1
+                continue
+            indent = len(line) - len(line.lstrip(" "))
+            if indent <= base_indent:
+                break
+            block.append(line.strip())
+            cursor += 1
+
+        nonempty = [line for line in block if line and not line.startswith("#")]
+        if nonempty:
+            command = (
+                " ".join(nonempty)
+                if marker.startswith(">")
+                else " ; ".join(nonempty)
+            )
+            commands.append(sanitize_command(command))
+        index = max(cursor, index + 1)
+
+    return sorted(dict.fromkeys(command for command in commands if command))
+
+
+def _normalize_next_route(symbol_or_route: str) -> str:
+    return re.sub(r"(?<=\s)/src/app/", "/", symbol_or_route)
+
+
+def _safe_invocations(values: list[Any]) -> list[str]:
+    return sorted(
+        dict.fromkeys(
+            sanitize_command(str(value))
+            for value in values
+            if str(value).strip()
+        )
+    )
+
+
 def normalize_payload(root: Path, payload: dict[str, Any]) -> dict[str, Any]:
     """Normalize a raw discovery payload without promoting candidate status."""
 
@@ -78,13 +144,18 @@ def normalize_payload(root: Path, payload: dict[str, Any]) -> dict[str, Any]:
                 )
                 continue
 
+        invocations = [
+            invocation
+            for invocation in candidate.get("invokes", [])
+            if str(invocation).strip() not in YAML_BLOCK_MARKERS
+        ]
         if candidate_type == "github_actions_workflow":
-            candidate["invokes"] = sorted(
-                dict.fromkeys(
-                    invocation
-                    for invocation in candidate.get("invokes", [])
-                    if invocation.strip() not in YAML_BLOCK_MARKERS
-                )
+            invocations.extend(_extract_workflow_block_runs(root / relative_path))
+        candidate["invokes"] = _safe_invocations(invocations)
+
+        if candidate_type == "nextjs_route_handler":
+            candidate["symbol_or_route"] = _normalize_next_route(
+                str(candidate.get("symbol_or_route", ""))
             )
 
         if (
@@ -101,6 +172,9 @@ def normalize_payload(root: Path, payload: dict[str, Any]) -> dict[str, Any]:
                 )
             )
             candidate["confidence"] = min(float(candidate.get("confidence", 0.0)), 0.9)
+
+        if candidate.get("command"):
+            candidate["command"] = sanitize_command(str(candidate["command"]))
 
         candidate["review_status"] = "discovered"
         normalized.append(candidate)
