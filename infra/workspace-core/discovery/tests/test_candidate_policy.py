@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 import tempfile
 import unittest
@@ -9,6 +10,7 @@ from pathlib import Path
 DISCOVERY_DIR = Path(__file__).resolve().parents[1]
 for module_name in (
     "discover_executables",
+    "command_safety",
     "candidate_policy",
     "scan_repository",
 ):
@@ -54,14 +56,36 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           echo first
+          echo second
       - run: >-
-          python -m unittest
+          python -m unittest discover
+          -s tests
+          -v
 """.strip(),
+            )
+            self._write(
+                root,
+                "src/app/api/items/route.ts",
+                "export async function GET() { return Response.json({ ok: true }); }\n",
+            )
+            self._write(
+                root,
+                "package.json",
+                json.dumps(
+                    {
+                        "scripts": {
+                            "space-form": "API_TOKEN fixture-value next build",
+                            "header-form": "curl -H X-API-Key:fixture-value https://example.invalid",
+                            "auth-form": 'curl --header "Authorization: Bearer fixture-value" https://example.invalid',
+                        }
+                    }
+                ),
             )
 
             result = scanner.scan_repository(root, "owner/fixture", "abc123")
 
             self.assertEqual("discovered", result["review_status"])
+            self.assertEqual("0.2", result["normalization_version"])
             self.assertGreater(result["raw_candidate_count"], result["candidate_count"])
             self.assertTrue(
                 all(
@@ -83,13 +107,31 @@ jobs:
                     for candidate in result["candidates"]
                 )
             )
-            self.assertFalse(
-                any(
-                    invocation in {"|", "|-", ">", ">-"}
-                    for candidate in result["candidates"]
-                    for invocation in candidate["invokes"]
-                )
+
+            workflow = next(
+                candidate
+                for candidate in result["candidates"]
+                if candidate["executable_type"] == "github_actions_workflow"
             )
+            self.assertFalse(
+                any(invocation in {"|", "|-", ">", ">-"} for invocation in workflow["invokes"])
+            )
+            self.assertIn("echo first ; echo second", workflow["invokes"])
+            self.assertIn(
+                "python -m unittest discover -s tests -v",
+                workflow["invokes"],
+            )
+
+            route = next(
+                candidate
+                for candidate in result["candidates"]
+                if candidate["executable_type"] == "nextjs_route_handler"
+            )
+            self.assertEqual("GET /api/items", route["symbol_or_route"])
+
+            rendered = json.dumps(result, ensure_ascii=False, sort_keys=True)
+            self.assertNotIn("fixture-value", rendered)
+            self.assertIn("<redacted>", rendered)
             self.assertEqual(
                 [
                     {
