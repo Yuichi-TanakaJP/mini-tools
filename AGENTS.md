@@ -13,7 +13,7 @@
 - Issue はタイトルだけで「どの tool の、何の話か」が分かるように書く（例: `UI(yutai-memo): ...`, `feat(yutai-expiry): ...`, `TOP-UI: ...`）。
 - `gh issue create` / `gh issue comment` / `gh pr create` / `gh pr comment` で複数行本文を渡すときは、CLI の `--body "..."` に直接改行を書かず、本文ファイル（例: 一時 `.md`）を作って `--body-file` で渡す。
 - `next-env.d.ts` などの環境起因ファイルは、意図がない限りコミットしない。
-- コミット前に最低 `npm run lint` を実行する。
+- コード変更では、リポジトリに定義済みの lint/test コマンドから変更範囲に必要なものを実行する。確認のためだけに依存を追加しない。
 - 会話・レビュー・実装中に仕様や運用判断が固まった場合は、コード変更だけで終わらせず docs に判断を残す。
 - docs の残し方は `docs/docs-writing-workflow.md` を参照し、少なくとも `docs/decision-log/` への記録要否を毎回確認する。
 
@@ -60,11 +60,32 @@ git status --short
 ## 2. 実装と確認
 
 ```powershell
-# 実装
-# 必要な確認
-npm run lint
+# 実装後、下記の品質ゲートに応じて必要なコマンドだけ実行する
 git status --short
 ```
+
+### リスク別品質ゲート（must）
+
+変更の影響と可逆性で Tier を決める。迷った場合は1段階上を使う。既存のCIやリポ固有ルールがより厳しい場合はそちらを優先する。
+
+| Tier | 変更例 | 必須確認 | AIレビュー / UAT |
+|---|---|---|---|
+| 0 非実行変更 | docs、コメント、文言、設定例 | diff、必要な構文・リンク確認 | 原則不要 |
+| 1 低リスク | 局所的な内部ロジック、機械的変更 | 対象lint・対象テスト | 挙動変更時のみ簡易確認 |
+| 2 中リスク | API/UI挙動、定期処理、外部入出力 | 対象lint・影響範囲テスト・必要なbuild | 独立レビュー1回、変更した挙動のUAT |
+| 3 高リスク | 認証、課金、データ移行、公開、セキュリティ | 関連フルスイート、build、ロールバック確認 | 高強度レビュー、UAT/リリース確認必須 |
+
+- バグ修正には原則として再発防止テストを付ける。新機能の異常系・境界値は、実装に存在するリスクに対応して追加する。
+- 定期実行・公開物・外部送信を持つ機能はテストを実体化し、実行コマンドを README または該当docsに明記する。
+- 形骸のテスト設定を置かない。テストを持たない判断は理由を README または該当docsに記録する。
+- 低リスクで可逆な変更に、無関係な全テスト・build・新規依存導入を追加しない。
+
+### 動作確認・UAT（UI/公開物を持つ機能）
+
+- Tier 2以上でユーザーが触れる挙動を追加・変更した場合、該当する `docs/uat/<機能名>.md` を**同じPR**で更新する。文言・コメント等のTier 0変更だけなら不要。
+- UAT文書は恒久的な確認手順書とし、操作、入力、期待結果、異常時の挙動、確認環境を記載する。
+- UATの実施結果は手順書ファイルにチェックを入れず、**PR本文に貼る**。
+- 公開前・大きめリリース前は、該当するリリースチェックリストを全体確認する。
 
 ## 3. コミット
 
@@ -100,22 +121,17 @@ PR 本文に必ず記載する項目:
 ## 6. レビュー確認と対応
 
 ```powershell
-# コード変更を含むPRは、PR作成後〜マージ前に Codex CLI review を1回実施する
-# 通常差分は review-low、大きめ差分は review-medium を使う
-# ドキュメント変更のみのPRは、必要に応じてスキップ可
-codex --profile review-low review --base main
-# 大きめ差分は必要に応じて:
-codex --profile review-medium review --base main
+# Tier 2以上は、PR作成後〜マージ前に Codex CLI review を1回実施する
+codex review --base main
 gh pr view <PR番号> --comments
 gh api repos/Yuichi-TanakaJP/mini-tools/pulls/<PR番号>/reviews
 gh api repos/Yuichi-TanakaJP/mini-tools/pulls/<PR番号>/comments
 ```
 
-- Codex review は、コード変更を含むPRでは原則1回実施する。
-- 通常の差分レビューは `review-low` を使い、規模が大きいPRや慎重に見たい差分では `review-medium` を使う。
-- ドキュメント変更のみのPRは、内容が明確で低リスクならスキップしてよい。
+- Codex review はTier 2以上で原則1回実施する。Tier 0〜1は、変更内容が明確で低リスクならスキップしてよい。
 - P1/P0 指摘は優先対応する。
 - 修正後は同じブランチで再コミットし push する。
+- レビュー後の修正が小さく局所的なら再レビューは不要。スコープ拡大、重要な挙動変更、高リスク領域への波及がある場合だけ再実行する。
 
 ```powershell
 git add <files>
@@ -190,8 +206,8 @@ git push origin --delete feature/<topic>
 
 - 検証項目を省くのではなく、作業中と PR 前で段階化する。
   - 作業中: 変更箇所の lint、関連テスト、`git diff --check` を優先する。
-  - コード変更 PR 前: `npm run lint`、対象リポジトリの全単体テスト、`npm run build` を実施する。
-  - ドキュメントのみの PR: `npm run lint` と `git diff --check` を基本とし、コード検証は変更内容に応じて省略できる。
+  - PR 前: 上記のリスク別品質ゲートに従い、Tier 2以上で影響範囲テストと必要なbuild、Tier 3で関連フルスイートを実施する。
+  - Tier 0のドキュメントのみのPR: `git diff --check` と必要なリンク・構文確認を基本とし、コード向けlint・test・buildは原則省略する。
 - 検索は対象ディレクトリ・拡張子・語句を絞る。大量ヒット時は全量を出さず、件数確認後に必要な範囲だけ読む。
 - ビルドやテストの成功ログは要点だけ確認し、失敗時のみ該当エラー周辺を追加取得する。
 - GitHub の PR コメント・reviews・inline comments・checks は、PR 作成後とマージ直前を基本にまとめて確認し、同じ情報を短時間に重複取得しない。
