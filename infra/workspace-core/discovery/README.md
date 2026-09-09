@@ -27,7 +27,8 @@ Repository source / manifest / docs / declared map
 | ファイル | 役割 |
 |---|---|
 | `discover_executables.py` | manifest・AST・patternから生候補を抽出する内部Detector |
-| `candidate_policy.py` | 既知の構文ノイズ除去、宣言実在確認、候補型の補正 |
+| `command_safety.py` | command-like文字列の最終伏せ字処理 |
+| `candidate_policy.py` | 既知の構文ノイズ除去、宣言実在確認、候補型・Route・Workflow blockの補正 |
 | `scan_repository.py` | 単一Repository用の公開入口 |
 | `run_initial_scan.py` | Windows PC上の初期6Repositoryを一括走査 |
 
@@ -54,6 +55,8 @@ python infra/workspace-core/discovery/scan_repository.py \
   --repo . \
   --repository Yuichi-TanakaJP/mini-tools
 ```
+
+単一Repository入口では、呼出側が渡したrefと実際のworking treeが一致しているかを確認できません。Commit由来Evidenceとして利用する場合はclean checkoutを使うか、一括ランナーのprovenance情報を利用してください。
 
 ## Windows PC上の初期6Repositoryを一括走査する
 
@@ -102,9 +105,30 @@ git rev-parse HEAD
 git status --porcelain
 ```
 
-fetch、checkout、reset、clean、commit、pushは行いません。未追跡ファイルもScanner対象になり得るため、未追跡ファイルがあるRepositoryは`dirty`として記録します。変更ファイル名やローカル絶対パスはsummaryへ出力しません。
+fetch、checkout、reset、clean、commit、pushは行いません。変更ファイル名やローカル絶対パスはsummaryへ出力しません。
 
-Repositoryが見つからない場合は`missing_repositories`へ記録します。`--strict`指定時のみ、欠落があれば終了コード2を返します。
+### clean / dirtyのEvidence契約
+
+既定ではdirty Repositoryを走査せず、`skipped_dirty_repositories`へ記録します。これにより、未コミット内容を`HEAD` Commit由来Evidenceとして誤認することを防ぎます。
+
+現在のworking treeも明示的に観測したい場合だけ、次を使います。
+
+```powershell
+python infra/workspace-core/discovery/run_initial_scan.py --allow-dirty
+```
+
+dirty Repositoryを許可した場合:
+
+- `repository_ref`は`<head-sha>+dirty`
+- `repository_commit`には元のHEAD SHA
+- `repository_evidence_scope`は`working_tree_snapshot`
+- `repository_worktree_state`は`dirty`
+- `repository_status_digest`にはpathを出さないporcelain digest
+- 走査前後のGit状態が変化した場合は`+changed-during-scan`
+
+として記録します。dirty出力はCommitの完全再現ではなく、実行時working-tree snapshotの候補Evidenceです。
+
+Repositoryが見つからない場合は`missing_repositories`へ記録します。`--strict`指定時は、欠落またはdirtyによるskipがあれば終了コード2を返します。
 
 ## 検出対象 v0.1
 
@@ -121,7 +145,7 @@ Repositoryが見つからない場合は`missing_repositories`へ記録します
 ### Node / Next.js
 
 - `package.json` scripts
-- `app/api/**/route.*`のRoute Handler
+- `app/api/**/route.*`と`src/app/api/**/route.*`のRoute Handler
   - `export function GET()`
   - `export async function GET()`
   - `export const GET = ...`
@@ -149,14 +173,16 @@ Repositoryが見つからない場合は`missing_repositories`へ記録します
 - `PIPELINE_EDGES`
 - `system_map*.yaml`
 
-## Candidate Policy v0.1
+## Candidate Policy v0.2
 
-実Repositoryのfirst scanで見つかった既知ノイズを、名前によるRepository固有例外ではなく、再利用可能なpolicyとして処理します。
+実Repository scanで見つかった既知ノイズや、安全・provenance上の問題を、Repository固有例外ではなく再利用可能なpolicyとして処理します。
 
 - `PIPELINE_EDGES`という文字列があるだけではdeclared mapにしない
 - AST上の代入がある場合だけdeclared mapとして残す
-- GitHub Actionsの`run: |`、`run: >-`等のYAML block markerを呼出先から除く
+- GitHub Actionsの`run: |`、`run: >-`等はmarkerを除き、block本文を静的command候補として補完する
+- `src/app/api/**/route.*`を公開URLの`/api/**`へ正規化する
 - test fileの`__main__`は`python_test_entrypoint`へ分類する
+- commandとinvokesを公開境界でも再度伏せ字処理する
 - statusは常に`discovered`のまま維持する
 - 除外内容は`normalization_dropped`へ理由付きで残す
 
@@ -179,9 +205,9 @@ Scanner候補は、親Workstreamで固定した次の軸へ接続する前提で
 ```json
 {
   "schema_version": "0.1",
-  "normalization_version": "0.1",
+  "normalization_version": "0.2",
   "repository": "owner/repo",
-  "repository_ref": "commit-sha-or-unknown",
+  "repository_ref": "commit-sha-or-qualified-snapshot",
   "scan_mode": "read_only_static_candidate_discovery",
   "review_status": "discovered",
   "scanned_files": [],
@@ -191,6 +217,8 @@ Scanner候補は、親Workstreamで固定した次の軸へ接続する前提で
   "candidates": []
 }
 ```
+
+一括ランナーはこれに加えて、Commit、working-tree state、Evidence scope、snapshot安定性を記録します。
 
 Candidateには次を含みます。
 
@@ -215,20 +243,22 @@ Scannerは次を行いません。
 - Repository内のPython、Node、PowerShell、Workflow等を実行する
 - Browser login、API login、MFAを行う
 - `.env*`を読む
-- OS credential storeやSecret値を読む
+- OS credential storeへ接続する
 - Supabaseや他DBへ書き込む
 - discovered候補を自動accepted化する
 - ローカルの絶対ホームパスを出力する
 
 ローカル一括ランナーも、対象Repositoryに対するfetch、checkout、reset、clean、commit、pushを行いません。
 
-以下は出力前に伏せます。
+以下の一般的なcommand表現は、raw detectorとnormalized output境界でbest-effortに伏せます。
 
-- Secretらしいflagの後続値
-- `API_TOKEN=value`等の環境変数代入値
-- Authorization値
-- URLへ埋め込まれたcredential
+- sensitive flagまたは変数名の後続値
+- `KEY=value`またはheader形式のinline値
+- Authorization系header値
+- URLへ埋め込まれたuserinfo
 - Windows、Linux、macOSのユーザーホーム部分
+
+伏せ字は防御層であり、任意の独自構文を完全に保証するものではありません。Artifactはprivate・短期保持・`discovered`限定とし、accepted化前にEvidence reviewを行います。
 
 `node_modules`、`.git`、`.venv`、`.next`、build、dist等は、ファイルを除外するだけでなくDirectory探索前に枝刈りします。
 
@@ -243,10 +273,14 @@ CIで確認すること:
 - YAML block markerが呼出先に残らない
 - 文字列だけの`PIPELINE_EDGES`誤認が残らない
 - test entrypointが別分類される
+- command-like値の代表的な伏せ字回帰
+- multiline workflow runの本文補完
+- `src/app/api` RouteのURL正規化
+- dirty Repositoryの既定skipと明示的working-tree Evidence
 - 候補数と種別をログへ出す
 - full JSONはprivate GitHub Artifactとして7日間だけ保存する
 
-このArtifactは公開配布せず、private Repositoryの権限境界内で候補レビューに利用します。
+このArtifactは公開配布せず、Repositoryの権限境界内で候補レビューに利用します。
 
 ## テスト
 
@@ -268,21 +302,21 @@ Fixtureで確認する内容:
 - declared System Map
 - candidate normalization policy
 - 初期Repository一括ランナー
-- 未追跡ファイルを含むdirty判定
+- dirtyの既定skipと明示的`--allow-dirty`
 - 出力の決定性
-- `.env`、Secret値、ローカル絶対パスの非出力
+- `.env`、代表的なinline値、ローカル絶対パスの非出力
 - ignored directoryの枝刈り
 
-## v0.1の限界
+## v0.1 Detector / v0.2 Policyの限界
 
 - Runtimeで実際に起動していることは証明しません。
 - 動的に組み立てられたsubprocess、API URL、Pathは見落とす可能性があります。
 - Script名やkeywordによる候補にはfalse positiveがあり得ます。
-- GitHub Actionsの複数行`run`本文は、v0.1では完全なcommand graphへ展開しません。
+- 複雑なYAML anchor、template、expressionを完全なcommand graphへ展開しません。
 - 外部Scheduler、Cloud Console設定、ローカルTask Schedulerの実状態は取得しません。
 - Documentationやhand-written mapは`declared design`であり、runtime factとは分離します。
 - Input / Output / Constraintは候補で、Evidence review後に確定します。
-- `dirty`なRepositoryのcommit SHAだけでは走査内容を完全再現できません。結果は実行時snapshotとしてレビューします。
+- `dirty`なRepositoryは明示許可時のみ走査し、Commit由来Evidenceとは分離します。
 
 ## 既存Mapとの関係
 
@@ -296,9 +330,11 @@ Health MonitorのSystem Mapは、手描きの意味ある配置と実測status o
 
 ## 次の段階
 
-1. Windows PC上の初期6cloneへローカルランナーを実行
-2. 手作業のExecutable Inventory v0.1と差分比較
-3. `declared-only / code-only / runtime-unverified / false-positive / false-negative`へ分類
-4. false positive / false negativeをfixtureへ追加
-5. `discovered → accepted / rejected`のレビュー手順を確定
-6. 出力を見てから、Executable / Interface / Data Resourceの型付きDB schemaを決定
+1. 独立レビューとCIを完了する
+2. Windows PC上のcleanな初期6cloneへローカルランナーを実行する
+3. 必要なRepositoryだけ、目的を明示して`--allow-dirty` snapshotを別採取する
+4. 手作業のExecutable Inventory v0.1と差分比較する
+5. `declared-only / code-only / runtime-unverified / false-positive / false-negative`へ分類する
+6. false positive / false negativeをfixtureへ追加する
+7. `discovered → accepted / rejected`のレビュー手順を確定する
+8. 出力を見てから、Executable / Interface / Data Resourceの型付きDB schemaを決定する
