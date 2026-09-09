@@ -5,6 +5,8 @@ PR マージ後・リリース前に「何を確認すれば OK か」をツー�
 
 ## 対象ツール
 
+- [優待共通データ層（工程3）](./yutai-repository.md): 共通処理の自動検証と工程4〜5の接続時受入手順。
+
 | ツール | URL パス | データ取得元 | ドキュメント |
 |---|---|---|---|
 | 決算カレンダー | `/tools/earnings-calendar` | 国内: 同梱 JSON / 海外: API | [earnings-calendar.md](./earnings-calendar.md) |
