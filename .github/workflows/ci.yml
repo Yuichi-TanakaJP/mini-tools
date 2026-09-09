@@ -49,3 +49,55 @@ jobs:
           python -m unittest discover
           -s infra/workspace-core/discovery/tests
           -v
+
+      - name: Scan current repository without executing its code
+        env:
+          REPORT_PATH: ${{ runner.temp }}/mini-tools.executables.json
+        run: |
+          started_at=$(date +%s)
+          python infra/workspace-core/discovery/discover_executables.py \
+            --repo . \
+            --repository Yuichi-TanakaJP/mini-tools \
+            --repository-ref "$GITHUB_SHA" \
+            --output "$REPORT_PATH"
+          elapsed_seconds=$(($(date +%s) - started_at))
+          python - <<'PY'
+          import json
+          import os
+          from collections import Counter
+          from pathlib import Path
+
+          report = json.loads(Path(os.environ["REPORT_PATH"]).read_text(encoding="utf-8"))
+          assert report["repository"] == "Yuichi-TanakaJP/mini-tools"
+          assert report["repository_ref"] == os.environ["GITHUB_SHA"]
+          assert report["review_status"] == "discovered"
+          assert all(
+              candidate["review_status"] == "discovered"
+              for candidate in report["candidates"]
+          )
+          assert not any(path.startswith("node_modules/") for path in report["scanned_files"])
+          assert not any(".env" in Path(path).name for path in report["scanned_files"])
+
+          counts = Counter(
+              candidate["executable_type"] for candidate in report["candidates"]
+          )
+          print(
+              json.dumps(
+                  {
+                      "candidate_count": report["candidate_count"],
+                      "candidate_types": dict(sorted(counts.items())),
+                      "scanned_file_count": len(report["scanned_files"]),
+                  },
+                  sort_keys=True,
+              )
+          )
+          PY
+          echo "scan_elapsed_seconds=$elapsed_seconds"
+
+      - name: Upload private discovery report
+        uses: actions/upload-artifact@v4
+        with:
+          name: workspace-core-discovery-mini-tools-${{ github.run_id }}
+          path: ${{ runner.temp }}/mini-tools.executables.json
+          if-no-files-found: error
+          retention-days: 7
