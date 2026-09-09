@@ -54,6 +54,7 @@ child = [sys.executable, str(ROOT / "src" / "child.py"), "--token", "super-secre
 def main():
     argparse.ArgumentParser()
     subprocess.run(child, check=True)
+    Path("C:/Users/Alice/private/output.json").write_text("{}")
 
 if __name__ == "__main__":
     main()
@@ -142,6 +143,10 @@ if __name__ == "__main__":
             "title: Fixture\nnodes: []\nedges: []\n",
         )
         self._write(".env.local", "API_TOKEN=super-secret\n")
+        self._write(
+            "node_modules/deep/ignored_tool.py",
+            'if __name__ == "__main__":\n    print("must not scan")\n',
+        )
 
     def tearDown(self) -> None:
         self.temp.cleanup()
@@ -186,7 +191,12 @@ if __name__ == "__main__":
         rendered = json.dumps(first, ensure_ascii=False, sort_keys=True)
         self.assertNotIn("super-secret", rendered)
         self.assertNotIn(str(self.root), rendered)
+        self.assertNotIn("C:/Users/Alice", rendered)
+        self.assertIn("%USERPROFILE%/private/output.json", rendered)
         self.assertNotIn(".env.local", first["scanned_files"])
+        self.assertFalse(
+            any(path.startswith("node_modules/") for path in first["scanned_files"])
+        )
 
     def test_python_subprocess_keeps_structure_and_redacts_sensitive_value(self) -> None:
         result = scanner.discover_repository(self.root, "owner/fixture", "abc123")
