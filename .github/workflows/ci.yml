@@ -71,7 +71,7 @@ jobs:
           assert report["repository"] == "Yuichi-TanakaJP/mini-tools"
           assert report["repository_ref"] == os.environ["GITHUB_SHA"]
           assert report["review_status"] == "discovered"
-          assert report["normalization_version"] == "0.1"
+          assert report["normalization_version"] == "0.2"
           assert report["raw_candidate_count"] >= report["candidate_count"]
           assert all(
               candidate["review_status"] == "discovered"
