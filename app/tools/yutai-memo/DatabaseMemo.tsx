@@ -47,8 +47,9 @@ function ConnectedMemo({ view }: { view: ViewState }) {
   return <main className={styles.page}>
     <h1>優待銘柄メモ帳</h1>
     <YutaiConnectionStatus connection={connection} scope="メモ帳の基本編集" />
+    {process.env.NEXT_PUBLIC_YUTAI_TRANSFER_DB_PREVIEW === "true" && <p><a href="/tools/data-transfer">優待DBの全件出力・照合</a></p>}
     <p>月別の株数・優待価値・タグ・全年度の仕込み履歴をDBへ保存します。
-      一括操作・入出力・通知は未接続です。本番切替は未完了です。</p>
+      一括操作・インポート/復元実行・通知は未接続です。本番切替は未完了です。</p>
     {notice && <p role="status">{notice}</p>}
     <fieldset className={styles.panel} disabled={connection.blocked || view.stale}>
       <div className={styles.row}><label>検索<input value={query} onChange={e => setQuery(e.target.value)} /></label>
