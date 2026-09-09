@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run executable discovery over the initial sibling repositories.
+"""Run normalized executable discovery over the initial sibling repositories.
 
 This wrapper is intentionally local and read-only. It invokes ``git`` only to
 capture the current commit and clean/dirty state; it never fetches, checks out,
@@ -20,7 +20,7 @@ DISCOVERY_DIR = Path(__file__).resolve().parent
 if str(DISCOVERY_DIR) not in sys.path:
     sys.path.insert(0, str(DISCOVERY_DIR))
 
-from discover_executables import discover_repository  # noqa: E402
+from scan_repository import scan_repository  # noqa: E402
 
 INITIAL_REPOSITORIES: tuple[tuple[str, str], ...] = (
     ("mini-tools", "Yuichi-TanakaJP/mini-tools"),
@@ -78,7 +78,7 @@ def run_initial_scans(
             continue
 
         head, worktree_state = repository_state(repo)
-        payload = discover_repository(repo, full_name, head)
+        payload = scan_repository(repo, full_name, head)
         payload["repository_worktree_state"] = worktree_state
 
         report_name = folder.replace("_", "-") + ".executables.json"
@@ -94,14 +94,19 @@ def run_initial_scans(
                 "repository": full_name,
                 "repository_ref": head,
                 "repository_worktree_state": worktree_state,
+                "raw_candidate_count": payload["raw_candidate_count"],
                 "candidate_count": payload["candidate_count"],
                 "candidate_types": dict(sorted(type_counts.items())),
+                "normalization_dropped_count": len(
+                    payload.get("normalization_dropped", [])
+                ),
                 "report": report_name,
             }
         )
 
     summary = {
         "schema_version": "0.1",
+        "normalization_version": "0.1",
         "scan_mode": "local_read_only_initial_repository_scan",
         "review_status": "discovered",
         "requested_repository_count": len(repository_specs),
