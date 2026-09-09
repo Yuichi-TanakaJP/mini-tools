@@ -14,6 +14,8 @@ test(`calendar reads/saves without legacy writes (lost response: ${loseFirstResp
     required_shares: 100, benefit_value_yen: 5000, long_term_required: false, long_term_benefit: true, month_memo: "", revision: 1, created_at: date, updated_at: date };
   const selections = [{ id: "global", stock_code: "1234", entitlement_month: null as number | null, selection_status: "picked", revision: 1, created_at: date, updated_at: date }];
   const writes: Record<string, unknown>[] = [];
+  const tags: { id: string; name: string; revision: number; created_at: string; updated_at: string }[] = [];
+  let profileTags: { profile_id: string; tag_id: string; created_at: string }[] = [];
   const token = [Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"),
     Buffer.from(JSON.stringify({ sub: owner, exp: 4_000_000_000, role: "authenticated" })).toString("base64url"), "synthetic"].join(".");
   const session = { access_token: token, refresh_token: "synthetic", expires_at: 4_000_000_000, expires_in: 3600, token_type: "bearer",
@@ -35,15 +37,20 @@ test(`calendar reads/saves without legacy writes (lost response: ${loseFirstResp
         selections.push({ ...selections[0], id: "monthly", entitlement_month: command.target.entitlement_month, selection_status: command.payload.selection_status });
       } else if (!replayed && command.command_type === "update_profile") { Object.assign(profile, command.payload); profile.revision++; }
       else if (!replayed && command.command_type === "update_month_state") { Object.assign(monthState, command.payload); monthState.revision++; }
+      else if (!replayed && command.command_type === "create_tag") { tags.push({ id: "new-tag", name: command.payload.name, revision: 1, created_at: date, updated_at: date }); }
+      else if (!replayed && command.command_type === "update_tag") { tags[0].name = command.payload.name; tags[0].revision++; }
+      else if (!replayed && command.command_type === "set_profile_tags") {
+        profileTags = command.payload.tag_ids.map((id: string) => ({ profile_id: profile.id, tag_id: id, created_at: date })); profile.revision++; tags[0].revision++;
+      } else if (!replayed && command.command_type === "delete_tag") { tags.splice(0); profileTags = []; }
       if (loseFirstResponse && writes.length === 1) { await route.abort("failed"); return; }
-      await route.fulfill({ json: { schema_version: 1, command_type: command.command_type, request_id: command.request_id, target_id: "target", revision: 1, event_id: "audit", replayed, before: null, after: {} } }); return;
+      await route.fulfill({ json: { schema_version: 1, command_type: command.command_type, request_id: command.request_id, target_id: "target", revision: command.command_type === "delete_tag" ? null : 1, event_id: "audit", replayed, before: null, after: command.command_type === "delete_tag" ? null : {} } }); return;
     }
     const month = args.p_month;
     const monthly = selections.filter(s => s.entitlement_month === month).at(-1);
     await route.fulfill({ json: { schema_version: 1, selected_month: month, as_of: date,
-      counts: { profiles: 1, month_states: 1, cycles: 0, tags: 0, profile_tags: 0, rewards: 0, reward_events: 0, selections: selections.length, effective_selections: 1 },
+      counts: { profiles: 1, month_states: 1, cycles: 0, tags: tags.length, profile_tags: profileTags.length, rewards: 0, reward_events: 0, selections: selections.length, effective_selections: 1 },
       profiles: [profile], month_states: [monthState],
-      cycles: [], tags: [], profile_tags: [], rewards: [], reward_events: [], selections,
+      cycles: [], tags, profile_tags: profileTags, rewards: [], reward_events: [], selections,
       effective_selections: [{ stock_code: "1234", selection_status: monthly?.selection_status ?? "picked", selection_scope: monthly ? "monthly" : "global" }],
     } });
   });
@@ -84,6 +91,26 @@ test(`calendar reads/saves without legacy writes (lost response: ${loseFirstResp
   await expect(page.getByRole("button", { name: "9月：200株 / 6000.5円", exact: true })).toBeVisible();
   expect(writes.at(-1)).toMatchObject({ command_type: "update_month_state", target: { id: "month" }, expected_revision: 1,
     payload: { required_shares: 200, benefit_value_yen: 6000.5 } });
+  await page.getByRole("button", { name: "タグ管理", exact: true }).click();
+  await page.getByLabel("タグ名", { exact: true }).fill("検証タグ");
+  await page.getByRole("button", { name: "タグを保存", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "タグ管理", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "タグを編集", exact: true }).click();
+  await page.getByRole("checkbox", { name: "検証タグ", exact: true }).check();
+  await page.getByRole("button", { name: "タグ付与を保存", exact: true }).click();
+  await expect(page.getByText("タグ: 検証タグ", { exact: true })).toBeVisible();
+  expect(writes.at(-1)).toMatchObject({ command_type: "set_profile_tags", target: { id: "profile" }, payload: { tag_ids: ["new-tag"] } });
+  await page.getByRole("button", { name: "タグ管理", exact: true }).click();
+  await page.getByLabel("編集するタグ").selectOption("new-tag");
+  await page.getByLabel("タグ名", { exact: true }).fill("名称変更");
+  await page.getByRole("button", { name: "タグを保存", exact: true }).click();
+  await expect(page.getByText("タグ: 名称変更", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "タグ管理", exact: true }).click();
+  await page.getByLabel("編集するタグ").selectOption("new-tag");
+  page.once("dialog", dialog => dialog.accept());
+  await page.getByRole("button", { name: "タグを削除", exact: true }).click();
+  await expect(page.getByText("タグ: なし", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "9月：200株 / 6000.5円", exact: true })).toBeVisible();
   const memoKeys = await page.evaluate(() => ["yutai_memo_items_v1", "yutai_memo_tags_v1", "yutai_memo_archives_v1", "yutai_memo_migrated_tags_v1"].map(key => localStorage.getItem(key)));
   expect(memoKeys).toEqual(Array(4).fill("legacy-sentinel"));
   expect(errors).toEqual([]);
