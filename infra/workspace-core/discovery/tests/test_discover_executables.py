@@ -34,7 +34,7 @@ fixture-cli = "fixture.cli:main"
             json.dumps(
                 {
                     "scripts": {
-                        "build": "next build",
+                        "build": "API_TOKEN=super-secret next build",
                         "test": "vitest run",
                     }
                 }
@@ -77,6 +77,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   return fetch("https://example.invalid/items?x=" + url.searchParams.get("x"));
 }
+export const POST = buildPostRoute();
 """.strip(),
         )
         self._write(
@@ -171,6 +172,12 @@ if __name__ == "__main__":
         )
         self.assertEqual("discovered", result["review_status"])
         self.assertEqual("abc123", result["repository_ref"])
+        route = next(
+            item
+            for item in result["candidates"]
+            if item["executable_type"] == "nextjs_route_handler"
+        )
+        self.assertEqual("GET,POST /api/premium/items", route["symbol_or_route"])
 
     def test_output_is_deterministic_and_does_not_leak_secret_or_root(self) -> None:
         first = scanner.discover_repository(self.root, "owner/fixture", "abc123")
