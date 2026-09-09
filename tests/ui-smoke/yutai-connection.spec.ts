@@ -10,6 +10,8 @@ for (const loseFirstResponse of [false, true]) {
 test(`calendar reads/saves without legacy writes (lost response: ${loseFirstResponse})`, async ({ page, context }) => {
   const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
   const profile = { ...row };
+  const monthState = { id: "month", profile_id: "profile", entitlement_month: 9, preparation_months_before: 0,
+    required_shares: 100, benefit_value_yen: 5000, long_term_required: false, long_term_benefit: true, month_memo: "", revision: 1, created_at: date, updated_at: date };
   const selections = [{ id: "global", stock_code: "1234", entitlement_month: null as number | null, selection_status: "picked", revision: 1, created_at: date, updated_at: date }];
   const writes: Record<string, unknown>[] = [];
   const token = [Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"),
@@ -18,7 +20,7 @@ test(`calendar reads/saves without legacy writes (lost response: ${loseFirstResp
     user: { id: owner, aud: "authenticated", role: "authenticated", app_metadata: {}, user_metadata: {} } };
   await context.addCookies([{ name: "sb-yutai-test-auth-token", value: `base64-${Buffer.from(JSON.stringify(session)).toString("base64url")}`, url: "http://127.0.0.1:3146" }]);
   await page.addInitScript(() => {
-    for (const key of ["monthly_yutai_picks_v1", "monthly_yutai_passes_v1", "monthly_yutai_card_memos_v1", "yutai_memo_items_v1"]) localStorage.setItem(key, "legacy-sentinel");
+    for (const key of ["monthly_yutai_picks_v1", "monthly_yutai_passes_v1", "monthly_yutai_card_memos_v1", "yutai_memo_items_v1", "yutai_memo_tags_v1", "yutai_memo_archives_v1", "yutai_memo_migrated_tags_v1"]) localStorage.setItem(key, "legacy-sentinel");
   });
   await page.route("**/api/sync**", route => route.fulfill({ json: { items: [] } }));
   await page.route("https://yutai-test.supabase.co/**", async route => {
@@ -32,6 +34,7 @@ test(`calendar reads/saves without legacy writes (lost response: ${loseFirstResp
       if (!replayed && command.command_type === "set_selection") {
         selections.push({ ...selections[0], id: "monthly", entitlement_month: command.target.entitlement_month, selection_status: command.payload.selection_status });
       } else if (!replayed && command.command_type === "update_profile") { Object.assign(profile, command.payload); profile.revision++; }
+      else if (!replayed && command.command_type === "update_month_state") { Object.assign(monthState, command.payload); monthState.revision++; }
       if (loseFirstResponse && writes.length === 1) { await route.abort("failed"); return; }
       await route.fulfill({ json: { schema_version: 1, command_type: command.command_type, request_id: command.request_id, target_id: "target", revision: 1, event_id: "audit", replayed, before: null, after: {} } }); return;
     }
@@ -39,8 +42,7 @@ test(`calendar reads/saves without legacy writes (lost response: ${loseFirstResp
     const monthly = selections.filter(s => s.entitlement_month === month).at(-1);
     await route.fulfill({ json: { schema_version: 1, selected_month: month, as_of: date,
       counts: { profiles: 1, month_states: 1, cycles: 0, tags: 0, profile_tags: 0, rewards: 0, reward_events: 0, selections: selections.length, effective_selections: 1 },
-      profiles: [profile], month_states: [{ id: "month", profile_id: "profile", entitlement_month: 9, preparation_months_before: 0,
-        required_shares: 100, benefit_value_yen: 5000, long_term_required: false, long_term_benefit: true, month_memo: "", revision: 1, created_at: date, updated_at: date }],
+      profiles: [profile], month_states: [monthState],
       cycles: [], tags: [], profile_tags: [], rewards: [], reward_events: [], selections,
       effective_selections: [{ stock_code: "1234", selection_status: monthly?.selection_status ?? "picked", selection_scope: monthly ? "monthly" : "global" }],
     } });
@@ -67,6 +69,25 @@ test(`calendar reads/saves without legacy writes (lost response: ${loseFirstResp
   expect(oldValues).toEqual(Array(4).fill("legacy-sentinel"));
   expect(errors).toEqual([]);
   await page.screenshot({ path: ".tmp/yutai-calendar-connected.png", fullPage: true });
+  await page.goto("/tools/yutai-memo");
+  await expect(page.getByText("Supabase接続の検証モード（メモ帳の基本編集）")).toBeVisible();
+  await page.getByRole("button", { name: "メモ編集", exact: true }).click();
+  await page.getByRole("textbox", { name: "メモ", exact: true }).fill("メモ帳から更新");
+  await page.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "銘柄メモ編集" })).toHaveCount(0);
+  await expect(page.getByText("メモ帳から更新", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "9月：100株 / 5000円", exact: true }).click();
+  await page.getByLabel("株数", { exact: true }).fill("200");
+  await page.getByLabel("優待価値（円）", { exact: true }).fill("6000.5");
+  await page.getByRole("button", { name: "月別設定を保存" }).click();
+  await expect(page.getByRole("dialog", { name: "月別設定編集" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "9月：200株 / 6000.5円", exact: true })).toBeVisible();
+  expect(writes.at(-1)).toMatchObject({ command_type: "update_month_state", target: { id: "month" }, expected_revision: 1,
+    payload: { required_shares: 200, benefit_value_yen: 6000.5 } });
+  const memoKeys = await page.evaluate(() => ["yutai_memo_items_v1", "yutai_memo_tags_v1", "yutai_memo_archives_v1", "yutai_memo_migrated_tags_v1"].map(key => localStorage.getItem(key)));
+  expect(memoKeys).toEqual(Array(4).fill("legacy-sentinel"));
+  expect(errors).toEqual([]);
+  await page.screenshot({ path: ".tmp/yutai-memo-connected.png", fullPage: true });
 });
 }
 
@@ -74,4 +95,7 @@ test("signed out does not show cached or local private data", async ({ page }) =
   await page.goto("/tools/yutai-candidates?month=2026-09");
   await expect(page.getByText("Supabaseへのログインが必要です。")).toBeVisible();
   await expect(page.getByRole("button", { name: "メモ編集", exact: true })).toHaveCount(0);
+  await page.goto("/tools/yutai-memo");
+  await expect(page.getByText("Supabaseへのログインが必要です。")).toBeVisible();
+  await expect(page.getByRole("button", { name: "銘柄を追加", exact: true })).toHaveCount(0);
 });

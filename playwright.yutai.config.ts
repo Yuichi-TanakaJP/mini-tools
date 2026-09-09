@@ -6,7 +6,7 @@ export default defineConfig({
   webServer: [
     { command: "node tests/ui-smoke/yutai-fixture-server.mjs", url: "http://127.0.0.1:3147", reuseExistingServer: false },
     { command: "npx next dev --webpack --port 3146", url: "http://127.0.0.1:3146", reuseExistingServer: false, timeout: 120_000,
-      env: { ...process.env, NEXT_PUBLIC_GA_ID: "", NEXT_PUBLIC_YUTAI_CANDIDATES_DB_PREVIEW: "true",
+      env: { ...process.env, NEXT_PUBLIC_GA_ID: "", NEXT_PUBLIC_YUTAI_CANDIDATES_DB_PREVIEW: "true", NEXT_PUBLIC_YUTAI_MEMO_DB_PREVIEW: "true",
         NEXT_PUBLIC_SUPABASE_URL: "https://yutai-test.supabase.co", NEXT_PUBLIC_SUPABASE_ANON_KEY: "synthetic-anon-key",
         MARKET_INFO_API_BASE_URL: "http://127.0.0.1:3147" } },
   ],

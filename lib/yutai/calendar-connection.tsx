@@ -30,15 +30,15 @@ export function useCalendarConnection(view: ViewState, year: number, month: numb
   };
 }
 export type CalendarConnection = ReturnType<typeof useCalendarConnection>;
-export function YutaiConnectionStatus({ connection }: { connection: CalendarConnection }) {
+export function YutaiConnectionStatus({ connection, scope = "カレンダーのみ" }: { connection: CalendarConnection; scope?: string }) {
   const { view, action, blocked } = connection;
   return <aside role="status" aria-live="polite" style={{ padding: 12, marginBottom: 12, border: "1px solid var(--border, #94a3b8)", borderRadius: 8 }}>
-    <strong>Supabase接続の検証モード（カレンダーのみ）</strong>
+    <strong>Supabase接続の検証モード（{scope}）</strong>
     <p>他の画面はまだ従来の保存先です。本番切替は未完了です。</p>
     <p>{view.status === "signed_out" ? "Supabaseへのログインが必要です。" : !view.data ? "優待データを取得しています。" :
       `最終取得: ${new Date(view.fetchedAt).toLocaleString("ja-JP")} ${view.stale ? "（最新ではない可能性があります）" : ""}`}</p>
     {view.error && <p role="alert">データを取得できません。再取得するか、ログイン状態を確認してください。</p>}
-    {action.message && <p role={action.status === "paused" ? "alert" : undefined}>{action.month ? `${action.month}月の操作: ` : ""}{action.message}</p>}
+    {action.message && <p role={action.status === "paused" ? "alert" : undefined}>{scope === "カレンダーのみ" && action.month ? `${action.month}月の操作: ` : ""}{action.message}</p>}
     <button type="button" onClick={() => void connection.refresh()} disabled={blocked || view.status === "loading"}>最新データを再取得</button>
     {action.status === "paused" && (action.retryable ?
       <button type="button" onClick={() => void connection.retry()}>同じ要求を再確認・続行</button> :
