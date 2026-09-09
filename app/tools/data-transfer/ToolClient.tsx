@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { track } from "@/lib/analytics";
+import DatabaseTransfer from "./DatabaseTransfer";
 import {
   applyBackup,
   buildBackup,
@@ -118,6 +119,7 @@ export default function ToolClient() {
 
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 48px" }}>
+      {process.env.NEXT_PUBLIC_YUTAI_TRANSFER_DB_PREVIEW === "true" && <DatabaseTransfer />}
       <div style={{ marginBottom: 24 }}>
         <div
           style={{

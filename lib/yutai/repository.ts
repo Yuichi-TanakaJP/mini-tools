@@ -77,6 +77,8 @@ export class YutaiRepository {
     return entry;
   }
   getSnapshot = (month: number): ViewState => this.entry(month).state;
+  /** Non-secret export provenance; never returns an access token or session object. */
+  getIdentity = () => ({ owner: this.owner, sessionRevision: this.epoch });
   private assertOwner(owner: string, epoch: number): void {
     if (!owner || owner !== this.owner || epoch !== this.epoch) throw new YutaiFailure("auth");
   }

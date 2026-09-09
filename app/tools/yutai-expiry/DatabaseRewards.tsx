@@ -45,7 +45,8 @@ function ConnectedRewards({ view }: { view: ViewState }) {
     .sort((a, b) => (a.expires_on ?? "9999").localeCompare(b.expires_on ?? "9999") || a.title.localeCompare(b.title, "ja"));
   return <section className={styles.page}>
     <h1>株主優待期限帳</h1><YutaiConnectionStatus connection={connection} scope="残高・期限" />
-    <p>DBの残高と利用履歴を表示・更新します。画像スキャン・一括入出力・ホーム通知は未接続です。本番切替は未完了です。</p>
+    {process.env.NEXT_PUBLIC_YUTAI_TRANSFER_DB_PREVIEW === "true" && <p><a href="/tools/data-transfer">優待DBの全件出力・照合</a></p>}
+    <p>DBの残高と利用履歴を表示・更新します。画像スキャン・一括取り込み/復元実行・ホーム通知は未接続です。本番切替は未完了です。</p>
     {notice && <p role="status">{notice}</p>}
     <fieldset className={styles.panel} disabled={connection.blocked || view.stale}>
       <div className={styles.row}>
