@@ -55,7 +55,7 @@ jobs:
           REPORT_PATH: ${{ runner.temp }}/mini-tools.executables.json
         run: |
           started_at=$(date +%s)
-          python infra/workspace-core/discovery/discover_executables.py \
+          python infra/workspace-core/discovery/scan_repository.py \
             --repo . \
             --repository Yuichi-TanakaJP/mini-tools \
             --repository-ref "$GITHUB_SHA" \
@@ -71,12 +71,28 @@ jobs:
           assert report["repository"] == "Yuichi-TanakaJP/mini-tools"
           assert report["repository_ref"] == os.environ["GITHUB_SHA"]
           assert report["review_status"] == "discovered"
+          assert report["normalization_version"] == "0.1"
+          assert report["raw_candidate_count"] >= report["candidate_count"]
           assert all(
               candidate["review_status"] == "discovered"
               for candidate in report["candidates"]
           )
           assert not any(path.startswith("node_modules/") for path in report["scanned_files"])
           assert not any(".env" in Path(path).name for path in report["scanned_files"])
+          assert not any(
+              invocation.strip() in {"|", "|-", ">", ">-"}
+              for candidate in report["candidates"]
+              for invocation in candidate["invokes"]
+          )
+          assert not any(
+              candidate["executable_type"] == "declared_pipeline_map"
+              and candidate["path"].endswith("discover_executables.py")
+              for candidate in report["candidates"]
+          )
+          assert any(
+              candidate["executable_type"] == "python_test_entrypoint"
+              for candidate in report["candidates"]
+          )
 
           counts = Counter(
               candidate["executable_type"] for candidate in report["candidates"]
@@ -86,6 +102,10 @@ jobs:
                   {
                       "candidate_count": report["candidate_count"],
                       "candidate_types": dict(sorted(counts.items())),
+                      "normalization_dropped_count": len(
+                          report["normalization_dropped"]
+                      ),
+                      "raw_candidate_count": report["raw_candidate_count"],
                       "scanned_file_count": len(report["scanned_files"]),
                   },
                   sort_keys=True,
