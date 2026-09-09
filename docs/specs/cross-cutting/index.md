@@ -4,6 +4,7 @@
 
 | 仕様 | 内容 |
 |---|---|
+| [優待の共通データ層](./yutai-repository.md) | Supabase正本、本人別cache、24操作の保存結果、切替工程3の境界 |
 | [mini-tools システム構成概要](./system-architecture-overview.md) | アプリ全体の構成、データ取得、保存、外部依存 |
 | [React Server / Client 責任境界](./react-server-client-boundaries.md) | Server Component と Client Component の役割分担 |
 | [Market Tools データ取得経路一覧](./market-tools-data-fetch-paths.md) | market tools の取得元、fallback、内部 route、market_info / market-info-api への横断参照入口 |
