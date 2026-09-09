@@ -9,6 +9,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 
 ## 📘 Decision Log（設計判断）
 
+- [2026-09-10 優待残高・期限のDB接続](./decision-log/2026-09-10-yutai-rewards-db.md)
 - [2026-09-10 優待メモの仕込み履歴をDBへ接続](./decision-log/2026-09-10-yutai-cycles-db.md)
 - [2026-09-03 全画面テーマ統一のトークン基盤](./decision-log/2026-09-03-theme-token-foundation.md)
 - [2026-08-30 共通ヘッダーに表示テーマ切替を置く](./decision-log/2026-08-30-global-color-theme-selector.md)
@@ -135,6 +136,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
   - [日経225寄与度 仕様](./specs/tools/nikkei-contribution.md)
   - [TOPIX33業種 仕様](./specs/tools/topix33.md)
   - [優待銘柄メモ帳 仕様](./specs/tools/yutai-memo.md)
+  - [株主優待期限帳 仕様](./specs/tools/yutai-expiry.md)
   - [メモ帳DB基本編集の隔離判断](./decision-log/2026-09-09-yutai-memo-db-basics.md)
   - [メモ帳タグのDB接続](./decision-log/2026-09-09-yutai-tags-db.md)
   - [優待カレンダー 仕様](./specs/tools/yutai-candidates.md)
