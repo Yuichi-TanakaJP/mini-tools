@@ -52,7 +52,7 @@ def git_read(repo: Path, *args: str) -> str | None:
 
 def repository_state(repo: Path) -> tuple[str, str]:
     head = git_read(repo, "rev-parse", "HEAD") or "unknown"
-    porcelain = git_read(repo, "status", "--porcelain", "--untracked-files=no")
+    porcelain = git_read(repo, "status", "--porcelain")
     state = "unknown" if porcelain is None else ("dirty" if porcelain else "clean")
     return head, state
 
