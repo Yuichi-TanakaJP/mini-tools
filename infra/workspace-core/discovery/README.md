@@ -1,6 +1,6 @@
 # Workspace Core Executable Discovery
 
-Repository内の実行入口、呼出候補、端末・実行場所、手動介入、制約を、**対象コードを実行せず**静的に抽出するScannerです。
+Repository内の実行入口、呼出候補、端末・実行場所、手動介入、制約を、**対象コードを実行せず**静的に抽出します。
 
 - 親Issue: #598
 - 実装Issue: #601
@@ -8,25 +8,37 @@ Repository内の実行入口、呼出候補、端末・実行場所、手動介�
 
 ## 位置づけ
 
-このScannerの出力は、Workspace Coreへ確定登録する事実ではありません。
+この出力は、Workspace Coreへ確定登録する事実ではありません。
 
 ```text
 Repository source / manifest / docs / declared map
-→ read-only Scanner
-→ discovered candidates
+→ raw detector
+→ conservative candidate policy
+→ normalized discovered candidates
 → Evidence review
 → accepted / rejected
 → typed registry / flow read model
 ```
 
-全候補は`review_status: discovered`で出力されます。Scanner自身はDBへ接続せず、accepted化もしません。
+全候補は`review_status: discovered`で出力されます。DBへ接続せず、accepted化もしません。
+
+### 実装の分離
+
+| ファイル | 役割 |
+|---|---|
+| `discover_executables.py` | manifest・AST・patternから生候補を抽出する内部Detector |
+| `candidate_policy.py` | 既知の構文ノイズ除去、宣言実在確認、候補型の補正 |
+| `scan_repository.py` | 単一Repository用の公開入口 |
+| `run_initial_scan.py` | Windows PC上の初期6Repositoryを一括走査 |
+
+利用者は原則として`scan_repository.py`または`run_initial_scan.py`を使います。
 
 ## 単一Repositoryを走査する
 
 Python 3.11以上の標準ライブラリだけで動作します。
 
 ```bash
-python infra/workspace-core/discovery/discover_executables.py \
+python infra/workspace-core/discovery/scan_repository.py \
   --repo ../market_info \
   --repository Yuichi-TanakaJP/market_info \
   --repository-ref <commit-sha> \
@@ -38,7 +50,7 @@ python infra/workspace-core/discovery/discover_executables.py \
 標準出力へ出す場合:
 
 ```bash
-python infra/workspace-core/discovery/discover_executables.py \
+python infra/workspace-core/discovery/scan_repository.py \
   --repo . \
   --repository Yuichi-TanakaJP/mini-tools
 ```
@@ -103,7 +115,8 @@ Repositoryが見つからない場合は`missing_repositories`へ記録します
 - `argparse`
 - 静的に解決できる`subprocess`呼出し
 - FastAPI app / `include_router`
-- `PIPELINE_EDGES`を持つdeclared pipeline map
+- AST上で実在する`PIPELINE_EDGES`代入
+- `tests/`等の入口は`python_test_entrypoint`として運用入口と分離
 
 ### Node / Next.js
 
@@ -136,6 +149,17 @@ Repositoryが見つからない場合は`missing_repositories`へ記録します
 - `PIPELINE_EDGES`
 - `system_map*.yaml`
 
+## Candidate Policy v0.1
+
+実Repositoryのfirst scanで見つかった既知ノイズを、名前によるRepository固有例外ではなく、再利用可能なpolicyとして処理します。
+
+- `PIPELINE_EDGES`という文字列があるだけではdeclared mapにしない
+- AST上の代入がある場合だけdeclared mapとして残す
+- GitHub Actionsの`run: |`、`run: >-`等のYAML block markerを呼出先から除く
+- test fileの`__main__`は`python_test_entrypoint`へ分類する
+- statusは常に`discovered`のまま維持する
+- 除外内容は`normalization_dropped`へ理由付きで残す
+
 ## 5つの観測軸
 
 Scanner候補は、親Workstreamで固定した次の軸へ接続する前提です。
@@ -155,12 +179,15 @@ Scanner候補は、親Workstreamで固定した次の軸へ接続する前提で
 ```json
 {
   "schema_version": "0.1",
+  "normalization_version": "0.1",
   "repository": "owner/repo",
   "repository_ref": "commit-sha-or-unknown",
   "scan_mode": "read_only_static_candidate_discovery",
   "review_status": "discovered",
   "scanned_files": [],
+  "raw_candidate_count": 0,
   "candidate_count": 0,
+  "normalization_dropped": [],
   "candidates": []
 }
 ```
@@ -205,6 +232,22 @@ Scannerは次を行いません。
 
 `node_modules`、`.git`、`.venv`、`.next`、build、dist等は、ファイルを除外するだけでなくDirectory探索前に枝刈りします。
 
+## CIでの実Repository確認
+
+PRではfixture testに加え、checkout済みの`mini-tools`自身を`scan_repository.py`で走査します。
+
+CIで確認すること:
+
+- 全候補が`discovered`
+- `.env*`とignored directoryが非対象
+- YAML block markerが呼出先に残らない
+- 文字列だけの`PIPELINE_EDGES`誤認が残らない
+- test entrypointが別分類される
+- 候補数と種別をログへ出す
+- full JSONはprivate GitHub Artifactとして7日間だけ保存する
+
+このArtifactは公開配布せず、private Repositoryの権限境界内で候補レビューに利用します。
+
 ## テスト
 
 ```bash
@@ -223,6 +266,7 @@ Fixtureで確認する内容:
 - Docker / Cloud Build
 - Agent Skill / Harness Contract
 - declared System Map
+- candidate normalization policy
 - 初期Repository一括ランナー
 - 未追跡ファイルを含むdirty判定
 - 出力の決定性
@@ -234,6 +278,7 @@ Fixtureで確認する内容:
 - Runtimeで実際に起動していることは証明しません。
 - 動的に組み立てられたsubprocess、API URL、Pathは見落とす可能性があります。
 - Script名やkeywordによる候補にはfalse positiveがあり得ます。
+- GitHub Actionsの複数行`run`本文は、v0.1では完全なcommand graphへ展開しません。
 - 外部Scheduler、Cloud Console設定、ローカルTask Schedulerの実状態は取得しません。
 - Documentationやhand-written mapは`declared design`であり、runtime factとは分離します。
 - Input / Output / Constraintは候補で、Evidence review後に確定します。
