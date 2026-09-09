@@ -134,6 +134,8 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
   - [日経225寄与度 仕様](./specs/tools/nikkei-contribution.md)
   - [TOPIX33業種 仕様](./specs/tools/topix33.md)
   - [優待銘柄メモ帳 仕様](./specs/tools/yutai-memo.md)
+  - [優待カレンダー 仕様](./specs/tools/yutai-candidates.md)
+  - [カレンダーDB接続の段階導入判断](./decision-log/2026-09-09-yutai-calendar-db-connection.md)
   - [決算カレンダー 仕様](./specs/tools/earnings-calendar.md)
   - [TDNET適時開示一覧 仕様](./specs/tools/tdnet-disclosures.md)
   - [開示イベントレーダー 仕様](./specs/tools/disclosure-radar.md)

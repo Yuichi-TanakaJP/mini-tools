@@ -20,6 +20,7 @@
 | 日経225寄与度 | `/tools/nikkei-contribution` | [nikkei-contribution.md](./tools/nikkei-contribution.md) |
 | TOPIX33業種 | `/tools/topix33` | [topix33.md](./tools/topix33.md) |
 | 優待銘柄メモ帳 | `/tools/yutai-memo` | [yutai-memo.md](./tools/yutai-memo.md) |
+| 優待カレンダー | `/tools/yutai-candidates` | [yutai-candidates.md](./tools/yutai-candidates.md) |
 | 優待ダッシュボード | `/tools/yutai-dashboard` | [yutai-dashboard.md](./tools/yutai-dashboard.md) |
 | 銘柄分析ダッシュボード | `/tools/stock-notes` | [stock-notes.md](./tools/stock-notes.md) |
 | 決算カレンダー | `/tools/earnings-calendar` | [earnings-calendar.md](./tools/earnings-calendar.md) |

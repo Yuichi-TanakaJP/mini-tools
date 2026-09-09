@@ -1,0 +1,77 @@
+import { expect, test } from "@playwright/test";
+
+const date = "2026-09-09T00:00:00Z";
+const owner = "00000000-0000-4000-8000-000000000001";
+const row = { id: "profile", stock_code: "1234", display_name: "接続テスト銘柄", portfolio_instrument_id: null,
+  cross_strategy: "未設定", priority: 2, memo: "DBメモ", active: true, one_share_started_on: null, one_share_started_legacy_text: null,
+  entry_timing: null, default_preparation_months_before: null, tenure_rule: null, related_url: null, official_benefit_url: null,
+  revision: 1, created_at: date, updated_at: date };
+for (const loseFirstResponse of [false, true]) {
+test(`calendar reads/saves without legacy writes (lost response: ${loseFirstResponse})`, async ({ page, context }) => {
+  const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
+  const profile = { ...row };
+  const selections = [{ id: "global", stock_code: "1234", entitlement_month: null as number | null, selection_status: "picked", revision: 1, created_at: date, updated_at: date }];
+  const writes: Record<string, unknown>[] = [];
+  const token = [Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"),
+    Buffer.from(JSON.stringify({ sub: owner, exp: 4_000_000_000, role: "authenticated" })).toString("base64url"), "synthetic"].join(".");
+  const session = { access_token: token, refresh_token: "synthetic", expires_at: 4_000_000_000, expires_in: 3600, token_type: "bearer",
+    user: { id: owner, aud: "authenticated", role: "authenticated", app_metadata: {}, user_metadata: {} } };
+  await context.addCookies([{ name: "sb-yutai-test-auth-token", value: `base64-${Buffer.from(JSON.stringify(session)).toString("base64url")}`, url: "http://127.0.0.1:3146" }]);
+  await page.addInitScript(() => {
+    for (const key of ["monthly_yutai_picks_v1", "monthly_yutai_passes_v1", "monthly_yutai_card_memos_v1", "yutai_memo_items_v1"]) localStorage.setItem(key, "legacy-sentinel");
+  });
+  await page.route("**/api/sync**", route => route.fulfill({ json: { items: [] } }));
+  await page.route("https://yutai-test.supabase.co/**", async route => {
+    const url = route.request().url();
+    if (url.includes("/auth/")) { await route.fulfill({ json: session.user }); return; }
+    const args = route.request().postDataJSON();
+    if (url.endsWith("stock_notes_record_yutai_command")) {
+      const command = args.p_input;
+      const replayed = writes.some(previous => previous.request_id === command.request_id);
+      writes.push(command);
+      if (!replayed && command.command_type === "set_selection") {
+        selections.push({ ...selections[0], id: "monthly", entitlement_month: command.target.entitlement_month, selection_status: command.payload.selection_status });
+      } else if (!replayed && command.command_type === "update_profile") { Object.assign(profile, command.payload); profile.revision++; }
+      if (loseFirstResponse && writes.length === 1) { await route.abort("failed"); return; }
+      await route.fulfill({ json: { schema_version: 1, command_type: command.command_type, request_id: command.request_id, target_id: "target", revision: 1, event_id: "audit", replayed, before: null, after: {} } }); return;
+    }
+    const month = args.p_month;
+    const monthly = selections.filter(s => s.entitlement_month === month).at(-1);
+    await route.fulfill({ json: { schema_version: 1, selected_month: month, as_of: date,
+      counts: { profiles: 1, month_states: 1, cycles: 0, tags: 0, profile_tags: 0, rewards: 0, reward_events: 0, selections: selections.length, effective_selections: 1 },
+      profiles: [profile], month_states: [{ id: "month", profile_id: "profile", entitlement_month: 9, preparation_months_before: 0,
+        required_shares: 100, benefit_value_yen: 5000, long_term_required: false, long_term_benefit: true, month_memo: "", revision: 1, created_at: date, updated_at: date }],
+      cycles: [], tags: [], profile_tags: [], rewards: [], reward_events: [], selections,
+      effective_selections: [{ stock_code: "1234", selection_status: monthly?.selection_status ?? "picked", selection_scope: monthly ? "monthly" : "global" }],
+    } });
+  });
+  await page.goto("/tools/yutai-candidates?month=2026-09");
+  await expect(page.getByText("Supabase接続の検証モード（カレンダーのみ）")).toBeVisible();
+  await expect(page.getByRole("button", { name: "★ ピック" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "パスする", exact: true }).click();
+  if (loseFirstResponse) {
+    await expect(page.getByText(/今回の保存結果は不明/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "メモ編集", exact: true })).toBeDisabled();
+    await page.getByRole("button", { name: "同じ要求を再確認・続行" }).click();
+  }
+  await expect(page.getByText("Supabaseへ保存し、表示を更新しました。")).toBeVisible();
+  expect(writes[0]).toMatchObject({ command_type: "set_selection", target: { stock_code: "1234", entitlement_month: 9 }, expected_revision: 0 });
+  await page.getByRole("button", { name: "メモ編集", exact: true }).click();
+  await expect(page.getByLabel("戦略タイプ")).toHaveValue("未設定");
+  await page.getByRole("textbox", { name: "メモ", exact: true }).fill("変更したDBメモ");
+  await page.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(page.getByRole("textbox", { name: "メモ", exact: true })).toHaveCount(0);
+  expect(writes.find(command => command.command_type === "update_profile")).toMatchObject({ payload: { memo: "変更したDBメモ" }, expected_revision: 1 });
+  if (loseFirstResponse) expect(writes[0]).toEqual(writes[1]);
+  const oldValues = await page.evaluate(() => ["monthly_yutai_picks_v1", "monthly_yutai_passes_v1", "monthly_yutai_card_memos_v1", "yutai_memo_items_v1"].map(key => localStorage.getItem(key)));
+  expect(oldValues).toEqual(Array(4).fill("legacy-sentinel"));
+  expect(errors).toEqual([]);
+  await page.screenshot({ path: ".tmp/yutai-calendar-connected.png", fullPage: true });
+});
+}
+
+test("signed out does not show cached or local private data", async ({ page }) => {
+  await page.goto("/tools/yutai-candidates?month=2026-09");
+  await expect(page.getByText("Supabaseへのログインが必要です。")).toBeVisible();
+  await expect(page.getByRole("button", { name: "メモ編集", exact: true })).toHaveCount(0);
+});

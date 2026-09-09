@@ -1,7 +1,8 @@
 # 優待の共通データ層（切替工程3）
 
 対象: 優待メモ、カレンダー/候補、ダッシュボード、期限・残高と依存通知。
-2026-09-09時点では共通処理だけを追加。既存画面は未接続で、現在の保存先は変わらない。
+2026-09-09時点で共通処理はPR593で完了。カレンダーの隔離検証用接続を追加中。
+本番の保存先は変わらない。
 
 ## 全体の位置づけ
 
@@ -11,8 +12,8 @@
 |---|---|
 | 1 全件読み取りAPI | stock-notes PR188でDB適用・検証済み |
 | 2 日常更新24操作 | stock-notes PR190/191でDB適用・検証済み |
-| 3 共通取得・保存・キャッシュ | 本変更の対象。コード・契約テスト・認証連携テスト |
-| 4 既存画面接続 | 未着手。既存LocalStorageの隠れた書き戻しも対象 |
+| 3 共通取得・保存・キャッシュ | PR593で完了。コード・契約テスト・認証連携テスト |
+| 4 既存画面接続 | 進行中。カレンダーの隔離検証接続を実装。メモ帳本体・ダッシュボード・期限/残高・依存通知は残件 |
 | 5 スマホ/PC/ChatGPT UAT・export/復旧 | 未着手 |
 | 6 更新停止中の最新差分照合・read/write同時切替・旧同期停止 | 未着手 |
 
@@ -26,7 +27,7 @@
 - `lib/yutai/repository.ts`: テスト可能な共通キャッシュ・保存状態管理。
 - `lib/yutai/runtime.ts`: 既存Supabase Auth sessionとRPC、ブラウザ復帰イベントの接続。
 - `lib/yutai/browser.ts`: 遅延生成のブラウザ共有インスタンスと`useYutaiWorkspace(month)`。
-  現段階では既存画面からimportしない。SSRでは本人データを作らない。
+  カレンダー検証モードから利用する。無効時は通信しない。SSRでは本人データを作らない。
 
 読み取りは `stock_notes_get_yutai_workspace({ p_month: 1..12 })`。
 保存は `stock_notes_record_yutai_command({ p_input: command })`。
@@ -82,7 +83,8 @@ SQLエラー本文は画面へ返さず、安全な分類メッセージだけ�
 `npm test -- lib/yutai`で契約、並行取得、競合、二重送信、失敗、本人切替を検証する。
 [UAT手順](../../uat/yutai-repository.md)と
 [判断理由](../../decision-log/2026-09-09-yutai-authoritative-repository.md)を参照。
-この追加はDB migrationや本番writeを含まず、既存保存処理を呼び替えない。
+この追加はDB migrationや本番writeを含まない。カレンダーの検証モードだけ保存処理を呼び替える。
+詳細は[カレンダー仕様](../tools/yutai-candidates.md)。全画面の接続完了まで工程4を完了にしない。
 問題時はこの追加commitのrevertで戻せる。既存LocalStorage、旧tool_data、移行backupは残る。
 画面接続後に新DBへ書いたデータの復旧は工程5/6で別途照合し、旧backupを無条件上書きしない。
 

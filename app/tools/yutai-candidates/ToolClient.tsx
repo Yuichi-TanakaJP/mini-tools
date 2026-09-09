@@ -2,6 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useYutaiWorkspace } from "@/lib/yutai/browser";
+import { isSyncConfigured } from "@/lib/supabase/config";
+import { useCalendarConnection, YutaiConnectionStatus, type CalendarConnection } from "@/lib/yutai/calendar-connection";
+import { cardMemoPatch, editCalendarMemo, ensureCalendarMonth, removeCalendarMonth, selectionCommand } from "@/lib/yutai/calendar";
+import type { Workspace } from "@/lib/yutai/contracts";
+import type { ViewState } from "@/lib/yutai/repository";
 import { addMemoItemFromCandidate, isImportedMonthlyYutaiCandidate } from "@/app/tools/yutai-memo/candidate-import";
 import { loadItems, saveItems } from "@/app/tools/yutai-memo/storage";
 import { CROSS_TYPES, type CrossType, type MemoItem } from "@/app/tools/yutai-memo/types";
@@ -124,6 +130,29 @@ function getOfficialLinkLabel(item: MonthlyYutaiCandidate) {
 }
 
 export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
+  const enabled = process.env.NEXT_PUBLIC_YUTAI_CANDIDATES_DB_PREVIEW === "true";
+  const month = Number(data.selectedMonthId.slice(5, 7));
+  const validMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(data.selectedMonthId);
+  const configured = isSyncConfigured();
+  const view = useYutaiWorkspace(validMonth ? month : 1, enabled && validMonth && configured);
+  if (!enabled) return <CalendarView data={data} />;
+  if (!validMonth || !configured) return <main style={styles.page}><h1>優待カレンダー</h1>
+    <p role="alert">DB接続検証にはSupabase設定と有効な月別市場データが必要です。従来保存には戻しません。</p></main>;
+  if (!view.data) return <main style={styles.page}>
+    <h1>優待カレンダー — Supabase接続検証</h1>
+    <p>{view.status === "signed_out" ? "Supabaseへのログインが必要です。" : "優待データを取得しています。"}</p>
+    {view.error && <p role="alert">データの取得に失敗しました。ログイン状態・通信を確認してください。</p>}
+    <a href="/account">ログイン画面へ</a> <button type="button" onClick={() => window.location.reload()}>再読み込み</button>
+  </main>;
+  return <ConnectedCalendar key={`${view.sessionRevision}:${data.selectedMonthId}`} data={data} view={view} />;
+}
+
+function ConnectedCalendar({ data, view }: { data: MonthlyYutaiPageData; view: ViewState }) {
+  const connection = useCalendarConnection(view, Number(data.selectedMonthId.slice(0, 4)), Number(data.selectedMonthId.slice(5, 7)));
+  return <CalendarView data={data} connection={connection} />;
+}
+
+function CalendarView({ data, connection: db }: { data: MonthlyYutaiPageData; connection?: CalendarConnection }) {
   const { navigate, isPendingFor } = useRouterTransition();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
@@ -133,12 +162,17 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const [crossFilter, setCrossFilter] = useState<CrossFilter>("all");
   const [sbiFilter, setSbiFilter] = useState<SbiFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("code");
-  const [pickedCodes, setPickedCodes] = useState<Set<string>>(new Set());
-  const [passedCodes, setPassedCodes] = useState<Set<string>>(new Set());
-  const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
-  const [memoItems, setMemoItems] = useState<MemoItem[]>([]);
+  const [localPickedCodes, setPickedCodes] = useState<Set<string>>(new Set());
+  const [localPassedCodes, setPassedCodes] = useState<Set<string>>(new Set());
+  const [localAddedKeys, setAddedKeys] = useState<Set<string>>(new Set());
+  const [localMemoItems, setMemoItems] = useState<MemoItem[]>([]);
   const [calendarAxis, setCalendarAxis] = useState<CalendarAxis>("entitlement");
-  const [cardMemos, setCardMemos] = useState<Record<string, CalendarCardMemo>>({});
+  const [localCardMemos, setCardMemos] = useState<Record<string, CalendarCardMemo>>({});
+  const pickedCodes = db ? db.projection.pickedCodes : localPickedCodes;
+  const passedCodes = db ? db.projection.passedCodes : localPassedCodes;
+  const addedKeys = db ? db.projection.addedKeys : localAddedKeys;
+  const memoItems = db ? db.projection.memoItems : localMemoItems;
+  const cardMemos = db ? db.projection.cardMemos : localCardMemos;
   const [hydrated, setHydrated] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [editingMemo, setEditingMemo] = useState<MemoItem | null>(null);
@@ -146,8 +180,17 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const [memoDraft, setMemoDraft] = useState<MemoEditDraft | null>(null);
   const didPersistPicked = useRef(false);
   const didPersistPassed = useRef(false);
+  const editingWorkspace = useRef<Workspace | null>(null);
 
   useEffect(() => {
+    if (db?.action.status !== "saved" && db?.action.status !== "idle") return;
+    // Successful save or explicit rejected-action review ends the old revision-bound draft.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset draft after external async command state changes
+    setEditingMemo(null); setEditingMemoContext(null); setMemoDraft(null);
+  }, [db?.action.status]);
+
+  useEffect(() => {
+    if (db) return;
     // localStorage はサーバーで読めないため、マウント後に初期化する（hydration mismatch 回避）
     /* eslint-disable react-hooks/set-state-in-effect */
     setPickedCodes(loadCodeSet(PICKED_KEY));
@@ -158,20 +201,20 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     setMemoItems(items);
     setHydrated(true);
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, []);
+  }, [db]);
 
   useEffect(() => {
     // hydrated 前は空 Set を保存しない
-    if (!hydrated) return;
+    if (db || !hydrated) return;
     saveCodeSet(PICKED_KEY, pickedCodes, { markChanged: didPersistPicked.current });
     didPersistPicked.current = true;
-  }, [hydrated, pickedCodes]);
+  }, [db, hydrated, pickedCodes]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (db || !hydrated) return;
     saveCodeSet(PASSED_KEY, passedCodes, { markChanged: didPersistPassed.current });
     didPersistPassed.current = true;
-  }, [hydrated, passedCodes]);
+  }, [db, hydrated, passedCodes]);
 
   const availableTags = useMemo(() => {
     return Array.from(
@@ -256,15 +299,16 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   const preparationItems = useMemo(() => {
     const selectedMonth = Number(data.selectedMonthId.slice(5, 7));
     const normalizedQuery = normalizeText(query.trim());
-    return memoItems.filter((item) => {
-      if (!isPreparationMonth(item.months, item.preparationMonthsBefore, selectedMonth)) return false;
+    return (db ? db.projection.preparationItems : memoItems).filter((item) => {
+      if (!db && !isPreparationMonth(item.months, item.preparationMonthsBefore, selectedMonth)) return false;
       if (!normalizedQuery) return true;
       return normalizeText([item.name, item.code ?? "", item.memo, item.entryTiming ?? ""].join(" "))
         .includes(normalizedQuery);
     });
-  }, [data.selectedMonthId, memoItems, query]);
+  }, [data.selectedMonthId, db, memoItems, query]);
 
   function togglePick(code: string) {
+    if (db) { void db.save([() => selectionCommand(db.view.data, code, pickedCodes.has(code) ? "unreviewed" : "picked")]); return; }
     setPickedCodes((prev) => {
       const next = new Set(prev);
       if (next.has(code)) next.delete(code);
@@ -281,6 +325,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   }
 
   function togglePass(code: string) {
+    if (db) { void db.save([() => selectionCommand(db.view.data, code, passedCodes.has(code) ? "unreviewed" : "passed")]); return; }
     setPassedCodes((prev) => {
       const next = new Set(prev);
       if (next.has(code)) next.delete(code);
@@ -296,6 +341,11 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   }
 
   function handleAdd(item: MonthlyYutaiCandidate) {
+    if (db) {
+      try { void db.save(ensureCalendarMonth(db.view.data, item.code, item.company_name, item.month)); }
+      catch (error) { setNotice(error instanceof Error ? error.message : "追加できませんでした。"); }
+      return;
+    }
     const existing = loadItems();
     if (isImportedMonthlyYutaiCandidate(existing, { code: item.code, month: item.month })) {
       setAddedKeys((prev) => new Set(prev).add(`${item.code}:${item.month}`));
@@ -328,6 +378,13 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   }
 
   function updateCardMemo(key: string, patch: Partial<Omit<CalendarCardMemo, "updatedAt">>) {
+    if (db) {
+      const candidate = data.items.find(item => getCardMemoKey(item) === key);
+      if (!candidate) return;
+      try { void db.save(ensureCalendarMonth(db.view.data, candidate.code, candidate.company_name, candidate.month, cardMemoPatch(patch))); }
+      catch (error) { setNotice(error instanceof Error ? error.message : "保存できませんでした。"); }
+      return;
+    }
     setCardMemos((prev) => {
       const current = prev[key] ?? {
         longTermRequired: false,
@@ -346,7 +403,8 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   }
 
   function openMemoEdit(item: MonthlyYutaiCandidate) {
-    const items = loadItems();
+    const items = db ? db.projection.memoItems : loadItems();
+    editingWorkspace.current = db?.view.data ?? null;
     const target = items.find(
       (memoItem) => memoItem.code === item.code && Array.isArray(memoItem.months) && memoItem.months.includes(item.month),
     );
@@ -378,6 +436,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   }
 
   function closeMemoEdit() {
+    if (db?.blocked) return;
     setEditingMemo(null);
     setEditingMemoContext(null);
     setMemoDraft(null);
@@ -385,6 +444,13 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
 
   function saveMemoEdit() {
     if (!editingMemo || !memoDraft) return;
+    if (db) {
+      try {
+        void db.save(editCalendarMemo(editingWorkspace.current, editingMemo.id, Number(data.selectedMonthId.slice(0, 4)),
+          editingMemoContext.month, memoDraft, new Date().toISOString()));
+      } catch (error) { setNotice(error instanceof Error ? error.message : "保存できませんでした。"); }
+      return;
+    }
 
     const items = loadItems();
     let saved = false;
@@ -425,6 +491,14 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
 
   function removeMemoAddition() {
     if (!editingMemo || !editingMemoContext) return;
+    if (db) {
+      if (!window.confirm(`${editingMemoContext.companyName} の${editingMemoContext.month}月の設定だけを解除します。銘柄メモ・仕込み履歴・優待残高・他の月は残ります。よろしいですか？`)) return;
+      try {
+        const command = removeCalendarMonth(editingWorkspace.current, editingMemo.id, editingMemoContext.month);
+        void db.save([() => command]);
+      } catch (error) { setNotice(error instanceof Error ? error.message : "解除できませんでした。"); }
+      return;
+    }
 
     const message = editingMemo.months.length <= 1
       ? `${editingMemoContext.companyName} の優待メモを削除して、未追加の状態に戻します。よろしいですか？`
@@ -469,6 +543,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
   }
 
   function handleMonthChange(nextMonthId: string) {
+    if (db?.blocked) return;
     const params = new URLSearchParams(searchParams.toString());
     if (!nextMonthId) {
       params.delete("month");
@@ -484,6 +559,8 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
 
   return (
     <main style={styles.page}>
+      {db && <YutaiConnectionStatus connection={db} />}
+      <fieldset disabled={Boolean(db && (db.blocked || db.view.stale))} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
       <div style={styles.shell}>
         <section style={styles.hero}>
           <div style={styles.heroEyebrow}>
@@ -879,7 +956,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                     onChange={(event) => setMemoDraft((draft) => draft ? { ...draft, crossType: event.target.value as CrossType } : draft)}
                     style={styles.dialogInput}
                   >
-                    {CROSS_TYPES.map((type) => (
+                    {(db ? ["未設定", ...CROSS_TYPES] : CROSS_TYPES).map((type) => (
                       <option key={type} value={type}>{type}</option>
                     ))}
                   </select>
@@ -956,7 +1033,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
                   checked={memoDraft.acquired}
                   onChange={(event) => setMemoDraft((draft) => draft ? { ...draft, acquired: event.target.checked } : draft)}
                 />
-                取得済み
+                {db ? `仕込み済み（${data.selectedMonthId}権利）` : "取得済み"}
               </label>
 
               <label style={styles.fieldLabel}>
@@ -987,6 +1064,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
           </div>
         )}
       </div>
+      </fieldset>
     </main>
   );
 }
