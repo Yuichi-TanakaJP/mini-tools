@@ -21,13 +21,14 @@ export interface Transport {
   write(owner: string, command: Command, signal: AbortSignal): Promise<unknown>;
 }
 export interface ViewState {
+  readonly sessionRevision: number;
   readonly data: Workspace | null;
   readonly status: "signed_out" | "idle" | "loading" | "ready" | "error";
   readonly stale: boolean;
   readonly fetchedAt: number | null;
   readonly error: YutaiFailure | null;
 }
-export const EMPTY_STATE: ViewState = Object.freeze({ data: null, status: "signed_out", stale: true, fetchedAt: null, error: null });
+export const EMPTY_STATE: ViewState = Object.freeze({ sessionRevision: 0, data: null, status: "signed_out", stale: true, fetchedAt: null, error: null });
 type Entry = { state: ViewState; pending?: Promise<Workspace>; abort?: AbortController; version: number };
 export interface PreparedCommand { readonly requestId: string }
 type Prepared = { owner: string; epoch: number; command: Command; pending?: Promise<SaveResult> };
@@ -70,7 +71,7 @@ export class YutaiRepository {
     checkMonth(month);
     let entry = this.entries.get(month);
     if (!entry) {
-      entry = { state: { ...EMPTY_STATE, status: this.owner ? "idle" : "signed_out" }, version: 0 };
+      entry = { state: { ...EMPTY_STATE, sessionRevision: this.epoch, status: this.owner ? "idle" : "signed_out" }, version: 0 };
       this.entries.set(month, entry);
     }
     return entry;

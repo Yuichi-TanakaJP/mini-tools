@@ -7,7 +7,7 @@ import { EMPTY_STATE } from "./repository";
 import { createYutaiRuntime } from "./runtime";
 
 let runtime: ReturnType<typeof createYutaiRuntime> | undefined;
-/** Call from event handlers/effects only. Existing screens do not import this yet. */
+/** Browser-only shared instance; disabled consumers must not initialize it. */
 export function getYutaiRepository() {
   if (typeof window === "undefined") throw new Error("BROWSER_ONLY");
   runtime ??= createYutaiRuntime(createSupabaseBrowserClient(), {
@@ -15,14 +15,15 @@ export function getYutaiRepository() {
   });
   return runtime.repository;
 }
-export function useYutaiWorkspace(month: number) {
+export function useYutaiWorkspace(month: number, enabled = true) {
   checkMonth(month);
-  const subscribe = useCallback((listener: () => void) => getYutaiRepository().subscribe(listener), []);
-  const getSnapshot = useCallback(() => runtime?.repository.getSnapshot(month) ?? EMPTY_STATE, [month]);
+  const subscribe = useCallback((listener: () => void) => enabled ? getYutaiRepository().subscribe(listener) : () => {}, [enabled]);
+  const getSnapshot = useCallback(() => enabled ? runtime?.repository.getSnapshot(month) ?? EMPTY_STATE : EMPTY_STATE, [month, enabled]);
   const state = useSyncExternalStore(subscribe, getSnapshot, () => EMPTY_STATE);
   useEffect(() => {
+    if (!enabled) return;
     getYutaiRepository();
     return runtime.watch(month);
-  }, [month]);
+  }, [month, enabled]);
   return state;
 }
