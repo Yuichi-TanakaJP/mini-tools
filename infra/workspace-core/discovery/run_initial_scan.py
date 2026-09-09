@@ -64,13 +64,14 @@ def run_initial_scans(
 ) -> dict:
     """Scan available sibling clones and return a path-free summary."""
 
+    repository_specs = tuple(repositories)
     dev_root = dev_root.expanduser().resolve()
     output_root = output_root.expanduser().resolve()
     output_root.mkdir(parents=True, exist_ok=True)
 
     reports: list[dict] = []
     missing: list[str] = []
-    for folder, full_name in repositories:
+    for folder, full_name in repository_specs:
         repo = dev_root / folder
         if not repo.is_dir():
             missing.append(full_name)
@@ -103,9 +104,7 @@ def run_initial_scans(
         "schema_version": "0.1",
         "scan_mode": "local_read_only_initial_repository_scan",
         "review_status": "discovered",
-        "requested_repository_count": len(tuple(repositories))
-        if not isinstance(repositories, tuple)
-        else len(repositories),
+        "requested_repository_count": len(repository_specs),
         "scanned_repository_count": len(reports),
         "missing_repositories": sorted(missing),
         "reports": sorted(reports, key=lambda item: item["repository"]),
