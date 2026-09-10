@@ -9,8 +9,10 @@ import { archiveReward, rewardAction, rewardActions, rewardAmount, rewardFields,
 import styles from "../yutai-memo/DatabaseMemo.module.css";
 import { localToday, rewardBalanceSummary, rewardList, rewardPeriodCounts, rewardPeriods, type RewardPeriod, type RewardSort } from "@/lib/yutai/reward-list";
 import listStyles from "./DatabaseRewards.module.css";
+import { DatabaseScan } from "./DatabaseScan";
+import { DatabaseRewardTotals } from "./DatabaseRewardTotals";
 
-export default function DatabaseRewards() {
+export default function DatabaseRewards({ scanEnabled = false }: { scanEnabled?: boolean }) {
   const configured = isSyncConfigured();
   const view = useYutaiWorkspace(1, configured);
   if (!configured) return <section className={styles.page}><p role="alert">DB接続設定がありません。従来保存へは戻しません。</p></section>;
@@ -18,11 +20,11 @@ export default function DatabaseRewards() {
     <p>{view.status === "signed_out" ? "Supabaseへのログインが必要です。" : "優待残高を取得しています。"}</p>
     {view.error && <p role="alert">取得に失敗しました。通信とログイン状態を確認してください。</p>}
     <a href="/account">ログイン画面へ</a> <button onClick={() => window.location.reload()}>再読み込み</button></section>;
-  return <ConnectedRewards key={view.sessionRevision} view={view} />;
+  return <ConnectedRewards key={view.sessionRevision} view={view} scanEnabled={scanEnabled} />;
 }
 type Edit = { snapshot: Workspace; reward: Reward | null };
 type Action = { snapshot: Workspace; reward: Reward; kind: RewardAction; eventId?: string };
-function ConnectedRewards({ view }: { view: ViewState }) {
+function ConnectedRewards({ view, scanEnabled }: { view: ViewState; scanEnabled: boolean }) {
   const connection = useCalendarConnection(view, new Date().getFullYear(), 1);
   const [editor, setEditor] = useState<Edit | null>(null);
   const [action, setAction] = useState<Action | null>(null);
@@ -78,7 +80,8 @@ function ConnectedRewards({ view }: { view: ViewState }) {
   return <section className={`${styles.page} ${listStyles.page}`}>
     <h1>株主優待期限帳</h1><YutaiConnectionStatus connection={connection} scope="残高・期限" />
     {process.env.NEXT_PUBLIC_YUTAI_TRANSFER_DB_PREVIEW === "true" && <p><a href="/tools/data-transfer">優待DBの全件出力・照合</a></p>}
-    <p>DBの残高と利用履歴を表示・更新します。画像スキャン・旧形式の一括取り込み・ホーム通知は未接続です。本番切替は未完了です。</p>
+    <p>DBの残高と利用履歴を表示・更新します。旧期限帳v2の取込はデータ入出力画面で確認できます。本番切替は未完了です。</p>
+    <DatabaseRewardTotals view={view} />
     {notice && <p role="status">{notice}</p>}
     <section className={styles.panel} aria-label="残高の円換算集計">
       <h2>残高の円換算集計</h2>
@@ -89,6 +92,7 @@ function ConnectedRewards({ view }: { view: ViewState }) {
       <p>枚数管理は残数×現在の額面、金額管理は残円です。累計の受取・利用額ではありません。</p>
     </section>
     <fieldset className={styles.panel} disabled={connection.blocked || view.stale}>
+      {scanEnabled && <DatabaseScan snapshot={data} onSave={run} />}
       <div className={styles.row}>
         <label>検索<input value={query} onChange={e => setQuery(e.target.value)} /></label>
         <label>期限月<input type="month" value={month} onChange={e => { setMonth(e.target.value); setPeriod("all"); }} /></label>

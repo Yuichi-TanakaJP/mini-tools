@@ -2,6 +2,11 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { getYutaiRestoreController } from "@/lib/yutai/browser";
+import { getYutaiRepository } from "@/lib/yutai/browser";
+import { getSupabaseEnv } from "@/lib/supabase/config";
+import { freshWorkspaceExport } from "@/lib/yutai/transfer";
+import { getSessionActionRunner } from "@/lib/yutai/action-runner";
+import { convertLegacyInput } from "@/lib/yutai/legacy-import";
 import { collectionLabels, collections, MAX_EXPORT_BYTES, parseWorkspaceExport } from "@/lib/yutai/transfer";
 
 export default function DatabaseRestore() {
@@ -9,6 +14,7 @@ export default function DatabaseRestore() {
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
   const [text, setText] = useState(""), [reason, setReason] = useState(""), [planId, setPlanId] = useState("");
   const [confirmed, setConfirmed] = useState(false), [error, setError] = useState(""), [reading, setReading] = useState(false);
+  const [additionsOnly, setAdditionsOnly] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   useEffect(() => {
@@ -27,12 +33,22 @@ export default function DatabaseRestore() {
   const busy = state.status === "busy" || reading;
   const p = state.preview;
   const editable = !busy && !p && !state.appliedAttempt;
-  async function select(file?: File) {
-    setText(""); setError(""); setReading(true);
+  async function select(file?: File, legacy = false) {
+    setText(""); setError(""); setReading(true); setAdditionsOnly(legacy);
     try {
       if (!file) return;
       if (file.size > MAX_EXPORT_BYTES) throw new Error("ファイルが10MBを超えています。");
-      const input = await file.text(); await parseWorkspaceExport(input); setText(input);
+      let input = await file.text();
+      if (legacy) {
+        const repo = getYutaiRepository(); const identity = repo.getIdentity();
+        const latest = await freshWorkspaceExport(repo, getSupabaseEnv().url, identity.sessionRevision, () => {
+          if (["running", "paused"].includes(getSessionActionRunner(repo, identity.sessionRevision).getSnapshot().status)) throw new Error("保存結果を確定してください。");
+        });
+        input = JSON.stringify(await convertLegacyInput(input, latest));
+        if (repo.getIdentity().sessionRevision !== identity.sessionRevision) return;
+        setReason("旧優待データを確認して追加。既存DBデータは保持。");
+      }
+      await parseWorkspaceExport(input); setText(input);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "読込失敗"); }
     finally { setReading(false); }
   }
@@ -51,8 +67,10 @@ export default function DatabaseRestore() {
     <p>本人の8種類をファイルの状態へ置き換えます。ファイルにない行は削除対象です。他ユーザー・他ツール・旧端末データ・既存監査は変更しません。</p>
     <p>差分確認では変更前データをDB内へコピーして保全します。元の業務データは空にしません。復元APIが管理者により有効化されている環境だけで利用できます。</p>
     <label>復元用の優待DBファイル<input type="file" accept=".json,application/json" disabled={!editable} onChange={e => void select(e.target.files?.[0])} /></label>
+    <label>旧優待データを追加取込<input type="file" accept=".json,application/json" disabled={!editable} onChange={e => void select(e.target.files?.[0], true)} /></label>
+    <p>期限帳v2配列、または旧端末バックアップ内の優待メモ・月別入力・タグ・仕込み履歴・共通ピック/パス・期限帳v2を全件検査して追加案を作ります。他ツールのキーは対象外です。既存DBとの差分・重複候補・未記録の権利年・不明な形式は停止します。下の全件差分とバックアップ確認後にのみ保存します。</p>
     <label style={{ display: "block" }}>復元理由<textarea value={reason} maxLength={1000} disabled={!editable} onChange={e => setReason(e.target.value)} /></label>
-    <button disabled={!editable || !text || !reason.trim()} onClick={() => { setConfirmed(false); void controller.preview(text, reason); }}>復元の差分を確認する</button>
+    <button disabled={!editable || !text || !reason.trim()} onClick={() => { setConfirmed(false); void controller.preview(text, reason, additionsOnly); }}>復元の差分を確認する</button>
     <hr />
     <label>保存したプランID<input value={planId} disabled={busy || state.appliedAttempt} onChange={e => setPlanId(e.target.value.trim())} placeholder="バックアップのファイル名に含まれるUUID" /></label>
     <button disabled={busy || !(state.planId || planId)} onClick={() => { setConfirmed(false); void controller.recover(state.planId || planId); }}>同じプランの結果を確認する</button>
