@@ -26,6 +26,9 @@ test("DB reward filters and table are read-only, including mobile and month roll
   });
   await page.goto("/tools/yutai-expiry");
   await expect(page.getByRole("button", { name: "すべて (4)", exact: true })).toBeVisible();
+  const balanceSummary = page.getByRole("region", { name: "残高の円換算集計" });
+  await expect(balanceSummary).toContainText("0円（判明分のみ・額面未設定 2件は換算不可）");
+  await expect(balanceSummary).toContainText("0.25円（判明分のみ・額面未設定 1件は換算不可）");
   await page.getByRole("button", { name: "期限切れ (1)", exact: true }).click();
   await expect(page.getByRole("article")).toHaveCount(1); await expect(page.getByRole("article", { name: "期限切れ優待" })).toBeVisible();
   await page.getByRole("button", { name: "来月以降 (1)", exact: true }).click();
@@ -44,6 +47,7 @@ test("DB reward filters and table are read-only, including mobile and month roll
   await expect(table.getByRole("rowheader").first()).toContainText("来年期限");
   await page.getByLabel("検索", { exact: true }).fill("存在しない");
   await expect(page.getByText("条件に一致する優待はありません。検索や期限の条件を変更してください。")).toBeVisible();
+  await expect(balanceSummary).toContainText("額面未設定 2件は換算不可");
   await page.getByLabel("検索", { exact: true }).fill("");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: ".tmp/yutai-expiry-table-mobile.png", fullPage: true });
