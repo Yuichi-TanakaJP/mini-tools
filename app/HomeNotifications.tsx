@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   selectUpcomingBenefitExpiries,
+  selectUpcomingRewardExpiries,
   type UpcomingBenefitExpiry,
 } from "@/app/home-notifications/yutai-expiry";
 import { loadReadEventIds } from "@/app/tools/disclosure-radar/read-state";
@@ -19,6 +20,8 @@ import type {
 import type { EarningsCalendarItem } from "@/app/tools/earnings-calendar/types";
 import type { EconCalendarEvent } from "@/app/tools/econ-calendar/types";
 import { loadItems } from "@/app/tools/my-stocks/storage";
+import { isSyncConfigured } from "@/lib/supabase/config";
+import { getYutaiRepository, useYutaiWorkspace } from "@/lib/yutai/browser";
 import {
   getBenefitsServerSnapshot,
   getBenefitsSnapshot,
@@ -27,6 +30,7 @@ import {
 
 const DISCLOSURE_NOTIFICATION_RANGE_DAYS = 7;
 const PREVIEW_ITEM_COUNT = 3;
+const noLegacySubscription = () => () => {};
 
 type DisclosureNotificationData = {
   latestDate: string;
@@ -371,14 +375,20 @@ async function loadEconNotifications(): Promise<EconNotificationData | null> {
 export default function HomeNotifications() {
   const [state, setState] = useState<NotificationState>({ status: "loading" });
   const [today, setToday] = useState(todayLocalDateKey);
+  const database = process.env.NEXT_PUBLIC_YUTAI_EXPIRY_DB_PREVIEW === "true";
+  const configured = isSyncConfigured();
+  const view = useYutaiWorkspace(1, database && configured);
+  const confirmed = configured && view.status === "ready" && !view.stale && view.data !== null;
   const benefitItems = useSyncExternalStore(
-    subscribeBenefitsStore,
-    getBenefitsSnapshot,
+    database ? noLegacySubscription : subscribeBenefitsStore,
+    database ? getBenefitsServerSnapshot : getBenefitsSnapshot,
     getBenefitsServerSnapshot,
   );
   const upcomingBenefitExpiries = useMemo(
-    () => selectUpcomingBenefitExpiries(benefitItems, today),
-    [benefitItems, today],
+    () => database
+      ? selectUpcomingRewardExpiries(confirmed ? view.data!.rewards : [], today)
+      : selectUpcomingBenefitExpiries(benefitItems, today),
+    [database, confirmed, view.data, benefitItems, today],
   );
 
   useEffect(() => {
@@ -395,7 +405,14 @@ export default function HomeNotifications() {
       () => setToday(todayLocalDateKey()),
       nextDay.getTime() - now.getTime(),
     );
-    return () => window.clearTimeout(timeoutId);
+    const refreshDate = () => setToday(todayLocalDateKey());
+    window.addEventListener("focus", refreshDate);
+    document.addEventListener("visibilitychange", refreshDate);
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.removeEventListener("focus", refreshDate);
+      document.removeEventListener("visibilitychange", refreshDate);
+    };
   }, [today]);
 
   useEffect(() => {
@@ -443,7 +460,7 @@ export default function HomeNotifications() {
     return disclosureCount + earningsEventCount + econEventCount;
   }, [state]);
 
-  if (state.status !== "ready" && upcomingBenefitExpiries.length === 0) {
+  if (!database && state.status !== "ready" && upcomingBenefitExpiries.length === 0) {
     return null;
   }
 
@@ -459,7 +476,7 @@ export default function HomeNotifications() {
           <p className="home-notifications__eyebrow">NOTIFICATIONS</p>
           <h2>期限・市場の注目イベント</h2>
         </div>
-        <span className="home-notifications__count">注目 {totalNotificationCount}件</span>
+        <span className="home-notifications__count">{database && !confirmed ? "優待期限は未確認" : `注目 ${totalNotificationCount}件`}</span>
       </div>
 
       <p className="home-notifications__summary">
@@ -468,6 +485,19 @@ export default function HomeNotifications() {
       </p>
 
       <div className="home-notifications__groups">
+        {database && (
+          <div className="home-notifications__group" aria-label="優待期限の取得状態">
+            <p>{!configured ? "優待DBの接続設定がありません。" : view.status === "signed_out"
+              ? "優待期限の確認にはログインが必要です。" : view.status === "loading" || view.status === "idle"
+              ? "優待期限を取得中です。" : !confirmed
+              ? "優待期限を取得できませんでした。件数は未確認です。"
+              : `優待DBで確認済み: 7日以内 ${upcomingBenefitExpiries.length}件`}</p>
+            {confirmed && view.fetchedAt !== null && <p>取得日時: {new Date(view.fetchedAt).toLocaleString("ja-JP")}</p>}
+            {configured && view.status !== "signed_out" && <button type="button"
+              disabled={view.status === "loading" || view.status === "idle"}
+              onClick={() => { void getYutaiRepository().load(1, true).catch(() => {}); }}>優待期限を再取得</button>}
+          </div>
+        )}
         <BenefitExpiryPreviewList items={upcomingBenefitExpiries} />
         {earnings && hasEarningsNotifications(earnings) ? (
           <div className="home-notifications__group home-notifications__group--earnings">
