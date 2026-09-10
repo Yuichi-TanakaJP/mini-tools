@@ -7,6 +7,8 @@ import type { ViewState } from "@/lib/yutai/repository";
 import type { CommandDraft, Reward, TrackMode, Workspace } from "@/lib/yutai/contracts";
 import { archiveReward, rewardAction, rewardActions, rewardAmount, rewardFields, rewardNumber, rewardUnit, saveReward, type RewardAction } from "@/lib/yutai/rewards";
 import styles from "../yutai-memo/DatabaseMemo.module.css";
+import { localToday, rewardList, rewardPeriodCounts, rewardPeriods, type RewardPeriod, type RewardSort } from "@/lib/yutai/reward-list";
+import listStyles from "./DatabaseRewards.module.css";
 
 export default function DatabaseRewards() {
   const configured = isSyncConfigured();
@@ -28,6 +30,15 @@ function ConnectedRewards({ view }: { view: ViewState }) {
   const [archives, setArchives] = useState(false);
   const [completed, setCompleted] = useState(true);
   const [month, setMonth] = useState("");
+  const [period, setPeriod] = useState<RewardPeriod>("all");
+  const [sort, setSort] = useState<RewardSort>("expiryAsc");
+  const [layout, setLayout] = useState<"cards" | "table">("cards");
+  const [today, setToday] = useState(localToday);
+  useEffect(() => {
+    const update = () => setToday(localToday());
+    const timer = setInterval(update, 60_000); window.addEventListener("focus", update);
+    return () => { clearInterval(timer); window.removeEventListener("focus", update); };
+  }, []);
   const [notice, setNotice] = useState("");
   const data = view.data!;
   useEffect(() => {
@@ -40,24 +51,9 @@ function ConnectedRewards({ view }: { view: ViewState }) {
     setNotice(""); void connection.save([() => command]);
   };
   const openAction = (reward: Reward, kind: RewardAction, eventId?: string) => { setEditor(null); setAction({ snapshot: data, reward, kind, eventId }); };
-  const rewards = data.rewards.filter(r => (archives || !r.archived_at) && (completed || r.remaining_value > 0) &&
-    (!month || r.expires_on?.startsWith(month)) && `${r.title} ${r.company} ${r.memo}`.toLowerCase().includes(query.toLowerCase()))
-    .sort((a, b) => (a.expires_on ?? "9999").localeCompare(b.expires_on ?? "9999") || a.title.localeCompare(b.title, "ja"));
-  return <section className={styles.page}>
-    <h1>株主優待期限帳</h1><YutaiConnectionStatus connection={connection} scope="残高・期限" />
-    {process.env.NEXT_PUBLIC_YUTAI_TRANSFER_DB_PREVIEW === "true" && <p><a href="/tools/data-transfer">優待DBの全件出力・照合</a></p>}
-    <p>DBの残高と利用履歴を表示・更新します。画像スキャン・一括取り込み/復元実行・ホーム通知は未接続です。本番切替は未完了です。</p>
-    {notice && <p role="status">{notice}</p>}
-    <fieldset className={styles.panel} disabled={connection.blocked || view.stale}>
-      <div className={styles.row}>
-        <label>検索<input value={query} onChange={e => setQuery(e.target.value)} /></label>
-        <label>期限月<input type="month" value={month} onChange={e => setMonth(e.target.value)} /></label>
-        <button onClick={() => setMonth("")}>全期限を表示</button>
-        <label><input type="checkbox" checked={archives} onChange={e => setArchives(e.target.checked)} />アーカイブを含む</label>
-        <label><input type="checkbox" checked={completed} onChange={e => setCompleted(e.target.checked)} />使用済みを含む</label>
-        <button onClick={() => { setAction(null); setEditor({ snapshot: data, reward: null }); }}>優待を追加</button>
-      </div><p>{rewards.length}件</p>
-      {rewards.map(reward => <article key={reward.id} className={styles.card} aria-label={reward.title}>
+  const rewards = rewardList(data.rewards, { archives, completed, month, query, period, sort }, today);
+  const counts = rewardPeriodCounts(data.rewards, today);
+  const cards = rewards.map(reward => <article key={reward.id} className={styles.card} aria-label={reward.title}>
         <h2>{reward.title}{reward.archived_at && "（アーカイブ済み）"}</h2>
         <p>{reward.company} / 期限: {reward.expires_on ?? "未設定"}</p>
         <p>残高: {rewardAmount(reward.remaining_value)}{rewardUnit(reward.track_mode)} / 初期: {rewardAmount(reward.initial_value)}{rewardUnit(reward.track_mode)}</p>
@@ -77,7 +73,36 @@ function ConnectedRewards({ view }: { view: ViewState }) {
             <button disabled={Boolean(reward.archived_at)} onClick={() => openAction(reward, "remove", event.id)}>この履歴を取り消す</button>
           </div>)}
         </details>
-      </article>)}
+      </article>);
+  return <section className={`${styles.page} ${listStyles.page}`}>
+    <h1>株主優待期限帳</h1><YutaiConnectionStatus connection={connection} scope="残高・期限" />
+    {process.env.NEXT_PUBLIC_YUTAI_TRANSFER_DB_PREVIEW === "true" && <p><a href="/tools/data-transfer">優待DBの全件出力・照合</a></p>}
+    <p>DBの残高と利用履歴を表示・更新します。画像スキャン・旧形式の一括取り込み・ホーム通知は未接続です。本番切替は未完了です。</p>
+    {notice && <p role="status">{notice}</p>}
+    <fieldset className={styles.panel} disabled={connection.blocked || view.stale}>
+      <div className={styles.row}>
+        <label>検索<input value={query} onChange={e => setQuery(e.target.value)} /></label>
+        <label>期限月<input type="month" value={month} onChange={e => { setMonth(e.target.value); setPeriod("all"); }} /></label>
+        <button onClick={() => { setMonth(""); setPeriod("all"); }}>全期限を表示</button>
+        <label>並べ替え<select aria-label="並べ替え" value={sort} onChange={e => setSort(e.target.value as RewardSort)}><option value="expiryAsc">期限が近い順</option><option value="createdDesc">登録が新しい順</option><option value="companyAsc">企業名順</option></select></label>
+        <label><input type="checkbox" checked={archives} onChange={e => setArchives(e.target.checked)} />アーカイブを含む</label>
+        <label><input type="checkbox" checked={completed} onChange={e => setCompleted(e.target.checked)} />使用済みを含む</label>
+        <button onClick={() => { setAction(null); setEditor({ snapshot: data, reward: null }); }}>優待を追加</button>
+      </div>
+      <div className={styles.row} aria-label="期限の絞り込み">{(Object.keys(rewardPeriods) as RewardPeriod[]).map(p => <button key={p} aria-pressed={period === p && !month} onClick={() => { setPeriod(p); setMonth(""); }}>{rewardPeriods[p]} ({counts[p]})</button>)}</div>
+      <p>基準日: {today}（端末の日付）。括弧内は全件中の未アーカイブ・残高ありの件数です。検索結果の件数とは異なります。</p>
+      <div className={styles.row} aria-label="表示形式"><button aria-pressed={layout === "cards"} onClick={() => setLayout("cards")}>カード表示</button><button aria-pressed={layout === "table"} onClick={() => setLayout("table")}>表表示</button></div>
+      <p role="status">表示: {rewards.length}件</p>
+      {layout === "table" && <p>狭い画面では表を横にスクロールできます。右端の「詳細・操作」から編集や履歴確認に進めます。</p>}
+      {!rewards.length && <p>条件に一致する優待はありません。検索や期限の条件を変更してください。</p>}
+      {layout === "cards" ? cards : <div className={listStyles.tableWrap}><table className={listStyles.table} aria-label="優待残高一覧">
+        <thead><tr>{["優待・企業", "期限", "残高 / 初期", "額面", "状態", "詳細・操作"].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
+        <tbody>{rewards.map((reward, index) => <tr key={reward.id}><th scope="row">{reward.title}<br />{reward.company}</th><td>{reward.expires_on ?? "未設定"}</td>
+          <td>{rewardAmount(reward.remaining_value)}{rewardUnit(reward.track_mode)} / {rewardAmount(reward.initial_value)}{rewardUnit(reward.track_mode)}</td>
+          <td>{reward.track_mode === "amount" ? "対象外（金額管理）" : reward.unit_yen === null ? "未設定" : `${rewardAmount(reward.unit_yen)}円`}</td>
+          <td>{reward.archived_at ? "アーカイブ済み" : reward.remaining_value === 0 ? "使用済み" : reward.expires_on && reward.expires_on < today ? "期限切れ" : "残高あり"}</td>
+          <td><details><summary>{reward.title}の詳細・操作</summary>{cards[index]}</details></td></tr>)}</tbody>
+      </table></div>}
       {editor && <RewardEditor key={editor.reward ? `${editor.reward.id}:${editor.reward.revision}` : "new"} {...editor} onSave={run} onClose={() => setEditor(null)} />}
       {action && <RewardOperation key={`${action.reward.id}:${action.reward.revision}:${action.kind}:${action.eventId ?? ""}`} {...action} onSave={run} onClose={() => setAction(null)} />}
     </fieldset>
