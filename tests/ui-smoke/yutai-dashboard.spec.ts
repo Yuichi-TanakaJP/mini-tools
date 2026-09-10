@@ -49,14 +49,14 @@ for (const disrupted of [false, true]) test(`dashboard DB saves and preserves le
       profiles: [profile], month_states: months, cycles, tags: [], profile_tags: [], rewards: [], reward_events: [], selections, effective_selections: [] } });
   });
   await page.goto("/tools/yutai-dashboard?month=2026-09");
-  await expect(page.getByText("Supabase接続の検証モード（優待ダッシュボード）")).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "保存状態" })).toBeVisible();
   await page.getByRole("button", { name: "パスする", exact: true }).click();
   if (disrupted) {
     await expect(page.getByText(/今回の保存結果は不明/)).toBeVisible();
     await expect(page.getByRole("button", { name: /^パス/ })).toBeDisabled();
     await page.getByRole("button", { name: "同じ要求を再確認・続行" }).click();
   }
-  await expect(page.getByText("Supabaseへ保存し、表示を更新しました。")).toBeVisible();
+  await expect(page.getByText("保存しました", { exact: true })).toBeVisible();
   expect(writes[0]).toMatchObject({ command_type: "set_selection", target: { entitlement_month: 9 }, expected_revision: 0 });
   if (disrupted) expect(writes[0]).toEqual(writes[1]);
   expect(selections[0].selection_status).toBe("picked");
@@ -85,7 +85,7 @@ for (const disrupted of [false, true]) test(`dashboard DB saves and preserves le
   expect(errors).toEqual([]);
   if (disrupted) await page.getByRole("button", { name: "キャンセル", exact: true }).click();
   await page.goto("/tools/yutai-dashboard?month=all");
-  await expect(page.getByText("Supabase接続の検証モード（優待ダッシュボード）")).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "保存状態" })).toBeVisible();
   const rows = page.getByRole("row").filter({ hasText: "接続テスト銘柄" });
   await expect(rows).toHaveCount(2);
   await expect(rows.nth(0).getByRole("button", { name: "★", exact: true })).toHaveAttribute("aria-pressed", "true");
