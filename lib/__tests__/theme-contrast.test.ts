@@ -12,9 +12,15 @@ import { describe, expect, it } from "vitest";
 
 const BODY = 4.5;
 const UI = 3;
+/** 面として見分けがつく最低比。チップが背後の面に溶けないことだけを見る */
+const SURFACE = 1.05;
+/** 役割の違う色が混ざらない最低距離（Oklab の dE） */
+const ROLE_GAP = 0.045;
 
-/** [前景トークン, 背景トークン, 必要比] */
-const PAIRS: ReadonlyArray<readonly [string, string, number]> = [
+/** [前景トークン, 背景トークン, 必要比, (半透明なら合成する下地)] */
+const PAIRS: ReadonlyArray<
+  readonly [string, string, number] | readonly [string, string, number, string]
+> = [
   ["--color-text", "--color-bg-card", BODY],
   ["--color-text", "--color-bg-input", BODY],
   ["--color-text-sub", "--color-bg-card", BODY],
@@ -29,8 +35,9 @@ const PAIRS: ReadonlyArray<readonly [string, string, number]> = [
   ["--color-accent-hover", "--color-bg-card", BODY],
   ["--color-accent-text", "--color-accent", BODY],
   ["--color-neutral-text", "--color-neutral-bg", BODY],
-  ["--color-header-text", "--color-header-bg", BODY],
-  ["--color-header-muted", "--color-header-bg", BODY],
+  // ヘッダーは半透明なので、いちばん明るい下地（白）に重なった最悪ケースで見る
+  ["--color-header-text", "--color-header-bg", BODY, "#ffffff"],
+  ["--color-header-muted", "--color-header-bg", BODY, "#ffffff"],
   ["--color-info-text", "--color-info-bg", BODY],
   ["--color-success-text", "--color-success-bg", BODY],
   ["--color-warning-text", "--color-warning-bg", BODY],
@@ -53,6 +60,21 @@ const PAIRS: ReadonlyArray<readonly [string, string, number]> = [
   ["--color-chart-4", "--color-bg-card", UI],
   ["--color-chart-5", "--color-bg-card", UI],
   ["--color-chart-6", "--color-bg-card", UI],
+  // neutral チップが背後の面に溶けない
+  ["--color-neutral-bg", "--color-bg-card", SURFACE],
+  ["--color-neutral-bg", "--color-bg", SURFACE],
+];
+
+/**
+ * 役割の違う色どうしが同じ色に見えないことを保つ。
+ * 明度比では色相の違いを測れない（同じ明度なら必ず 1.0 付近になる）ので、
+ * ここだけ Oklab 上の距離で見る。
+ */
+const DISTINCT: ReadonlyArray<readonly [string, string]> = [
+  ["--color-fall", "--color-info"],
+  ["--color-fall", "--color-accent"],
+  ["--color-rise", "--color-error"],
+  ["--color-rise", "--color-warning"],
 ];
 
 function selectorBody(css: string, selector: string): string {
@@ -71,20 +93,56 @@ function tokenMap(body: string): Map<string, string> {
   return map;
 }
 
+/** 半透明トークンを下地に合成して不透明な hex にする */
+function flatten(value: string, backdrop: string): string {
+  if (value.startsWith("#")) return value;
+  const parts = /^rgba?\(([^)]+)\)$/.exec(value);
+  if (!parts) throw new Error(`解釈できない色です: ${value}`);
+  const [r, g, b, a = 1] = parts[1].split(",").map((n) => Number.parseFloat(n));
+  const base = rgb(backdrop);
+  const mix = (fg: number, bg: number) => Math.round(fg * a + bg * (1 - a));
+  return (
+    "#" +
+    [mix(r, base[0]), mix(g, base[1]), mix(b, base[2])]
+      .map((n) => n.toString(16).padStart(2, "0"))
+      .join("")
+  );
+}
+
+function rgb(hex: string): [number, number, number] {
+  const match = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!match) throw new Error(`hex 以外の値は扱えません: ${hex}`);
+  const n = Number.parseInt(match[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/** sRGB を Oklab へ。色相の違いを測るために使う */
+function oklab(hex: string): [number, number, number] {
+  const [r, g, b] = rgb(hex).map(channel);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return [
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+  ];
+}
+
+function colorDistance(a: string, b: string): number {
+  const x = oklab(a);
+  const y = oklab(b);
+  return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
+}
+
 function channel(value: number): number {
   const c = value / 255;
   return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
 }
 
 function relativeLuminance(hex: string): number {
-  const match = /^#([0-9a-f]{6})$/i.exec(hex);
-  if (!match) throw new Error(`hex 以外の値はコントラスト検証できません: ${hex}`);
-  const n = Number.parseInt(match[1], 16);
-  return (
-    0.2126 * channel((n >> 16) & 255) +
-    0.7152 * channel((n >> 8) & 255) +
-    0.0722 * channel(n & 255)
-  );
+  const [r, g, b] = rgb(hex);
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
 }
 
 function contrast(fg: string, bg: string): number {
@@ -107,14 +165,29 @@ describe("theme contrast", () => {
     ["dark", dark],
   ] as const) {
     describe(themeName, () => {
-      it.each(PAIRS)("%s on %s meets %s:1", (fgToken, bgToken, required) => {
-        const fg = tokens.get(fgToken);
-        const bg = tokens.get(bgToken);
-        expect(fg, `${fgToken} が未定義`).toBeDefined();
-        expect(bg, `${bgToken} が未定義`).toBeDefined();
-        expect(contrast(fg as string, bg as string)).toBeGreaterThanOrEqual(
-          required,
-        );
+      it.each(PAIRS)(
+        "%s on %s meets %s:1",
+        (fgToken, bgToken, required, backdrop = "#ffffff") => {
+          const fg = tokens.get(fgToken);
+          const bg = tokens.get(bgToken);
+          expect(fg, `${fgToken} が未定義`).toBeDefined();
+          expect(bg, `${bgToken} が未定義`).toBeDefined();
+          // 背景をまず下地に合成し、前景はその合成済みの面の上に重ねる
+          const surface = flatten(bg as string, backdrop);
+          expect(
+            contrast(flatten(fg as string, surface), surface),
+          ).toBeGreaterThanOrEqual(required);
+        },
+      );
+
+      it.each(DISTINCT)("%s and %s stay distinguishable", (a, b) => {
+        const first = tokens.get(a);
+        const second = tokens.get(b);
+        expect(first, `${a} が未定義`).toBeDefined();
+        expect(second, `${b} が未定義`).toBeDefined();
+        expect(
+          colorDistance(first as string, second as string),
+        ).toBeGreaterThanOrEqual(ROLE_GAP);
       });
     });
   }

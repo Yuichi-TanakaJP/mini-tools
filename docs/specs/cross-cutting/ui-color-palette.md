@@ -30,8 +30,8 @@ Light と Dark は別々に選んだ配色ではなく、**同じ hue 軸から�
 |---|---|---|
 | Neutral hue | **256** | 面（bg 系）、本文、境界線、ヘッダー、neutral |
 | Accent hue | **264** | accent 系、chart-1 |
-| Semantic hue | info 255 / success 152 / warning 62 / error 25 | 状態色 |
-| Financial hue | rise 32 / fall 252 | 騰落 |
+| Semantic hue | info 255 / success 152 / warning 62 / error 16 | 状態色 |
+| Financial hue | rise 29 / fall 252 | 騰落 |
 | Chart hue | 264 / 205 / 155 / 95 / 35 / 320 | グラフ系列 |
 
 **テーマを切り替えても hue は動かさない。** 動かすのは明度 (L) と、暗所で刺さらないための彩度 (C) だけ。
@@ -54,9 +54,9 @@ Light は白へ向かって、Dark は明るい方へ向かって、同じ順序
 Dark では影がほぼ見えないため、奥行きは影ではなく**この明度差**で表す。
 Light の card / elevated は同値なので、そちらは `--shadow-*` で差を付ける。
 
-### 状態色の作り方
+### 状態色・騰落の作り方
 
-状態色は必ず foreground / bg / border / text の組で作り、同じ L・C を全 hue に適用する。
+状態色と騰落は必ず foreground / bg / border / text の組で作る。まず全 hue 共通の基準値を置く。
 
 | 部品 | Light (L, C) | Dark (L, C) |
 |---|---|---|
@@ -65,8 +65,32 @@ Light の card / elevated は同値なので、そちらは `--shadow-*` で差�
 | border | 88%, 0.075 | 42%, 0.085 |
 | text（bg の上に置く文字） | foreground −14% | foreground +14% |
 
-warning (hue 62) と success (hue 152) は同じ L だと他の hue より明るく見えるため、
-foreground の L に Light +7 / +2、Dark −7 / −2 の補正を入れている。
+そのうえで、**役割の強さに応じて彩度に倍率をかける**。同じ青・同じ赤が並んでも役割が読み分けられるのは、
+色相ではなくこの彩度差による。
+
+| 系統 | 彩度倍率 | 理由 |
+|---|---|---|
+| rise / fall | ×1.12 | 一目で読む信号。いちばん彩度が高い |
+| success / warning | ×1.00 | 基準 |
+| error | ×0.88 | 警告だが騰落の赤より一段落とす |
+| info | ×0.65 | 「情報」であって警報ではない。いちばん静か |
+
+明度も、hue ごとの見た目の明るさの差を吸収するために補正する（値は Light 基準、Dark は符号反転）。
+
+| 系統 | 明度補正 | 理由 |
+|---|---|---|
+| warning | +7 | hue 62 は同じ L だと茶色に沈む |
+| rise / fall | +6（Light のみ） | 一目で読む信号なので明るい側に置く。Dark は既に L74 で十分明るい |
+| error | +3 | 騰落の赤と明度でも差をつける |
+| success | +2 | hue 152 のわずかな沈みを補正 |
+
+### 役割の違う色が混ざらないこと
+
+ブランドが青で、日本株の下落も青なので、accent / info / fall は必然的に近い色になる。
+同様に rise（上昇＝赤）と error も近い。ここは**明度比では測れない**（同じ明度なら色相が違っても比は 1.0 付近になる）ので、
+Oklab 上の距離 dE で 0.045 以上を保つ。上の彩度倍率と明度補正は、この距離を作るための調整でもある。
+
+`rise` を赤から外して距離を稼ぐことはしない。日本株の「上昇＝赤」は動かさない前提とする。
 
 ### sRGB 範囲外の扱い
 
@@ -95,6 +119,11 @@ foreground の L に Light +7 / +2、Dark −7 / −2 の補正を入れてい�
 --color-accent:           #265adf;
 --color-accent-sub:       #e9f0ff;
 --color-accent-hover:     #1745c2;
+
+--color-info:             #2e5e9a;
+--color-error:            #aa3848;
+--color-rise:             #c52d22;
+--color-fall:             #006fc8;
 ```
 
 **雰囲気:** 明るい・信頼感・金融サービス寄り。青みグレー（slate 系）で統一する。
@@ -119,6 +148,11 @@ foreground の L に Light +7 / +2、Dark −7 / −2 の補正を入れてい�
 --color-accent:           #5b8df9;
 --color-accent-sub:       #182749;
 --color-accent-hover:     #7fa9ff;
+
+--color-info:             #84aee4;
+--color-error:            #e48087;
+--color-rise:             #fe8070;
+--color-fall:             #65afff;
 ```
 
 **雰囲気:** 暗いが黒ではない。Light と同じ青みグレーの軸を保った、落ち着いた夜間表示。
@@ -154,6 +188,15 @@ foreground の L に Light +7 / +2、Dark −7 / −2 の補正を入れてい�
 
 面に対して 3:1 が要るのは操作部品だけなので、装飾線に `--color-border-control` を使うと画面が硬くなる。逆に入力欄を `--color-border` で描くと、その欄が操作可能だと分からなくなる。
 
+### ヘッダーだけ半透明を残す
+
+面（`--color-bg*`）と境界線は不透明に統一するが、`--color-header-*` だけは半透明のままにする。
+共通ヘッダーは `backdropFilter: blur(14px)` を敷いた帯で、不透明にすると blur が効かなくなり、
+スクロール中にコンテンツが下を通る表現が消えるため。両テーマで同じ値を使う。
+
+半透明トークンのコントラストは、**いちばん明るい下地（白）にヘッダーを合成し、その面の上に文字を重ねた**
+最悪ケースで検証する。
+
 ### 適用規約
 
 1. ライトのトークンは `app/globals.css` の `:root`、ダークのトークンは `html[data-theme="dark"]` に同じ役割名で定義する。
@@ -164,6 +207,8 @@ foreground の L に Light +7 / +2、Dark −7 / −2 の補正を入れてい�
 6. テーマ選択 UI は `components/ColorThemeSelector.tsx`、初回描画前の適用は `lib/color-theme.ts` と `app/layout.tsx` が担当する。
 7. 保存値が壊れている場合や LocalStorage が利用できない場合は `端末設定` と同じ解決方法へフォールバックする。
 8. 値を変えるときは上の生成規則に従い、`lib/__tests__/theme-contrast.test.ts` を通してから確定する。
+   このテストはコントラストのほか、neutral チップが面に溶けないこと、
+   役割の違う色が dE 0.045 以上離れていることも見る。
 
 ### 廃止した配色
 

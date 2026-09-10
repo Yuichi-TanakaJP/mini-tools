@@ -35,15 +35,15 @@
   --color-accent-text:      #ffffff;
   --color-accent-glow:      rgba(38, 90, 223, 0.10);
 
-  /* Semantic — foreground / bg / border / text を必ず組で使う */
-  --color-info:             #005bb4;
+  /* Semantic — 組で使う。info は「情報」なので彩度を落とし、error は「警告」なので保つ */
+  --color-info:             #2e5e9a;
   --color-info-bg:          #ecf4ff;
-  --color-info-border:      #bedaff;
-  --color-info-text:        #003670;
-  --color-error:            #a92227;
-  --color-error-bg:         #ffefee;
-  --color-error-border:     #ffc8c3;
-  --color-error-text:       #6f000c;
+  --color-info-border:      #c2daf8;
+  --color-info-text:        #0b376a;
+  --color-error:            #aa3848;
+  --color-error-bg:         #ffefef;
+  --color-error-border:     #ffc7c9;
+  --color-error-text:       #761026;
   --color-danger:           var(--color-error);
   --color-success:          #00773b;
   --color-success-bg:       #e3fbe8;
@@ -53,15 +53,15 @@
   --color-warning-bg:       #fff1e5;
   --color-warning-border:   #fccda5;
   --color-warning-text:     #6e3c00;
-  --color-neutral-bg:       #eef2f7;
-  --color-neutral-text:     #4a5667;
-  --color-neutral-border:   #ced5df;
+  --color-neutral-bg:       #e0e7f0;
+  --color-neutral-text:     #424e5f;
+  --color-neutral-border:   #c2cbd8;
 
-  /* Financial direction — 日本株表示では rise=赤、fall=青。success / error とは役割を分ける */
-  --color-rise:             #a8260f;
-  --color-rise-bg:          #fff0ec;
-  --color-rise-border:      #ffc9bd;
-  --color-fall:             #005eab;
+  /* Financial direction — 上昇=赤 / 下落=青。一目で読む信号なので彩度をいちばん高くする */
+  --color-rise:             #c52d22;
+  --color-rise-bg:          #ffefed;
+  --color-rise-border:      #ffc8c0;
+  --color-fall:             #006fc8;
   --color-fall-bg:          #ebf5ff;
   --color-fall-border:      #bbdbff;
 
@@ -78,12 +78,12 @@
   --shadow-card-hover:      0 2px 6px rgba(17, 27, 41, 0.06), 0 12px 32px rgba(17, 27, 41, 0.10);
   --shadow-panel:           0 4px 12px rgba(17, 27, 41, 0.08), 0 16px 44px rgba(17, 27, 41, 0.16);
 
-  /* Global header — 両テーマ共通の固定ナビゲーション帯。中立色ではなく共通 hue 256 の深いチャコール */
-  --color-header-bg:        #0f1621;
-  --color-header-text:      #eaeff5;
-  --color-header-muted:     #969fab;
-  --color-header-border:    #2b343f;
-  --color-header-control:   #1f2732;
+  /* Global header — blur の上に敷く帯なので、面と違い半透明を維持する（両テーマ共通）*/
+  --color-header-bg:        rgba(15, 22, 33, 0.88);
+  --color-header-text:      rgba(255, 255, 255, 0.92);
+  --color-header-muted:     rgba(255, 255, 255, 0.60);
+  --color-header-border:    rgba(255, 255, 255, 0.14);
+  --color-header-control:   rgba(255, 255, 255, 0.05);
 
   /* モバイル下部固定ナビ(MobileBottomNav)が占める高さ。デスクトップは 0。
      sticky なパネル等が 100dvh 基準で高さを計算する際に差し引くために使う。 */
@@ -122,15 +122,15 @@ html[data-theme="dark"] {
   --color-accent-text:      #0c1220;
   --color-accent-glow:      rgba(91, 141, 249, 0.16);
 
-  /* Semantic — foreground / bg / border / text を必ず組で使う */
-  --color-info:             #6dadff;
-  --color-info-bg:          #162b45;
-  --color-info-border:      #2b4e7a;
+  /* Semantic — 組で使う。info は「情報」なので彩度を落とし、error は「警告」なので保つ */
+  --color-info:             #84aee4;
+  --color-info-bg:          #1e2b3c;
+  --color-info-border:      #384e6b;
   --color-info-text:        #bedaff;
-  --color-error:            #f7857d;
-  --color-error-bg:         #411e1c;
-  --color-error-border:     #753935;
-  --color-error-text:       #ffc8c3;
+  --color-error:            #e48087;
+  --color-error-bg:         #3f2022;
+  --color-error-border:     #703b3f;
+  --color-error-text:       #ffb8bb;
   --color-danger:           var(--color-error);
   --color-success:          #56bd78;
   --color-success-bg:       #12321c;
@@ -140,17 +140,17 @@ html[data-theme="dark"] {
   --color-warning-bg:       #3d2309;
   --color-warning-border:   #6d4113;
   --color-warning-text:     #fbae67;
-  --color-neutral-bg:       #202730;
-  --color-neutral-text:     #aab2bd;
-  --color-neutral-border:   #404854;
+  --color-neutral-bg:       #2e3641;
+  --color-neutral-text:     #b6bec9;
+  --color-neutral-border:   #4d5663;
 
-  /* Financial direction — 日本株表示では rise=赤、fall=青。success / error とは役割を分ける */
-  --color-rise:             #f68771;
-  --color-rise-bg:          #411f18;
-  --color-rise-border:      #743a2f;
+  /* Financial direction — 上昇=赤 / 下落=青。一目で読む信号なので彩度をいちばん高くする */
+  --color-rise:             #fe8070;
+  --color-rise-bg:          #441d18;
+  --color-rise-border:      #79362e;
   --color-fall:             #65afff;
-  --color-fall-bg:          #142b44;
-  --color-fall-border:      #274f7a;
+  --color-fall-bg:          #112b47;
+  --color-fall-border:      #214f7f;
 
   /* Data visualization — 系列の識別用。面や本文には使わない */
   --color-chart-1:          #79a2f9;
