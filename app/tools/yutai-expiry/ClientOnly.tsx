@@ -10,6 +10,6 @@ const ToolClient = dynamic(() => import("./ToolClient"), { ssr: false });
 const DatabaseRewards = dynamic(() => import("./DatabaseRewards"), { ssr: false });
 
 export default function ClientOnly(props: Props) {
-  if (process.env.NEXT_PUBLIC_YUTAI_EXPIRY_DB_PREVIEW === "true") return <DatabaseRewards />;
+  if (process.env.NEXT_PUBLIC_YUTAI_EXPIRY_DB_PREVIEW === "true") return <DatabaseRewards {...props} />;
   return <ToolClient {...props} />;
 }

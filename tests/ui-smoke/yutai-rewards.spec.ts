@@ -3,6 +3,50 @@ import type { Command, CommandReceipt, Reward, Workspace } from "../../lib/yutai
 const date = "2026-09-10T00:00:00Z";
 const owner = "00000000-0000-4000-8000-000000000001";
 
+test("DB scan requires premium and confirms edited data before saving", async ({ page, context }) => {
+  const rewards: Reward[] = []; const commands: Command[] = [];
+  const token = [Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"), Buffer.from(JSON.stringify({ sub: owner, exp: 4_000_000_000, role: "authenticated" })).toString("base64url"), "synthetic"].join(".");
+  const session = { access_token: token, refresh_token: "synthetic", expires_at: 4_000_000_000, expires_in: 3600, token_type: "bearer", user: { id: owner, aud: "authenticated", role: "authenticated", app_metadata: {}, user_metadata: {} } };
+  await context.addCookies([{ name: "sb-yutai-test-auth-token", value: `base64-${Buffer.from(JSON.stringify(session)).toString("base64url")}`, url: "http://127.0.0.1:3146" }]);
+  await page.addInitScript(() => localStorage.setItem("mini-tools:benefits:v2", "preserve"));
+  await page.route("**/api/sync**", route => route.fulfill({ json: { items: [] } }));
+  await page.route("https://yutai-test.supabase.co/**", async route => {
+    if (route.request().url().includes("/auth/")) return route.fulfill({ json: session.user });
+    if (route.request().url().endsWith("stock_notes_record_yutai_command")) {
+      const c = route.request().postDataJSON().p_input as Command; commands.push(c);
+      if (c.command_type !== "create_reward") throw new Error("unexpected command");
+      const reward: Reward = { ...c.payload, id: "scanned", revision: 1, created_at: date, updated_at: date,
+        company: c.payload.company ?? "", expires_on: c.payload.expires_on ?? null, memo: c.payload.memo ?? "", link: c.payload.link ?? null,
+        unit_yen: c.payload.unit_yen ?? null, remaining_value: c.payload.initial_value, archived_at: null, profile_id: null, cycle_id: null };
+      rewards.push(reward);
+      return route.fulfill({ json: { schema_version: 1, request_id: c.request_id, command_type: c.command_type, target_id: reward.id, revision: 1, event_id: "scan-event", replayed: false, before: null, after: reward } });
+    }
+    return route.fulfill({ json: { schema_version: 1, selected_month: 1, as_of: date,
+      counts: { profiles: 0, month_states: 0, cycles: 0, tags: 0, profile_tags: 0, rewards: rewards.length, reward_events: 0, selections: 0, effective_selections: 0 },
+      profiles: [], month_states: [], cycles: [], tags: [], profile_tags: [], rewards, reward_events: [], selections: [], effective_selections: [] } });
+  });
+  await page.route("**/api/yutai-expiry/scan", route => route.fulfill({ json: { result: { title: "読取名", company: "読取会社", expiresOn: "2027-01-01", amountYen: 500, quantity: 2, confidence: 0.9 } } }));
+  await page.goto("/tools/yutai-expiry");
+  await expect(page.getByRole("button", { name: "画像から選択" })).toHaveCount(0);
+  expect((await page.request.post("/api/premium/login", { data: { password: "synthetic-test-password" } })).ok()).toBe(true);
+  await page.reload();
+  const scan = page.getByRole("region", { name: "DB画像スキャン" });
+  const file = { name: "test.png", mimeType: "image/png", buffer: await page.screenshot() };
+  await scan.locator('input[type="file"]').last().setInputFiles(file);
+  await expect(page.getByLabel("読取優待名")).toHaveValue("読取名");
+  expect(commands).toHaveLength(0);
+  await page.getByLabel("読取優待名").fill("修正した優待");
+  page.once("dialog", dialog => dialog.dismiss());
+  await page.getByRole("button", { name: "読取結果を確認して保存" }).click();
+  expect(commands).toHaveLength(0);
+  page.once("dialog", dialog => dialog.accept());
+  await page.getByRole("button", { name: "読取結果を確認して保存" }).click();
+  await expect(page.getByRole("article", { name: "修正した優待" })).toBeVisible();
+  expect(commands).toHaveLength(1);
+  expect(commands[0].payload).toMatchObject({ title: "修正した優待", initial_value: 2, unit_yen: 500 });
+  expect(await page.evaluate(() => localStorage.getItem("mini-tools:benefits:v2"))).toBe("preserve");
+});
+
 test("home DB expiry hides stale data and never falls back to legacy", async ({ page, context }) => {
   await page.clock.setFixedTime(new Date("2026-12-31T12:00:00Z"));
   const reward: Reward = { id: "home", title: "DB期限テスト", company: "DB通知会社", expires_on: "2027-01-07",

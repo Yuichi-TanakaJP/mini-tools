@@ -2,6 +2,11 @@
 
 ## DB隔離検証
 
+- [ ] 旧期限帳v2配列と端末バックアップの優待キーを読み、全件差分を確認。手入力株数/価値・権利年月・タグ・履歴が保たれる
+- [ ] 旧ファイルに未対応情報・不明な権利年・競合する既存データがあれば保存前に停止。他ツールのデータをDBへ送らない
+- [ ] 追加案作成後に別端末でDBを変更すると、削除/業務内容変更を含む追加プランは拒否する。revision/更新日時だけの更新は明示して許可する
+- [ ] 変更前バックアップ・同意後の保存と再照合が成功する。同じファイル再取込で二重追加しない
+
 ローカル/Previewに `NEXT_PUBLIC_YUTAI_TRANSFER_DB_PREVIEW=true` とSupabase公開接続設定を指定する。
 自動試験は `npx playwright test --config=playwright.yutai.config.ts yutai-transfer.spec.ts`。合成session/模擬DBのみを用いる。
 

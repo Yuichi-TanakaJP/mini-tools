@@ -40,6 +40,22 @@ describe("restore response validation", () => {
   });
 });
 describe("restore confirmation lifecycle", () => {
+  it("rejects concurrent business changes for additive imports", async () => {
+    const f = fixture();
+    await f.controller.preview("file", "legacy import", true);
+    expect(f.controller.getSnapshot().status).toBe("error");
+    await f.controller.apply(id, true);
+    expect(f.transport.apply).not.toHaveBeenCalled();
+    expect(f.repo.getSnapshot(1).maintenance).toBe(false);
+  });
+  it("allows revision-only changes for additive imports", async () => {
+    const f = fixture();
+    f.after.tags[0].name = f.before.tags[0].name;
+    f.preview.changes = snapshotChanges(f.before, f.after);
+    await f.controller.preview("file", "legacy import", true);
+    expect(f.controller.getSnapshot().status).toBe("preview");
+    expect(f.transport.apply).not.toHaveBeenCalled();
+  });
   it("backs up before rows, requires explicit confirmation, then fresh-read verifies all collections", async () => {
     const f = fixture(); await f.controller.preview("file", "reason");
     expect(f.repo.getSnapshot(1).maintenance).toBe(true);

@@ -1,6 +1,6 @@
 import { getSessionActionRunner } from "./action-runner";
 import { classifyFailure, YutaiFailure, type YutaiRepository } from "./repository";
-import { createWorkspaceExport, parseWorkspaceExport } from "./transfer";
+import { canonical, createWorkspaceExport, parseWorkspaceExport } from "./transfer";
 import { parseRestorePreview, parseRestoreReceipt, parseRestoreStatus, snapshotOf, snapshotWorkspace, snapshotsEqual, type RestorePreview, type RestoreReceipt } from "./restore-contracts";
 import type { createRestoreTransport } from "./restore-transport";
 
@@ -37,13 +37,18 @@ export class RestoreController {
     if (this.state.status === "busy" || this.state.appliedAttempt && !["verified", "different"].includes(this.state.status)) return;
     this.unlock(); this.publish(initial);
   }
-  async preview(text: string, reason: string) {
+  async preview(text: string, reason: string, additionsOnly = false) {
     if (this.state.status === "busy" || this.state.appliedAttempt || this.state.preview) return;
     try {
       this.lock(); this.publish({ status: "busy", locked: true, message: "変更前データを保全し、差分を検査しています。業務データはまだ変更しません。" });
       const raw = await this.transport.preview(text, this.project, reason, crypto.randomUUID(), this.identity, new AbortController().signal);
       if (!this.valid()) return;
       const preview = parseRestorePreview(raw);
+      const businessFields = (row: Record<string, unknown> | null) => Object.fromEntries(Object.entries(row ?? {}).filter(([k]) => !["revision", "updated_at"].includes(k)));
+      if (additionsOnly && Object.values(preview.changes).some(rows => rows.some(row => row.action === "delete" ||
+        row.action === "change" && canonical(businessFields(row.before)) !== canonical(businessFields(row.after))))) {
+        throw new Error("取込準備後に既存DBの差分が発生しました。上書きせず停止しました。最新データから読み込み直してください。");
+      }
       this.publish({ status: "preview", preview, planId: preview.plan_id, backupReady: false, message: "差分を確認し、変更前バックアップを保存してください。まだ復元していません。" });
     } catch (error) {
       this.unlock(); this.publish({ status: "error", message: error instanceof YutaiFailure ? "プレビューできません。通信・ログイン・復元API設定を確認してください。業務データの復元は実行していません。" : error instanceof Error ? error.message : "プレビューを確認できません。" });

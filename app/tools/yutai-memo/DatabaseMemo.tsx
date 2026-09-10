@@ -14,6 +14,7 @@ import { CROSS_TYPES, type NikkoShortBalanceData } from "./types";
 import { memoList, type MemoListOptions } from "@/lib/yutai/memo-list";
 import { DatabaseShortBalance } from "./DatabaseShortBalance";
 import styles from "./DatabaseMemo.module.css";
+import { bulkMemoCommands, pastPreparationCycles, type BulkOperation } from "@/lib/yutai/bulk";
 
 // Workspace RPC returns all profile/month/cycle rows; month 1 is only the selection-view argument.
 export default function DatabaseMemo({ shortBalance }: { shortBalance: NikkoShortBalanceData }) {
@@ -38,6 +39,8 @@ function ConnectedMemo({ view, shortBalance }: { view: ViewState; shortBalance: 
   const [editor, setEditor] = useState<{ profile: Profile | null } | null>(null);
   const [monthEditor, setMonthEditor] = useState<{ profile: Profile; month: number; original: MonthState | null } | null>(null);
   const [notice, setNotice] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
+  const [bulkMonth, setBulkMonth] = useState("");
   const [tagEditor, setTagEditor] = useState<{ snapshot: Workspace; profileId: string | null } | null>(null);
   const [cycleEditor, setCycleEditor] = useState<{ snapshot: Workspace; profileId: string; original: Cycle | null } | null>(null);
   const data = view.data!;
@@ -51,14 +54,34 @@ function ConnectedMemo({ view, shortBalance }: { view: ViewState; shortBalance: 
     setNotice(""); void connection.save([() => command]);
   };
   const profiles = memoList(data, { query, inactive: showInactive, month, axis, tag, sort, descending });
+  const bulk = (operation: BulkOperation) => {
+    try {
+      const visible = selected.filter(id => profiles.some(p => p.id === id));
+      const commands = bulkMemoCommands(data, visible, operation, bulkMonth, new Date().toISOString());
+      if (!commands.length) { setNotice("変更はありません。"); return; }
+      const names = profiles.filter(p => visible.includes(p.id)).map(p => `${p.stock_code} ${p.display_name}`).join("\n");
+      if (!window.confirm(`${names}\n${operation === "delete" ? "上記のメモを削除します。操作前の内容はDB監査に残ります。" : `権利年月 ${bulkMonth}を${operation === "prepared" ? "仕込み済み" : "未仕込み"}にします。他の権利年月は変更しません。`}\n途中失敗時は成功分を残して停止します。`)) return;
+      setNotice(""); void connection.save(commands.map(command => () => command));
+    } catch (cause) { setNotice((cause as Error).message); }
+  };
   return <main className={styles.page}>
     <h1>優待銘柄メモ帳</h1>
     <YutaiConnectionStatus connection={connection} scope="メモ帳の基本編集" />
     {process.env.NEXT_PUBLIC_YUTAI_TRANSFER_DB_PREVIEW === "true" && <p><a href="/tools/data-transfer">優待DBの全件出力・照合</a></p>}
     <p>月別の株数・優待価値・タグ・全年度の仕込み履歴をDBへ保存します。
-      一括操作・旧形式インポート・通知は未接続です。本番切替は未完了です。</p>
+      一括操作は対象の権利年月を指定します。旧形式取込はデータ入出力画面で確認できます。本番切替は未完了です。</p>
     {notice && <p role="status">{notice}</p>}
     <fieldset className={styles.panel} disabled={connection.blocked || view.stale}>
+      <section aria-label="メモ一括操作">
+        <label>一括操作の権利年月<input type="month" value={bulkMonth} onChange={e => setBulkMonth(e.target.value)} /></label>
+        <button onClick={() => setSelected(profiles.map(p => p.id))}>表示中を全選択</button><button onClick={() => setSelected([])}>選択解除</button>
+        <p>表示中の選択: {selected.filter(id => profiles.some(p => p.id === id)).length}件。絞り込みで隠れた銘柄は操作しません。</p>
+        <button onClick={() => bulk("prepared")}>選択分を仕込み済みにする</button><button onClick={() => bulk("planned")}>選択分を未仕込みに戻す</button><button onClick={() => bulk("delete")}>選択メモを削除</button>
+      </section>
+      <details><summary>過去の権利月の仕込み記録（月替わり保管）</summary>
+        <p>年月別DBでは記録を移動・削除せず保持します。未来の権利月の先行仕込みはここに含めません。</p>
+        {pastPreparationCycles(data, `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`).map(c => <p key={c.id}>{data.profiles.find(p => p.id === c.profile_id)?.display_name} / {c.entitlement_year}年{c.entitlement_month}月 / {c.prepared_at} / {cycleStatuses[c.status]}</p>)}
+      </details>
       <div className={styles.row}><label>検索<input value={query} onChange={e => setQuery(e.target.value)} /></label>
         <label><input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />非表示も表示</label>
         <label>月の表示軸<select aria-label="月の表示軸" value={axis} onChange={e => setAxis(e.target.value as MemoListOptions["axis"])}><option value="entitlement">権利月</option><option value="preparation">仕込み月</option></select></label>
@@ -74,6 +97,7 @@ function ConnectedMemo({ view, shortBalance }: { view: ViewState; shortBalance: 
       <p>{profiles.length}銘柄</p>
       {!profiles.length && <p>条件に一致する銘柄はありません。</p>}
       {profiles.map(profile => <article className={styles.card} key={profile.id}>
+        <label><input type="checkbox" aria-label={`${profile.stock_code}を一括選択`} checked={selected.includes(profile.id)} onChange={e => setSelected(ids => e.target.checked ? [...ids, profile.id] : ids.filter(id => id !== profile.id))} />一括操作の対象</label>
         <h2>{profile.stock_code} {profile.display_name}{!profile.active && "（非表示）"}</h2>
         <p>{profile.cross_strategy} / {"★".repeat(profile.priority)}</p>
         <p>信用売り残高: {(() => { const value = shortBalance?.byCode?.[profile.stock_code.toUpperCase()]?.sellBalance; return typeof value === "number" && Number.isFinite(value) && value >= 0 ? `${value.toLocaleString("ja-JP")}株` : "未取得"; })()}</p>
