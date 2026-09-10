@@ -2,6 +2,57 @@ import { expect, test } from "@playwright/test";
 import type { Command, CommandReceipt, Reward, Workspace } from "../../lib/yutai/contracts";
 const date = "2026-09-10T00:00:00Z";
 const owner = "00000000-0000-4000-8000-000000000001";
+test("DB reward filters and table are read-only, including mobile and month rollover", async ({ page, context }) => {
+  await page.clock.setFixedTime(new Date("2026-12-31T12:00:00Z"));
+  const base: Reward = { id: "today", title: "当日期限", company: "B", track_mode: "count", initial_value: 2, remaining_value: 1,
+    expires_on: "2026-12-31", unit_yen: null, memo: "検索メモ", link: null, archived_at: null, profile_id: null, cycle_id: null,
+    revision: 1, created_at: date, updated_at: date };
+  const rewards: Reward[] = [base, { ...base, id: "later", title: "来年期限", company: "A", expires_on: "2027-01-01", unit_yen: 0 },
+    { ...base, id: "old", title: "期限切れ優待", expires_on: "2026-12-30", track_mode: "amount", remaining_value: 0.25 },
+    { ...base, id: "none", title: "期限なし優待", expires_on: null }, { ...base, id: "used", title: "使用済み優待", remaining_value: 0 },
+    { ...base, id: "archived", title: "保存した優待", archived_at: date }];
+  const before = JSON.stringify(rewards); let writes = 0;
+  const token = [Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"), Buffer.from(JSON.stringify({ sub: owner, exp: 4_000_000_000, role: "authenticated" })).toString("base64url"), "synthetic"].join(".");
+  const session = { access_token: token, refresh_token: "synthetic", expires_at: 4_000_000_000, expires_in: 3600, token_type: "bearer", user: { id: owner, aud: "authenticated", role: "authenticated", app_metadata: {}, user_metadata: {} } };
+  await context.addCookies([{ name: "sb-yutai-test-auth-token", value: `base64-${Buffer.from(JSON.stringify(session)).toString("base64url")}`, url: "http://127.0.0.1:3146" }]);
+  await page.addInitScript(() => { localStorage.setItem("mini-tools:benefits:v2", "keep-old"); localStorage.setItem("other-tool", "keep-other"); });
+  await page.route("**/api/sync**", route => { if (route.request().method() !== "GET") writes++; return route.fulfill({ json: { items: [] } }); });
+  await page.route("https://yutai-test.supabase.co/**", async route => {
+    if (route.request().url().includes("/auth/")) { await route.fulfill({ json: session.user }); return; }
+    if (!route.request().url().endsWith("stock_notes_get_yutai_workspace")) { writes++; await route.fulfill({ json: {} }); return; }
+    await route.fulfill({ json: { schema_version: 1, selected_month: 1, as_of: date,
+      counts: { profiles: 0, month_states: 0, cycles: 0, tags: 0, profile_tags: 0, rewards: rewards.length, reward_events: 0, selections: 0, effective_selections: 0 },
+      profiles: [], month_states: [], cycles: [], tags: [], profile_tags: [], rewards, reward_events: [], selections: [], effective_selections: [] } });
+  });
+  await page.goto("/tools/yutai-expiry");
+  await expect(page.getByRole("button", { name: "すべて (4)", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "期限切れ (1)", exact: true }).click();
+  await expect(page.getByRole("article")).toHaveCount(1); await expect(page.getByRole("article", { name: "期限切れ優待" })).toBeVisible();
+  await page.getByRole("button", { name: "来月以降 (1)", exact: true }).click();
+  await expect(page.getByRole("article", { name: "来年期限" })).toBeVisible();
+  await page.getByRole("button", { name: "期限未設定 (1)", exact: true }).click();
+  await expect(page.getByRole("article", { name: "期限なし優待" })).toBeVisible();
+  await page.getByRole("button", { name: "全期限を表示", exact: true }).click();
+  await page.getByLabel("使用済みを含む").uncheck(); await expect(page.getByRole("article")).toHaveCount(4);
+  await page.getByLabel("期限月", { exact: true }).fill("2027-01"); await expect(page.getByRole("article")).toHaveCount(1);
+  await page.getByRole("button", { name: "全期限を表示", exact: true }).click();
+  await page.getByRole("button", { name: "表表示", exact: true }).click();
+  const table = page.getByRole("table", { name: "優待残高一覧" });
+  await expect(table.getByRole("row")).toHaveCount(5);
+  await expect(table.getByRole("row").filter({ has: page.getByRole("rowheader", { name: "来年期限 A" }) }).getByRole("cell", { name: "0円", exact: true })).toBeVisible();
+  await page.getByLabel("並べ替え", { exact: true }).selectOption("companyAsc");
+  await expect(table.getByRole("rowheader").first()).toContainText("来年期限");
+  await page.getByLabel("検索", { exact: true }).fill("存在しない");
+  await expect(page.getByText("条件に一致する優待はありません。検索や期限の条件を変更してください。")).toBeVisible();
+  await page.getByLabel("検索", { exact: true }).fill("");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: ".tmp/yutai-expiry-table-mobile.png", fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.clock.setFixedTime(new Date("2027-01-01T12:00:00Z")); await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.getByRole("button", { name: "期限切れ (2)", exact: true })).toBeVisible();
+  expect(writes).toBe(0); expect(JSON.stringify(rewards)).toBe(before);
+  expect(await page.evaluate(() => [localStorage.getItem("mini-tools:benefits:v2"), localStorage.getItem("other-tool")])).toEqual(["keep-old", "keep-other"]);
+});
 for (const disrupted of [false, true]) {
 test(`reward lifecycle preserves history and old storage (disrupted: ${disrupted})`, async ({ page, context }) => {
   const errors: string[] = []; page.on("pageerror", e => errors.push(e.message));
@@ -81,6 +132,8 @@ test(`reward lifecycle preserves history and old storage (disrupted: ${disrupted
   await expect(page.getByRole("dialog", { name: "優待編集" })).toHaveCount(0);
   const card = page.getByRole("article", { name: "検証優待", exact: true });
   await expect(card.getByText("残高: 10枚 / 初期: 10枚", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "表表示", exact: true }).click();
+  await page.getByText("検証優待の詳細・操作", { exact: true }).click();
   await card.getByRole("button", { name: "優待を編集" }).click();
   await page.getByLabel("優待メモ").fill("追記メモ");
   await page.getByRole("button", { name: "優待を保存", exact: true }).click();
@@ -94,6 +147,7 @@ test(`reward lifecycle preserves history and old storage (disrupted: ${disrupted
     await page.getByLabel("優待メモ").fill("確認後の追記");
     await page.getByRole("button", { name: "優待を保存", exact: true }).click();
   }
+  await page.getByRole("button", { name: "カード表示", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "優待編集" })).toHaveCount(0);
   await card.getByRole("button", { name: "優待を編集" }).click();
   await page.getByLabel("優待メモ").fill("未保存の入力");
