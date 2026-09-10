@@ -7,6 +7,61 @@ const row = { id: "profile", stock_code: "1234", display_name: "接続テスト�
   cross_strategy: "未設定", priority: 2, memo: "DBメモ", active: true, one_share_started_on: null, one_share_started_legacy_text: null,
   entry_timing: null, default_preparation_months_before: null, tenure_rule: null, related_url: null, official_benefit_url: null,
   revision: 1, created_at: date, updated_at: date };
+test("memo filters, monthly preparation and credit requests keep DB and legacy unchanged", async ({ page, context }) => {
+  const profiles = [row, { ...row, id: "b", stock_code: "130A", display_name: "B" }, { ...row, id: "c", stock_code: "9999", display_name: "C" }];
+  const month_states = [{ id: "m", profile_id: row.id, entitlement_month: 1, preparation_months_before: 1, required_shares: 100, benefit_value_yen: 1000,
+    long_term_required: false, long_term_benefit: false, month_memo: "", revision: 1, created_at: date, updated_at: date }];
+  const tags = [{ id: "t", name: "絞込タグ", revision: 1, created_at: date, updated_at: date }];
+  const data = { schema_version: 1, selected_month: 1, as_of: date, profiles, month_states, tags,
+    profile_tags: [{ profile_id: row.id, tag_id: "t", created_at: date }], cycles: [], rewards: [], reward_events: [], selections: [], effective_selections: [],
+    counts: { profiles: 3, month_states: 1, tags: 1, profile_tags: 1, cycles: 0, rewards: 0, reward_events: 0, selections: 0, effective_selections: 0 } };
+  const before = JSON.stringify(data); let writes = 0; const requests: unknown[] = []; let rejectRequest = false;
+  const token = [Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"), Buffer.from(JSON.stringify({ sub: owner, exp: 4_000_000_000, role: "authenticated" })).toString("base64url"), "synthetic"].join(".");
+  const session = { access_token: token, refresh_token: "synthetic", expires_at: 4_000_000_000, expires_in: 3600, token_type: "bearer", user: { id: owner, aud: "authenticated", role: "authenticated", app_metadata: {}, user_metadata: {} } };
+  await context.addCookies([{ name: "sb-yutai-test-auth-token", value: `base64-${Buffer.from(JSON.stringify(session)).toString("base64url")}`, url: "http://127.0.0.1:3146" }]);
+  await page.addInitScript(() => localStorage.setItem("yutai_memo_items_v1", "preserve"));
+  await page.route("**/api/sync**", route => { if (route.request().method() !== "GET") writes++; return route.fulfill({ json: { items: [] } }); });
+  await page.route("https://yutai-test.supabase.co/**", route => {
+    if (route.request().url().includes("/auth/")) return route.fulfill({ json: session.user });
+    if (!route.request().url().endsWith("stock_notes_get_yutai_workspace")) writes++;
+    return route.fulfill({ json: data });
+  });
+  await page.route("**/api/nikko/short-balance", route => { requests.push(route.request().postDataJSON()); return route.fulfill({ status: rejectRequest ? 404 : 200, json: rejectRequest ? { error: "login" } : { accepted: true, requested: 1 } }); });
+  await page.goto("/tools/yutai-memo");
+  await expect(page.getByText("3銘柄", { exact: true })).toBeVisible();
+  await expect(page.getByText("信用売り残高: 0株", { exact: true })).toBeVisible();
+  await expect(page.getByText("信用売り残高: 1,200株", { exact: true })).toBeVisible();
+  await expect(page.getByText("信用売り残高: 未取得", { exact: true })).toBeVisible();
+  await page.getByLabel("月の表示軸", { exact: true }).selectOption("preparation");
+  await page.getByLabel("対象月", { exact: true }).selectOption("12");
+  await expect(page.getByRole("article")).toHaveCount(1);
+  await page.getByLabel("対象月", { exact: true }).selectOption("1");
+  await expect(page.getByText("条件に一致する銘柄はありません。")).toBeVisible();
+  await expect(page.getByRole("button", { name: "信用情報を取得依頼（0件）" })).toBeDisabled();
+  await page.getByLabel("月の表示軸", { exact: true }).selectOption("entitlement");
+  await page.getByLabel("タグ絞り込み", { exact: true }).selectOption("t");
+  await page.getByRole("button", { name: "信用情報を取得依頼（1件）" }).click();
+  await expect(page.getByText(/1件の取得依頼を受け付けました/)).toBeVisible();
+  expect(requests).toEqual([{ codes: ["1234"] }]);
+  rejectRequest = true;
+  await page.getByRole("button", { name: "信用情報を取得依頼（1件）" }).click();
+  await expect(page.getByText(/premiumログイン状態と通信を確認/)).toBeVisible();
+  await page.getByLabel("対象月", { exact: true }).selectOption(""); await page.getByLabel("タグ絞り込み", { exact: true }).selectOption("");
+  await page.getByLabel("並べ替え", { exact: true }).selectOption("stock_code"); await page.getByLabel("降順", { exact: true }).uncheck();
+  await expect(page.getByRole("article").first()).toContainText("130A");
+  await page.getByLabel("検索", { exact: true }).fill("１３０ａ"); await expect(page.getByRole("article")).toHaveCount(1);
+  await page.setViewportSize({ width: 390, height: 844 }); await page.screenshot({ path: ".tmp/yutai-memo-views.png", fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(writes).toBe(0); expect(JSON.stringify(data)).toBe(before); expect(await page.evaluate(() => localStorage.getItem("yutai_memo_items_v1"))).toBe("preserve");
+  // A large synthetic workspace must not silently truncate to the endpoint's 100-code limit.
+  profiles.splice(0, profiles.length, ...Array.from({ length: 101 }, (_, i) => ({ ...row, id: `large-${i}`, stock_code: String(1000 + i) })));
+  data.counts.profiles = profiles.length;
+  await page.reload();
+  await expect(page.getByRole("button", { name: "信用情報を取得依頼（101件）" })).toBeDisabled();
+  await page.getByLabel("検索", { exact: true }).fill("1000");
+  await expect(page.getByRole("button", { name: "信用情報を取得依頼（1件）" })).toBeEnabled();
+  expect(requests).toHaveLength(2); expect(writes).toBe(0);
+});
 for (const loseFirstResponse of [false, true]) {
 test(`calendar reads/saves without legacy writes (lost response: ${loseFirstResponse})`, async ({ page, context }) => {
   const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
