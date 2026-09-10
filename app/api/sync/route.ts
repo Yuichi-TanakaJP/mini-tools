@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isSyncConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { legacyYutaiWriteBlocked } from "@/lib/yutai/cutover";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,7 +41,7 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const items = (data ?? []).map(rowToItem);
+  const items = (data ?? []).filter(row => !legacyYutaiWriteBlocked(row.key)).map(rowToItem);
   return NextResponse.json({ items });
 }
 
@@ -65,6 +66,9 @@ export async function POST(request: Request) {
   }
 
   const incoming = Array.isArray(body.items) ? body.items : [];
+  if (incoming.some(it => it && typeof it.key === "string" && legacyYutaiWriteBlocked(it.key))) {
+    return NextResponse.json({ error: "優待の保存先はDBへ移行しました。画面を再読み込みしてください。旧データは変更していません。" }, { status: 409 });
+  }
   const valid = incoming.filter(
     (it) => it && typeof it.key === "string" && typeof it.updatedAt === "string",
   );
@@ -116,6 +120,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: afterError.message }, { status: 500 });
   }
 
-  const items = (after ?? []).map(rowToItem);
+  const items = (after ?? []).filter(row => !legacyYutaiWriteBlocked(row.key)).map(rowToItem);
   return NextResponse.json({ items });
 }

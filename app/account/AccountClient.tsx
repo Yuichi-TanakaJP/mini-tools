@@ -7,6 +7,7 @@ import { isSyncConfigured } from "@/lib/supabase/config";
 import { pullAll, pushAll } from "@/lib/sync/client";
 import { track } from "@/lib/analytics";
 import { validateNewPassword } from "@/lib/auth/password";
+import { yutaiDatabaseCanonical } from "@/lib/yutai/cutover";
 
 const card: React.CSSProperties = {
   background: "var(--color-bg-card)",
@@ -262,8 +263,7 @@ export default function AccountClient() {
           ログインして端末間で同期
         </h1>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: "var(--color-text-sub)" }}>
-          任意機能です。ログインすると対応ツール（まずは優待メモ帳）のデータを端末間で同期できます。
-          未ログインなら従来どおり端末内のみで動きます。
+          {yutaiDatabaseCanonical() ? "優待はログイン本人のDBへ直接保存します。下の手動同期はマイ銘柄など他ツール用です。旧優待データは送信・復元しません。" : "任意機能です。ログインすると対応ツールのデータを端末間で同期できます。未ログインなら従来どおり端末内のみで動きます。"}
         </p>
       </div>
 
@@ -522,8 +522,7 @@ export default function AccountClient() {
       )}
 
       <p style={{ fontSize: 11, color: "var(--color-text-muted)", lineHeight: 1.7, marginTop: 24 }}>
-        ※ 同期は任意です。ログインしただけでは端末データをサーバーへ送信しません。保存または復元を選んだときだけ、サーバー（Supabase）と通信します。
-        未ログインなら一切サーバーへ送信されません。
+        {yutaiDatabaseCanonical() ? "優待画面はログイン本人のDBを読み取り、保存操作時に直接更新します。端末内の旧優待データとは同期しません。" : "※ 同期は任意です。ログインしただけでは端末データをサーバーへ送信しません。保存または復元を選んだときだけSupabaseと通信します。"}
       </p>
     </main>
   );
