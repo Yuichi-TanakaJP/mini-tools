@@ -566,7 +566,7 @@
 }
 
 .segActive {
-  background: #ffffff;
+  background: var(--color-bg-card);
   color: var(--color-accent);
   border-color: var(--color-border);
   box-shadow:
@@ -699,7 +699,7 @@
 
 .badgeMuted {
   background: rgba(148, 163, 184, 0.12);
-  color: #475569;
+  color: var(--color-text-sub);
 }
 
 .badgeWarn {
@@ -984,7 +984,7 @@
 .errorBox {
   border: 1px solid rgba(220, 38, 38, 0.14);
   background: rgba(254, 242, 242, 0.92);
-  color: #991b1b;
+  color: var(--color-error);
   border-radius: 14px;
   padding: 10px 12px;
   font-size: 13px;

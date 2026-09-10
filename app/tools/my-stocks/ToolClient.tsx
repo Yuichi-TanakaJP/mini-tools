@@ -50,9 +50,9 @@ const ACCOUNT_OPTIONS: Array<{ type: StockAccountType | ""; label: string }> = [
 ];
 
 const ACCOUNT_GROUPS: Array<{ key: AccountGroupKey; label: string; color: string }> = [
-  { key: "specific", label: "特定", color: "#2563eb" },
-  { key: "nisa", label: "NISA", color: "#16a34a" },
-  { key: "other", label: "その他・未設定", color: "#d97706" },
+  { key: "specific", label: "特定", color: "var(--color-accent)" },
+  { key: "nisa", label: "NISA", color: "var(--color-success)" },
+  { key: "other", label: "その他・未設定", color: "var(--color-warning)" },
 ];
 
 const STOCK_CHART_COLORS = [

@@ -169,7 +169,7 @@ Oklab 上の距離 dE で 0.045 以上を保つ。上の彩度倍率と明度補
 | 分類 | 用途 | 代表トークン |
 |---|---|---|
 | Surface | ページ、弱い面、入力、カード、モーダル、overlay | `--color-bg*` |
-| Text | 本文、補助、muted、反転文字 | `--color-text*` |
+| Text | 本文、補助、muted、無効、反転文字 | `--color-text*` |
 | Border / focus | 通常境界、強調境界、操作部品の輪郭、focus | `--color-border*`, `--color-focus-ring` |
 | Action | ブランド、リンク、主要操作 | `--color-accent*` |
 | Semantic | info / success / warning / error / neutral | `--color-*-bg/text/border` |
@@ -177,6 +177,19 @@ Oklab 上の距離 dE で 0.045 以上を保つ。上の彩度倍率と明度補
 | Data visualization | グラフ系列 | `--color-chart-1` ～ `6` |
 | Elevation | カード、hover、モーダルの影 | `--shadow-*` |
 | Global header | 固定ナビゲーション帯 | `--color-header-*` |
+
+### 文字 4 段の使い分け
+
+| トークン | 用途 | コントラスト |
+|---|---|---|
+| `--color-text` | 本文・見出し | 4.5:1 以上 |
+| `--color-text-sub` | 補助的な本文 | 4.5:1 以上 |
+| `--color-text-muted` | ラベル、注記、出典 | 4.5:1 以上 |
+| `--color-text-disabled` | **無効化された操作の文字** | 約 2.4:1（意図的に下げる） |
+
+`--color-text-disabled` だけはコントラスト基準を満たさない。無効な操作は「押せない」ことが
+伝わる必要があり、WCAG も無効化された部品を対象外としているため。
+読ませたい文字に流用しない。
 
 ### 境界線 3 段の使い分け
 
@@ -206,7 +219,9 @@ Oklab 上の距離 dE で 0.045 以上を保つ。上の彩度倍率と明度補
 5. グラフ系列色、ロゴ、ゲーム固有色などは直書きを許容できるが、本文やカードへ流用しない。
 6. テーマ選択 UI は `components/ColorThemeSelector.tsx`、初回描画前の適用は `lib/color-theme.ts` と `app/layout.tsx` が担当する。
 7. 保存値が壊れている場合や LocalStorage が利用できない場合は `端末設定` と同じ解決方法へフォールバックする。
-8. 値を変えるときは上の生成規則に従い、`lib/__tests__/theme-contrast.test.ts` を通してから確定する。
+8. ツール固有の色を足す前に、既存の役割トークンで表せないかを先に確認する。
+   グラフ系列・ゲーム・ブランド以外で新しい色リテラルを増やさない。
+9. 値を変えるときは上の生成規則に従い、`lib/__tests__/theme-contrast.test.ts` を通してから確定する。
    このテストはコントラストのほか、neutral チップが面に溶けないこと、
    役割の違う色が dE 0.045 以上離れていることも見る。
 

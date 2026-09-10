@@ -61,10 +61,10 @@ function fmtPrice(n: number) {
 function getTone(n: number) {
   if (n >= 5) return { bg: "#166534", fg: "#f0fdf4" };
   if (n > 1) return { bg: "#7bc96f", fg: "#052e16" };
-  if (n >= 0) return { bg: "#dcfce7", fg: "#14532d" };
+  if (n >= 0) return { bg: "var(--color-success-bg)", fg: "#14532d" };
   if (n <= -5) return { bg: "#991b1b", fg: "#fef2f2" };
   if (n < -1) return { bg: "#ff6b57", fg: "#431407" };
-  return { bg: "#fee2e2", fg: "#7f1d1d" };
+  return { bg: "var(--color-error-bg)", fg: "#7f1d1d" };
 }
 
 function getBarTone(n: number) {
@@ -174,7 +174,7 @@ function RankingList({ title, items, maxAbs }: RankingListProps) {
                       {fmtPt(item.contribution)}
                     </span>
                   </div>
-                  <div style={{ position: "relative", height: 12, borderRadius: 999, background: "#e8edf5", overflow: "hidden" }}>
+                  <div style={{ position: "relative", height: 12, borderRadius: 999, background: "var(--color-bg-subtle)", overflow: "hidden" }}>
                     <div style={{ width, height: "100%", background: tone.fill }} />
                   </div>
                 </div>
@@ -374,7 +374,7 @@ function ImpactMap({ records, selectedCode, onSelect }: ImpactMapProps) {
               aspectRatio: "1 / 1",
               background: "var(--color-bg-input)",
               overflow: "hidden",
-              border: "1px solid #d7dee8",
+              border: "1px solid var(--color-border)",
               boxShadow: "inset 0 1px 0 rgba(255,255,255,0.7)",
             }}
           >
@@ -639,12 +639,12 @@ function RecordsTable({ records }: { records: NikkeiContributionRecord[] }) {
     if (sortKey !== key) return null;
     if (key === "name") {
       const label = nameMode === "name" ? " 名▲" : " #▲";
-      return <span style={{ color: "#166534" }}>{label}</span>;
+      return <span style={{ color: "var(--color-success)" }}>{label}</span>;
     }
     if (sortDir === "desc") {
-      return <span style={{ color: "#991b1b" }}> ▼</span>;
+      return <span style={{ color: "var(--color-error)" }}> ▼</span>;
     }
-    return <span style={{ color: "#166534" }}> ▲</span>;
+    return <span style={{ color: "var(--color-success)" }}> ▲</span>;
   }
 
   return (
@@ -907,7 +907,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
               padding: 0,
               borderRadius: 999,
               border: "1px solid rgba(37, 84, 255, 0.12)",
-              background: "#f5f8ff",
+              background: "var(--color-accent-sub)",
               color: prevDate ? "#2554ff" : "#b9c2d0",
               display: "grid",
               placeItems: "center",
@@ -935,7 +935,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
               borderRadius: 10,
               border: "1.5px solid rgba(148, 163, 184, 0.35)",
               background: "#fff",
-              color: "#0f172a",
+              color: "var(--color-text)",
               fontSize: 13,
               fontWeight: 700,
               textAlignLast: "center",
@@ -962,7 +962,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
               padding: 0,
               borderRadius: 999,
               border: "1px solid rgba(37, 84, 255, 0.12)",
-              background: "#f5f8ff",
+              background: "var(--color-accent-sub)",
               color: nextDate ? "#2554ff" : "#b9c2d0",
               display: "grid",
               placeItems: "center",

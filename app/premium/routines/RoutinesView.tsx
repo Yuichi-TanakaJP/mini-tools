@@ -18,9 +18,9 @@ import {
 import { ROUTINES, ROUTINES_SURVEYED_ON } from "./data/routines";
 
 const MODE_COLORS: Record<RoutineMode, { bg: string; fg: string; border: string }> = {
-  auto: { bg: "#eff6ff", fg: "#1d4ed8", border: "rgba(29,78,216,0.18)" },
-  semi: { bg: "#fef3c7", fg: "#b45309", border: "rgba(180,83,9,0.20)" },
-  manual: { bg: "#dcfce7", fg: "#15803d", border: "rgba(21,128,61,0.20)" },
+  auto: { bg: "var(--color-info-bg)", fg: "#1d4ed8", border: "rgba(29,78,216,0.18)" },
+  semi: { bg: "var(--color-warning-bg)", fg: "#b45309", border: "rgba(180,83,9,0.20)" },
+  manual: { bg: "var(--color-success-bg)", fg: "#15803d", border: "rgba(21,128,61,0.20)" },
 };
 
 function RoutineChip({ routine }: { routine: Routine }) {
@@ -222,7 +222,7 @@ const styles: Record<string, CSSProperties> = {
   page: {
     minHeight: "100vh",
     padding: "24px 16px 72px",
-    background: "#f8fafc",
+    background: "var(--color-bg-subtle)",
   },
   shell: {
     maxWidth: 1080,
@@ -237,7 +237,7 @@ const styles: Record<string, CSSProperties> = {
     marginBottom: 12,
     fontSize: 12,
     fontWeight: 700,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     textDecoration: "none",
   },
   eyebrow: {
@@ -245,8 +245,8 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     padding: "5px 10px",
     borderRadius: 999,
-    background: "#eef2ff",
-    color: "#4338ca",
+    background: "var(--color-accent-sub)",
+    color: "var(--color-accent)",
     fontSize: 11,
     fontWeight: 800,
     border: "1px solid rgba(67,56,202,0.12)",
@@ -255,14 +255,14 @@ const styles: Record<string, CSSProperties> = {
     margin: "12px 0 8px",
     fontSize: "clamp(30px, 6vw, 44px)",
     fontWeight: 900,
-    color: "#0f172a",
+    color: "var(--color-text)",
   },
   description: {
     margin: 0,
     maxWidth: 720,
     fontSize: 14,
     lineHeight: 1.7,
-    color: "#475569",
+    color: "var(--color-text-sub)",
   },
   metaRow: {
     display: "flex",
@@ -275,9 +275,9 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     padding: "4px 10px",
     borderRadius: 999,
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
     border: "1px solid rgba(15,23,42,0.08)",
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontSize: 11,
     fontWeight: 700,
   },
@@ -288,7 +288,7 @@ const styles: Record<string, CSSProperties> = {
     marginBottom: 16,
   },
   metricCard: {
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
     borderRadius: 18,
     padding: 16,
     border: "1px solid rgba(15,23,42,0.06)",
@@ -297,21 +297,21 @@ const styles: Record<string, CSSProperties> = {
   metricLabel: {
     fontSize: 11,
     fontWeight: 700,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
   },
   metricValue: {
     margin: "6px 0 4px",
     fontSize: 26,
     fontWeight: 900,
-    color: "#0f172a",
+    color: "var(--color-text)",
   },
   metricSub: {
     fontSize: 11,
-    color: "#94a3b8",
+    color: "var(--color-text-muted)",
     lineHeight: 1.5,
   },
   panel: {
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
     borderRadius: 18,
     padding: 18,
     border: "1px solid rgba(15,23,42,0.06)",
@@ -321,12 +321,12 @@ const styles: Record<string, CSSProperties> = {
   sectionLabel: {
     fontSize: 13,
     fontWeight: 800,
-    color: "#0f172a",
+    color: "var(--color-text)",
   },
   sectionSub: {
     margin: "6px 0 14px",
     fontSize: 12,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     lineHeight: 1.6,
   },
   tableScroll: {
@@ -353,7 +353,7 @@ const styles: Record<string, CSSProperties> = {
     padding: "8px 6px",
     fontSize: 12,
     fontWeight: 800,
-    color: "#0f172a",
+    color: "var(--color-text)",
     textAlign: "left",
     whiteSpace: "nowrap",
     verticalAlign: "top",
@@ -394,7 +394,7 @@ const styles: Record<string, CSSProperties> = {
     gap: 12,
     marginTop: 14,
     fontSize: 11,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
   },
   legendItem: {
     display: "inline-flex",
@@ -420,7 +420,7 @@ const styles: Record<string, CSSProperties> = {
     minWidth: 96,
     fontSize: 12,
     fontWeight: 800,
-    color: "#0f172a",
+    color: "var(--color-text)",
     whiteSpace: "nowrap",
   },
   listBody: {
@@ -433,13 +433,13 @@ const styles: Record<string, CSSProperties> = {
   },
   listDescription: {
     fontSize: 12,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     lineHeight: 1.6,
   },
   footnote: {
     margin: "4px 0 0",
     fontSize: 11,
-    color: "#94a3b8",
+    color: "var(--color-text-muted)",
     lineHeight: 1.7,
   },
 };

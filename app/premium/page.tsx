@@ -101,10 +101,10 @@ const FEATURE_CARDS: FeatureCard[] = [
 ];
 
 const TONE_MAP: Record<FeatureCard["tone"], { bg: string; border: string; fg: string }> = {
-  blue: { bg: "#eff6ff", border: "#bfdbfe", fg: "#1d4ed8" },
-  amber: { bg: "#fff7ed", border: "#fdba74", fg: "#c2410c" },
-  violet: { bg: "#eef2ff", border: "#c7d2fe", fg: "#4338ca" },
-  slate: { bg: "#f8fafc", border: "#cbd5e1", fg: "#334155" },
+  blue: { bg: "var(--color-info-bg)", border: "var(--color-info-border)", fg: "#1d4ed8" },
+  amber: { bg: "var(--color-warning-bg)", border: "var(--color-warning-border)", fg: "#c2410c" },
+  violet: { bg: "var(--color-accent-sub)", border: "var(--color-border-accent)", fg: "#4338ca" },
+  slate: { bg: "var(--color-bg-subtle)", border: "var(--color-border-strong)", fg: "#334155" },
 };
 
 const cardBaseStyle: CSSProperties = {

@@ -148,8 +148,8 @@ export default function ThemeCompanyNetworkClient({ result }: { result: ThemeCom
         </section>
 
         <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14, alignItems: "start" }}>
-          <div style={{ background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: 14, padding: 16, minWidth: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 900, color: "#4338ca" }}>THEME</div>
+          <div style={{ background: "var(--color-accent-sub)", border: "1px solid var(--color-border-accent)", borderRadius: 14, padding: 16, minWidth: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 900, color: "var(--color-accent)" }}>THEME</div>
             <h2 style={{ margin: "6px 0 4px", fontSize: 19 }}>{selectedTheme?.name ?? "—"}</h2>
             <div style={{ color: "var(--color-text-muted)", fontSize: 12 }}>{directCompanies.length} 直接企業</div>
           </div>
@@ -157,7 +157,7 @@ export default function ThemeCompanyNetworkClient({ result }: { result: ThemeCom
           <div style={{ display: "grid", gap: 10, minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 900, color: "var(--color-text-muted)" }}>直接テーマ企業</div>
             {directCompanies.length > 0 ? directCompanies.map((company) => (
-              <article key={company.linkId} style={{ background: "var(--color-bg-card)", border: "2px solid #818cf8", borderRadius: 14, padding: 15, minWidth: 0 }}>
+              <article key={company.linkId} style={{ background: "var(--color-bg-card)", border: "2px solid var(--color-border-accent)", borderRadius: 14, padding: 15, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                   <strong>{company.companyName}</strong>
                   <span style={{ fontSize: 11, fontWeight: 900 }}>{company.sourceStatus}</span>
@@ -184,7 +184,7 @@ export default function ThemeCompanyNetworkClient({ result }: { result: ThemeCom
                     <strong>{row.relatedCompanyName}</strong>
                     <span style={{ fontSize: 11, fontWeight: 900 }}>{relationship.verificationStatus}</span>
                   </div>
-                  {row.relatedIsAlsoDirect ? <div style={{ marginTop: 5, fontSize: 11, fontWeight: 800, color: "#4338ca" }}>この企業は直接テーマ企業でもあります</div> : null}
+                  {row.relatedIsAlsoDirect ? <div style={{ marginTop: 5, fontSize: 11, fontWeight: 800, color: "var(--color-accent)" }}>この企業は直接テーマ企業でもあります</div> : null}
                   <div style={{ marginTop: 8, fontSize: 13, fontWeight: 800 }}>{directionText}</div>
                   <div style={{ marginTop: 5, color: "var(--color-text-sub)", fontSize: 12 }}>{relationLabel(relationship)} / {relationship.relationCategory}</div>
                   <div style={{ marginTop: 5, color: "var(--color-text-muted)", fontSize: 11 }}>source {formatDate(relationship.sourceAsOf)} / confidence {relationship.confidence}</div>

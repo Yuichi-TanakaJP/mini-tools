@@ -514,8 +514,8 @@
   margin-left: auto;
   padding: 2px 6px;
   border-radius: 999px;
-  background: #fff7ed;
-  color: #c2410c;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
   font-size: 9px;
   font-weight: 900;
 }
@@ -676,14 +676,14 @@
   display: grid;
   gap: 3px;
   padding: 9px;
-  border: 1px solid #fed7aa;
+  border: 1px solid var(--color-warning-border);
   border-radius: 10px;
-  background: #fff7ed;
+  background: var(--color-warning-bg);
 }
 .groupList strong { font-size: 11px; color: #7c2d12; }
 .groupList span,
-.groupList small { font-size: 9px; color: #9a3412; }
-.groupList a { color: #c2410c; text-decoration: none; font-size: 9px; font-weight: 800; }
+.groupList small { font-size: 9px; color: var(--color-warning); }
+.groupList a { color: var(--color-warning); text-decoration: none; font-size: 9px; font-weight: 800; }
 
 .srOnly {
   position: absolute;
