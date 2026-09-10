@@ -13,7 +13,7 @@ export interface WorkspaceExport {
   coverage: "workspace_current_state"; workspace: Workspace; sha256: string;
 }
 
-function canonical(value: unknown, depth = 0): string {
+export function canonical(value: unknown, depth = 0): string {
   if (depth > 32) throw new Error("データの階層が深すぎます。");
   if (value === null || typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
   if (typeof value === "number" && Number.isFinite(value)) return JSON.stringify(value);
@@ -36,7 +36,7 @@ function checkSource(value: unknown): asserts value is ExportSource {
 function checkDate(value: unknown) {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value) || !Number.isFinite(Date.parse(value))) throw new Error("取得・出力日時が不正です。");
 }
-function rowKey(collection: Collection, row: Record<string, unknown>) {
+export function rowKey(collection: Collection, row: Record<string, unknown>) {
   return collection === "profile_tags" ? `${row.profile_id}:${row.tag_id}` : String(row.id);
 }
 export function validateExportWorkspace(raw: unknown): Workspace {

@@ -5,8 +5,16 @@ import { createSupabaseBrowserClient } from "../supabase/client";
 import { checkMonth } from "./contracts";
 import { EMPTY_STATE } from "./repository";
 import { createYutaiRuntime } from "./runtime";
+import { RestoreController } from "./restore-controller";
+import { getSupabaseEnv } from "../supabase/config";
 
 let runtime: ReturnType<typeof createYutaiRuntime> | undefined;
+let restore: { epoch: number; controller: RestoreController } | undefined;
+export function getYutaiRestoreController() {
+  const repo = getYutaiRepository(), epoch = repo.getIdentity().sessionRevision;
+  if (!restore || restore.epoch !== epoch) restore = { epoch, controller: new RestoreController(repo, runtime!.restore, getSupabaseEnv().url) };
+  return restore.controller;
+}
 /** Browser-only shared instance; disabled consumers must not initialize it. */
 export function getYutaiRepository() {
   if (typeof window === "undefined") throw new Error("BROWSER_ONLY");

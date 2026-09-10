@@ -33,6 +33,14 @@ function fixture() {
 }
 afterEach(() => vi.useRealTimers());
 describe("Supabase browser runtime", () => {
+  it("pins dedicated restore requests to the checked session without a generic public RPC", async () => {
+    vi.useFakeTimers(); const f = fixture(); f.auth("A");
+    const id = "00000000-0000-4000-8000-000000000001";
+    await f.runtime.restore.get(id, f.runtime.repository.getIdentity(), new AbortController().signal);
+    expect(f.rpc).toHaveBeenCalledWith("stock_notes_get_yutai_restore", { p_plan_id: id });
+    expect(f.headers).toEqual(["Bearer synthetic-A"]);
+    f.runtime.dispose();
+  });
   it("uses real-session owner scope and defers RPC outside auth callback", async () => {
     vi.useFakeTimers(); const f = fixture(); f.runtime.watch(9);
     f.auth("A", "INITIAL_SESSION");

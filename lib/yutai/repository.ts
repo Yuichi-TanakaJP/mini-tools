@@ -21,6 +21,7 @@ export interface Transport {
   write(owner: string, command: Command, signal: AbortSignal): Promise<unknown>;
 }
 export interface ViewState {
+  readonly maintenance?: boolean;
   readonly sessionRevision: number;
   readonly data: Workspace | null;
   readonly status: "signed_out" | "idle" | "loading" | "ready" | "error";
@@ -51,6 +52,8 @@ export class YutaiRepository {
   private entries = new Map<number, Entry>();
   private listeners = new Set<() => void>();
   private prepared = new WeakMap<PreparedCommand, Prepared>();
+  private maintenance: symbol | null = null;
+  private writing = 0;
   constructor(private transport: Transport, private options: {
     now?: () => number; online?: () => boolean; uuid?: () => string; ttlMs?: number; activeMonths?: () => number[];
   } = {}) {}
@@ -62,6 +65,7 @@ export class YutaiRepository {
     if (owner === this.owner) return false;
     this.epoch++;
     this.owner = owner;
+    this.maintenance = null;
     for (const entry of this.entries.values()) entry.abort?.abort();
     this.entries.clear();
     this.emit();
@@ -71,7 +75,7 @@ export class YutaiRepository {
     checkMonth(month);
     let entry = this.entries.get(month);
     if (!entry) {
-      entry = { state: { ...EMPTY_STATE, sessionRevision: this.epoch, status: this.owner ? "idle" : "signed_out" }, version: 0 };
+      entry = { state: { ...EMPTY_STATE, maintenance: !!this.maintenance, sessionRevision: this.epoch, status: this.owner ? "idle" : "signed_out" }, version: 0 };
       this.entries.set(month, entry);
     }
     return entry;
@@ -79,6 +83,18 @@ export class YutaiRepository {
   getSnapshot = (month: number): ViewState => this.entry(month).state;
   /** Non-secret export provenance; never returns an access token or session object. */
   getIdentity = () => ({ owner: this.owner, sessionRevision: this.epoch });
+  /** In-memory UI exclusion; the server also rejects changes since the preview. */
+  acquireMaintenance(epoch: number): () => void {
+    if (!this.owner || epoch !== this.epoch) throw new YutaiFailure("auth");
+    if (this.maintenance || this.writing) throw new YutaiFailure("conflict");
+    const lease = this.maintenance = Symbol();
+    for (const entry of this.entries.values()) this.publish(entry, { maintenance: true });
+    return () => {
+      if (this.maintenance !== lease) return;
+      this.maintenance = null;
+      for (const entry of this.entries.values()) this.publish(entry, { maintenance: false });
+    };
+  }
   private assertOwner(owner: string, epoch: number): void {
     if (!owner || owner !== this.owner || epoch !== this.epoch) throw new YutaiFailure("auth");
   }
@@ -154,8 +170,10 @@ export class YutaiRepository {
       return Promise.resolve({ status: "not_saved", error: new YutaiFailure("auth") });
     }
     if (prepared.pending) return prepared.pending;
+    if (this.maintenance) return Promise.resolve({ status: "not_saved", error: new YutaiFailure("conflict") });
     if (!this.online()) return Promise.resolve({ status: "not_saved", error: new YutaiFailure("offline") });
-    const pending = this.send(prepared, month);
+    this.writing++;
+    const pending = this.send(prepared, month).finally(() => { this.writing--; });
     prepared.pending = pending;
     void pending.finally(() => { prepared.pending = undefined; });
     return pending;

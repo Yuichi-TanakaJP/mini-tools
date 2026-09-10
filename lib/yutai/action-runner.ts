@@ -23,6 +23,9 @@ export class YutaiActionRunner {
   async start(steps: CommandStep[], month: number): Promise<void> {
     if (this.job || this.state.status === "running") return;
     const view = this.repository.getSnapshot(month);
+    if (view.maintenance) {
+      this.publish({ ...initial, message: "復元確認中です。データ入出力画面で結果を確認してください。" }); return;
+    }
     if (!view.data || view.stale) {
       this.publish({ ...initial, message: "最新データを取得してから保存してください。" }); return;
     }
