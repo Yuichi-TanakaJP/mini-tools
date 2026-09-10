@@ -5,6 +5,20 @@ export const rewardPeriods: Record<RewardPeriod, string> = { all: "すべて", t
 export function localToday(now = new Date()) {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
+/** Current balance only; missing denominations are not zero-valued assets. */
+export function rewardBalanceSummary(rows: readonly Reward[], today: string) {
+  const total = (selected: readonly Reward[]) => selected.reduce((sum, r) => {
+    if (r.track_mode === "count" && r.unit_yen === null) sum.unknown += 1;
+    else sum.yen += r.remaining_value * (r.track_mode === "amount" ? 1 : r.unit_yen!);
+    return sum;
+  }, { yen: 0, unknown: 0 });
+  const active = rows.filter(r => !r.archived_at && r.remaining_value > 0);
+  return {
+    available: total(active.filter(r => !r.expires_on || r.expires_on >= today)),
+    thisMonth: total(active.filter(r => r.expires_on?.slice(0, 7) === today.slice(0, 7))),
+    overdue: total(active.filter(r => r.expires_on !== null && r.expires_on < today)),
+  };
+}
 function inPeriod(r: Reward, period: RewardPeriod, today: string) {
   if (period === "all") return true;
   if (period === "noExpiry") return r.expires_on === null;

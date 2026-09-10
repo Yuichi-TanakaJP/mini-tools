@@ -2,6 +2,9 @@
 
 ## DB隔離検証（工程4）
 
+- [ ] 円換算集計は検索0件でも全件基準。未アーカイブの正残高のみ、枚数×額面／金額残高を使用。額面NULLは換算不可件数、0円は既知額として区別する
+- [ ] 期限当日・期限未設定は未使用に含み、翌日に期限切れへ移る。今月期限には当月の期限切れ残高も含む
+
 `NEXT_PUBLIC_YUTAI_EXPIRY_DB_PREVIEW=true` の検証環境だけに適用。
 [現在仕様](../specs/tools/yutai-expiry.md) / [判断理由](../decision-log/2026-09-10-yutai-rewards-db.md)。
 `npx playwright test --config=playwright.yutai.config.ts` は合成認証/RPCを使用し、本番DBを変更しない。

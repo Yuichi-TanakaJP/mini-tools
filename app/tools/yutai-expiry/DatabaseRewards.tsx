@@ -7,7 +7,7 @@ import type { ViewState } from "@/lib/yutai/repository";
 import type { CommandDraft, Reward, TrackMode, Workspace } from "@/lib/yutai/contracts";
 import { archiveReward, rewardAction, rewardActions, rewardAmount, rewardFields, rewardNumber, rewardUnit, saveReward, type RewardAction } from "@/lib/yutai/rewards";
 import styles from "../yutai-memo/DatabaseMemo.module.css";
-import { localToday, rewardList, rewardPeriodCounts, rewardPeriods, type RewardPeriod, type RewardSort } from "@/lib/yutai/reward-list";
+import { localToday, rewardBalanceSummary, rewardList, rewardPeriodCounts, rewardPeriods, type RewardPeriod, type RewardSort } from "@/lib/yutai/reward-list";
 import listStyles from "./DatabaseRewards.module.css";
 
 export default function DatabaseRewards() {
@@ -53,6 +53,7 @@ function ConnectedRewards({ view }: { view: ViewState }) {
   const openAction = (reward: Reward, kind: RewardAction, eventId?: string) => { setEditor(null); setAction({ snapshot: data, reward, kind, eventId }); };
   const rewards = rewardList(data.rewards, { archives, completed, month, query, period, sort }, today);
   const counts = rewardPeriodCounts(data.rewards, today);
+  const balances = rewardBalanceSummary(data.rewards, today);
   const cards = rewards.map(reward => <article key={reward.id} className={styles.card} aria-label={reward.title}>
         <h2>{reward.title}{reward.archived_at && "（アーカイブ済み）"}</h2>
         <p>{reward.company} / 期限: {reward.expires_on ?? "未設定"}</p>
@@ -79,6 +80,14 @@ function ConnectedRewards({ view }: { view: ViewState }) {
     {process.env.NEXT_PUBLIC_YUTAI_TRANSFER_DB_PREVIEW === "true" && <p><a href="/tools/data-transfer">優待DBの全件出力・照合</a></p>}
     <p>DBの残高と利用履歴を表示・更新します。画像スキャン・旧形式の一括取り込み・ホーム通知は未接続です。本番切替は未完了です。</p>
     {notice && <p role="status">{notice}</p>}
+    <section className={styles.panel} aria-label="残高の円換算集計">
+      <h2>残高の円換算集計</h2>
+      <p>検索条件にかかわらず、未アーカイブ・残高ありの全件を集計します。期限未設定は未使用に含み、期限当日は有効です。今月期限には今月中の期限切れも含みます。</p>
+      <dl>{([ ["available", "未使用（期限切れを除く）"], ["thisMonth", "今月期限"], ["overdue", "期限切れ残高"] ] as const).map(([key, label]) => <div key={key}>
+        <dt>{label}</dt><dd>{rewardAmount(balances[key].yen)}円{balances[key].unknown > 0 && `（判明分のみ・額面未設定 ${balances[key].unknown}件は換算不可）`}</dd>
+      </div>)}</dl>
+      <p>枚数管理は残数×現在の額面、金額管理は残円です。累計の受取・利用額ではありません。</p>
+    </section>
     <fieldset className={styles.panel} disabled={connection.blocked || view.stale}>
       <div className={styles.row}>
         <label>検索<input value={query} onChange={e => setQuery(e.target.value)} /></label>

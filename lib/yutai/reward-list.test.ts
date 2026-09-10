@@ -1,11 +1,26 @@
 import { describe, expect, it } from "vitest";
 import type { Reward } from "./contracts";
-import { localToday, rewardList, rewardPeriodCounts, type RewardPeriod } from "./reward-list";
+import { localToday, rewardBalanceSummary, rewardList, rewardPeriodCounts, type RewardPeriod } from "./reward-list";
 const base: Reward = { id: "a", title: "A", company: "A", expires_on: "2026-12-31", track_mode: "count", initial_value: 2,
   remaining_value: 1, unit_yen: null, memo: "メモ", link: "https://example.com/benefit", archived_at: null, profile_id: null, cycle_id: null,
   revision: 1, created_at: "2026-09-10T00:00:00Z", updated_at: "2026-09-10T00:00:00Z" };
 const options = { query: "", month: "", archives: false, completed: true, period: "all" as RewardPeriod, sort: "expiryAsc" as const };
 describe("reward list projection", () => {
+  it("summarizes balances without hiding unknown denominations or mixing archived balances", () => {
+    const rows = Object.freeze([
+      Object.freeze({ ...base, unit_yen: 500, remaining_value: 2 }),
+      Object.freeze({ ...base, expires_on: null }),
+      Object.freeze({ ...base, unit_yen: 0 }),
+      Object.freeze({ ...base, track_mode: "amount" as const, remaining_value: 0.25, expires_on: "2026-12-30" }),
+      Object.freeze({ ...base, unit_yen: 999, archived_at: base.created_at }),
+      Object.freeze({ ...base, remaining_value: 0 }),
+    ]);
+    expect(rewardBalanceSummary(rows, "2026-12-31")).toEqual({
+      available: { yen: 1000, unknown: 1 }, thisMonth: { yen: 1000.25, unknown: 0 }, overdue: { yen: 0.25, unknown: 0 },
+    });
+    expect(rewardBalanceSummary(rows, "2027-01-01").available).toEqual({ yen: 0, unknown: 1 });
+    expect(rewardBalanceSummary([], "2027-01-01").available).toEqual({ yen: 0, unknown: 0 });
+  });
   it("keeps expiry day valid and handles year/month boundaries and undated rows", () => {
     const rows = [base, { ...base, id: "b", expires_on: "2027-01-01" }, { ...base, id: "c", expires_on: "2026-12-30" }, { ...base, id: "d", expires_on: null }];
     const ids = (period: RewardPeriod) => rewardList(rows, { ...options, period }, "2026-12-31").map(r => r.id);
