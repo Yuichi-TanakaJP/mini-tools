@@ -12,10 +12,10 @@ type Props = {
 type SortKey = "value" | "profit" | "yield" | "event";
 
 const toneColor = {
-  earnings: { bg: "#eff6ff", fg: "#1d4ed8", label: "決算" },
-  dividend: { bg: "#f0fdf4", fg: "#166534", label: "配当" },
-  benefit: { bg: "#fff7ed", fg: "#c2410c", label: "優待" },
-  price: { bg: "#f8fafc", fg: "#334155", label: "価格" },
+  earnings: { bg: "var(--color-info-bg)", fg: "#1d4ed8", label: "決算" },
+  dividend: { bg: "var(--color-success-bg)", fg: "#166534", label: "配当" },
+  benefit: { bg: "var(--color-warning-bg)", fg: "#c2410c", label: "優待" },
+  price: { bg: "var(--color-bg-subtle)", fg: "#334155", label: "価格" },
 } as const;
 
 function formatYen(value: number) {
@@ -87,10 +87,10 @@ function SummaryTile({
   tone: "blue" | "green" | "orange" | "slate";
 }) {
   const toneMap = {
-    blue: { bg: "#eff6ff", border: "#bfdbfe", fg: "#1d4ed8" },
-    green: { bg: "#f0fdf4", border: "#bbf7d0", fg: "#166534" },
-    orange: { bg: "#fff7ed", border: "#fdba74", fg: "#c2410c" },
-    slate: { bg: "#f8fafc", border: "#cbd5e1", fg: "#334155" },
+    blue: { bg: "var(--color-info-bg)", border: "var(--color-info-border)", fg: "#1d4ed8" },
+    green: { bg: "var(--color-success-bg)", border: "var(--color-success-border)", fg: "#166534" },
+    orange: { bg: "var(--color-warning-bg)", border: "var(--color-warning-border)", fg: "#c2410c" },
+    slate: { bg: "var(--color-bg-subtle)", border: "var(--color-border-strong)", fg: "#334155" },
   } as const;
 
   return (
@@ -349,8 +349,8 @@ export default function PortfolioDashboard({ holdings, events, today }: Props) {
                               key={tag}
                               style={{
                                 borderRadius: 999,
-                                background: "#f1f5f9",
-                                color: "#475569",
+                                background: "var(--color-bg-subtle)",
+                                color: "var(--color-text-sub)",
                                 fontSize: 11,
                                 fontWeight: 800,
                                 padding: "4px 7px",
@@ -466,7 +466,7 @@ export default function PortfolioDashboard({ holdings, events, today }: Props) {
                     <span style={{ fontWeight: 800 }}>{item.code} {item.name}</span>
                     <span style={{ color: "var(--color-text-muted)" }}>{formatNumber(item.percent, 1)}%</span>
                   </div>
-                  <div style={{ height: 8, borderRadius: 999, background: "#e5e7eb", overflow: "hidden" }}>
+                  <div style={{ height: 8, borderRadius: 999, background: "var(--color-neutral-bg)", overflow: "hidden" }}>
                     <div
                       style={{
                         width: `${item.percent}%`,

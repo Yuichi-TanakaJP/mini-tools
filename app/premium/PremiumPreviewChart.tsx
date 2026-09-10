@@ -110,9 +110,9 @@ export default function PremiumPreviewChart({
               gap: 8,
               padding: "6px 10px",
               borderRadius: 999,
-              background: "#fff7ed",
-              border: "1px solid #fdba74",
-              color: "#c2410c",
+              background: "var(--color-warning-bg)",
+              border: "1px solid var(--color-warning-border)",
+              color: "var(--color-warning)",
               fontSize: 12,
               fontWeight: 800,
             }}
@@ -263,7 +263,7 @@ export default function PremiumPreviewChart({
               }}
             >
               <span>{axisMax.toFixed(1)}</span>
-              <span style={{ color: "#1d4ed8", fontWeight: 800 }}>
+              <span style={{ color: "var(--color-accent)", fontWeight: 800 }}>
                 {(axisMin + axisRange / 2).toFixed(1)}
               </span>
               <span>{axisMin.toFixed(1)}</span>

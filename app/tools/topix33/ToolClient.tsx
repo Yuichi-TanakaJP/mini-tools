@@ -96,7 +96,7 @@ function RankingList({ title, items, maxAbs }: RankingListProps) {
                       {fmtPct(item.chg_pct)}
                     </span>
                   </div>
-                  <div style={{ position: "relative", height: 12, borderRadius: 999, background: "#e8edf5", overflow: "hidden" }}>
+                  <div style={{ position: "relative", height: 12, borderRadius: 999, background: "var(--color-bg-subtle)", overflow: "hidden" }}>
                     <div style={{ width, height: "100%", background: tone.fill }} />
                   </div>
                 </div>
@@ -144,9 +144,9 @@ function SectorsTable({ sectors }: { sectors: Topix33SectorRecord[] }) {
   function getSortIndicator(key: SectorSortKey) {
     if (sortKey !== key) return null;
     if (sortDir === "desc") {
-      return <span style={{ color: "#991b1b" }}> ▼</span>;
+      return <span style={{ color: "var(--color-error)" }}> ▼</span>;
     }
-    return <span style={{ color: "#166534" }}> ▲</span>;
+    return <span style={{ color: "var(--color-success)" }}> ▲</span>;
   }
 
   return (
@@ -304,7 +304,7 @@ export default function ToolClient({ data }: { data: Topix33PageData }) {
               padding: 0,
               borderRadius: 999,
               border: "1px solid rgba(37, 84, 255, 0.12)",
-              background: "#f5f8ff",
+              background: "var(--color-accent-sub)",
               color: prevDate ? "#2554ff" : "#b9c2d0",
               display: "grid",
               placeItems: "center",
@@ -324,8 +324,8 @@ export default function ToolClient({ data }: { data: Topix33PageData }) {
               padding: "8px 12px",
               borderRadius: 999,
               border: "1.5px solid rgba(37, 84, 255, 0.18)",
-              background: "#f5f8ff",
-              color: "#2554ff",
+              background: "var(--color-accent-sub)",
+              color: "var(--color-accent)",
               fontWeight: 700,
               fontSize: 15,
               appearance: "none",
@@ -353,7 +353,7 @@ export default function ToolClient({ data }: { data: Topix33PageData }) {
               padding: 0,
               borderRadius: 999,
               border: "1px solid rgba(37, 84, 255, 0.12)",
-              background: "#f5f8ff",
+              background: "var(--color-accent-sub)",
               color: nextDate ? "#2554ff" : "#b9c2d0",
               display: "grid",
               placeItems: "center",
@@ -368,7 +368,7 @@ export default function ToolClient({ data }: { data: Topix33PageData }) {
         </div>
 
         {loadError && !isLoading && (
-          <div style={{ textAlign: "center", fontSize: 13, color: "#991b1b", padding: "4px 0" }}>
+          <div style={{ textAlign: "center", fontSize: 13, color: "var(--color-error)", padding: "4px 0" }}>
             {loadError}
           </div>
         )}
@@ -396,9 +396,9 @@ export default function ToolClient({ data }: { data: Topix33PageData }) {
             }}
           >
             {[
-              { label: "上昇業種", value: dayData.summary.advancers, color: "#166534", bg: "#f0fdf4", border: "#bbf7d0" },
-              { label: "下落業種", value: dayData.summary.decliners, color: "#991b1b", bg: "#fef2f2", border: "#fecaca" },
-              { label: "変わらず", value: dayData.summary.unchanged, color: "#475569", bg: "var(--color-bg-input)", border: "var(--color-border)" },
+              { label: "上昇業種", value: dayData.summary.advancers, color: "var(--color-success)", bg: "var(--color-success-bg)", border: "var(--color-success-border)" },
+              { label: "下落業種", value: dayData.summary.decliners, color: "var(--color-error)", bg: "var(--color-error-bg)", border: "var(--color-error-border)" },
+              { label: "変わらず", value: dayData.summary.unchanged, color: "var(--color-text-sub)", bg: "var(--color-bg-input)", border: "var(--color-border)" },
             ].map(({ label, value, color, bg, border }) => (
               <div
                 key={label}

@@ -89,9 +89,9 @@ export default function LoginForm() {
           <div
             style={{
               borderRadius: 12,
-              background: "#fffbeb",
-              border: "1px solid #fcd34d",
-              color: "#78350f",
+              background: "var(--color-warning-bg)",
+              border: "1px solid var(--color-warning-border)",
+              color: "var(--color-warning-text)",
               padding: "12px 14px",
               fontSize: 13,
               lineHeight: 1.6,
@@ -104,9 +104,9 @@ export default function LoginForm() {
           <div
             style={{
               borderRadius: 12,
-              background: "#fef2f2",
-              border: "1px solid #fecaca",
-              color: "#991b1b",
+              background: "var(--color-error-bg)",
+              border: "1px solid var(--color-error-border)",
+              color: "var(--color-error)",
               padding: "10px 12px",
               fontSize: 13,
             }}

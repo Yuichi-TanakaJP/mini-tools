@@ -13,7 +13,7 @@
   --clr-primary: #4338ca;
   --clr-primary-hover: #3730a3;
   --clr-primary-light: #e0e7ff;
-  --clr-primary-border: #c7d2fe;   /* indigo-200: hover borders, badge borders */
+  --clr-primary-border: var(--color-border-accent);   /* indigo-200: hover borders, badge borders */
   --clr-primary-text: #3730a3;
   --clr-primary-ring: rgba(67, 56, 202, 0.15);
   --clr-success: #059669;
@@ -22,9 +22,9 @@
   --clr-amber: #d97706;
   --clr-amber-light: #fef3c7;
   --clr-amber-text: #92400e;
-  --clr-amber-border: #fbbf24;
-  --clr-amber-help-bg: #fffbeb;    /* amber-50: help box background */
-  --clr-amber-help-border: #fde68a;/* amber-200: help box border */
+  --clr-amber-border: var(--color-warning-border);
+  --clr-amber-help-bg: var(--color-warning-bg);    /* amber-50: help box background */
+  --clr-amber-help-border: var(--color-warning-border);/* amber-200: help box border */
   --clr-amber-help-text: #92400e;  /* amber-800 */
   --clr-amber-help-body: #78350f;  /* amber-900 */
   --clr-amber-help-strong: #451a03;/* amber-950 */
@@ -32,7 +32,7 @@
   --clr-danger-light: #fff1f2;
   --clr-danger-hover: #ffe4e6;     /* rose-100: danger hover background */
   --clr-danger-text: #9f1239;
-  --clr-danger-border: #fda4af;
+  --clr-danger-border: var(--color-error-border);
   --clr-violet: #7c3aed;
   --clr-violet-light: #f5f3ff;
   --clr-violet-hover: #ede9fe;     /* violet-100: strategy badge hover */
@@ -49,7 +49,7 @@
   margin: 0 auto;
   padding: 20px 16px;
   border-radius: 20px;
-  background: #f1f5f9;
+  background: var(--color-bg-subtle);
 }
 
 /* ===== Header ===== */
@@ -57,7 +57,7 @@
   font-size: 20px;
   font-weight: 800;
   letter-spacing: -0.3px;
-  color: #0f172a;
+  color: var(--color-text);
   margin-bottom: 12px;
 }
 
@@ -77,7 +77,7 @@
   margin: 0 0 12px;
   font-size: 12px;
   line-height: 1.6;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .headerActions {
@@ -90,10 +90,10 @@
 /* ===== Buttons ===== */
 .btn {
   padding: 9px 14px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-border-strong);
   border-radius: 10px;
   background: #fff;
-  color: #334155;
+  color: var(--color-text-sub);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -101,8 +101,8 @@
 }
 
 .btn:hover {
-  background: #f8fafc;
-  border-color: #94a3b8;
+  background: var(--color-bg-subtle);
+  border-color: var(--color-border-control);
 }
 
 .btn:focus {
@@ -146,10 +146,10 @@
   width: 100%;
   box-sizing: border-box;
   padding: 10px 12px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-border-strong);
   border-radius: 10px;
   background: #fff;
-  color: #0f172a;
+  color: var(--color-text);
   font-size: 14px;
   transition: border-color 0.12s, box-shadow 0.12s;
 }
@@ -167,10 +167,10 @@
 .select {
   box-sizing: border-box;
   padding: 10px 12px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-border-strong);
   border-radius: 10px;
   background: #fff;
-  color: #0f172a;
+  color: var(--color-text);
   font-size: 14px;
   cursor: pointer;
   transition: border-color 0.12s, box-shadow 0.12s;
@@ -190,9 +190,9 @@
   display: inline-flex;
   margin-top: 10px;
   padding: 3px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-border-strong);
   border-radius: 10px;
-  background: #f8fafc;
+  background: var(--color-bg-subtle);
 }
 
 .monthViewButton {
@@ -200,7 +200,7 @@
   border: 0;
   border-radius: 7px;
   background: transparent;
-  color: #475569;
+  color: var(--color-text-sub);
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
@@ -241,8 +241,8 @@
   height: 22px;
   border: 0;
   border-radius: 50%;
-  background: #cbd5e1;
-  color: #475569;
+  background: var(--color-neutral-bg);
+  color: var(--color-text-sub);
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
@@ -280,7 +280,7 @@
   border: 0;
   border-radius: 4px;
   background: transparent;
-  color: #475569; /* slate-600: meets WCAG AA contrast on white */
+  color: var(--color-text-sub); /* slate-600: meets WCAG AA contrast on white */
   font-size: 12px;
   cursor: pointer;
 }
@@ -297,12 +297,12 @@
 
 .sortToggleChevron {
   font-size: 10px;
-  color: #94a3b8;
+  color: var(--color-text-muted);
 }
 
 /* ===== Card ===== */
 .card {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 16px;
   padding: 12px 14px;
   box-sizing: border-box;
@@ -325,7 +325,7 @@
   bottom: 12px;
   width: 3px;
   border-radius: 0 2px 2px 0;
-  background: #e2e8f0;
+  background: var(--color-neutral-bg);
   transition: background 0.16s ease;
 }
 
@@ -384,16 +384,16 @@
 
 .cardName {
   min-width: 0;
-  color: #0f172a;
+  color: var(--color-text);
   font-size: 15px;
   font-weight: 700;
 }
 
 .cardCode {
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 12px;
   font-weight: 500;
-  background: #f1f5f9;
+  background: var(--color-bg-subtle);
   padding: 1px 6px;
   border-radius: 5px;
   white-space: nowrap;
@@ -417,10 +417,10 @@
 }
 
 .shortBalanceBadge {
-  color: #0f766e;
+  color: var(--color-info);
   font-size: 12px;
   font-weight: 600;
-  background: #ccfbf1;
+  background: var(--color-info-bg);
   padding: 1px 6px;
   border-radius: 5px;
   white-space: nowrap;
@@ -496,7 +496,7 @@
   margin-top: 8px;
   padding: 10px 12px;
   background: #fff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
 }
 
@@ -520,7 +520,7 @@
   border: 0;
   border-radius: 4px;
   background: transparent;
-  color: #475569;
+  color: var(--color-text-sub);
   font-size: 12px;
   cursor: pointer;
 }
@@ -537,7 +537,7 @@
 
 .bulkBarChevron {
   font-size: 10px;
-  color: #94a3b8;
+  color: var(--color-text-muted);
 }
 
 /* ===== Card row (with checkbox) ===== */
@@ -567,10 +567,10 @@
 
 .stateToggle {
   padding: 4px 10px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-border-strong);
   border-radius: 999px;
   background: #fff;
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -600,10 +600,10 @@
 
 .archiveBtn {
   padding: 4px 10px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-border-strong);
   border-radius: 999px;
   background: #fff;
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -611,8 +611,8 @@
 }
 
 .archiveBtn:hover:not(:disabled) {
-  border-color: #94a3b8;
-  background: #f8fafc;
+  border-color: var(--color-border-control);
+  background: var(--color-bg-subtle);
 }
 
 .archiveBtn:focus {
@@ -691,7 +691,7 @@
   position: fixed;
   z-index: 41;
   background: #fff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12), 0 2px 8px rgba(15, 23, 42, 0.06);
   padding: 6px;
@@ -707,7 +707,7 @@
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: #334155;
+  color: var(--color-text-sub);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -765,9 +765,9 @@
 .chip {
   padding: 5px 11px;
   border-radius: 999px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  color: #475569;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-sub);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -806,7 +806,7 @@
 /* ===== Card details ===== */
 .small {
   font-size: 12px;
-  color: #64748b;
+  color: var(--color-text-muted);
   line-height: 1.5;
 }
 
@@ -824,7 +824,7 @@
 /* ===== Divider ===== */
 .hr {
   height: 1px;
-  background: #e2e8f0;
+  background: var(--color-neutral-bg);
   margin: 14px 0;
   border: 0;
 }
@@ -868,9 +868,9 @@
 .monthBtn {
   padding: 8px 4px;
   border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  color: #64748b;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-muted);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -904,7 +904,7 @@
 .tickerAssistPanel {
   margin-top: 8px;
   padding: 12px 14px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   background: #fff;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
@@ -922,9 +922,9 @@
   gap: 2px 10px;
   align-items: center;
   padding: 10px 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 10px;
-  background: #f8fafc;
+  background: var(--color-bg-subtle);
   text-align: left;
   cursor: pointer;
   transition: border-color 0.12s, background 0.12s;
@@ -950,14 +950,14 @@
 
 .tickerCandidateName {
   min-width: 0;
-  color: #0f172a;
+  color: var(--color-text);
   font-weight: 500;
 }
 
 .tickerCandidateMarket {
   grid-column: 2;
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--color-text-muted);
 }
 
 .tickerAssistActions {
@@ -979,10 +979,10 @@
   justify-content: center;
   width: 20px;
   height: 20px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-border-strong);
   border-radius: 999px;
-  background: #f1f5f9;
-  color: #64748b;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-muted);
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
@@ -1067,7 +1067,7 @@
 .dialogTitle {
   font-weight: 700;
   font-size: 16px;
-  color: #0f172a;
+  color: var(--color-text);
   margin-bottom: 14px;
 }
 
@@ -1126,7 +1126,7 @@
   margin-left: var(--selection-col-offset);
   width: calc(100% - var(--selection-col-offset) - var(--content-right-gap));
   box-sizing: border-box;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 14px;
   background: #fff;
@@ -1136,7 +1136,7 @@
 .archiveTitle {
   font-weight: 700;
   font-size: 14px;
-  color: #0f172a;
+  color: var(--color-text);
   margin-bottom: 10px;
 }
 
@@ -1146,9 +1146,9 @@
 }
 
 .archiveGroup {
-  border: 1px solid #f1f5f9;
+  border: 1px solid var(--color-border);
   border-radius: 10px;
-  background: #f8fafc;
+  background: var(--color-bg-subtle);
   overflow: hidden;
 }
 
@@ -1162,14 +1162,14 @@
   justify-content: space-between;
   cursor: pointer;
   text-align: left;
-  color: #334155;
+  color: var(--color-text-sub);
   font-size: 13px;
   font-weight: 600;
   transition: background 0.12s;
 }
 
 .archiveGroupHeader:hover {
-  background: #f1f5f9;
+  background: var(--color-bg-subtle);
 }
 
 .archiveGroupHeader:focus {
@@ -1188,7 +1188,7 @@
 
 .archiveChevron {
   font-size: 11px;
-  color: #94a3b8;
+  color: var(--color-text-muted);
   transition: transform 0.15s ease;
 }
 
@@ -1197,7 +1197,7 @@
 }
 
 .archiveRow {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   border-radius: 10px;
   padding: 9px 12px;
   background: #fff;
@@ -1318,7 +1318,7 @@
 
   /* No hover lift on touch devices */
   .card:hover {
-    border-color: #e2e8f0;
+    border-color: var(--color-border);
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.05);
     transform: none;
   }

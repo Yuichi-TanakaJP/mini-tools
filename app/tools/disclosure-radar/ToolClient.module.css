@@ -211,18 +211,18 @@
 }
 
 .high {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--color-error-bg);
+  color: var(--color-error);
 }
 
 .medium {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
 .low {
-  background: #e0e7ff;
-  color: #3730a3;
+  background: var(--color-accent-sub);
+  color: var(--color-accent);
 }
 
 .time {

@@ -155,10 +155,10 @@ function getDiffColor(value: number) {
 
 function getHeatmapCellStyle(cell: InvestorFlowHistoryMatrixCell, maxAbsDiff: number): CSSProperties {
   if (cell.diff_yen == null || cell.direction === "unknown") {
-    return { ...styles.heatmapCell, background: "#e2e8f0", borderColor: "rgba(100,116,139,0.16)" };
+    return { ...styles.heatmapCell, background: "var(--color-neutral-bg)", borderColor: "rgba(100,116,139,0.16)" };
   }
   if (cell.direction === "flat" || cell.diff_yen === 0) {
-    return { ...styles.heatmapCell, background: "#f1f5f9", borderColor: "rgba(100,116,139,0.18)" };
+    return { ...styles.heatmapCell, background: "var(--color-bg-subtle)", borderColor: "rgba(100,116,139,0.18)" };
   }
   const base = cell.direction === "net_buy" ? "220,38,38" : "37,99,235";
   const intensity = maxAbsDiff > 0 ? Math.min(1, Math.abs(cell.diff_yen) / maxAbsDiff) : 0;
@@ -1070,7 +1070,7 @@ const styles: Record<string, CSSProperties> = {
   page: {
     minHeight: "100vh",
     padding: "24px 16px 72px",
-    background: "#f8fafc",
+    background: "var(--color-bg-subtle)",
   },
   shell: {
     maxWidth: 1080,
@@ -1084,8 +1084,8 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     padding: "5px 10px",
     borderRadius: 999,
-    background: "#ecfeff",
-    color: "#0f766e",
+    background: "var(--color-info-bg)",
+    color: "var(--color-info)",
     fontSize: 11,
     fontWeight: 800,
     border: "1px solid rgba(15,118,110,0.12)",
@@ -1094,14 +1094,14 @@ const styles: Record<string, CSSProperties> = {
     margin: "12px 0 8px",
     fontSize: "clamp(30px, 6vw, 44px)",
     fontWeight: 900,
-    color: "#0f172a",
+    color: "var(--color-text)",
   },
   description: {
     margin: 0,
     maxWidth: 720,
     fontSize: 14,
     lineHeight: 1.7,
-    color: "#475569",
+    color: "var(--color-text-sub)",
   },
   metaRow: {
     display: "flex",
@@ -1114,14 +1114,14 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     padding: "4px 10px",
     borderRadius: 999,
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
     border: "1px solid rgba(15,23,42,0.08)",
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontSize: 11,
     fontWeight: 700,
   },
   panel: {
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
     borderRadius: 18,
     padding: 18,
     border: "1px solid rgba(15,23,42,0.06)",
@@ -1132,7 +1132,7 @@ const styles: Record<string, CSSProperties> = {
     marginBottom: 10,
     fontSize: 11,
     fontWeight: 800,
-    color: "#94a3b8",
+    color: "var(--color-text-muted)",
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
@@ -1147,8 +1147,8 @@ const styles: Record<string, CSSProperties> = {
     padding: "8px 11px",
     borderRadius: 12,
     border: "1px solid rgba(15,23,42,0.10)",
-    background: "#f8fafc",
-    color: "#334155",
+    background: "var(--color-bg-subtle)",
+    color: "var(--color-text-sub)",
     fontSize: 12,
     fontWeight: 800,
     textDecoration: "none",
@@ -1158,9 +1158,9 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     padding: "8px 11px",
     borderRadius: 12,
-    border: "1.5px solid #0f766e",
-    background: "#ecfeff",
-    color: "#134e4a",
+    border: "1.5px solid var(--color-info)",
+    background: "var(--color-info-bg)",
+    color: "var(--color-info-text)",
     fontSize: 12,
     fontWeight: 900,
     textDecoration: "none",
@@ -1172,14 +1172,14 @@ const styles: Record<string, CSSProperties> = {
     marginBottom: 16,
   },
   metricCard: {
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
     border: "1px solid rgba(15,23,42,0.06)",
     borderRadius: 16,
     padding: 16,
     boxShadow: "0 8px 24px rgba(15,23,42,0.05)",
   },
   analysisMetricCard: {
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
     border: "1px solid rgba(15,23,42,0.08)",
     borderRadius: 14,
     padding: 14,
@@ -1187,7 +1187,7 @@ const styles: Record<string, CSSProperties> = {
   metricLabel: {
     fontSize: 12,
     fontWeight: 800,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
   },
   metricValue: {
     marginTop: 8,
@@ -1197,11 +1197,11 @@ const styles: Record<string, CSSProperties> = {
   metricSub: {
     marginTop: 8,
     fontSize: 11,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     lineHeight: 1.5,
   },
   tableSection: {
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
     border: "1px solid rgba(15,23,42,0.06)",
     borderRadius: 18,
     padding: 16,
@@ -1218,20 +1218,20 @@ const styles: Record<string, CSSProperties> = {
   summaryTitle: {
     fontSize: 16,
     fontWeight: 900,
-    color: "#0f172a",
+    color: "var(--color-text)",
   },
   summarySub: {
     marginTop: 4,
     fontSize: 12,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
   },
   sourceLink: {
     display: "inline-flex",
     alignItems: "center",
     padding: "7px 10px",
     borderRadius: 999,
-    background: "#eff6ff",
-    color: "#1d4ed8",
+    background: "var(--color-info-bg)",
+    color: "var(--color-accent)",
     fontSize: 12,
     fontWeight: 800,
     textDecoration: "none",
@@ -1255,7 +1255,7 @@ const styles: Record<string, CSSProperties> = {
     gap: 8,
     padding: 6,
     borderRadius: 14,
-    background: "#f1f5f9",
+    background: "var(--color-bg-subtle)",
     border: "1px solid rgba(15,23,42,0.06)",
   },
   viewTab: {
@@ -1266,7 +1266,7 @@ const styles: Record<string, CSSProperties> = {
     border: "1px solid transparent",
     borderRadius: 10,
     background: "transparent",
-    color: "#475569",
+    color: "var(--color-text-sub)",
     textAlign: "left",
     cursor: "pointer",
   },
@@ -1277,8 +1277,8 @@ const styles: Record<string, CSSProperties> = {
     padding: "10px 12px",
     border: "1px solid rgba(15,118,110,0.26)",
     borderRadius: 10,
-    background: "#ffffff",
-    color: "#0f172a",
+    background: "var(--color-bg-card)",
+    color: "var(--color-text)",
     textAlign: "left",
     cursor: "pointer",
     boxShadow: "0 6px 16px rgba(15,23,42,0.08)",
@@ -1290,7 +1290,7 @@ const styles: Record<string, CSSProperties> = {
   viewTabDescription: {
     fontSize: 11,
     lineHeight: 1.4,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
   },
   viewGrid: {
     display: "grid",
@@ -1301,7 +1301,7 @@ const styles: Record<string, CSSProperties> = {
     padding: 14,
     borderRadius: 14,
     border: "1px solid rgba(15,23,42,0.08)",
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
   },
   signalPanel: {
     display: "grid",
@@ -1310,7 +1310,7 @@ const styles: Record<string, CSSProperties> = {
     padding: 14,
     borderRadius: 14,
     border: "1px solid rgba(15,23,42,0.08)",
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
   },
   heatmapPanel: {
     display: "grid",
@@ -1318,7 +1318,7 @@ const styles: Record<string, CSSProperties> = {
     padding: 14,
     borderRadius: 14,
     border: "1px solid rgba(15,23,42,0.08)",
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
   },
   heatmapHeader: {
     display: "flex",
@@ -1346,7 +1346,7 @@ const styles: Record<string, CSSProperties> = {
   heatmapSourceHeader: {
     fontSize: 11,
     fontWeight: 900,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
   },
   heatmapWeekHeader: {
     display: "grid",
@@ -1354,7 +1354,7 @@ const styles: Record<string, CSSProperties> = {
     minWidth: 34,
     fontSize: 10,
     fontWeight: 800,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontVariantNumeric: "tabular-nums",
   },
   heatmapCategory: {
@@ -1363,7 +1363,7 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     fontSize: 12,
     fontWeight: 900,
-    color: "#0f172a",
+    color: "var(--color-text)",
     whiteSpace: "nowrap",
   },
   heatmapCell: {
@@ -1379,7 +1379,7 @@ const styles: Record<string, CSSProperties> = {
     alignContent: "center",
     fontSize: 11,
     fontWeight: 900,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     whiteSpace: "nowrap",
   },
   panelHeader: {
@@ -1392,13 +1392,13 @@ const styles: Record<string, CSSProperties> = {
   panelTitle: {
     fontSize: 14,
     fontWeight: 900,
-    color: "#0f172a",
+    color: "var(--color-text)",
   },
   panelSub: {
     marginTop: 3,
     fontSize: 11,
     lineHeight: 1.5,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
   },
   moverList: {
     display: "grid",
@@ -1414,12 +1414,12 @@ const styles: Record<string, CSSProperties> = {
   moverName: {
     fontSize: 13,
     fontWeight: 900,
-    color: "#0f172a",
+    color: "var(--color-text)",
   },
   moverSub: {
     marginTop: 4,
     fontSize: 11,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     lineHeight: 1.4,
   },
   moverValue: {
@@ -1449,13 +1449,13 @@ const styles: Record<string, CSSProperties> = {
     gap: 4,
     padding: 11,
     borderRadius: 10,
-    background: "#f8fafc",
+    background: "var(--color-bg-subtle)",
     border: "1px solid rgba(15,23,42,0.06)",
   },
   streakName: {
     fontSize: 12,
     fontWeight: 900,
-    color: "#0f172a",
+    color: "var(--color-text)",
   },
   streakValue: {
     fontSize: 12,
@@ -1471,12 +1471,12 @@ const styles: Record<string, CSSProperties> = {
     padding: 14,
     borderRadius: 14,
     border: "1px solid rgba(15,23,42,0.08)",
-    background: "#f8fafc",
+    background: "var(--color-bg-subtle)",
   },
   compactCardTitle: {
     fontSize: 13,
     fontWeight: 900,
-    color: "#0f172a",
+    color: "var(--color-text)",
   },
   compactLegend: {
     display: "flex",
@@ -1494,7 +1494,7 @@ const styles: Record<string, CSSProperties> = {
     padding: 14,
     borderRadius: 14,
     border: "1px solid rgba(15,23,42,0.08)",
-    background: "#f8fafc",
+    background: "var(--color-bg-subtle)",
   },
   compositionHeader: {
     display: "flex",
@@ -1506,24 +1506,24 @@ const styles: Record<string, CSSProperties> = {
   compositionTitle: {
     fontSize: 14,
     fontWeight: 900,
-    color: "#0f172a",
+    color: "var(--color-text)",
   },
   compositionDescription: {
     marginTop: 5,
     maxWidth: 520,
     fontSize: 12,
     lineHeight: 1.6,
-    color: "#475569",
+    color: "var(--color-text-sub)",
   },
   compositionSub: {
     marginTop: 3,
     fontSize: 11,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontWeight: 700,
   },
   compositionTotal: {
     fontSize: 11,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontWeight: 800,
   },
   stackGroup: {
@@ -1539,14 +1539,14 @@ const styles: Record<string, CSSProperties> = {
   stackLabel: {
     fontSize: 12,
     fontWeight: 900,
-    color: "#475569",
+    color: "var(--color-text-sub)",
   },
   stackTrack: {
     display: "flex",
     height: 22,
     overflow: "hidden",
     borderRadius: 8,
-    background: "#e2e8f0",
+    background: "var(--color-neutral-bg)",
   },
   stackSegment: {
     display: "block",
@@ -1562,7 +1562,7 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     gap: 5,
     fontSize: 11,
-    color: "#475569",
+    color: "var(--color-text-sub)",
     fontWeight: 800,
   },
   legendSwatch: {
@@ -1577,7 +1577,7 @@ const styles: Record<string, CSSProperties> = {
   detailListHeader: {
     fontSize: 13,
     fontWeight: 900,
-    color: "#0f172a",
+    color: "var(--color-text)",
   },
   structureLayout: {
     display: "grid",
@@ -1589,7 +1589,7 @@ const styles: Record<string, CSSProperties> = {
     padding: 14,
     borderRadius: 14,
     border: "1px solid rgba(15,23,42,0.08)",
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
   },
   structureSplit: {
     display: "grid",
@@ -1607,7 +1607,7 @@ const styles: Record<string, CSSProperties> = {
     padding: 14,
     borderRadius: 12,
     border: "1px solid rgba(15,118,110,0.22)",
-    background: "#f0fdfa",
+    background: "var(--color-info-bg)",
   },
   structureNode: {
     display: "grid",
@@ -1615,12 +1615,12 @@ const styles: Record<string, CSSProperties> = {
     padding: 12,
     borderRadius: 12,
     border: "1px solid rgba(15,23,42,0.08)",
-    background: "#f8fafc",
+    background: "var(--color-bg-subtle)",
   },
   structureName: {
     fontSize: 13,
     fontWeight: 900,
-    color: "#0f172a",
+    color: "var(--color-text)",
   },
   structureValue: {
     fontSize: 20,
@@ -1629,7 +1629,7 @@ const styles: Record<string, CSSProperties> = {
   structureNote: {
     fontSize: 11,
     lineHeight: 1.5,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
   },
   termNote: {
     display: "grid",
@@ -1637,12 +1637,12 @@ const styles: Record<string, CSSProperties> = {
     padding: 14,
     borderRadius: 14,
     border: "1px solid rgba(15,118,110,0.16)",
-    background: "#f0fdfa",
+    background: "var(--color-info-bg)",
   },
   termNoteTitle: {
     fontSize: 13,
     fontWeight: 900,
-    color: "#134e4a",
+    color: "var(--color-info-text)",
   },
   termGrid: {
     display: "grid",
@@ -1656,18 +1656,18 @@ const styles: Record<string, CSSProperties> = {
   termName: {
     fontSize: 12,
     fontWeight: 900,
-    color: "#0f766e",
+    color: "var(--color-info)",
   },
   termDescription: {
     fontSize: 12,
     lineHeight: 1.55,
-    color: "#334155",
+    color: "var(--color-text-sub)",
   },
   detailPanel: {
     border: "1px solid rgba(15,23,42,0.08)",
     borderRadius: 12,
     overflow: "hidden",
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
   },
   detailSummary: {
     display: "flex",
@@ -1676,12 +1676,12 @@ const styles: Record<string, CSSProperties> = {
     gap: 10,
     padding: "11px 13px",
     cursor: "pointer",
-    color: "#0f172a",
+    color: "var(--color-text)",
     fontSize: 13,
     fontWeight: 900,
   },
   detailSummarySub: {
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontSize: 11,
     fontWeight: 800,
   },
@@ -1705,18 +1705,18 @@ const styles: Record<string, CSSProperties> = {
   thLeft: {
     padding: "10px 12px",
     textAlign: "left",
-    background: "#f8fafc",
+    background: "var(--color-bg-subtle)",
     borderBottom: "1px solid rgba(15,23,42,0.08)",
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontSize: 11,
     fontWeight: 800,
   },
   thRight: {
     padding: "10px 12px",
     textAlign: "right",
-    background: "#f8fafc",
+    background: "var(--color-bg-subtle)",
     borderBottom: "1px solid rgba(15,23,42,0.08)",
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontSize: 11,
     fontWeight: 800,
   },
@@ -1731,7 +1731,7 @@ const styles: Record<string, CSSProperties> = {
     padding: "10px 12px",
     textAlign: "right",
     whiteSpace: "nowrap",
-    color: "#0f172a",
+    color: "var(--color-text)",
   },
   tdRightStrong: {
     padding: "10px 12px",
@@ -1743,11 +1743,11 @@ const styles: Record<string, CSSProperties> = {
     padding: "10px 12px",
     textAlign: "right",
     whiteSpace: "nowrap",
-    color: "#64748b",
+    color: "var(--color-text-muted)",
   },
   categoryName: {
     fontWeight: 900,
-    color: "#0f172a",
+    color: "var(--color-text)",
     whiteSpace: "nowrap",
   },
   shareCell: {
@@ -1758,7 +1758,7 @@ const styles: Record<string, CSSProperties> = {
     justifyContent: "end",
   },
   shareText: {
-    color: "#475569",
+    color: "var(--color-text-sub)",
     fontWeight: 800,
     fontVariantNumeric: "tabular-nums",
   },
@@ -1767,7 +1767,7 @@ const styles: Record<string, CSSProperties> = {
     width: "100%",
     height: 7,
     borderRadius: 999,
-    background: "#e2e8f0",
+    background: "var(--color-neutral-bg)",
     overflow: "hidden",
   },
   shareBar: {
@@ -1779,31 +1779,31 @@ const styles: Record<string, CSSProperties> = {
   emptyCard: {
     padding: "32px 24px",
     borderRadius: 18,
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
     border: "1px solid rgba(15,23,42,0.06)",
     textAlign: "center",
   },
   emptyTitle: {
     fontSize: 18,
     fontWeight: 900,
-    color: "#0f172a",
+    color: "var(--color-text)",
   },
   emptyText: {
     margin: "10px auto 0",
     maxWidth: 520,
     fontSize: 13,
     lineHeight: 1.7,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
   },
   emptyBlock: {
     padding: "32px 20px",
     textAlign: "center",
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontSize: 14,
   },
   emptyMini: {
     padding: "14px 0",
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontSize: 12,
   },
   noticeCard: {
@@ -1811,8 +1811,8 @@ const styles: Record<string, CSSProperties> = {
     padding: "12px 14px",
     borderRadius: 12,
     border: "1px solid rgba(245,158,11,0.22)",
-    background: "#fffbeb",
-    color: "#92400e",
+    background: "var(--color-warning-bg)",
+    color: "var(--color-warning)",
     fontSize: 12,
     fontWeight: 800,
   },
@@ -1820,12 +1820,12 @@ const styles: Record<string, CSSProperties> = {
     padding: "24px 20px",
     borderRadius: 18,
     border: "1px solid rgba(245,158,11,0.28)",
-    background: "#fff7ed",
+    background: "var(--color-warning-bg)",
   },
   errorTitle: {
     fontSize: 17,
     fontWeight: 900,
-    color: "#9a3412",
+    color: "var(--color-warning)",
   },
   errorText: {
     margin: "10px 0 0",

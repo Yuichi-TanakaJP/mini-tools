@@ -18,6 +18,7 @@
   --color-text:             #111b29;
   --color-text-sub:         #3c495a;
   --color-text-muted:       #606d7f;
+  --color-text-disabled:    #9da5b1;
   --color-text-inverse:     #ffffff;
 
   /* Border / focus — border-control は操作可能な部品の輪郭。背景に対し 3:1 を満たす */
@@ -105,6 +106,7 @@ html[data-theme="dark"] {
   --color-text:             #e3e8f0;
   --color-text-sub:         #b0b8c3;
   --color-text-muted:       #939ca9;
+  --color-text-disabled:    #565e69;
   --color-text-inverse:     #0d131c;
 
   /* Border / focus — border-control は操作可能な部品の輪郭。背景に対し 3:1 を満たす */
