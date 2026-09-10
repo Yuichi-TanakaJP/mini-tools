@@ -203,7 +203,7 @@ const CROSS_TYPE_DESCRIPTIONS: Record<CrossType, string> = {
 type ShortBalanceRequestState = "idle" | "loading" | "done" | "error";
 
 export default function ToolClient(props: { shortBalance: NikkoShortBalanceData }) {
-  if (process.env.NEXT_PUBLIC_YUTAI_MEMO_DB_PREVIEW === "true") return <DatabaseMemo />;
+  if (process.env.NEXT_PUBLIC_YUTAI_MEMO_DB_PREVIEW === "true") return <DatabaseMemo shortBalance={props.shortBalance} />;
   return <LegacyToolClient {...props} />;
 }
 

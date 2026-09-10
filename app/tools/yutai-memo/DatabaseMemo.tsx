@@ -10,11 +10,13 @@ import { cycleStatuses } from "@/lib/yutai/cycles";
 import { DatabaseCycles } from "./DatabaseCycles";
 import { DatabaseTags } from "./DatabaseTags";
 import { monthDraft, optionalNumber, profileDraft, saveMonth, saveProfile, setProfileActive } from "@/lib/yutai/memo";
-import { CROSS_TYPES } from "./types";
+import { CROSS_TYPES, type NikkoShortBalanceData } from "./types";
+import { memoList, type MemoListOptions } from "@/lib/yutai/memo-list";
+import { DatabaseShortBalance } from "./DatabaseShortBalance";
 import styles from "./DatabaseMemo.module.css";
 
 // Workspace RPC returns all profile/month/cycle rows; month 1 is only the selection-view argument.
-export default function DatabaseMemo() {
+export default function DatabaseMemo({ shortBalance }: { shortBalance: NikkoShortBalanceData }) {
   const configured = isSyncConfigured();
   const view = useYutaiWorkspace(1, configured);
   if (!configured) return <main className={styles.page}><p role="alert">DB接続設定がありません。従来保存へは戻しません。</p></main>;
@@ -22,12 +24,17 @@ export default function DatabaseMemo() {
     <p>{view.status === "signed_out" ? "Supabaseへのログインが必要です。" : "優待メモを取得しています。"}</p>
     {view.error && <p role="alert">取得に失敗しました。通信とログイン状態を確認してください。</p>}
     <a href="/account">ログイン画面へ</a> <button onClick={() => window.location.reload()}>再読み込み</button></main>;
-  return <ConnectedMemo key={view.sessionRevision} view={view} />;
+  return <ConnectedMemo key={view.sessionRevision} view={view} shortBalance={shortBalance} />;
 }
-function ConnectedMemo({ view }: { view: ViewState }) {
+function ConnectedMemo({ view, shortBalance }: { view: ViewState; shortBalance: NikkoShortBalanceData }) {
   const connection = useCalendarConnection(view, new Date().getFullYear(), 1);
   const [query, setQuery] = useState("");
   const [showInactive, setShowInactive] = useState(false);
+  const [month, setMonth] = useState<number | null>(null);
+  const [axis, setAxis] = useState<MemoListOptions["axis"]>("entitlement");
+  const [tag, setTag] = useState("");
+  const [sort, setSort] = useState<MemoListOptions["sort"]>("created_at");
+  const [descending, setDescending] = useState(true);
   const [editor, setEditor] = useState<{ profile: Profile | null } | null>(null);
   const [monthEditor, setMonthEditor] = useState<{ profile: Profile; month: number; original: MonthState | null } | null>(null);
   const [notice, setNotice] = useState("");
@@ -43,24 +50,33 @@ function ConnectedMemo({ view }: { view: ViewState }) {
     if (!command) { setEditor(null); setMonthEditor(null); setTagEditor(null); setCycleEditor(null); setNotice("変更はありません。"); return; }
     setNotice(""); void connection.save([() => command]);
   };
-  const profiles = data.profiles.filter(p => (showInactive || p.active) && `${p.stock_code} ${p.display_name} ${p.memo}`.toLowerCase().includes(query.toLowerCase()));
+  const profiles = memoList(data, { query, inactive: showInactive, month, axis, tag, sort, descending });
   return <main className={styles.page}>
     <h1>優待銘柄メモ帳</h1>
     <YutaiConnectionStatus connection={connection} scope="メモ帳の基本編集" />
     {process.env.NEXT_PUBLIC_YUTAI_TRANSFER_DB_PREVIEW === "true" && <p><a href="/tools/data-transfer">優待DBの全件出力・照合</a></p>}
     <p>月別の株数・優待価値・タグ・全年度の仕込み履歴をDBへ保存します。
-      一括操作・インポート/復元実行・通知は未接続です。本番切替は未完了です。</p>
+      一括操作・旧形式インポート・通知は未接続です。本番切替は未完了です。</p>
     {notice && <p role="status">{notice}</p>}
     <fieldset className={styles.panel} disabled={connection.blocked || view.stale}>
       <div className={styles.row}><label>検索<input value={query} onChange={e => setQuery(e.target.value)} /></label>
         <label><input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />非表示も表示</label>
+        <label>月の表示軸<select aria-label="月の表示軸" value={axis} onChange={e => setAxis(e.target.value as MemoListOptions["axis"])}><option value="entitlement">権利月</option><option value="preparation">仕込み月</option></select></label>
+        <label>対象月<select aria-label="対象月" value={month ?? ""} onChange={e => setMonth(e.target.value ? Number(e.target.value) : null)}><option value="">全月</option>{Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}月</option>)}</select></label>
+        <label>タグ絞り込み<select aria-label="タグ絞り込み" value={tag} onChange={e => setTag(e.target.value)}><option value="">すべて</option>{data.tags.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}{tag && !data.tags.some(t => t.id === tag) && <option value={tag}>削除済みタグ</option>}</select></label>
+        <label>並べ替え<select aria-label="並べ替え" value={sort} onChange={e => setSort(e.target.value as MemoListOptions["sort"])}><option value="created_at">作成日</option><option value="stock_code">銘柄コード</option><option value="display_name">銘柄名</option></select></label>
+        <label><input type="checkbox" checked={descending} onChange={e => setDescending(e.target.checked)} />降順</label>
         <button onClick={() => { setEditor({ profile: null }); setMonthEditor(null); setTagEditor(null); setCycleEditor(null); }}>銘柄を追加</button></div>
+      {axis === "preparation" && <p>仕込み月は月別設定の「何か月前」から算出します。未設定は対象外、0か月前は権利月と同月です。</p>}
+      <DatabaseShortBalance codes={profiles.map(p => p.stock_code)} asOf={shortBalance?.asOf ?? null} blocked={connection.blocked || view.stale} />
       <button onClick={() => { setTagEditor({ snapshot: data, profileId: null }); setEditor(null); setMonthEditor(null); setCycleEditor(null); }}>タグ管理</button>
       {tagEditor && <DatabaseTags key={tagEditor.profileId ?? "catalog"} {...tagEditor} onSave={run} onClose={() => setTagEditor(null)} />}
       <p>{profiles.length}銘柄</p>
+      {!profiles.length && <p>条件に一致する銘柄はありません。</p>}
       {profiles.map(profile => <article className={styles.card} key={profile.id}>
         <h2>{profile.stock_code} {profile.display_name}{!profile.active && "（非表示）"}</h2>
         <p>{profile.cross_strategy} / {"★".repeat(profile.priority)}</p>
+        <p>信用売り残高: {(() => { const value = shortBalance?.byCode?.[profile.stock_code.toUpperCase()]?.sellBalance; return typeof value === "number" && Number.isFinite(value) && value >= 0 ? `${value.toLocaleString("ja-JP")}株` : "未取得"; })()}</p>
         <p className={styles.memo}>{profile.memo || "メモ未設定"}</p>
         <p>1株開始: {profile.one_share_started_on ?? profile.one_share_started_legacy_text ?? "未設定"}</p>
         <p>タグ: {data.profile_tags.filter(t => t.profile_id === profile.id).map(t => data.tags.find(tag => tag.id === t.tag_id)?.name ?? "名称不明").join("、") || "なし"}</p>
