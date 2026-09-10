@@ -4,6 +4,7 @@
 // - キー単位 last-write-wins（updatedAt の新しい方を採用）
 // - LocalStorage は手元の正＝キャッシュ。サーバーはバックアップ兼デバイス間共有。
 import { SYNCED_KEYS } from "./registry";
+import { legacyYutaiWriteBlocked } from "../yutai/cutover";
 
 const META_KEY = "mini_tools_sync_meta_v1";
 const SAFETY_BACKUP_PREFIX = "mini_tools_sync_safety_backup_v1:";
@@ -43,6 +44,7 @@ function setMetaUpdatedAt(key: string, updatedAt: string) {
 
 /** ツールがローカル保存した直後に呼ぶ。次回 push でサーバーへ反映される。 */
 export function markChanged(key: string) {
+  if (legacyYutaiWriteBlocked(key)) return;
   setMetaUpdatedAt(key, new Date().toISOString());
 }
 
@@ -66,6 +68,7 @@ function readLocalValue(key: string): { value: unknown } | null {
 }
 
 function writeLocalValue(key: string, value: unknown) {
+  if (legacyYutaiWriteBlocked(key)) return;
   const serialized = typeof value === "string" ? value : JSON.stringify(value);
   window.localStorage.setItem(key, serialized);
 }
@@ -162,6 +165,7 @@ function collectLocalItems(): SyncItem[] {
   const meta = readMeta();
   const items: SyncItem[] = [];
   for (const key of SYNCED_KEYS) {
+    if (legacyYutaiWriteBlocked(key)) continue;
     const local = readLocalValue(key);
     if (!local) continue;
     const updatedAt = localUpdatedAtForPush(key, meta, local.value);
@@ -190,6 +194,7 @@ async function pushAllInternal(
     const sentKeys = new Set(items.map((it) => it.key));
     let shouldRetry = false;
     for (const it of data.items ?? []) {
+      if (legacyYutaiWriteBlocked(it.key)) continue;
       if (isEmptyLocalValue(it.value)) {
         const local = readLocalValue(it.key);
         if (local && !isEmptyLocalValue(local.value)) {
@@ -239,6 +244,7 @@ export async function pullAll(
     const meta = readMeta();
     const changed: string[] = [];
     for (const it of data.items ?? []) {
+      if (legacyYutaiWriteBlocked(it.key)) continue;
       if (isEmptyLocalValue(it.value)) continue;
       const localAt = localUpdatedAtForPull(it.key, meta, unknownLocalPolicy);
       if (new Date(it.updatedAt).getTime() > new Date(localAt).getTime()) {

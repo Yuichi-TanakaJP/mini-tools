@@ -28,6 +28,15 @@ const withPWA = require("next-pwa")({
 });
 
 const nextConfig = {
+  // Read and write screens switch together; individual preview flags remain for isolated UAT.
+  env: process.env.NEXT_PUBLIC_YUTAI_DB_CANONICAL === "true" ? {
+    NEXT_PUBLIC_YUTAI_CANDIDATES_DB_PREVIEW: "true",
+    NEXT_PUBLIC_YUTAI_MEMO_DB_PREVIEW: "true",
+    NEXT_PUBLIC_YUTAI_DASHBOARD_DB_PREVIEW: "true",
+    NEXT_PUBLIC_YUTAI_EXPIRY_DB_PREVIEW: "true",
+    NEXT_PUBLIC_YUTAI_TRANSFER_DB_PREVIEW: "true",
+    NEXT_PUBLIC_YUTAI_RESTORE_DB_PREVIEW: "true",
+  } : {},
   reactStrictMode: true,
   async redirects() {
     return [
