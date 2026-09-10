@@ -1,9 +1,12 @@
 import type { BenefitItemV2 } from "@/app/tools/yutai-expiry/benefits/store";
+import type { Reward } from "@/lib/yutai/contracts";
+
+type ExpiryItem = Pick<BenefitItemV2, "id" | "title" | "company" | "expiresOn" | "isUsed" | "archivedAt">;
 
 export const YUTAI_EXPIRY_NOTIFICATION_DAYS = 7;
 
 export type UpcomingBenefitExpiry = {
-  item: BenefitItemV2;
+  item: ExpiryItem;
   daysUntilExpiry: number;
 };
 
@@ -23,7 +26,7 @@ function parseDateKey(date: string): number | null {
 }
 
 export function selectUpcomingBenefitExpiries(
-  items: BenefitItemV2[],
+  items: readonly ExpiryItem[],
   today: string,
 ): UpcomingBenefitExpiry[] {
   const todayValue = parseDateKey(today);
@@ -48,4 +51,12 @@ export function selectUpcomingBenefitExpiries(
         a.daysUntilExpiry - b.daysUntilExpiry ||
         a.item.title.localeCompare(b.item.title, "ja"),
     );
+}
+
+export function selectUpcomingRewardExpiries(rewards: readonly Reward[], today: string): UpcomingBenefitExpiry[] {
+  return selectUpcomingBenefitExpiries(rewards.map((reward) => ({
+    id: reward.id, title: reward.title, company: reward.company,
+    expiresOn: reward.expires_on, isUsed: reward.remaining_value <= 0,
+    archivedAt: reward.archived_at,
+  })), today);
 }

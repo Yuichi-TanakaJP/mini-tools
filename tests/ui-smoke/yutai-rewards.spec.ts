@@ -2,6 +2,47 @@ import { expect, test } from "@playwright/test";
 import type { Command, CommandReceipt, Reward, Workspace } from "../../lib/yutai/contracts";
 const date = "2026-09-10T00:00:00Z";
 const owner = "00000000-0000-4000-8000-000000000001";
+
+test("home DB expiry hides stale data and never falls back to legacy", async ({ page, context }) => {
+  await page.clock.setFixedTime(new Date("2026-12-31T12:00:00Z"));
+  const reward: Reward = { id: "home", title: "DB期限テスト", company: "DB通知会社", expires_on: "2027-01-07",
+    track_mode: "amount", initial_value: 1, remaining_value: 0.25, unit_yen: null, memo: "", link: null,
+    profile_id: null, cycle_id: null, archived_at: null, revision: 1, created_at: date, updated_at: date };
+  const token = [Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"),
+    Buffer.from(JSON.stringify({ sub: owner, exp: 4_000_000_000, role: "authenticated" })).toString("base64url"), "synthetic"].join(".");
+  const session = { access_token: token, refresh_token: "synthetic", expires_at: 4_000_000_000, expires_in: 3600, token_type: "bearer",
+    user: { id: owner, aud: "authenticated", role: "authenticated", app_metadata: {}, user_metadata: {} } };
+  await context.addCookies([{ name: "sb-yutai-test-auth-token", value: `base64-${Buffer.from(JSON.stringify(session)).toString("base64url")}`, url: "http://127.0.0.1:3146" }]);
+  await page.addInitScript(() => localStorage.setItem("mini-tools:benefits:v2", "legacy-sentinel"));
+  let fail = false; let writes = 0; let empty = false;
+  await page.route("**/api/sync**", route => route.fulfill({ json: { items: [] } }));
+  await page.route("https://yutai-test.supabase.co/**", async route => {
+    if (route.request().url().includes("/auth/")) { await route.fulfill({ json: session.user }); return; }
+    if (!route.request().url().endsWith("stock_notes_get_yutai_workspace")) { writes++; await route.fulfill({ json: {} }); return; }
+    if (fail) { await route.fulfill({ status: 500, json: { message: "test failure" } }); return; }
+    const rewards = empty ? [] : [reward];
+    await route.fulfill({ json: { schema_version: 1, selected_month: 1, as_of: date,
+      counts: { profiles: 0, month_states: 0, cycles: 0, tags: 0, profile_tags: 0, rewards: rewards.length, reward_events: 0, selections: 0, effective_selections: 0 },
+      profiles: [], month_states: [], cycles: [], tags: [], profile_tags: [], rewards, reward_events: [], selections: [], effective_selections: [] } });
+  });
+  await page.goto("/");
+  const notice = page.getByRole("region", { name: "通知", exact: true });
+  await expect(notice).toContainText("優待DBで確認済み: 7日以内 1件");
+  await expect(notice).toContainText("DB通知会社");
+  fail = true;
+  await notice.getByRole("button", { name: "優待期限を再取得" }).click();
+  await expect(notice).toContainText("件数は未確認です");
+  await expect(notice).not.toContainText("DB通知会社");
+  await expect(notice).not.toContainText("7日以内 0件");
+  fail = false; empty = true;
+  await notice.getByRole("button", { name: "優待期限を再取得" }).click();
+  await expect(notice).toContainText("優待DBで確認済み: 7日以内 0件");
+  await context.clearCookies(); await page.reload();
+  await expect(notice).toContainText("ログインが必要です");
+  await expect(notice).not.toContainText("DB通知会社");
+  expect(writes).toBe(0);
+  expect(await page.evaluate(() => localStorage.getItem("mini-tools:benefits:v2"))).toBe("legacy-sentinel");
+});
 test("DB reward filters and table are read-only, including mobile and month rollover", async ({ page, context }) => {
   await page.clock.setFixedTime(new Date("2026-12-31T12:00:00Z"));
   const base: Reward = { id: "today", title: "当日期限", company: "B", track_mode: "count", initial_value: 2, remaining_value: 1,
