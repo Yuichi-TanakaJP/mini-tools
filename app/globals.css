@@ -1,156 +1,169 @@
 /* ============================================================
-   Design tokens — user-selectable Light / Dark themes
-   仕様は docs/specs/cross-cutting/ui-color-palette.md を参照
+   Design tokens - Quiet Financial Workspace
+   Light / Dark は同じ hue 軸から明度だけを変えて生成している。
+     neutral hue = 256 / accent hue = 264（OKLCH）
+   値は手で足さず docs/specs/cross-cutting/ui-color-palette.md の
+   生成規則に従って更新する。仕様も同ファイルを参照。
    ============================================================ */
 :root {
-  /* Surface: 画面の奥行き。page → subtle/input → card/elevated の順で使う */
-  --color-bg:            #eef2f7;
-  --color-bg-card:       #ffffff;
-  --color-bg-input:      #f4f6fb;
-  --color-bg-subtle:     #f8fafc;
-  --color-bg-elevated:   #ffffff;
-  --color-bg-overlay:    rgba(8, 10, 18, 0.55);
+  /* Surface — page が地。input / subtle / card / elevated の順に手前へ持ち上がる */
+  --color-bg:               #ecf1f7;
+  --color-bg-input:         #f2f5fb;
+  --color-bg-subtle:        #f5f8fd;
+  --color-bg-card:          #ffffff;
+  --color-bg-elevated:      #ffffff;
+  --color-bg-overlay:       rgba(4, 11, 24, 0.55);
 
   /* Text */
-  --color-text:          #1f2937;
-  --color-text-sub:      #374151;
-  --color-text-muted:    #6b7280;
-  --color-text-inverse:  #ffffff;
+  --color-text:             #111b29;
+  --color-text-sub:         #3c495a;
+  --color-text-muted:       #606d7f;
+  --color-text-inverse:     #ffffff;
 
-  /* Border / focus */
-  --color-border:        rgba(15, 23, 42, 0.08);
-  --color-border-strong: rgba(15, 23, 42, 0.14);
-  --color-border-accent: rgba(37, 84, 255, 0.22);
-  --color-focus-ring:    rgba(37, 84, 255, 0.32);
+  /* Border / focus — border-control は操作可能な部品の輪郭。背景に対し 3:1 を満たす */
+  --color-border:           #d5dbe4;
+  --color-border-strong:    #bcc5d1;
+  --color-border-control:   #7b8799;
+  --color-border-accent:    rgba(38, 90, 223, 0.34);
+  --color-focus-ring:       rgba(38, 90, 223, 0.40);
 
-  /* Action / brand */
-  --color-accent:        #2554ff;
-  --color-accent-sub:    #eef2ff;
-  --color-accent-hover:  #1d44d8;
-  --color-accent-highlight: #60a5fa;
-  --color-accent-text:   #ffffff;
-  --color-accent-glow:   rgba(37, 84, 255, 0.08);
+  /* Action / brand — hue 264 に固定。テーマ間で色相は動かさず明度だけ動かす */
+  --color-accent:           #265adf;
+  --color-accent-sub:       #e9f0ff;
+  --color-accent-hover:     #1745c2;
+  --color-accent-highlight: #497ef7;
+  --color-accent-text:      #ffffff;
+  --color-accent-glow:      rgba(38, 90, 223, 0.10);
 
-  /* Semantic: foreground / background / border を必ず組で使う */
-  --color-info:          #2563eb;
-  --color-info-bg:       #eff6ff;
-  --color-info-text:     #1e40af;
-  --color-info-border:   #bfdbfe;
-  --color-error:         #dc2626;
-  --color-error-bg:      #fef2f2;
-  --color-error-text:    #991b1b;
-  --color-error-border:  #fecaca;
-  --color-danger:        var(--color-error);
-  --color-success:       #16a34a;
-  --color-success-bg:    #f0fdf4;
-  --color-success-text:  #166534;
-  --color-success-border:#bbf7d0;
-  --color-warning:       #d97706;
-  --color-warning-bg:    #fffbeb;
-  --color-warning-text:  #92400e;
-  --color-warning-border:#fde68a;
-  --color-neutral-bg:    #f1f5f9;
-  --color-neutral-text:  #475569;
-  --color-neutral-border:#cbd5e1;
+  /* Semantic — foreground / bg / border / text を必ず組で使う */
+  --color-info:             #005bb4;
+  --color-info-bg:          #ecf4ff;
+  --color-info-border:      #bedaff;
+  --color-info-text:        #003670;
+  --color-error:            #a92227;
+  --color-error-bg:         #ffefee;
+  --color-error-border:     #ffc8c3;
+  --color-error-text:       #6f000c;
+  --color-danger:           var(--color-error);
+  --color-success:          #00773b;
+  --color-success-bg:       #e3fbe8;
+  --color-success-border:   #b3e6bf;
+  --color-success-text:     #004b22;
+  --color-warning:          #a55d00;
+  --color-warning-bg:       #fff1e5;
+  --color-warning-border:   #fccda5;
+  --color-warning-text:     #6e3c00;
+  --color-neutral-bg:       #eef2f7;
+  --color-neutral-text:     #4a5667;
+  --color-neutral-border:   #ced5df;
 
-  /* Financial direction: 日本株表示では rise=赤、fall=青 */
-  --color-rise:          #dc2626;
-  --color-rise-bg:       #fef2f2;
-  --color-rise-border:   #fecaca;
-  --color-fall:          #2563eb;
-  --color-fall-bg:       #eff6ff;
-  --color-fall-border:   #bfdbfe;
+  /* Financial direction — 日本株表示では rise=赤、fall=青。success / error とは役割を分ける */
+  --color-rise:             #a8260f;
+  --color-rise-bg:          #fff0ec;
+  --color-rise-border:      #ffc9bd;
+  --color-fall:             #005eab;
+  --color-fall-bg:          #ebf5ff;
+  --color-fall-border:      #bbdbff;
 
-  /* Data visualization: 系列の識別用。面や本文には使わない */
-  --color-chart-1:       #2563eb;
-  --color-chart-2:       #0f766e;
-  --color-chart-3:       #9333ea;
-  --color-chart-4:       #d97706;
-  --color-chart-5:       #db2777;
-  --color-chart-6:       #64748b;
+  /* Data visualization — 系列の識別用。面や本文には使わない */
+  --color-chart-1:          #426ccb;
+  --color-chart-2:          #00818c;
+  --color-chart-3:          #00884d;
+  --color-chart-4:          #867000;
+  --color-chart-5:          #ba472b;
+  --color-chart-6:          #984ea9;
 
   /* Elevation */
-  --shadow-card:         0 4px 16px rgba(15, 23, 42, 0.05);
-  --shadow-card-hover:   0 12px 32px rgba(15, 23, 42, 0.10);
-  --shadow-panel:        0 16px 44px rgba(15, 23, 42, 0.16);
+  --shadow-card:            0 1px 2px rgba(17, 27, 41, 0.04), 0 4px 16px rgba(17, 27, 41, 0.05);
+  --shadow-card-hover:      0 2px 6px rgba(17, 27, 41, 0.06), 0 12px 32px rgba(17, 27, 41, 0.10);
+  --shadow-panel:           0 4px 12px rgba(17, 27, 41, 0.08), 0 16px 44px rgba(17, 27, 41, 0.16);
 
-  /* Global header: テーマに左右されない共通ナビゲーション帯 */
-  --color-header-bg:     rgba(8, 10, 18, 0.90);
-  --color-header-text:   rgba(255, 255, 255, 0.90);
-  --color-header-muted:  rgba(255, 255, 255, 0.58);
-  --color-header-border: rgba(255, 255, 255, 0.14);
-  --color-header-control:rgba(255, 255, 255, 0.04);
+  /* Global header — 両テーマ共通の固定ナビゲーション帯。中立色ではなく共通 hue 256 の深いチャコール */
+  --color-header-bg:        #0f1621;
+  --color-header-text:      #eaeff5;
+  --color-header-muted:     #969fab;
+  --color-header-border:    #2b343f;
+  --color-header-control:   #1f2732;
 
   /* モバイル下部固定ナビ(MobileBottomNav)が占める高さ。デスクトップは 0。
      sticky なパネル等が 100dvh 基準で高さを計算する際に差し引くために使う。 */
-  --bottom-nav-space:    0px;
+  --bottom-nav-space:       0px;
 
   color-scheme: light;
 }
 
 html[data-theme="dark"] {
-  --color-bg:            #0d1117;
-  --color-bg-card:       #161b22;
-  --color-bg-input:      #21262d;
-  --color-bg-subtle:     #111820;
-  --color-bg-elevated:   #1b222c;
-  --color-bg-overlay:    rgba(0, 0, 0, 0.72);
+  /* Surface — page が地。input / subtle / card / elevated の順に手前へ持ち上がる */
+  --color-bg:               #0d131c;
+  --color-bg-input:         #151c26;
+  --color-bg-subtle:        #18202a;
+  --color-bg-card:          #202833;
+  --color-bg-elevated:      #2a323e;
+  --color-bg-overlay:       rgba(4, 11, 24, 0.72);
 
-  --color-text:          #e6edf3;
-  --color-text-sub:      #b7c0ca;
-  --color-text-muted:    #8b949e;
-  --color-text-inverse:  #0d1117;
+  /* Text */
+  --color-text:             #e3e8f0;
+  --color-text-sub:         #b0b8c3;
+  --color-text-muted:       #939ca9;
+  --color-text-inverse:     #0d131c;
 
-  --color-border:        #30363d;
-  --color-border-strong: #484f58;
-  --color-border-accent: rgba(88, 166, 255, 0.38);
-  --color-focus-ring:    rgba(88, 166, 255, 0.48);
+  /* Border / focus — border-control は操作可能な部品の輪郭。背景に対し 3:1 を満たす */
+  --color-border:           #2e3641;
+  --color-border-strong:    #454e5a;
+  --color-border-control:   #6a7585;
+  --color-border-accent:    rgba(91, 141, 249, 0.44);
+  --color-focus-ring:       rgba(91, 141, 249, 0.50);
 
-  --color-accent:        #58a6ff;
-  --color-accent-sub:    #1c2d3e;
-  --color-accent-hover:  #79baff;
-  --color-accent-highlight: #93c5fd;
-  --color-accent-text:   #08111f;
-  --color-accent-glow:   rgba(88, 166, 255, 0.14);
+  /* Action / brand — hue 264 に固定。テーマ間で色相は動かさず明度だけ動かす */
+  --color-accent:           #5b8df9;
+  --color-accent-sub:       #182749;
+  --color-accent-hover:     #7fa9ff;
+  --color-accent-highlight: #93b7ff;
+  --color-accent-text:      #0c1220;
+  --color-accent-glow:      rgba(91, 141, 249, 0.16);
 
-  --color-info:          #60a5fa;
-  --color-info-bg:       #172554;
-  --color-info-text:     #bfdbfe;
-  --color-info-border:   #1d4ed8;
-  --color-error:         #ff7b72;
-  --color-error-bg:      #451a1a;
-  --color-error-text:    #fecaca;
-  --color-error-border:  #7f1d1d;
-  --color-danger:        var(--color-error);
-  --color-success:       #3fb950;
-  --color-success-bg:    #153b2b;
-  --color-success-text:  #bbf7d0;
-  --color-success-border:#286344;
-  --color-warning:       #d29922;
-  --color-warning-bg:    #3f2f12;
-  --color-warning-text:  #fde68a;
-  --color-warning-border:#854d0e;
-  --color-neutral-bg:    #21262d;
-  --color-neutral-text:  #b7c0ca;
-  --color-neutral-border:#484f58;
+  /* Semantic — foreground / bg / border / text を必ず組で使う */
+  --color-info:             #6dadff;
+  --color-info-bg:          #162b45;
+  --color-info-border:      #2b4e7a;
+  --color-info-text:        #bedaff;
+  --color-error:            #f7857d;
+  --color-error-bg:         #411e1c;
+  --color-error-border:     #753935;
+  --color-error-text:       #ffc8c3;
+  --color-danger:           var(--color-error);
+  --color-success:          #56bd78;
+  --color-success-bg:       #12321c;
+  --color-success-border:   #225a35;
+  --color-success-text:     #8ee9a8;
+  --color-warning:          #d17f26;
+  --color-warning-bg:       #3d2309;
+  --color-warning-border:   #6d4113;
+  --color-warning-text:     #fbae67;
+  --color-neutral-bg:       #202730;
+  --color-neutral-text:     #aab2bd;
+  --color-neutral-border:   #404854;
 
-  --color-rise:          #fca5a5;
-  --color-rise-bg:       #451a1a;
-  --color-rise-border:   #7f1d1d;
-  --color-fall:          #93c5fd;
-  --color-fall-bg:       #172554;
-  --color-fall-border:   #1d4ed8;
+  /* Financial direction — 日本株表示では rise=赤、fall=青。success / error とは役割を分ける */
+  --color-rise:             #f68771;
+  --color-rise-bg:          #411f18;
+  --color-rise-border:      #743a2f;
+  --color-fall:             #65afff;
+  --color-fall-bg:          #142b44;
+  --color-fall-border:      #274f7a;
 
-  --color-chart-1:       #60a5fa;
-  --color-chart-2:       #2dd4bf;
-  --color-chart-3:       #c084fc;
-  --color-chart-4:       #fbbf24;
-  --color-chart-5:       #f472b6;
-  --color-chart-6:       #94a3b8;
+  /* Data visualization — 系列の識別用。面や本文には使わない */
+  --color-chart-1:          #79a2f9;
+  --color-chart-2:          #00bac9;
+  --color-chart-3:          #53bd7f;
+  --color-chart-4:          #bfa32b;
+  --color-chart-5:          #ec8369;
+  --color-chart-6:          #ca87d9;
 
-  --shadow-card:         0 4px 18px rgba(0, 0, 0, 0.28);
-  --shadow-card-hover:   0 12px 34px rgba(0, 0, 0, 0.38);
-  --shadow-panel:        0 18px 48px rgba(0, 0, 0, 0.46);
+  /* Elevation */
+  --shadow-card:            0 1px 2px rgba(0, 0, 0, 0.30), 0 4px 16px rgba(0, 0, 0, 0.24);
+  --shadow-card-hover:      0 2px 6px rgba(0, 0, 0, 0.36), 0 12px 32px rgba(0, 0, 0, 0.34);
+  --shadow-panel:           0 4px 12px rgba(0, 0, 0, 0.42), 0 18px 48px rgba(0, 0, 0, 0.46);
 
   color-scheme: dark;
 }

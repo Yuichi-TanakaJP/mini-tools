@@ -61,7 +61,7 @@ function applyColorTheme(preference: ColorThemePreference) {
   root.dataset.theme = resolved;
   root.style.colorScheme = resolved;
 
-  const themeColor = resolved === "dark" ? "#0d1117" : "#eef2f7";
+  const themeColor = resolved === "dark" ? "#0d131c" : "#ecf1f7";
   document
     .querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')
     .forEach((meta) => meta.setAttribute("content", themeColor));
