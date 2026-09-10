@@ -29,6 +29,13 @@ test("memo filters, monthly preparation and credit requests keep DB and legacy u
   await page.route("**/api/nikko/short-balance", route => { requests.push(route.request().postDataJSON()); return route.fulfill({ status: rejectRequest ? 404 : 200, json: rejectRequest ? { error: "login" } : { accepted: true, requested: 1 } }); });
   await page.goto("/tools/yutai-memo");
   await expect(page.getByText("3銘柄", { exact: true })).toBeVisible();
+  const status = page.getByRole("complementary", { name: "保存状態" });
+  await expect(status.getByText("クラウド保存", { exact: true })).toBeVisible();
+  await expect(status.getByText("保存について", { exact: true })).not.toBeVisible();
+  expect((await status.boundingBox())!.height).toBeLessThan(60);
+  await status.getByLabel("保存について", { exact: true }).click();
+  await expect(status.getByText("保存について", { exact: true })).toBeVisible();
+  await status.getByLabel("保存について", { exact: true }).click();
   await expect(page.getByText("信用売り残高: 0株", { exact: true })).toBeVisible();
   await expect(page.getByText("信用売り残高: 1,200株", { exact: true })).toBeVisible();
   await expect(page.getByText("信用売り残高: 未取得", { exact: true })).toBeVisible();
@@ -122,7 +129,7 @@ test(`calendar reads/saves without legacy writes (lost response: ${loseFirstResp
     } });
   });
   await page.goto("/tools/yutai-candidates?month=2026-09");
-  await expect(page.getByText("Supabase接続の検証モード（カレンダーのみ）")).toBeVisible();
+  await expect(page.getByText("クラウド保存", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "★ ピック" })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "パスする", exact: true }).click();
   if (loseFirstResponse) {
@@ -130,7 +137,7 @@ test(`calendar reads/saves without legacy writes (lost response: ${loseFirstResp
     await expect(page.getByRole("button", { name: "メモ編集", exact: true })).toBeDisabled();
     await page.getByRole("button", { name: "同じ要求を再確認・続行" }).click();
   }
-  await expect(page.getByText("Supabaseへ保存し、表示を更新しました。")).toBeVisible();
+  await expect(page.getByText("保存しました", { exact: true })).toBeVisible();
   expect(writes[0]).toMatchObject({ command_type: "set_selection", target: { stock_code: "1234", entitlement_month: 9 }, expected_revision: 0 });
   await page.getByRole("button", { name: "メモ編集", exact: true }).click();
   await expect(page.getByLabel("戦略タイプ")).toHaveValue("未設定");
@@ -144,7 +151,7 @@ test(`calendar reads/saves without legacy writes (lost response: ${loseFirstResp
   expect(errors).toEqual([]);
   await page.screenshot({ path: ".tmp/yutai-calendar-connected.png", fullPage: true });
   await page.goto("/tools/yutai-memo");
-  await expect(page.getByText("Supabase接続の検証モード（メモ帳の基本編集）")).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "保存状態" })).toBeVisible();
   await page.getByRole("button", { name: "メモ編集", exact: true }).click();
   await page.getByRole("textbox", { name: "メモ", exact: true }).fill("メモ帳から更新");
   await page.getByRole("button", { name: "保存", exact: true }).click();
