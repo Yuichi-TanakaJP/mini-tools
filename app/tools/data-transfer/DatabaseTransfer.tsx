@@ -6,6 +6,7 @@ import { getSessionActionRunner } from "@/lib/yutai/action-runner";
 import { getSupabaseEnv, isSyncConfigured } from "@/lib/supabase/config";
 import { collectionLabels, collections, compareWorkspaceExport, freshWorkspaceExport, MAX_EXPORT_BYTES, parseWorkspaceExport, type WorkspaceExport } from "@/lib/yutai/transfer";
 import { YutaiFailure, type ViewState } from "@/lib/yutai/repository";
+import DatabaseRestore from "./DatabaseRestore";
 
 const panel = { padding: 16, marginBottom: 24, border: "1px solid var(--color-border)", borderRadius: 12 };
 export default function DatabaseTransfer() {
@@ -14,7 +15,8 @@ export default function DatabaseTransfer() {
     <p>{!configured ? "DB接続設定がありません。旧データへは戻しません。" : view.status === "signed_out" ? "Supabaseへのログインが必要です。" : "優待データを取得しています。"}</p>
     {view.error && <p role="alert">DBから取得できませんでした。通信・ログイン状態を確認してください。</p>}
     <a href="/account">ログイン画面へ</a> <button onClick={() => window.location.reload()}>再読み込み</button></section>;
-  return <ConnectedTransfer key={view.sessionRevision} view={view} />;
+  return <div key={view.sessionRevision}><ConnectedTransfer view={view} />
+    {process.env.NEXT_PUBLIC_YUTAI_RESTORE_DB_PREVIEW === "true" && <DatabaseRestore />}</div>;
 }
 function ConnectedTransfer({ view }: { view: ViewState }) {
   const [busy, setBusy] = useState(false), [message, setMessage] = useState(""), [error, setError] = useState("");
@@ -100,6 +102,6 @@ function ConnectedTransfer({ view }: { view: ViewState }) {
         <p>各一覧は先頭20件まで表示。上の件数は全件の照合結果です。</p>
         <p>ファイルのみ: {r.fileOnly.slice(0, 20).join(", ") || "なし"}</p><p>DBのみ: {r.currentOnly.slice(0, 20).join(", ") || "なし"}</p><p>内容変更: {r.changed.slice(0, 20).join(", ") || "なし"}</p>
       </details>)}</div>}
-    <p>復元・インポートの実行はまだ未接続です。読み込んだファイルを自動適用せず、現在のDB・旧端末データを保持します。</p>
+    <p>この欄は照合専用です。復元は別の確認欄から明示実行し、旧形式のインポートは行いません。</p>
   </section>;
 }

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { checkMonth } from "./contracts";
 import { YutaiFailure, YutaiRepository, type Transport } from "./repository";
+import { createRestoreTransport } from "./restore-transport";
 
 export interface BrowserEvents {
   window: Pick<Window, "addEventListener" | "removeEventListener">;
@@ -70,6 +71,7 @@ export function createYutaiRuntime(client: SupabaseClient, browser: BrowserEvent
   browser.document.addEventListener("visibilitychange", refresh);
   return {
     repository,
+    restore: createRestoreTransport(rpc, repository.getIdentity, browser.online),
     watch(month: number) {
       if (disposed) throw new Error("DISPOSED");
       checkMonth(month);

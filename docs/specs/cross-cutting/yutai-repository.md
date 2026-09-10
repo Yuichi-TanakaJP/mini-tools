@@ -80,7 +80,7 @@ SQLエラー本文は画面へ返さず、安全な分類メッセージだけ�
 
 ## 検証と復旧
 
-[全件出力・照合](../tools/data-transfer.md)は現在のworkspaceを保全する機能であり、削除済みデータ/操作監査/DBスキーマ等の完全backupではない。復元実行は未接続。
+[全件出力・照合・復元](../tools/data-transfer.md)は現在のworkspaceを保全する機能であり、削除済みデータ/操作監査/DBスキーマ等の完全backupではない。復元は独立フラグ下で専用RPCへ接続する。本番適用・実端末UATは未実施。
 
 `npm test -- lib/yutai`で契約、並行取得、競合、二重送信、失敗、本人切替を検証する。
 [UAT手順](../../uat/yutai-repository.md)と

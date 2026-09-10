@@ -9,6 +9,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 
 ## 📘 Decision Log（設計判断）
 
+- [2026-09-10 優待DB復元の確認・保全・全件照合](./decision-log/2026-09-10-yutai-restore-ui.md)
 - [2026-09-10 優待残高・期限のDB接続](./decision-log/2026-09-10-yutai-rewards-db.md)
 - [2026-09-10 優待メモの仕込み履歴をDBへ接続](./decision-log/2026-09-10-yutai-cycles-db.md)
 - [2026-09-03 全画面テーマ統一のトークン基盤](./decision-log/2026-09-03-theme-token-foundation.md)
