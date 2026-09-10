@@ -69,7 +69,7 @@ function ConnectedMemo({ view, shortBalance }: { view: ViewState; shortBalance: 
     <YutaiConnectionStatus connection={connection} scope="メモ帳の基本編集" />
     {process.env.NEXT_PUBLIC_YUTAI_TRANSFER_DB_PREVIEW === "true" && <p><a href="/tools/data-transfer">優待DBの全件出力・照合</a></p>}
     <p>月別の株数・優待価値・タグ・全年度の仕込み履歴をDBへ保存します。
-      一括操作は対象の権利年月を指定します。旧形式取込はデータ入出力画面で確認できます。本番切替は未完了です。</p>
+      一括操作は対象の権利年月を指定します。旧形式取込はデータ入出力画面で確認できます。</p>
     {notice && <p role="status">{notice}</p>}
     <fieldset className={styles.panel} disabled={connection.blocked || view.stale}>
       <section aria-label="メモ一括操作">

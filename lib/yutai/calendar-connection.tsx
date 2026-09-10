@@ -5,6 +5,7 @@ import { getYutaiRepository } from "./browser";
 import { getSessionActionRunner } from "./action-runner";
 import { calendarProjection, type CommandStep } from "./calendar";
 import type { ViewState } from "./repository";
+import { yutaiDatabaseCanonical } from "./cutover";
 
 export function useCalendarConnection(view: ViewState, year: number, month: number) {
   const [runner] = useState(() => getSessionActionRunner(getYutaiRepository(), view.sessionRevision));
@@ -34,8 +35,10 @@ export type CalendarConnection = ReturnType<typeof useCalendarConnection>;
 export function YutaiConnectionStatus({ connection, scope = "カレンダーのみ" }: { connection: CalendarConnection; scope?: string }) {
   const { view, action, blocked } = connection;
   return <aside role="status" aria-live="polite" style={{ padding: 12, marginBottom: 12, border: "1px solid var(--border, #94a3b8)", borderRadius: 8 }}>
-    <strong>Supabase接続の検証モード（{scope}）</strong>
-    <p>他の画面はまだ従来の保存先です。本番切替は未完了です。</p>
+    <strong>{yutaiDatabaseCanonical() ? "Supabase保存" : "Supabase接続の検証モード"}（{scope}）</strong>
+    <p>{yutaiDatabaseCanonical()
+      ? "優待データはSupabaseを正本として表示・保存します。旧端末データは保管用です。"
+      : "他の画面はまだ従来の保存先です。本番切替は未完了です。"}</p>
     {view.maintenance && <p>復元確認中のため保存を停止しています。<a href="/tools/data-transfer">データ入出力で結果を確認</a></p>}
     <p>{view.status === "signed_out" ? "Supabaseへのログインが必要です。" : !view.data ? "優待データを取得しています。" :
       `最終取得: ${new Date(view.fetchedAt).toLocaleString("ja-JP")} ${view.stale ? "（最新ではない可能性があります）" : ""}`}</p>

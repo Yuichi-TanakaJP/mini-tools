@@ -80,7 +80,7 @@ function ConnectedRewards({ view, scanEnabled }: { view: ViewState; scanEnabled:
   return <section className={`${styles.page} ${listStyles.page}`}>
     <h1>株主優待期限帳</h1><YutaiConnectionStatus connection={connection} scope="残高・期限" />
     {process.env.NEXT_PUBLIC_YUTAI_TRANSFER_DB_PREVIEW === "true" && <p><a href="/tools/data-transfer">優待DBの全件出力・照合</a></p>}
-    <p>DBの残高と利用履歴を表示・更新します。旧期限帳v2の取込はデータ入出力画面で確認できます。本番切替は未完了です。</p>
+    <p>DBの残高と利用履歴を表示・更新します。旧期限帳v2の取込はデータ入出力画面で確認できます。</p>
     <DatabaseRewardTotals view={view} />
     {notice && <p role="status">{notice}</p>}
     <section className={styles.panel} aria-label="残高の円換算集計">
