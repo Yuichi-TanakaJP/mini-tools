@@ -657,7 +657,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "22px 22px 24px",
     border: "1px solid rgba(15,23,42,0.06)",
     boxShadow:
-      "0 1px 2px rgba(15,23,42,0.04), 0 12px 32px rgba(15,23,42,0.06), 0 28px 60px rgba(15,23,42,0.04)",
+      "var(--shadow-card-hover)",
     marginBottom: 16,
   },
   tableSection: {

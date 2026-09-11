@@ -98,9 +98,9 @@ const VIEW_LABELS: Record<StockNoteThesis["view"], string> = {
   bearish: "弱気",
 };
 const VIEW_COLORS: Record<StockNoteThesis["view"], { bg: string; fg: string }> = {
-  bullish: { bg: "rgba(22,163,74,0.14)", fg: "#16a34a" },
+  bullish: { bg: "var(--color-success-bg)", fg: "var(--color-success-text)" },
   neutral: { bg: "var(--color-bg-input)", fg: "var(--color-text-sub)" },
-  bearish: { bg: "rgba(220,38,38,0.14)", fg: "#dc2626" },
+  bearish: { bg: "var(--color-error-bg)", fg: "var(--color-error-text)" },
 };
 const CONFIDENCE_LABELS: Record<StockNoteThesis["confidence"], string> = {
   high: "確信度高",
@@ -117,12 +117,12 @@ const ANALYSIS_TYPE_LABELS: Record<StockNoteAnalysis["analysisType"], string> = 
 const FRESHNESS_COLORS: Record<FreshnessLevelV2, { bg: string; fg: string; label: string } | null> = {
   fresh: null,
   unknown: null,
-  warn: { bg: "rgba(217,119,6,0.14)", fg: "#d97706", label: "そろそろ確認" },
-  danger: { bg: "rgba(220,38,38,0.14)", fg: "#dc2626", label: "要更新" },
+  warn: { bg: "var(--color-warning-bg)", fg: "var(--color-warning-text)", label: "そろそろ確認" },
+  danger: { bg: "var(--color-error-bg)", fg: "var(--color-error-text)", label: "要更新" },
   // label はフォールバック（lastEarningsDate が取れないケース用）。通常は FreshnessBadge が
   // 「8/4の決算後、未分析」のように日付入りの文言を動的に組み立てる（decision-log参照:
   // 日付が入ることで、利用者が何を確認すべきか即座に分かるようにするため）。
-  "post-earnings": { bg: "rgba(220,38,38,0.14)", fg: "#dc2626", label: "要更新（決算後未分析）" },
+  "post-earnings": { bg: "var(--color-error-bg)", fg: "var(--color-error-text)", label: "要更新（決算後未分析）" },
 };
 
 const dangerText: React.CSSProperties = {

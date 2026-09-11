@@ -922,7 +922,7 @@ const styles: Record<string, CSSProperties> = {
     background: "#fff",
     borderRadius: 22,
     padding: 16,
-    boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+    boxShadow: "var(--shadow-card)",
     border: "1px solid rgba(15, 23, 42, 0.04)",
   },
   calendarTop: {
@@ -1107,7 +1107,7 @@ const styles: Record<string, CSSProperties> = {
     gridTemplateColumns: "minmax(0, 1fr) auto",
     gap: 12,
     alignItems: "center",
-    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.05)",
+    boxShadow: "var(--shadow-card)",
     border: "1px solid rgba(15, 23, 42, 0.04)",
   },
   itemMain: {
@@ -1160,7 +1160,7 @@ const styles: Record<string, CSSProperties> = {
     background: "#fff",
     borderRadius: 18,
     padding: 18,
-    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.05)",
+    boxShadow: "var(--shadow-card)",
   },
   emptyTitle: {
     fontSize: 15,
@@ -1189,7 +1189,7 @@ const styles: Record<string, CSSProperties> = {
     background: "#fff",
     borderRadius: 14,
     padding: "9px 12px",
-    boxShadow: "0 4px 16px rgba(15, 23, 42, 0.06)",
+    boxShadow: "var(--shadow-card)",
     border: "1px solid rgba(15, 23, 42, 0.07)",
   },
   searchIcon: {

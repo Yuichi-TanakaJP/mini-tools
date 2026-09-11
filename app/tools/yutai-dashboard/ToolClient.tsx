@@ -2402,7 +2402,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: "var(--color-bg-card)",
     borderRadius: 24,
     padding: "20px 20px 24px",
-    boxShadow: "0 1px 3px rgba(15,23,42,0.04), 0 8px 24px rgba(15,23,42,0.06)",
+    boxShadow: "var(--shadow-card)",
     border: "1px solid rgba(15,23,42,0.06)",
   },
   filterBar: {
@@ -2433,7 +2433,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
     color: "var(--color-text-sub)",
     cursor: "pointer",
-    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+    boxShadow: "var(--shadow-card)",
   },
   search: {
     borderRadius: 10,
@@ -2443,7 +2443,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
     color: "var(--color-text)",
     boxSizing: "border-box",
-    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+    boxShadow: "var(--shadow-card)",
   },
   resultsMeta: {
     display: "flex",
@@ -2499,7 +2499,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
     fontWeight: 800,
     cursor: "pointer",
-    boxShadow: "0 1px 2px rgba(15,23,42,0.10)",
+    boxShadow: "var(--shadow-card-hover)",
   },
   calendarScroll: {
     width: "100%",
@@ -2886,7 +2886,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: "var(--color-bg-card)",
     borderRadius: 12,
     border: "1px solid rgba(15,23,42,0.12)",
-    boxShadow: "0 8px 28px rgba(15,23,42,0.18)",
+    boxShadow: "var(--shadow-panel)",
     padding: 10,
   },
   monthPopoverHead: {
@@ -3158,7 +3158,7 @@ const styles: Record<string, React.CSSProperties> = {
     // 内部スクロールが端に達しても背後ページへスクロールを伝播させない。
     overscrollBehavior: "contain",
     WebkitOverflowScrolling: "touch",
-    boxShadow: "0 12px 40px rgba(15,23,42,0.18)",
+    boxShadow: "var(--shadow-panel)",
   },
   detailHeader: {
     // タイトル行とアクション行をまとめて上端に固定する。

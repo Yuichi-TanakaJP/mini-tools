@@ -44,8 +44,9 @@
 
 ## 残課題
 
-- グラフ系列の色配列（例: `SEGMENT_COLORS`）を `--color-chart-1`〜`6` へ寄せる。
-  Canvas 描画では CSS 変数がそのまま使えないため、`getComputedStyle` で解決する経路が要る。
+- グラフ系列の色配列（例: `SEGMENT_COLORS`）を `--color-chart-*` へ寄せる。
+  当初 Canvas 対応が要ると考えたが、調べたところ描画はすべて SVG / DOM で
+  Canvas は使っていなかったため、CSS 変数をそのまま渡せる。
 - 影・グラデーションを `--shadow-*` と accent トークンへ寄せる。
 - 管理画面を常時 Dark の例外にするかを確定する。
 - yutai-memo のタグ分類色（violet / sky）は利用者が選ぶ分類色であり、

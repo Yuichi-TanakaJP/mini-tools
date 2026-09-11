@@ -174,7 +174,8 @@ Oklab 上の距離 dE で 0.045 以上を保つ。上の彩度倍率と明度補
 | Action | ブランド、リンク、主要操作 | `--color-accent*` |
 | Semantic | info / success / warning / error / neutral | `--color-*-bg/text/border` |
 | Financial direction | 上昇 / 下落 | `--color-rise*`, `--color-fall*` |
-| Data visualization | グラフ系列 | `--color-chart-1` ～ `6` |
+| Data visualization（分類） | グラフ系列 | `--color-chart-1` ～ `12` |
+| Data visualization（順序） | 重要度・深刻度の段階 | `--color-severity-1` ～ `5` |
 | Elevation | カード、hover、モーダルの影 | `--shadow-*` |
 | Global header | 固定ナビゲーション帯 | `--color-header-*` |
 
@@ -190,6 +191,18 @@ Oklab 上の距離 dE で 0.045 以上を保つ。上の彩度倍率と明度補
 `--color-text-disabled` だけはコントラスト基準を満たさない。無効な操作は「押せない」ことが
 伝わる必要があり、WCAG も無効化された部品を対象外としているため。
 読ませたい文字に流用しない。
+
+### グラフ色は「分類」と「順序」を分ける
+
+| 種類 | トークン | 使う場面 |
+|---|---|---|
+| 分類（categorical） | `--color-chart-1` ～ `6` | 業種、投資主体、銘柄など、順序のない区別 |
+| 分類・拡張 | `--color-chart-7` ～ `12` | 系列が 6 を超えるときだけ。既存 6 色の中間の色相 |
+| 順序（sequential） | `--color-severity-1` ～ `5` | 重要度、深刻度など、強弱に意味がある段階 |
+
+順序尺度を chart 系列で表すと「色が違う＝別カテゴリ」に見えてしまい、段階であることが伝わらない。
+`--color-severity-*` は 1 が最も弱く 5 が最も強い。**強さは明度差ではなく彩度で伝える**ため、
+1・2 は中立色、3 以降が警告色になる。`severity-1` は「弱いこと」を示す役割なので 3:1 を求めない。
 
 ### 境界線 3 段の使い分け
 
@@ -223,7 +236,8 @@ Oklab 上の距離 dE で 0.045 以上を保つ。上の彩度倍率と明度補
    グラフ系列・ゲーム・ブランド以外で新しい色リテラルを増やさない。
 9. 値を変えるときは上の生成規則に従い、`lib/__tests__/theme-contrast.test.ts` を通してから確定する。
    このテストはコントラストのほか、neutral チップが面に溶けないこと、
-   役割の違う色が dE 0.045 以上離れていることも見る。
+   役割の違う色が dE 0.045 以上離れていること、
+   severity の彩度が 1 -> 5 で単調に上がることも見る。
 
 ### 廃止した配色
 

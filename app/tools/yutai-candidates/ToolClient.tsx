@@ -1186,7 +1186,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: "var(--color-text-muted)",
     fontSize: 11,
     fontWeight: 700,
-    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+    boxShadow: "var(--shadow-card)",
   },
   metaOnlineDot: { ...baseDot, background: "#22c55e" },
   panel: {
@@ -1194,7 +1194,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 28,
     padding: "20px 20px 24px",
     boxShadow:
-      "0 1px 3px rgba(15,23,42,0.04), 0 8px 24px rgba(15,23,42,0.06), 0 24px 48px rgba(15,23,42,0.04)",
+      "var(--shadow-card-hover)",
     border: "1px solid rgba(15,23,42,0.06)",
   },
   monthSection: {
@@ -1291,7 +1291,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 14,
     color: "var(--color-text)",
     boxSizing: "border-box",
-    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+    boxShadow: "var(--shadow-card)",
   },
   filterSelectRow: {
     display: "grid",
@@ -1307,7 +1307,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
     color: "var(--color-text-sub)",
     cursor: "pointer",
-    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+    boxShadow: "var(--shadow-card)",
   },
   resultsMeta: {
     display: "flex",
@@ -1665,7 +1665,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid rgba(15,23,42,0.10)",
     minWidth: 0,
     whiteSpace: "nowrap",
-    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+    boxShadow: "var(--shadow-card)",
   },
   linkStatusChip: {
     display: "inline-flex",
@@ -1686,7 +1686,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid rgba(15,23,42,0.10)",
     background: "var(--color-bg-card)",
     color: "var(--color-text-sub)",
-    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+    boxShadow: "var(--shadow-card)",
     width: "100%",
   },
   pickButtonActive: {
@@ -1739,7 +1739,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: "100%",
     whiteSpace: "nowrap",
     textAlign: "center",
-    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+    boxShadow: "var(--shadow-card)",
   },
   notice: {
     position: "sticky",
@@ -1755,7 +1755,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#ffffff",
     fontSize: 13,
     fontWeight: 600,
-    boxShadow: "0 8px 24px rgba(15,23,42,0.24)",
+    boxShadow: "var(--shadow-panel)",
   },
   noticeButton: {
     border: "1px solid rgba(255,255,255,0.15)",
@@ -1785,7 +1785,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 18,
     background: "var(--color-bg-card)",
     border: "1px solid rgba(15,23,42,0.10)",
-    boxShadow: "0 24px 64px rgba(15,23,42,0.28)",
+    boxShadow: "var(--shadow-panel)",
     padding: 18,
   },
   dialogHeader: {

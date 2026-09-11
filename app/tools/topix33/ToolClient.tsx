@@ -276,7 +276,7 @@ export default function ToolClient({ data }: { data: Topix33PageData }) {
           background: "#fff",
           border: "1px solid rgba(15, 23, 42, 0.04)",
           borderRadius: 22,
-          boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+          boxShadow: "var(--shadow-card)",
           padding: 16,
           marginBottom: 16,
           display: "flex",

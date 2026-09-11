@@ -39,7 +39,7 @@ export default async function PremiumLoginPage({ searchParams }: PageProps) {
           background: "linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)",
           borderRadius: 28,
           border: "1px solid rgba(15, 23, 42, 0.08)",
-          boxShadow: "0 24px 60px rgba(15, 23, 42, 0.08)",
+          boxShadow: "var(--shadow-card-hover)",
           padding: "28px 22px",
         }}
         >

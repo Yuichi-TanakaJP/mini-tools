@@ -18,9 +18,9 @@ import {
 import { ROUTINES, ROUTINES_SURVEYED_ON } from "./data/routines";
 
 const MODE_COLORS: Record<RoutineMode, { bg: string; fg: string; border: string }> = {
-  auto: { bg: "var(--color-info-bg)", fg: "#1d4ed8", border: "rgba(29,78,216,0.18)" },
-  semi: { bg: "var(--color-warning-bg)", fg: "#b45309", border: "rgba(180,83,9,0.20)" },
-  manual: { bg: "var(--color-success-bg)", fg: "#15803d", border: "rgba(21,128,61,0.20)" },
+  auto: { bg: "var(--color-info-bg)", fg: "var(--color-info-text)", border: "var(--color-info-border)" },
+  semi: { bg: "var(--color-warning-bg)", fg: "var(--color-warning-text)", border: "var(--color-warning-border)" },
+  manual: { bg: "var(--color-success-bg)", fg: "var(--color-success-text)", border: "var(--color-success-border)" },
 };
 
 function RoutineChip({ routine }: { routine: Routine }) {
@@ -292,7 +292,7 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: 18,
     padding: 16,
     border: "1px solid rgba(15,23,42,0.06)",
-    boxShadow: "0 10px 30px rgba(15,23,42,0.06)",
+    boxShadow: "var(--shadow-card)",
   },
   metricLabel: {
     fontSize: 11,
@@ -315,7 +315,7 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: 18,
     padding: 18,
     border: "1px solid rgba(15,23,42,0.06)",
-    boxShadow: "0 10px 30px rgba(15,23,42,0.06)",
+    boxShadow: "var(--shadow-card)",
     marginBottom: 16,
   },
   sectionLabel: {

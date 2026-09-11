@@ -79,7 +79,7 @@ export default function ToolClient() {
             background: "var(--color-bg-card)",
             borderRadius: 18,
             border: "1px solid var(--color-border)",
-            boxShadow: "0 8px 24px rgba(15,23,42,0.05)",
+            boxShadow: "var(--shadow-card)",
             overflow: "hidden",
           }}>
             <div style={{
@@ -129,7 +129,7 @@ export default function ToolClient() {
             background: "var(--color-bg-card)",
             borderRadius: 18,
             border: "1px solid var(--color-border)",
-            boxShadow: "0 8px 24px rgba(15,23,42,0.05)",
+            boxShadow: "var(--shadow-card)",
             padding: "20px 20px 16px",
             display: "flex",
             flexDirection: "column",

@@ -35,7 +35,14 @@ const CATEGORY_ORDER = [
   "自己信用",
 ];
 
-const SEGMENT_COLORS = ["#0f766e", "#2563eb", "#dc2626", "#9333ea", "#f59e0b", "#64748b"];
+const SEGMENT_COLORS = [
+  "var(--color-chart-2)",
+  "var(--color-chart-1)",
+  "var(--color-chart-5)",
+  "var(--color-chart-6)",
+  "var(--color-chart-4)",
+  "var(--color-chart-3)",
+];
 
 const CATEGORY_LABELS: Record<string, string> = {
   自己計: "自己計（証券会社の自己売買）",
@@ -1125,7 +1132,7 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: 18,
     padding: 18,
     border: "1px solid rgba(15,23,42,0.06)",
-    boxShadow: "0 10px 30px rgba(15,23,42,0.06)",
+    boxShadow: "var(--shadow-card)",
     marginBottom: 16,
   },
   sectionLabel: {
@@ -1176,7 +1183,7 @@ const styles: Record<string, CSSProperties> = {
     border: "1px solid rgba(15,23,42,0.06)",
     borderRadius: 16,
     padding: 16,
-    boxShadow: "0 8px 24px rgba(15,23,42,0.05)",
+    boxShadow: "var(--shadow-card)",
   },
   analysisMetricCard: {
     background: "var(--color-bg-card)",
@@ -1205,7 +1212,7 @@ const styles: Record<string, CSSProperties> = {
     border: "1px solid rgba(15,23,42,0.06)",
     borderRadius: 18,
     padding: 16,
-    boxShadow: "0 10px 30px rgba(15,23,42,0.05)",
+    boxShadow: "var(--shadow-card)",
   },
   summaryRow: {
     display: "flex",
@@ -1281,7 +1288,7 @@ const styles: Record<string, CSSProperties> = {
     color: "var(--color-text)",
     textAlign: "left",
     cursor: "pointer",
-    boxShadow: "0 6px 16px rgba(15,23,42,0.08)",
+    boxShadow: "var(--shadow-card)",
   },
   viewTabLabel: {
     fontSize: 13,

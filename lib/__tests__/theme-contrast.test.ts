@@ -60,6 +60,16 @@ const PAIRS: ReadonlyArray<
   ["--color-chart-4", "--color-bg-card", UI],
   ["--color-chart-5", "--color-bg-card", UI],
   ["--color-chart-6", "--color-bg-card", UI],
+  ["--color-chart-7", "--color-bg-card", UI],
+  ["--color-chart-8", "--color-bg-card", UI],
+  ["--color-chart-9", "--color-bg-card", UI],
+  ["--color-chart-10", "--color-bg-card", UI],
+  ["--color-chart-11", "--color-bg-card", UI],
+  ["--color-chart-12", "--color-bg-card", UI],
+  // severity は順序尺度。1・2 は「弱い」ことを示すので 3:1 を求めない
+  ["--color-severity-3", "--color-bg-card", UI],
+  ["--color-severity-4", "--color-bg-card", UI],
+  ["--color-severity-5", "--color-bg-card", UI],
   // neutral チップが背後の面に溶けない
   ["--color-neutral-bg", "--color-bg-card", SURFACE],
   ["--color-neutral-bg", "--color-bg", SURFACE],
@@ -152,6 +162,12 @@ function contrast(fg: string, bg: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
+/** Oklab の彩度。順序尺度の「強さ」は輝度比ではなくここに出る */
+function chroma(hex: string): number {
+  const [, a, b] = oklab(hex);
+  return Math.hypot(a, b);
+}
+
 describe("theme contrast", () => {
   const css = readFileSync(resolve(process.cwd(), "app/globals.css"), "utf8");
   const light = tokenMap(selectorBody(css, ":root"));
@@ -179,6 +195,21 @@ describe("theme contrast", () => {
           ).toBeGreaterThanOrEqual(required);
         },
       );
+
+      // severity は順序尺度。強さは輝度比ではなく彩度で伝わるため、
+      // 「1 -> 5 で彩度が単調に上がる」ことと「隣どうしが見分けられる」ことを見る。
+      it("severity は 1 から 5 へ単調に強くなる", () => {
+        const steps = [1, 2, 3, 4, 5].map(
+          (i) => tokens.get(`--color-severity-${i}`) as string,
+        );
+        for (const step of steps) expect(step).toBeDefined();
+        for (let i = 1; i < steps.length; i += 1) {
+          expect(chroma(steps[i])).toBeGreaterThan(chroma(steps[i - 1]));
+          expect(colorDistance(steps[i], steps[i - 1])).toBeGreaterThanOrEqual(
+            0.03,
+          );
+        }
+      });
 
       it.each(DISTINCT)("%s and %s stay distinguishable", (a, b) => {
         const first = tokens.get(a);

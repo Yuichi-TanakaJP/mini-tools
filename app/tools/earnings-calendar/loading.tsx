@@ -26,7 +26,7 @@ export default function Loading() {
           background: "rgba(255,255,255,0.8)",
           borderRadius: 22,
           padding: 16,
-          boxShadow: "0 10px 30px rgba(15,23,42,0.06)",
+          boxShadow: "var(--shadow-card)",
           border: "1px solid rgba(15,23,42,0.04)",
         }}>
           {/* Month nav: ‹ YYYY年M月 › */}
