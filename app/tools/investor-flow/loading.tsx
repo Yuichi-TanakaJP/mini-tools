@@ -24,18 +24,18 @@ const styles: Record<string, React.CSSProperties> = {
     width: "min(720px, 100%)",
     height: 154,
     borderRadius: 18,
-    background: "linear-gradient(90deg, #e2e8f0, #f1f5f9, #e2e8f0)",
+    background: "linear-gradient(90deg, var(--color-neutral-bg), var(--color-bg-subtle), var(--color-neutral-bg))",
     marginBottom: 20,
   },
   skeletonPanel: {
     height: 96,
     borderRadius: 18,
-    background: "linear-gradient(90deg, #e2e8f0, #f1f5f9, #e2e8f0)",
+    background: "linear-gradient(90deg, var(--color-neutral-bg), var(--color-bg-subtle), var(--color-neutral-bg))",
     marginBottom: 16,
   },
   skeletonTable: {
     height: 320,
     borderRadius: 18,
-    background: "linear-gradient(90deg, #e2e8f0, #f1f5f9, #e2e8f0)",
+    background: "linear-gradient(90deg, var(--color-neutral-bg), var(--color-bg-subtle), var(--color-neutral-bg))",
   },
 };

@@ -248,6 +248,15 @@ Oklab 上の距離 dE で 0.045 以上を保つ。上の彩度倍率と明度補
 
 ---
 
+### 値を変えたら旧値の残骸を消す
+
+トークンの値を変えても、SVG の `fill` / `stroke` やグラデーション文字列に書かれた実値は追従しない。
+実際、accent を `#2554ff` から変えたあと 24 箇所が旧値のまま残り、
+同じ画面に 2 種類の青が出ていた。
+
+値を更新したら `lib/__tests__/no-stale-theme-colors.test.ts` に旧値を追加する。
+このテストが `app` / `components` を走査して残骸を落とす（ゲームと管理画面は除外）。
+
 ## 確認項目
 
 - ヘッダーの選択を「ダーク」にすると、ホーム背景・カード・文字・モバイル下部ナビが暗い配色になる。
@@ -256,7 +265,8 @@ Oklab 上の距離 dE で 0.045 以上を保つ。上の彩度倍率と明度補
 - 「端末設定」は端末のライト / ダーク変更に追従する。
 - キーボード操作で選択でき、フォーカス位置が見える。
 - LocalStorage が利用できなくても画面操作を妨げない。
-- `npm run test` で `theme-token-contract` と `theme-contrast` が通る。
+- `npm run test` で `theme-token-contract` / `theme-contrast` / `no-stale-theme-colors` が通る。
+- 配色を変えたら [UAT: 表示テーマ](../../uat/color-theme.md) を Light / Dark の両方で通す。
 
 ## 関連
 
@@ -264,4 +274,5 @@ Oklab 上の距離 dE で 0.045 以上を保つ。上の彩度倍率と明度補
 - [テーマトークン基盤の設計判断](../../decision-log/2026-09-03-theme-token-foundation.md)
 - [Light / Dark を同一 hue 軸から生成する判断](../../decision-log/2026-09-11-unified-color-theme.md)
 - [UI デザインコンセプト](./ui-design-concept.md)
+- [UAT: 表示テーマ](../../uat/color-theme.md)
 - [Product Spec](../../product-spec.md)

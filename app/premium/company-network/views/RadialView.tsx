@@ -166,8 +166,8 @@ export default function RadialView({
               const neighbourDim = selection?.kind === "group" && !groupSelected;
               const radius = isCenter ? 34 : selected ? 30 : 26;
               return <g key={companyId} transform={`translate(${point.x} ${point.y})`} className={queryDim || neighbourDim ? styles.svgNodeDim : undefined} role="button" tabIndex={0} onClick={() => { if (!panZoom.didPan()) onSelectCompany(companyId); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelectCompany(companyId); } }} style={{ cursor: "pointer" }}>
-                {selected ? <circle className={styles.pulse} r={radius + 9} fill="none" stroke="#2554ff" strokeWidth={2} /> : null}
-                <circle r={radius} fill={isCenter ? "#2554ff" : "var(--color-bg-card)"} stroke="#2554ff" strokeWidth={selected || isCenter ? 3 : 2} />
+                {selected ? <circle className={styles.pulse} r={radius + 9} fill="none" stroke="var(--color-accent)" strokeWidth={2} /> : null}
+                <circle r={radius} fill={isCenter ? "var(--color-accent)" : "var(--color-bg-card)"} stroke="var(--color-accent)" strokeWidth={selected || isCenter ? 3 : 2} />
                 <text textAnchor="middle" y="-2" className={isCenter ? styles.radialCenterLabel : styles.radialNodeLabel}>{truncate(company.name, 11)}</text>
                 <text textAnchor="middle" y="13" className={isCenter ? styles.radialCenterMeta : styles.radialNodeMeta}>{depth === 0 ? "center" : `${depth}-hop`}</text>
               </g>;

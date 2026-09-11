@@ -3,7 +3,7 @@
    判断: docs/decision-log/2026-08-28-industry-map-view-selection.md */
 
 .page {
-  --kind-classification: #2554ff;
+  --kind-classification: var(--color-accent);
   --kind-product: #0d9488;
   --kind-technology: #7c3aed;
 

@@ -1,5 +1,5 @@
 .page {
-  --network-blue: #2554ff;
+  --network-blue: var(--color-accent);
   --network-violet: #7c3aed;
   --network-slate: #64748b;
   --network-group: #d97706;

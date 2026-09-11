@@ -121,7 +121,7 @@ export const THEME_RELATION_LABEL: Record<ThemeRelationType, string> = {
 };
 
 export const THEME_RELATION_COLOR: Record<ThemeRelationType, string> = {
-  scope: "#1d44d8",
+  scope: "var(--color-accent-hover)",
   focus: "#0d9488",
   beneficiary_area: "#16a34a",
   risk_area: "#dc2626",

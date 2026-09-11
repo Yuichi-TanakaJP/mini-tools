@@ -354,8 +354,8 @@ export default function NetworkView({
               const dimmed = queryDimmed || neighbourDimmed;
               const baseRadius = highDegreeHubId ? STAR_LABEL_RADIUS : relationsOnly ? 14 : 8;
               const radius = node.kind === "group" ? (selected ? 11 : 9) : hubCenter ? 17 : center ? 11 : selected ? baseRadius + 2 : baseRadius;
-              const fill = node.kind === "group" ? "#fff7ed" : center ? "#2554ff" : "var(--color-bg-card)";
-              const stroke = node.kind === "group" ? "#d97706" : "#2554ff";
+              const fill = node.kind === "group" ? "var(--color-warning-bg)" : center ? "var(--color-accent)" : "var(--color-bg-card)";
+              const stroke = node.kind === "group" ? "var(--color-warning)" : "var(--color-accent)";
               const outwardLeft = Boolean(highDegreeHubId && !hubCenter && node.x < 0);
               const labelX = hubCenter ? 0 : outwardLeft ? -(radius + STAR_LABEL_GAP) : radius + STAR_LABEL_GAP;
               const labelLines = highDegreeHubId && !hubCenter ? wrapStarLabel(node.label) : [truncate(node.label, 16)];
