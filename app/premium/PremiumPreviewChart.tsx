@@ -138,8 +138,8 @@ export default function PremiumPreviewChart({
         <div
           style={{
             minWidth: 160,
-            background: "#0f172a",
-            color: "#fff",
+            background: "var(--color-bg-emphasis)",
+            color: "var(--color-text-on-emphasis)",
             borderRadius: 18,
             padding: "14px 16px",
           }}
@@ -363,7 +363,7 @@ export default function PremiumPreviewChart({
             style={{
               borderRadius: 16,
               border: "1px solid var(--color-border)",
-              background: "#fff",
+              background: "var(--color-bg-card)",
               padding: "12px 14px",
             }}
           >

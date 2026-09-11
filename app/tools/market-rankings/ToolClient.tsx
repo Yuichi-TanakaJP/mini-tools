@@ -1134,7 +1134,7 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "10px 0 0",
     fontSize: 13,
     lineHeight: 1.7,
-    color: "#7c2d12",
+    color: "var(--color-warning-text)",
   },
   inlineCode: {
     fontFamily: "monospace",

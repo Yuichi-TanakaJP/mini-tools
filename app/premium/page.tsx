@@ -139,7 +139,7 @@ export default async function PremiumHomePage() {
           style={{
             background:
               "radial-gradient(circle at top left, rgba(250, 204, 21, 0.30), transparent 30%), radial-gradient(circle at bottom right, rgba(96, 165, 250, 0.22), transparent 34%), linear-gradient(135deg, #0f172a 0%, #172554 48%, #1d4ed8 100%)",
-            color: "#fff",
+            color: "var(--color-text-inverse)",
             borderRadius: 30,
             padding: "30px 24px",
             boxShadow: "var(--shadow-panel)",
@@ -224,7 +224,7 @@ export default async function PremiumHomePage() {
               height: 46,
               padding: "0 18px",
               borderRadius: 14,
-              background: "#fff",
+              background: "var(--color-bg-card)",
               color: "var(--color-text-sub)",
               border: "1px solid var(--color-border)",
               textDecoration: "none",

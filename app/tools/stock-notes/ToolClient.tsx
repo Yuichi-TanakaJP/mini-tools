@@ -146,7 +146,7 @@ const primaryBtn: React.CSSProperties = {
   border: "none",
   borderRadius: 10,
   background: "var(--color-accent)",
-  color: "#fff",
+  color: "var(--color-text-inverse)",
   fontSize: 13,
   fontWeight: 700,
   cursor: "pointer",

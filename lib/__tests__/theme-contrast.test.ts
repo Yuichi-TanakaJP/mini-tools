@@ -29,6 +29,7 @@ const PAIRS: ReadonlyArray<
   ["--color-text-muted", "--color-bg-input", BODY],
   ["--color-text-muted", "--color-bg-subtle", BODY],
   ["--color-text-muted", "--color-bg-elevated", BODY],
+  ["--color-text-on-emphasis", "--color-bg-emphasis", BODY],
   ["--color-accent", "--color-bg-card", BODY],
   ["--color-accent", "--color-bg", BODY],
   ["--color-accent", "--color-accent-sub", BODY],

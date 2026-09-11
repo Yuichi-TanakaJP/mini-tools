@@ -1837,7 +1837,7 @@ const styles: Record<string, CSSProperties> = {
   errorText: {
     margin: "10px 0 0",
     fontSize: 13,
-    color: "#7c2d12",
+    color: "var(--color-warning-text)",
     lineHeight: 1.7,
   },
 };

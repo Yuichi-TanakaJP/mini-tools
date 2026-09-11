@@ -28,7 +28,7 @@ export default function LogoutButton() {
         height: 40,
         borderRadius: 999,
         border: "1px solid rgba(15, 23, 42, 0.08)",
-        background: "#fff",
+        background: "var(--color-bg-card)",
         color: "var(--color-text-sub)",
         padding: "0 16px",
         fontWeight: 700,

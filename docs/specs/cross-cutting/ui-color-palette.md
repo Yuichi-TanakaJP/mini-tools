@@ -51,6 +51,11 @@ Light は白へ向かって、Dark は明るい方へ向かって、同じ順序
 | `--color-bg-card` | 100% | 27.5% | 通常カード |
 | `--color-bg-elevated` | 100% | 31.5% | モーダル・ポップオーバー |
 
+`--color-bg-emphasis` はこのラダーの外。**両テーマで濃いまま**にする面で、
+上に置く文字は `--color-text-on-emphasis` を使う。数値を目立たせる帯など、
+明暗を反転させて強調したい場所のためのもの。`--color-text-inverse` を
+直書きの濃い面に重ねると、Dark で「暗い面に暗い文字」になるので使わない。
+
 Dark では影がほぼ見えないため、奥行きは影ではなく**この明度差**で表す。
 Light の card / elevated は同値なので、そちらは `--shadow-*` で差を付ける。
 
@@ -248,6 +253,15 @@ Oklab 上の距離 dE で 0.045 以上を保つ。上の彩度倍率と明度補
 
 ---
 
+### 直書き色を増やさない
+
+`lib/__tests__/color-literal-budget.ts` がファイル別の残数を持っている。
+新しく色リテラルを書いたファイルは載っていないので必ず落ちる。既存ファイルで増えても落ちる。
+減らしたときは予算も下げる（緩いまま放置しないため）。
+
+理由があって直書きする場合（グラフ系列、ブランド色、ゲーム固有表現）は、
+予算ファイルへ追加したうえでコメントに理由を書く。
+
 ### 値を変えたら旧値の残骸を消す
 
 トークンの値を変えても、SVG の `fill` / `stroke` やグラデーション文字列に書かれた実値は追従しない。
@@ -265,7 +279,8 @@ Oklab 上の距離 dE で 0.045 以上を保つ。上の彩度倍率と明度補
 - 「端末設定」は端末のライト / ダーク変更に追従する。
 - キーボード操作で選択でき、フォーカス位置が見える。
 - LocalStorage が利用できなくても画面操作を妨げない。
-- `npm run test` で `theme-token-contract` / `theme-contrast` / `no-stale-theme-colors` が通る。
+- `npm run test` で `theme-token-contract` / `theme-contrast` /
+  `no-stale-theme-colors` / `color-literal-budget` が通る。
 - 配色を変えたら [UAT: 表示テーマ](../../uat/color-theme.md) を Light / Dark の両方で通す。
 
 ## 関連

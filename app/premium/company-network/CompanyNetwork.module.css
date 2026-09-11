@@ -680,7 +680,7 @@
   border-radius: 10px;
   background: var(--color-warning-bg);
 }
-.groupList strong { font-size: 11px; color: #7c2d12; }
+.groupList strong { font-size: 11px; color: var(--color-warning-text); }
 .groupList span,
 .groupList small { font-size: 9px; color: var(--color-warning); }
 .groupList a { color: var(--color-warning); text-decoration: none; font-size: 9px; font-weight: 800; }

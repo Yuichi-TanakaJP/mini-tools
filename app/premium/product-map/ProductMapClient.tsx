@@ -82,7 +82,7 @@ function RelationCard({ relation, direction }: { relation: WorkspaceCoreProductR
     <div
       style={{
         border: "1px solid var(--color-border)",
-        background: "#fff",
+        background: "var(--color-bg-card)",
         borderRadius: 14,
         padding: "11px 12px",
         display: "grid",
@@ -105,7 +105,7 @@ function StatCard({ label, value, note }: { label: string; value: number; note: 
   return (
     <div
       style={{
-        background: "#fff",
+        background: "var(--color-bg-card)",
         border: "1px solid var(--color-border)",
         borderRadius: 18,
         padding: "16px 17px",
@@ -231,7 +231,7 @@ export default function ProductMapClient() {
               borderRadius: 26,
               padding: "30px 24px",
               background: "linear-gradient(135deg, #0f172a, #312e81)",
-              color: "#fff",
+              color: "var(--color-text-inverse)",
             }}
           >
             <div style={{ fontSize: 12, fontWeight: 850, opacity: 0.72, marginBottom: 10 }}>WORKSPACE CORE</div>
@@ -258,7 +258,7 @@ export default function ProductMapClient() {
           style={{
             borderRadius: 28,
             padding: "26px 24px",
-            color: "#fff",
+            color: "var(--color-text-inverse)",
             background:
               "radial-gradient(circle at 90% 10%, rgba(56,189,248,.28), transparent 30%), radial-gradient(circle at 5% 100%, rgba(168,85,247,.28), transparent 35%), linear-gradient(135deg,#0f172a 0%,#1e1b4b 52%,#312e81 100%)",
             boxShadow: "var(--shadow-panel)",
@@ -293,7 +293,7 @@ export default function ProductMapClient() {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-start" }}>
           <aside
             style={{
-              background: "#fff",
+              background: "var(--color-bg-card)",
               border: "1px solid var(--color-border)",
               borderRadius: 22,
               padding: 14,
@@ -323,7 +323,7 @@ export default function ProductMapClient() {
                 <select
                   value={typeFilter}
                   onChange={(event) => setTypeFilter(event.target.value)}
-                  style={{ height: 38, borderRadius: 11, border: "1px solid var(--color-border)", padding: "0 8px", background: "#fff" }}
+                  style={{ height: 38, borderRadius: 11, border: "1px solid var(--color-border)", padding: "0 8px", background: "var(--color-bg-card)" }}
                 >
                   <option value="all">全Type</option>
                   {[...new Set(overview.products.map((product) => product.productType))].sort().map((type) => (
@@ -333,7 +333,7 @@ export default function ProductMapClient() {
                 <select
                   value={providerFilter}
                   onChange={(event) => setProviderFilter(event.target.value)}
-                  style={{ height: 38, borderRadius: 11, border: "1px solid var(--color-border)", padding: "0 8px", background: "#fff" }}
+                  style={{ height: 38, borderRadius: 11, border: "1px solid var(--color-border)", padding: "0 8px", background: "var(--color-bg-card)" }}
                 >
                   <option value="all">全Provider</option>
                   {providerOptions.map(([slug, name]) => <option key={slug} value={slug}>{name}</option>)}
@@ -385,11 +385,11 @@ export default function ProductMapClient() {
 
           <section style={{ minWidth: 0, display: "grid", gap: 14, flex: "1 1 560px" }}>
             {detailLoading && !detail ? (
-              <div style={{ padding: 24, borderRadius: 20, background: "#fff", border: "1px solid var(--color-border)" }}>読み込み中…</div>
+              <div style={{ padding: 24, borderRadius: 20, background: "var(--color-bg-card)", border: "1px solid var(--color-border)" }}>読み込み中…</div>
             ) : detail ? (
               <ProductDetail detail={detail} productBySlug={productBySlug} onSelectProduct={setSelectedSlug} />
             ) : (
-              <div style={{ padding: 24, borderRadius: 20, background: "#fff", border: "1px solid var(--color-border)" }}>Product詳細を取得できませんでした。</div>
+              <div style={{ padding: 24, borderRadius: 20, background: "var(--color-bg-card)", border: "1px solid var(--color-border)" }}>Product詳細を取得できませんでした。</div>
             )}
           </section>
         </div>
@@ -412,7 +412,7 @@ function ProductDetail({
 
   return (
     <>
-      <div style={{ background: "#fff", border: "1px solid var(--color-border)", borderRadius: 22, padding: "20px 20px 18px", display: "grid", gap: 12 }}>
+      <div style={{ background: "var(--color-bg-card)", border: "1px solid var(--color-border)", borderRadius: 22, padding: "20px 20px 18px", display: "grid", gap: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
           <div>
             <div style={{ color: "var(--color-accent)", fontSize: 11, fontWeight: 900 }}>{detail.product.slug}</div>
@@ -444,7 +444,7 @@ function ProductDetail({
             )) : <div style={{ color: "var(--color-text-sub)", fontSize: 11 }}>なし</div>}
           </div>
 
-          <div style={{ borderRadius: 18, padding: "18px 12px", textAlign: "center", background: "linear-gradient(135deg,#312e81,#4f46e5)", color: "#fff", boxShadow: "0 12px 30px rgba(79,70,229,.18)" }}>
+          <div style={{ borderRadius: 18, padding: "18px 12px", textAlign: "center", background: "linear-gradient(135deg,#312e81,#4f46e5)", color: "var(--color-text-inverse)", boxShadow: "0 12px 30px rgba(79,70,229,.18)" }}>
             <div style={{ fontSize: 10, opacity: .7 }}>SELECTED</div>
             <div style={{ marginTop: 5, fontWeight: 950, overflowWrap: "anywhere" }}>{detail.product.name}</div>
           </div>
@@ -508,7 +508,7 @@ function ProductDetail({
       </div>
 
       {detail.incomingRelations.length || detail.outgoingRelations.length ? (
-        <div style={{ background: "#fff", border: "1px solid var(--color-border)", borderRadius: 20, padding: 16 }}>
+        <div style={{ background: "var(--color-bg-card)", border: "1px solid var(--color-border)", borderRadius: 20, padding: 16 }}>
           <div style={{ fontWeight: 900, marginBottom: 10 }}>Relation provenance</div>
           {[...detail.outgoingRelations, ...detail.incomingRelations].map((relation, index) => {
             const otherSlug = relation.sourceProductSlug === detail.product.slug ? relation.targetProductSlug : relation.sourceProductSlug;

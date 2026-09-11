@@ -57,7 +57,7 @@ export default function ScanPocPage() {
       <h1 style={{ fontSize: 20, marginBottom: 8 }}>
         優待スキャン PoC (Phase 1)
       </h1>
-      <p style={{ fontSize: 13, color: "#666", marginBottom: 16 }}>
+      <p style={{ fontSize: 13, color: "var(--color-text-muted)", marginBottom: 16 }}>
         撮影またはファイル選択した <b>画像</b>（JPEG / PNG / HEIC など）を Gemini に送信し、抽出結果を表示します。
         確認用のため、本番の追加フォームとは繋がっていません。
         PDF を試したい場合は、先にスクリーンショット等で画像化してください。
@@ -115,7 +115,7 @@ export default function ScanPocPage() {
           <li>金額 / 枚数</li>
           <li>注意書きを誤って金額等に混入させていないか</li>
         </ul>
-        <p style={{ margin: "8px 0 0", color: "#666" }}>
+        <p style={{ margin: "8px 0 0", color: "var(--color-text-muted)" }}>
           外したフィールドをメモしておくと、プロンプト調整やモデル変更の判断材料になります。
         </p>
       </details>
@@ -151,13 +151,13 @@ export default function ScanPocPage() {
           <img
             src={previewUrl}
             alt="preview"
-            style={{ maxWidth: "100%", borderRadius: 6, border: "1px solid #ddd" }}
+            style={{ maxWidth: "100%", borderRadius: 6, border: "1px solid var(--color-border)" }}
           />
         </div>
       )}
 
       {(elapsedMs != null || modelUsed) && (
-        <p style={{ fontSize: 12, color: "#666", marginTop: 8 }}>
+        <p style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 8 }}>
           {modelUsed && (
             <>
               モデル: <code>{modelUsed}</code>（
@@ -219,12 +219,12 @@ export default function ScanPocPage() {
 
       {rawResponse && (
         <details style={{ marginTop: 16 }}>
-          <summary style={{ cursor: "pointer", fontSize: 13, color: "#666" }}>
+          <summary style={{ cursor: "pointer", fontSize: 13, color: "var(--color-text-muted)" }}>
             生レスポンス JSON
           </summary>
           <pre
             style={{
-              background: "#f6f8fa",
+              background: "var(--color-bg-subtle)",
               padding: 12,
               borderRadius: 6,
               fontSize: 12,
@@ -242,7 +242,7 @@ export default function ScanPocPage() {
 function Row({ k, v }: { k: string; v: string | null }) {
   return (
     <div style={{ display: "flex", gap: 8 }}>
-      <dt style={{ width: 90, color: "#666" }}>{k}</dt>
+      <dt style={{ width: 90, color: "var(--color-text-muted)" }}>{k}</dt>
       <dd style={{ margin: 0, fontWeight: 500 }}>{v ?? "—"}</dd>
     </div>
   );

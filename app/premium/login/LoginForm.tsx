@@ -126,7 +126,7 @@ export default function LoginForm() {
           background: isSubmitting || !password
             ? "#9db0ff"
             : "linear-gradient(135deg, var(--color-accent-hover) 0%, var(--color-accent) 60%, #6ea8fe 100%)",
-          color: "#fff",
+          color: "var(--color-text-inverse)",
           fontSize: 15,
           fontWeight: 800,
           cursor: isSubmitting || !password ? "default" : "pointer",
