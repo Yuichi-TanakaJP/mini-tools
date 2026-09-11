@@ -73,6 +73,20 @@
   --color-chart-4:          #867000;
   --color-chart-5:          #ba472b;
   --color-chart-6:          #984ea9;
+  /* 系列が 6 を超えるときだけ使う拡張。既存 6 色の中間の色相 */
+  --color-chart-7:          #007baa;
+  --color-chart-8:          #00856e;
+  --color-chart-9:          #5f7e00;
+  --color-chart-10:         #a26000;
+  --color-chart-11:         #b74165;
+  --color-chart-12:         #735dc4;
+
+  /* Severity — 順序尺度。1 が最も弱く 5 が最も強い。分類（chart）とは別物 */
+  --color-severity-1:       #9199a4;
+  --color-severity-2:       #6b7584;
+  --color-severity-3:       #9c6900;
+  --color-severity-4:       #ab4500;
+  --color-severity-5:       #b00a1d;
 
   /* Elevation */
   --shadow-card:            0 1px 2px rgba(17, 27, 41, 0.04), 0 4px 16px rgba(17, 27, 41, 0.05);
@@ -161,6 +175,19 @@ html[data-theme="dark"] {
   --color-chart-4:          #bfa32b;
   --color-chart-5:          #ec8369;
   --color-chart-6:          #ca87d9;
+  --color-chart-7:          #34b1ec;
+  --color-chart-8:          #06bfa0;
+  --color-chart-9:          #91b34d;
+  --color-chart-10:         #de913c;
+  --color-chart-11:         #ea7e99;
+  --color-chart-12:         #a495f3;
+
+  /* Severity — 順序尺度。1 が最も弱く 5 が最も強い。分類（chart）とは別物 */
+  --color-severity-1:       #626a73;
+  --color-severity-2:       #828d9c;
+  --color-severity-3:       #d49838;
+  --color-severity-4:       #f78955;
+  --color-severity-5:       #ff7e77;
 
   /* Elevation */
   --shadow-card:            0 1px 2px rgba(0, 0, 0, 0.30), 0 4px 16px rgba(0, 0, 0, 0.24);

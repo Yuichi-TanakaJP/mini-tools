@@ -30,17 +30,17 @@ const DATA_STATE_LABELS: Record<ThemeDataState, string> = {
 };
 
 const DATA_STATE_COLORS: Record<ThemeDataState, { bg: string; fg: string; border: string }> = {
-  present: { bg: "var(--color-success-bg)", fg: "#166534", border: "var(--color-success-border)" },
-  empty: { bg: "var(--color-warning-bg)", fg: "#92400e", border: "var(--color-warning-border)" },
-  missing: { bg: "var(--color-bg-subtle)", fg: "#475569", border: "var(--color-border-strong)" },
+  present: { bg: "var(--color-success-bg)", fg: "var(--color-success-text)", border: "var(--color-success-border)" },
+  empty: { bg: "var(--color-warning-bg)", fg: "var(--color-warning-text)", border: "var(--color-warning-border)" },
+  missing: { bg: "var(--color-bg-subtle)", fg: "var(--color-text-sub)", border: "var(--color-border-strong)" },
 };
 
 const cardStyle: CSSProperties = {
-  background: "#fff",
-  border: "1px solid rgba(15,23,42,0.08)",
+  background: "var(--color-bg-card)",
+  border: "1px solid var(--color-border)",
   borderRadius: 18,
   padding: 18,
-  boxShadow: "0 10px 30px rgba(15,23,42,0.05)",
+  boxShadow: "var(--shadow-card)",
 };
 
 const mutedStyle: CSSProperties = {
@@ -861,7 +861,7 @@ const styles: Record<string, CSSProperties> = {
     border: "1px solid rgba(15,23,42,0.08)",
     color: "var(--color-text)",
     textDecoration: "none",
-    boxShadow: "0 10px 30px rgba(15,23,42,0.05)",
+    boxShadow: "var(--shadow-card)",
   },
   themeCardTop: {
     display: "flex",

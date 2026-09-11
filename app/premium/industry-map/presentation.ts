@@ -50,11 +50,11 @@ export const ROLE_LABEL: Record<StrategicRole, string> = {
 
 /** 役割の色。順序尺度ではないので、濃淡ではなく色相で区別する。 */
 export const ROLE_COLOR: Record<StrategicRole, string> = {
-  core: "#1d44d8",
-  growth: "#0d9488",
-  supporting: "#64748b",
-  experimental: "#7c3aed",
-  adjacent: "#d97706",
+  core: "var(--color-chart-1)",
+  growth: "var(--color-chart-2)",
+  supporting: "var(--color-text-muted)",
+  experimental: "var(--color-chart-6)",
+  adjacent: "var(--color-chart-4)",
 };
 
 export const CONTROL_LABEL: Record<ControlType, string> = {

@@ -19,7 +19,7 @@ export default function Loading() {
           background: "var(--color-bg-card)",
           borderRadius: 24,
           padding: "20px 20px 24px",
-          boxShadow: "0 1px 3px rgba(15,23,42,0.04), 0 8px 24px rgba(15,23,42,0.06)",
+          boxShadow: "var(--shadow-card)",
           border: "1px solid rgba(15,23,42,0.06)",
         }}>
           {/* Filter bar */}

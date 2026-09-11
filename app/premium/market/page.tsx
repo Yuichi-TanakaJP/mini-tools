@@ -38,7 +38,14 @@ type PremiumPreviewData = {
   nextMonth: string | null;
 };
 
-const CHART_COLORS = ["#2563eb", "#dc2626", "#16a34a", "#d97706", "#7c3aed", "#0891b2"];
+const CHART_COLORS = [
+  "var(--color-chart-1)",
+  "var(--color-chart-5)",
+  "var(--color-chart-3)",
+  "var(--color-chart-4)",
+  "var(--color-chart-6)",
+  "var(--color-chart-2)",
+];
 
 const FALLBACK_DAYS = [
   "2026-04-10",
@@ -446,7 +453,7 @@ export default async function PremiumMarketPage({
             color: "#fff",
             borderRadius: 30,
             padding: "30px 24px",
-            boxShadow: "0 24px 60px rgba(15, 23, 42, 0.18)",
+            boxShadow: "var(--shadow-panel)",
           }}
         >
           <div

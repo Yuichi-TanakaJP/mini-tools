@@ -261,7 +261,7 @@ export default function ProductMapClient() {
             color: "#fff",
             background:
               "radial-gradient(circle at 90% 10%, rgba(56,189,248,.28), transparent 30%), radial-gradient(circle at 5% 100%, rgba(168,85,247,.28), transparent 35%), linear-gradient(135deg,#0f172a 0%,#1e1b4b 52%,#312e81 100%)",
-            boxShadow: "0 22px 55px rgba(15,23,42,.15)",
+            boxShadow: "var(--shadow-panel)",
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", gap: 18, flexWrap: "wrap", alignItems: "flex-start" }}>

@@ -25,12 +25,13 @@ const COUNTRY_FLAGS: Record<string, string> = {
   BR: "🇧🇷",
 };
 
+// 重要度は分類ではなく順序尺度なので、chart 系列ではなく severity スケールを使う
 const IMPACT_COLOR: Record<number, string> = {
-  5: "#ef4444",
-  4: "#f97316",
-  3: "#f59e0b",
-  2: "#94a3b8",
-  1: "#cbd5e1",
+  5: "var(--color-severity-5)",
+  4: "var(--color-severity-4)",
+  3: "var(--color-severity-3)",
+  2: "var(--color-severity-2)",
+  1: "var(--color-severity-1)",
 };
 
 function parsePrevious(prev: string | null): { main: string; revised: string | null } {
@@ -719,7 +720,7 @@ const styles: Record<string, CSSProperties> = {
     padding: "10px 14px",
     background: "#fff",
     borderRadius: 12,
-    boxShadow: "0 1px 4px rgba(15,23,42,0.07)",
+    boxShadow: "var(--shadow-card)",
   },
   weekNavBtn: {
     padding: "5px 12px",
@@ -903,7 +904,7 @@ const styles: Record<string, CSSProperties> = {
     background: "#fff",
     borderRadius: 16,
     padding: "11px 14px",
-    boxShadow: "0 2px 8px rgba(15, 23, 42, 0.05)",
+    boxShadow: "var(--shadow-card)",
     border: "1px solid rgba(15, 23, 42, 0.04)",
   },
   eventCardDone: {
@@ -985,7 +986,7 @@ const styles: Record<string, CSSProperties> = {
     background: "#fff",
     borderRadius: 18,
     padding: 20,
-    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.05)",
+    boxShadow: "var(--shadow-card)",
     border: "1px solid rgba(15, 23, 42, 0.04)",
   },
   emptyTitle: {
@@ -1038,7 +1039,7 @@ const styles: Record<string, CSSProperties> = {
     background: "#fff",
     borderRadius: 16,
     overflow: "hidden",
-    boxShadow: "0 2px 8px rgba(15,23,42,0.05)",
+    boxShadow: "var(--shadow-card)",
     border: "1px solid rgba(15,23,42,0.06)",
   },
   monthTableHeader: {

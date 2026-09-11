@@ -142,7 +142,7 @@ export default async function PremiumHomePage() {
             color: "#fff",
             borderRadius: 30,
             padding: "30px 24px",
-            boxShadow: "0 24px 60px rgba(15, 23, 42, 0.18)",
+            boxShadow: "var(--shadow-panel)",
           }}
         >
           <div
