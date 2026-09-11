@@ -253,6 +253,31 @@ Oklab 上の距離 dE で 0.045 以上を保つ。上の彩度倍率と明度補
 
 ---
 
+### テーマに追従しない画面
+
+| 対象 | 扱い | 理由 |
+|---|---|---|
+| `/admin` | 常時 Dark。画面専用パレット `ADMIN` を使う | 運用者向けの内部画面。共通トークンはテーマで明暗が反転するため、ライト選択時に読めなくなる |
+| ペンギン系ゲーム | ゲーム固有パレット | ゲーム世界の表現 |
+| ロゴ・ブランド画像 | 変換しない | 出典側の色 |
+
+これらは `lib/__tests__/color-literal-budget.ts` と `no-stale-theme-colors` の対象外。
+**逆に、ここがテーマへ追従していたら不具合**として扱う。
+
+### 分類色（タグ）の作り方
+
+利用者が選ぶタグや、画面固有の分類ラベルは、状態色ではなく `--color-chart-*` から導く。
+背景と境界は面に対する `color-mix` で作ると、Light / Dark の両方へ自動で追従する。
+
+```css
+--clr-violet:        var(--color-chart-6);
+--clr-violet-light:  color-mix(in srgb, var(--color-chart-6) 10%, var(--color-bg-card));
+--clr-violet-border: color-mix(in srgb, var(--color-chart-6) 34%, var(--color-bg-card));
+```
+
+状態色（success / warning / error）をタグ分類に流用しない。
+「緑のタグ」が「成功」の意味に読まれてしまうため。
+
 ### 直書き色を増やさない
 
 `lib/__tests__/color-literal-budget.ts` がファイル別の残数を持っている。

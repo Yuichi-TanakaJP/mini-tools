@@ -887,7 +887,28 @@ function LineageView({ rows }: { rows: ToolRow[] }) {
 
 // ============== PageBg & Layout ==============
 
+/**
+ * 管理画面は選択テーマに追従しない「常時 Dark」の公式な例外。
+ * 共通トークン (--color-*) はテーマで明暗が反転するため、ここで使うと
+ * ライト選択時に「暗い地に暗い文字」になる。画面専用のパレットを持つ。
+ * 詳細は docs/specs/cross-cutting/ui-design-concept.md の「テーマ例外」を参照。
+ */
+const ADMIN = {
+  surface: "rgba(255,255,255,0.03)",
+  surfaceHead: "rgba(255,255,255,0.05)",
+  border: "rgba(255,255,255,0.08)",
+  borderSoft: "rgba(255,255,255,0.05)",
+  text: "#f1f5f9",
+  textSub: "#cbd5e1",
+  textMuted: "#94a3b8",
+  accent: "#a5b4fc",
+  accentBg: "rgba(99,102,241,0.12)",
+  accentBorder: "rgba(99,102,241,0.30)",
+} as const;
+
+
 const pageBg: CSSProperties = {
+  colorScheme: "dark",
   minHeight: "100vh",
   background:
     "radial-gradient(ellipse 1200px 600px at 20% -10%, rgba(99,102,241,0.18) 0%, transparent 60%)," +
@@ -1012,7 +1033,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
       </div>
 
       {/* Mobile (unchanged simple table) */}
-      <div className="admin-mobile">
+      <div className="admin-mobile" style={pageBg}>
         <MobileAdmin rows={rows} apiBase={apiBase} nowIso={nowIso} />
       </div>
     </>
@@ -1026,9 +1047,9 @@ const mobileTh: CSSProperties = {
   textAlign: "left",
   fontSize: 10,
   fontWeight: 800,
-  color: "#64748b",
+  color: ADMIN.textMuted,
   letterSpacing: 0.4,
-  borderBottom: "1px solid #e2e8f0",
+  borderBottom: `1px solid ${ADMIN.border}`,
 };
 
 const mobileTd: CSSProperties = {
@@ -1050,7 +1071,7 @@ const CATEGORY_LABEL_JA: Record<Category, string> = {
 function MobileFreshDot({ row }: { row: ToolRow }) {
   const fm = FRESHNESS_META[classifyFreshness(row)];
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10, fontWeight: 800, color: "#475569" }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10, fontWeight: 800, color: ADMIN.textSub }}>
       <span style={{ width: 7, height: 7, borderRadius: "50%", background: fm.dot }} />
       {fm.label}
     </span>
@@ -1060,17 +1081,17 @@ function MobileFreshDot({ row }: { row: ToolRow }) {
 function MobileAdmin({ rows, apiBase, nowIso }: { rows: ToolRow[]; apiBase: string; nowIso: string }) {
   const categories: Category[] = ["stocks", "calendars", "disclosures", "yutai", "credit", "reference", "local"];
   return (
-    <main style={{ maxWidth: 720, margin: "0 auto", padding: "20px 14px 64px", color: "#0f172a" }}>
+    <main style={{ maxWidth: 720, margin: "0 auto", padding: "20px 14px 64px", color: ADMIN.text }}>
       <header style={{ marginBottom: 18 }}>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 999, background: "#eef2ff", color: "#3730a3", fontSize: 10, fontWeight: 800, letterSpacing: 1, marginBottom: 10 }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 999, background: ADMIN.accentBg, color: ADMIN.accent, border: `1px solid ${ADMIN.accentBorder}`, fontSize: 10, fontWeight: 800, letterSpacing: 1, marginBottom: 10 }}>
           ADMIN · NOINDEX
         </div>
         <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 900, letterSpacing: -0.5 }}>データ更新ダッシュボード</h1>
-        <div style={{ fontSize: 11, color: "#64748b", lineHeight: 1.6 }}>
+        <div style={{ fontSize: 11, color: ADMIN.textMuted, lineHeight: 1.6 }}>
           <div>API: <code>{apiBase || "(未設定)"}</code></div>
           <div>取得時刻: <code>{nowIso}</code></div>
           <div style={{ marginTop: 4 }}>
-            <Link href="/premium" style={{ color: "#2554ff" }}>← /premium に戻る</Link>
+            <Link href="/premium" style={{ color: ADMIN.accent }}>← /premium に戻る</Link>
           </div>
         </div>
       </header>
@@ -1080,13 +1101,13 @@ function MobileAdmin({ rows, apiBase, nowIso }: { rows: ToolRow[]; apiBase: stri
         if (catRows.length === 0) return null;
         return (
           <section key={cat} style={{ marginBottom: 22 }}>
-            <h2 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 800, color: "#475569", letterSpacing: 0.5, textTransform: "uppercase" }}>
+            <h2 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 800, color: ADMIN.textMuted, letterSpacing: 0.5, textTransform: "uppercase" }}>
               {CATEGORY_LABEL_JA[cat]} ({catRows.length})
             </h2>
-            <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ background: ADMIN.surface, border: `1px solid ${ADMIN.border}`, borderRadius: 12, overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, tableLayout: "fixed" }}>
                 <thead>
-                  <tr style={{ background: "#f8fafc" }}>
+                  <tr style={{ background: ADMIN.surfaceHead }}>
                     <th style={{ ...mobileTh, width: "40%" }}>ツール / ソース</th>
                     <th style={{ ...mobileTh, width: "22%" }}>最終更新</th>
                     <th style={{ ...mobileTh, width: "38%" }}>運用ルール</th>
@@ -1094,18 +1115,18 @@ function MobileAdmin({ rows, apiBase, nowIso }: { rows: ToolRow[]; apiBase: stri
                 </thead>
                 <tbody>
                   {catRows.map((row) => (
-                    <tr key={`${row.name}-${row.source}`} style={{ borderTop: "1px solid #f1f5f9" }}>
+                    <tr key={`${row.name}-${row.source}`} style={{ borderTop: `1px solid ${ADMIN.borderSoft}` }}>
                       <td style={mobileTd}>
-                        <Link href={row.href} style={{ fontSize: 12, fontWeight: 800, color: "#0f172a", textDecoration: "none", display: "block", marginBottom: 3 }}>{row.name}</Link>
-                        <code style={{ fontSize: 10, color: "#94a3b8", wordBreak: "break-all", display: "block" }}>{row.source}</code>
+                        <Link href={row.href} style={{ fontSize: 12, fontWeight: 800, color: ADMIN.text, textDecoration: "none", display: "block", marginBottom: 3 }}>{row.name}</Link>
+                        <code style={{ fontSize: 10, color: ADMIN.textMuted, wordBreak: "break-all", display: "block" }}>{row.source}</code>
                       </td>
                       <td style={mobileTd}>
-                        <div style={{ fontSize: 12, fontWeight: 800, color: "#0f172a", fontFamily: "ui-monospace, SFMono-Regular, monospace", lineHeight: 1.3, marginBottom: 4, wordBreak: "break-all" }}>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: ADMIN.text, fontFamily: "ui-monospace, SFMono-Regular, monospace", lineHeight: 1.3, marginBottom: 4, wordBreak: "break-all" }}>
                           {formatLatest(row.latest)}
                         </div>
                         <MobileFreshDot row={row} />
                       </td>
-                      <td style={{ ...mobileTd, fontSize: 11, color: "#475569", lineHeight: 1.5 }}>{row.rule}</td>
+                      <td style={{ ...mobileTd, fontSize: 11, color: ADMIN.textSub, lineHeight: 1.5 }}>{row.rule}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1115,7 +1136,7 @@ function MobileAdmin({ rows, apiBase, nowIso }: { rows: ToolRow[]; apiBase: stri
         );
       })}
 
-      <footer style={{ marginTop: 20, fontSize: 10, color: "#94a3b8", lineHeight: 1.7 }}>
+      <footer style={{ marginTop: 20, fontSize: 10, color: ADMIN.textMuted, lineHeight: 1.7 }}>
         <div>FRESH (≤2日) / RECENT (≤7日) / STALE (&gt;7日) / FAILED (取得不可) / N/A (ローカル保存のみ)</div>
         <div style={{ marginTop: 4 }}>出典: market_info repo の docs/operations & docs/reference 配下</div>
       </footer>
