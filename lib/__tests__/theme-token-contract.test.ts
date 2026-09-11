@@ -12,6 +12,7 @@ const THEME_SPECIFIC_TOKENS = [
   "--color-text",
   "--color-text-sub",
   "--color-text-muted",
+  "--color-text-disabled",
   "--color-text-inverse",
   "--color-border",
   "--color-border-strong",

@@ -311,10 +311,10 @@ function MomentumCard({
   tone: "green" | "red" | "blue" | "slate";
 }) {
   const toneMap = {
-    green: { bg: "#f0fdf4", border: "#bbf7d0", text: "#166534" },
-    red: { bg: "#fef2f2", border: "#fecaca", text: "#991b1b" },
-    blue: { bg: "#eff6ff", border: "#bfdbfe", text: "#1d4ed8" },
-    slate: { bg: "#f8fafc", border: "#cbd5e1", text: "#334155" },
+    green: { bg: "var(--color-success-bg)", border: "var(--color-success-border)", text: "#166534" },
+    red: { bg: "var(--color-error-bg)", border: "var(--color-error-border)", text: "#991b1b" },
+    blue: { bg: "var(--color-info-bg)", border: "var(--color-info-border)", text: "#1d4ed8" },
+    slate: { bg: "var(--color-bg-subtle)", border: "var(--color-border-strong)", text: "#334155" },
   } as const;
 
   return (
@@ -364,9 +364,9 @@ const eyebrowStyle: CSSProperties = {
   gap: 8,
   padding: "6px 10px",
   borderRadius: 999,
-  background: "#fff7ed",
-  border: "1px solid #fdba74",
-  color: "#c2410c",
+  background: "var(--color-warning-bg)",
+  border: "1px solid var(--color-warning-border)",
+  color: "var(--color-warning)",
   fontSize: 12,
   fontWeight: 800,
 };
@@ -385,7 +385,7 @@ const monthNavLinkStyle: CSSProperties = {
   borderRadius: 999,
   border: "1px solid var(--color-border)",
   background: "#fff",
-  color: "#1d4ed8",
+  color: "var(--color-accent)",
   textDecoration: "none",
   fontSize: 13,
   fontWeight: 800,
@@ -615,7 +615,7 @@ export default async function PremiumMarketPage({
                       style={{
                         padding: "10px 12px",
                         borderRadius: 14,
-                        background: "#f8fafc",
+                        background: "var(--color-bg-subtle)",
                         border: "1px solid var(--color-border)",
                         fontWeight: 800,
                         fontSize: 13,
@@ -670,11 +670,11 @@ export default async function PremiumMarketPage({
               style={{
                 padding: "18px 16px",
                 borderRadius: 18,
-                background: "#f8fafc",
+                background: "var(--color-bg-subtle)",
                 border: "1px solid var(--color-border)",
               }}
             >
-              <div style={{ fontSize: 12, color: "#1d4ed8", fontWeight: 800, marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: "var(--color-accent)", fontWeight: 800, marginBottom: 8 }}>
                 継続して強い業種
               </div>
               <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 8 }}>
@@ -689,17 +689,17 @@ export default async function PremiumMarketPage({
               style={{
                 padding: "18px 16px",
                 borderRadius: 18,
-                background: "#fff7ed",
-                border: "1px solid #fdba74",
+                background: "var(--color-warning-bg)",
+                border: "1px solid var(--color-warning-border)",
               }}
             >
-              <div style={{ fontSize: 12, color: "#c2410c", fontWeight: 800, marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: "var(--color-warning)", fontWeight: 800, marginBottom: 8 }}>
                 反転候補
               </div>
               <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 8 }}>
                 {weakest?.sector_name ?? "輸送用機器"} は押し込み後の戻り待ち
               </div>
-              <p style={{ ...mutedStyle, color: "#9a3412" }}>
+              <p style={{ ...mutedStyle, color: "var(--color-warning)" }}>
                 下位定着なのか、急落後に戻り始めているのかを見分ける補助コメントを置きます。
               </p>
             </section>

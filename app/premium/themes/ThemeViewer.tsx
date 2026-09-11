@@ -30,9 +30,9 @@ const DATA_STATE_LABELS: Record<ThemeDataState, string> = {
 };
 
 const DATA_STATE_COLORS: Record<ThemeDataState, { bg: string; fg: string; border: string }> = {
-  present: { bg: "#f0fdf4", fg: "#166534", border: "#bbf7d0" },
-  empty: { bg: "#fffbeb", fg: "#92400e", border: "#fde68a" },
-  missing: { bg: "#f1f5f9", fg: "#475569", border: "#cbd5e1" },
+  present: { bg: "var(--color-success-bg)", fg: "#166534", border: "var(--color-success-border)" },
+  empty: { bg: "var(--color-warning-bg)", fg: "#92400e", border: "var(--color-warning-border)" },
+  missing: { bg: "var(--color-bg-subtle)", fg: "#475569", border: "var(--color-border-strong)" },
 };
 
 const cardStyle: CSSProperties = {
@@ -78,10 +78,10 @@ function formatNumber(value: number | null | undefined) {
 
 function StatusBadge({ status }: { status: ThemeStatus }) {
   const color = status === "active"
-    ? { bg: "#dcfce7", fg: "#166534", border: "#bbf7d0" }
+    ? { bg: "var(--color-success-bg)", fg: "#166534", border: "var(--color-success-border)" }
     : status === "draft"
-      ? { bg: "#dbeafe", fg: "#1d4ed8", border: "#bfdbfe" }
-      : { bg: "#f1f5f9", fg: "#475569", border: "#cbd5e1" };
+      ? { bg: "var(--color-info-bg)", fg: "#1d4ed8", border: "var(--color-info-border)" }
+      : { bg: "var(--color-bg-subtle)", fg: "#475569", border: "var(--color-border-strong)" };
   return (
     <span style={{ ...styles.badge, background: color.bg, color: color.fg, borderColor: color.border }}>
       {STATUS_LABELS[status]}
@@ -187,7 +187,7 @@ function ViewerState({
   if (result.status === "ok") return null;
   if (result.status === "empty") {
     return (
-      <div style={{ ...cardStyle, background: "#fffbeb", borderColor: "#fde68a" }}>
+      <div style={{ ...cardStyle, background: "var(--color-warning-bg)", borderColor: "var(--color-warning-border)" }}>
         <h2 style={styles.stateTitle}>データはまだありません</h2>
         <p style={mutedStyle}>{emptyMessage}</p>
       </div>
@@ -738,7 +738,7 @@ const styles: Record<string, CSSProperties> = {
   page: {
     minHeight: "100vh",
     padding: "24px 16px 72px",
-    background: "#f8fafc",
+    background: "var(--color-bg-subtle)",
   },
   shell: {
     maxWidth: 1120,
@@ -762,7 +762,7 @@ const styles: Record<string, CSSProperties> = {
     flexWrap: "wrap",
   },
   backLink: {
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     textDecoration: "none",
     fontSize: 13,
     fontWeight: 800,
@@ -772,8 +772,8 @@ const styles: Record<string, CSSProperties> = {
     padding: "5px 10px",
     borderRadius: 999,
     background: "#fff",
-    border: "1px solid #cbd5e1",
-    color: "#475569",
+    border: "1px solid var(--color-border-strong)",
+    color: "var(--color-text-sub)",
     fontSize: 11,
     fontWeight: 800,
   },
@@ -784,16 +784,16 @@ const styles: Record<string, CSSProperties> = {
     display: "inline-flex",
     padding: "6px 10px",
     borderRadius: 999,
-    background: "#eef2ff",
-    border: "1px solid #c7d2fe",
-    color: "#4338ca",
+    background: "var(--color-accent-sub)",
+    border: "1px solid var(--color-border-accent)",
+    color: "var(--color-accent)",
     fontSize: 11,
     fontWeight: 900,
     letterSpacing: 0.3,
   },
   title: {
     margin: "12px 0 8px",
-    color: "#0f172a",
+    color: "var(--color-text)",
     fontSize: "clamp(30px, 6vw, 46px)",
     lineHeight: 1.12,
     letterSpacing: -1,
@@ -802,7 +802,7 @@ const styles: Record<string, CSSProperties> = {
   heroDescription: {
     maxWidth: 820,
     margin: 0,
-    color: "#475569",
+    color: "var(--color-text-sub)",
     fontSize: 14,
     lineHeight: 1.8,
   },
@@ -819,7 +819,7 @@ const styles: Record<string, CSSProperties> = {
     gap: 8,
     alignItems: "center",
     marginTop: 14,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontSize: 11,
     lineHeight: 1.5,
   },
@@ -838,9 +838,9 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     padding: "4px 8px",
     borderRadius: 999,
-    background: "#f1f5f9",
-    border: "1px solid #e2e8f0",
-    color: "#475569",
+    background: "var(--color-bg-subtle)",
+    border: "1px solid var(--color-border)",
+    color: "var(--color-text-sub)",
     fontSize: 11,
     fontWeight: 800,
     whiteSpace: "nowrap",
@@ -871,14 +871,14 @@ const styles: Record<string, CSSProperties> = {
   },
   themeSlug: {
     overflow: "hidden",
-    color: "#94a3b8",
+    color: "var(--color-text-muted)",
     fontSize: 11,
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
   themeTitle: {
     margin: "4px 0 0",
-    color: "#0f172a",
+    color: "var(--color-text)",
     fontSize: 19,
     lineHeight: 1.35,
     fontWeight: 900,
@@ -888,12 +888,12 @@ const styles: Record<string, CSSProperties> = {
     flexWrap: "wrap",
     gap: 8,
     alignItems: "center",
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontSize: 11,
   },
   openLabel: {
     marginTop: "auto",
-    color: "#1d4ed8",
+    color: "var(--color-accent)",
     fontSize: 13,
     fontWeight: 900,
   },
@@ -910,19 +910,19 @@ const styles: Record<string, CSSProperties> = {
   },
   sectionTitle: {
     margin: 0,
-    color: "#0f172a",
+    color: "var(--color-text)",
     fontSize: 20,
     lineHeight: 1.3,
     fontWeight: 900,
   },
   fieldLabel: {
     marginBottom: 5,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontSize: 11,
     fontWeight: 900,
   },
   longText: {
-    color: "#334155",
+    color: "var(--color-text-sub)",
     fontSize: 13,
     lineHeight: 1.8,
     whiteSpace: "pre-wrap",
@@ -930,7 +930,7 @@ const styles: Record<string, CSSProperties> = {
   compactList: {
     margin: 0,
     paddingLeft: 20,
-    color: "#334155",
+    color: "var(--color-text-sub)",
     fontSize: 13,
     lineHeight: 1.75,
   },
@@ -939,7 +939,7 @@ const styles: Record<string, CSSProperties> = {
     flexWrap: "wrap",
     alignItems: "center",
     gap: 8,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontSize: 12,
   },
   stack: {
@@ -952,8 +952,8 @@ const styles: Record<string, CSSProperties> = {
     gap: 10,
     padding: 14,
     borderRadius: 14,
-    background: "#f8fafc",
-    border: "1px solid #e2e8f0",
+    background: "var(--color-bg-subtle)",
+    border: "1px solid var(--color-border)",
   },
   itemHeader: {
     display: "flex",
@@ -963,19 +963,19 @@ const styles: Record<string, CSSProperties> = {
     flexWrap: "wrap",
   },
   itemEyebrow: {
-    color: "#6366f1",
+    color: "var(--color-accent)",
     fontSize: 11,
     fontWeight: 900,
   },
   itemTitle: {
     margin: "4px 0 0",
-    color: "#0f172a",
+    color: "var(--color-text)",
     fontSize: 15,
     lineHeight: 1.45,
     fontWeight: 900,
   },
   itemDate: {
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontSize: 11,
     whiteSpace: "nowrap",
   },
@@ -988,7 +988,7 @@ const styles: Record<string, CSSProperties> = {
     display: "flex",
     flexWrap: "wrap",
     gap: "5px 12px",
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontSize: 11,
     lineHeight: 1.6,
   },
@@ -997,11 +997,11 @@ const styles: Record<string, CSSProperties> = {
     flexWrap: "wrap",
     gap: 10,
     alignItems: "center",
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontSize: 12,
   },
   externalLink: {
-    color: "#1d4ed8",
+    color: "var(--color-accent)",
     textDecoration: "none",
     fontWeight: 800,
   },
@@ -1013,7 +1013,7 @@ const styles: Record<string, CSSProperties> = {
   },
   subheading: {
     margin: 0,
-    color: "#0f172a",
+    color: "var(--color-text)",
     fontSize: 14,
     fontWeight: 900,
   },
@@ -1023,7 +1023,7 @@ const styles: Record<string, CSSProperties> = {
     margin: "10px 0 0",
     padding: 0,
     listStyle: "none",
-    color: "#334155",
+    color: "var(--color-text-sub)",
     fontSize: 12,
     lineHeight: 1.6,
   },
@@ -1034,34 +1034,34 @@ const styles: Record<string, CSSProperties> = {
     width: "100%",
     minWidth: 720,
     borderCollapse: "collapse",
-    color: "#334155",
+    color: "var(--color-text-sub)",
     fontSize: 12,
   },
   th: {
     padding: "8px 7px",
-    borderBottom: "1px solid #cbd5e1",
-    color: "#64748b",
+    borderBottom: "1px solid var(--color-border-strong)",
+    color: "var(--color-text-muted)",
     textAlign: "left",
     fontSize: 11,
     whiteSpace: "nowrap",
   },
   td: {
     padding: "10px 7px",
-    borderBottom: "1px solid #e2e8f0",
+    borderBottom: "1px solid var(--color-border)",
     verticalAlign: "top",
     lineHeight: 1.6,
   },
   tableMuted: {
-    color: "#94a3b8",
+    color: "var(--color-text-muted)",
     fontSize: 11,
   },
   guardrail: {
     marginTop: 16,
     padding: 16,
     borderRadius: 16,
-    background: "#eff6ff",
-    border: "1px solid #bfdbfe",
-    color: "#1e3a8a",
+    background: "var(--color-info-bg)",
+    border: "1px solid var(--color-info-border)",
+    color: "var(--color-info-text)",
     fontSize: 13,
     lineHeight: 1.7,
   },
@@ -1072,7 +1072,7 @@ const styles: Record<string, CSSProperties> = {
   },
   footnote: {
     margin: "18px 0 0",
-    color: "#94a3b8",
+    color: "var(--color-text-muted)",
     fontSize: 11,
     lineHeight: 1.7,
   },

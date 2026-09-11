@@ -50,9 +50,9 @@ export default async function PremiumLoginPage({ searchParams }: PageProps) {
             gap: 8,
             padding: "7px 12px",
             borderRadius: 999,
-            background: "#fff7ed",
-            color: "#c2410c",
-            border: "1px solid #fdba74",
+            background: "var(--color-warning-bg)",
+            color: "var(--color-warning)",
+            border: "1px solid var(--color-warning-border)",
             fontSize: 12,
             fontWeight: 800,
             letterSpacing: 0.3,
@@ -88,7 +88,7 @@ export default async function PremiumLoginPage({ searchParams }: PageProps) {
           }}
         >
           Premium Login
-          <span style={{ display: "block", fontSize: 15, color: "#c2410c", marginTop: 8 }}>
+          <span style={{ display: "block", fontSize: 15, color: "var(--color-warning)", marginTop: 8 }}>
             開発中の仮ログイン画面
           </span>
         </h1>

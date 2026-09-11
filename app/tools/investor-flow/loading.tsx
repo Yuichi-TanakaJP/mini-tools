@@ -14,7 +14,7 @@ const styles: Record<string, React.CSSProperties> = {
   page: {
     minHeight: "100vh",
     padding: "24px 16px 72px",
-    background: "#f8fafc",
+    background: "var(--color-bg-subtle)",
   },
   shell: {
     maxWidth: 1080,

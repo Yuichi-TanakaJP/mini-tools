@@ -64,11 +64,11 @@ function EmptyMessage({ children }: { children: React.ReactNode }) {
 
 function Badge({ children, tone = "slate" }: { children: React.ReactNode; tone?: "blue" | "green" | "orange" | "red" | "slate" }) {
   const colors = {
-    blue: { background: "#eff6ff", color: "#1d4ed8" },
-    green: { background: "#dcfce7", color: "#166534" },
-    orange: { background: "#fff7ed", color: "#c2410c" },
-    red: { background: "#fee2e2", color: "#991b1b" },
-    slate: { background: "#f1f5f9", color: "#475569" },
+    blue: { background: "var(--color-info-bg)", color: "var(--color-accent)" },
+    green: { background: "var(--color-success-bg)", color: "var(--color-success)" },
+    orange: { background: "var(--color-warning-bg)", color: "var(--color-warning)" },
+    red: { background: "var(--color-error-bg)", color: "var(--color-error)" },
+    slate: { background: "var(--color-bg-subtle)", color: "var(--color-text-sub)" },
   }[tone];
   return <span style={{ borderRadius: 999, padding: "4px 9px", background: colors.background, color: colors.color, fontSize: 11, fontWeight: 900 }}>{children}</span>;
 }
@@ -259,17 +259,17 @@ export default function PortfolioDecision({ data }: { data: PortfolioData }) {
           <div style={{ display: "grid", gap: 12 }}>
             <div><strong>{data.review.title}</strong><div style={{ marginTop: 4, color: "var(--color-text-muted)", fontSize: 12 }}>保存更新: {formatDateTime(data.review.updatedAt)}</div></div>
             {data.review.summary ? <div style={{ whiteSpace: "pre-wrap", color: "var(--color-text-sub)", lineHeight: 1.75 }}>{data.review.summary}</div> : <EmptyMessage>全体判断の要約は未登録です。</EmptyMessage>}
-            {data.review.allocationPolicy ? <div style={{ borderLeft: "3px solid #93c5fd", paddingLeft: 12, whiteSpace: "pre-wrap", color: "var(--color-text-sub)", lineHeight: 1.7 }}><strong>運用方針</strong><br />{data.review.allocationPolicy}</div> : null}
+            {data.review.allocationPolicy ? <div style={{ borderLeft: "3px solid var(--color-info-border)", paddingLeft: 12, whiteSpace: "pre-wrap", color: "var(--color-text-sub)", lineHeight: 1.7 }}><strong>運用方針</strong><br />{data.review.allocationPolicy}</div> : null}
             {data.review.newCapitalAmount === null ? <div style={{ color: "var(--color-text-muted)", fontSize: 12 }}>新規資金額は未設定です。この画面は仮の資金額や配分率を作成しません。</div> : <div style={{ fontWeight: 800 }}>想定新規資金: {formatYen(data.review.newCapitalAmount)}</div>}
           </div>
         )}
       </Card>
 
       <Card title="補強・調査の優先順位">
-        {capitalRecommendations.length > 0 ? <div style={{ marginBottom: amountlessRecommendations.length > 0 ? 10 : 0, padding: 12, borderRadius: 10, background: "#fff7ed", color: "#9a3412", fontSize: 13, lineHeight: 1.65 }}>金額または比率付きrecommendation {capitalRecommendations.length}件は、この初回表示の対象外です。金額配分UIを実装するまで、MiniTools上では配分指示として表示しません。</div> : null}
+        {capitalRecommendations.length > 0 ? <div style={{ marginBottom: amountlessRecommendations.length > 0 ? 10 : 0, padding: 12, borderRadius: 10, background: "var(--color-warning-bg)", color: "var(--color-warning)", fontSize: 13, lineHeight: 1.65 }}>金額または比率付きrecommendation {capitalRecommendations.length}件は、この初回表示の対象外です。金額配分UIを実装するまで、MiniTools上では配分指示として表示しません。</div> : null}
         {amountlessRecommendations.length === 0 ? <EmptyMessage>表示対象のrecommendationはありません。ChatGPTで金額を仮定しない「不足」「補強」「調査」を整理し、確認後に保存するとここへ反映されます。</EmptyMessage> : (
           <div style={{ display: "grid", gap: 10 }}>
-            {allAmountless ? <div style={{ padding: 12, borderRadius: 10, background: "#eff6ff", color: "#1e3a8a", fontSize: 13, lineHeight: 1.65 }}>現在の推薦はすべて金額なしのテーマ・調査です。銘柄の売買指示や資金配分ではなく、次に検討する論点を保存しています。</div> : null}
+            {allAmountless ? <div style={{ padding: 12, borderRadius: 10, background: "var(--color-info-bg)", color: "var(--color-info-text)", fontSize: 13, lineHeight: 1.65 }}>現在の推薦はすべて金額なしのテーマ・調査です。銘柄の売買指示や資金配分ではなく、次に検討する論点を保存しています。</div> : null}
             {amountlessRecommendations.map((recommendation) => <RecommendationCard key={recommendation.id} recommendation={recommendation} />)}
           </div>
         )}

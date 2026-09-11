@@ -66,8 +66,8 @@ export default function ScanPocPage() {
       <div
         style={{
           padding: 12,
-          background: "#fffbeb",
-          border: "1px solid #fde68a",
+          background: "var(--color-warning-bg)",
+          border: "1px solid var(--color-warning-border)",
           borderRadius: 6,
           fontSize: 13,
           lineHeight: 1.6,
@@ -98,8 +98,8 @@ export default function ScanPocPage() {
       <details
         style={{
           padding: 10,
-          background: "#f9fafb",
-          border: "1px solid #e5e7eb",
+          background: "var(--color-bg-subtle)",
+          border: "1px solid var(--color-border)",
           borderRadius: 6,
           fontSize: 13,
           marginBottom: 16,
@@ -189,10 +189,10 @@ export default function ScanPocPage() {
           style={{
             marginTop: 12,
             padding: 12,
-            background: "#fef2f2",
-            border: "1px solid #fecaca",
+            background: "var(--color-error-bg)",
+            border: "1px solid var(--color-error-border)",
             borderRadius: 6,
-            color: "#991b1b",
+            color: "var(--color-error)",
             fontSize: 13,
           }}
         >

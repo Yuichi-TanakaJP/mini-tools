@@ -17,7 +17,7 @@ export default function Loading() {
           maxWidth: 580,
           paddingTop: 40,
           textAlign: "center",
-          color: "#94a3b8",
+          color: "var(--color-text-muted)",
           fontSize: 13,
         }}
       >
