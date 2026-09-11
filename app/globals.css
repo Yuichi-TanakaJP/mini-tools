@@ -143,7 +143,8 @@ html[data-theme="dark"] {
   --color-accent-text:      #0c1220;
   --color-accent-glow:      rgba(91, 141, 249, 0.16);
 
-  /* Semantic — 組で使う。info は「情報」なので彩度を落とし、error は「警告」なので保つ */
+  /* Semantic — 組で使う。info は「情報」なので彩度を落とし、error は「警告」なので保つ。
+     warning は暗所で暖色の彩度が強く出るため、Dark だけさらに彩度を下げる（x0.65）*/
   --color-info:             #84aee4;
   --color-info-bg:          #1e2b3c;
   --color-info-border:      #384e6b;
@@ -157,10 +158,10 @@ html[data-theme="dark"] {
   --color-success-bg:       #12321c;
   --color-success-border:   #225a35;
   --color-success-text:     #8ee9a8;
-  --color-warning:          #d17f26;
-  --color-warning-bg:       #3d2309;
-  --color-warning-border:   #6d4113;
-  --color-warning-text:     #fbae67;
+  --color-warning:          #be8859;
+  --color-warning-bg:       #372617;
+  --color-warning-border:   #63462d;
+  --color-warning-text:     #e8b68a;
   --color-neutral-bg:       #2e3641;
   --color-neutral-text:     #b6bec9;
   --color-neutral-border:   #4d5663;
