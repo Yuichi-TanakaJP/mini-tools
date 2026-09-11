@@ -8,109 +8,157 @@
 
 | 選択肢 | 適用テーマ | 挙動 |
 |---|---|---|
-| 端末設定 | Light Blue / Dark | OS・ブラウザの `prefers-color-scheme` に追従する（初期値） |
-| ライト | Light Blue | 端末設定にかかわらず明るい配色に固定する |
+| 端末設定 | Light / Dark | OS・ブラウザの `prefers-color-scheme` に追従する（初期値） |
+| ライト | Light | 端末設定にかかわらず明るい配色に固定する |
 | ダーク | Dark | 端末設定にかかわらず暗い配色に固定する |
 
 - 選択値は `mini_tools_color_theme_v1` として LocalStorage に保存し、サーバーへ送信しない。
 - 初回描画より前に保存値または端末設定を `<html data-theme>` へ反映し、明るい画面が一瞬表示されるフラッシュを抑える。
 - `端末設定` 選択中は、ページを開いたまま端末設定が変わった場合も追従する。
-- ブラウザの UI 色に使う `theme-color` も解決済みテーマに合わせる。
+- ブラウザの UI 色に使う `theme-color` も解決済みテーマに合わせる（Light `#ecf1f7` / Dark `#0d131c`）。
 
 ---
 
-## Pattern A — Light Blue（ライトテーマ）
+## 生成規則（この設計書の中心）
 
-決算カレンダーのカラーパレットを全体の基準として採用。
-他ページ（TOP・合計計算・文字数カウント）はこの変数を参照することで自動的に統一される。
+Light と Dark は別々に選んだ配色ではなく、**同じ hue 軸から明度だけを変えて生成した二つの表示モード**とする。
+色は OKLCH（知覚的に均等な色空間）で決め、sRGB へ変換して `app/globals.css` に書き出す。
 
-```css
---color-bg:           #eef2f7;              /* ページ背景（青みグレー） */
---color-bg-card:      #ffffff;              /* カード・パネル */
---color-bg-input:     #f4f6fb;              /* 入力欄・サブ背景 */
+### 固定する軸
 
---color-text:         #1f2937;              /* メインテキスト */
---color-text-sub:     #374151;              /* サブテキスト */
---color-text-muted:   #6b7280;              /* 薄いテキスト・ラベル */
+| 軸 | 値 | 対象 |
+|---|---|---|
+| Neutral hue | **256** | 面（bg 系）、本文、境界線、ヘッダー、neutral |
+| Accent hue | **264** | accent 系、chart-1 |
+| Semantic hue | info 255 / success 152 / warning 62 / error 16 | 状態色 |
+| Financial hue | rise 29 / fall 252 | 騰落 |
+| Chart hue | 264 / 205 / 155 / 95 / 35 / 320 | グラフ系列 |
 
---color-border:       rgba(15, 23, 42, 0.08);  /* 通常ボーダー */
---color-border-strong:rgba(15, 23, 42, 0.14);  /* 強調ボーダー */
+**テーマを切り替えても hue は動かさない。** 動かすのは明度 (L) と、暗所で刺さらないための彩度 (C) だけ。
+これが「ライトとダークで別サービスに見える」状態を防ぐ唯一の仕組みなので、
+新しい色を足すときも先に上表のどの軸に属するかを決める。
 
---color-accent:       #2554ff;             /* アクセント（ボタン・リンク） */
---color-accent-sub:   #eef2ff;             /* アクセント薄（チップ・バッジ背景） */
---color-accent-hover: #1d44d8;             /* アクセントホバー */
+### 面の明度ラダー
 
---color-error:        #dc2626;             /* エラー・オーバー */
---color-success:      #16a34a;             /* 成功（Toast等） */
---color-warning:      #d97706;             /* 警告（期限近い等） */
+奥から手前へ、page → input → subtle → card → elevated の順で持ち上げる。
+Light は白へ向かって、Dark は明るい方へ向かって、同じ順序で並ぶ。
 
---color-rise-bg:      #fee2e2;             /* 上昇バッジ背景 */
---color-fall-bg:      #dbeafe;             /* 下落バッジ背景 */
---color-fall-text:    #2563eb;             /* 下落文字色 */
-```
+| トークン | Light L | Dark L | 役割 |
+|---|---|---|---|
+| `--color-bg` | 95.6% | 18.5% | ページの地 |
+| `--color-bg-input` | 97.0% | 22.5% | 入力欄（面に対してくぼませる） |
+| `--color-bg-subtle` | 97.9% | 24.0% | カード内の弱い帯 |
+| `--color-bg-card` | 100% | 27.5% | 通常カード |
+| `--color-bg-elevated` | 100% | 31.5% | モーダル・ポップオーバー |
 
-**雰囲気:** 明るい・信頼感・金融サービス寄り
-**参考:** 決算カレンダー画面の既存カラーパレットをそのまま採用
+Dark では影がほぼ見えないため、奥行きは影ではなく**この明度差**で表す。
+Light の card / elevated は同値なので、そちらは `--shadow-*` で差を付ける。
+
+### 状態色・騰落の作り方
+
+状態色と騰落は必ず foreground / bg / border / text の組で作る。まず全 hue 共通の基準値を置く。
+
+| 部品 | Light (L, C) | Dark (L, C) |
+|---|---|---|
+| foreground（アイコン・数値） | 48%, 0.17 | 74%, 0.14 |
+| bg（チップ・バナー背景） | 96.5%, 0.035 | 28.5%, 0.055 |
+| border | 88%, 0.075 | 42%, 0.085 |
+| text（bg の上に置く文字） | foreground −14% | foreground +14% |
+
+そのうえで、**役割の強さに応じて彩度に倍率をかける**。同じ青・同じ赤が並んでも役割が読み分けられるのは、
+色相ではなくこの彩度差による。
+
+| 系統 | 彩度倍率 | 理由 |
+|---|---|---|
+| rise / fall | ×1.12 | 一目で読む信号。いちばん彩度が高い |
+| success / warning | ×1.00 | 基準 |
+| error | ×0.88 | 警告だが騰落の赤より一段落とす |
+| info | ×0.65 | 「情報」であって警報ではない。いちばん静か |
+
+明度も、hue ごとの見た目の明るさの差を吸収するために補正する（値は Light 基準、Dark は符号反転）。
+
+| 系統 | 明度補正 | 理由 |
+|---|---|---|
+| warning | +7 | hue 62 は同じ L だと茶色に沈む |
+| rise / fall | +6（Light のみ） | 一目で読む信号なので明るい側に置く。Dark は既に L74 で十分明るい |
+| error | +3 | 騰落の赤と明度でも差をつける |
+| success | +2 | hue 152 のわずかな沈みを補正 |
+
+### 役割の違う色が混ざらないこと
+
+ブランドが青で、日本株の下落も青なので、accent / info / fall は必然的に近い色になる。
+同様に rise（上昇＝赤）と error も近い。ここは**明度比では測れない**（同じ明度なら色相が違っても比は 1.0 付近になる）ので、
+Oklab 上の距離 dE で 0.045 以上を保つ。上の彩度倍率と明度補正は、この距離を作るための調整でもある。
+
+`rise` を赤から外して距離を稼ぐことはしない。日本株の「上昇＝赤」は動かさない前提とする。
+
+### sRGB 範囲外の扱い
+
+指定した (L, C, hue) が sRGB に収まらない場合は、**hue と L を保ったまま C だけを下げて**収める。
+色相がずれると軸が崩れるので、hue と L は動かさない。
 
 ---
 
-## Pattern B — Dark（ダークテーマ）
-
-GitHub / Bloomberg ライクなプロ感。「かっこいい・クール」重視。
+## Light
 
 ```css
---color-bg:           #0d1117;
---color-bg-card:      #161b22;
---color-bg-input:     #21262d;
+--color-bg:               #ecf1f7;
+--color-bg-input:         #f2f5fb;
+--color-bg-subtle:        #f5f8fd;
+--color-bg-card:          #ffffff;
+--color-bg-elevated:      #ffffff;
 
---color-text:         #e6edf3;
---color-text-sub:     #b7c0ca;
---color-text-muted:   #8b949e;
+--color-text:             #111b29;
+--color-text-sub:         #3c495a;
+--color-text-muted:       #606d7f;
 
---color-border:       #30363d;
---color-border-strong:#484f58;
+--color-border:           #d5dbe4;
+--color-border-strong:    #bcc5d1;
+--color-border-control:   #7b8799;
 
---color-accent:       #58a6ff;
---color-accent-sub:   #1c2d3e;
---color-accent-hover: #79baff;
+--color-accent:           #265adf;
+--color-accent-sub:       #e9f0ff;
+--color-accent-hover:     #1745c2;
 
---color-error:        #ff7b72;
---color-success:      #3fb950;
---color-warning:      #d29922;
+--color-info:             #2e5e9a;
+--color-error:            #aa3848;
+--color-rise:             #c52d22;
+--color-fall:             #006fc8;
 ```
 
-**雰囲気:** ダーク・プロフェッショナル・ターミナル感
-**用途:** 夜間・暗所・光刺激を抑えたい場合の明示選択
+**雰囲気:** 明るい・信頼感・金融サービス寄り。青みグレー（slate 系）で統一する。
 
----
-
-## Pattern C — Midnight Navy（将来候補・未実装）
-
-金融ダッシュボード寄り。暗すぎず白すぎない折衷案。
+## Dark
 
 ```css
---color-bg:           #0f1729;
---color-bg-card:      #1a2744;
---color-bg-input:     #1e2f52;
+--color-bg:               #0d131c;
+--color-bg-input:         #151c26;
+--color-bg-subtle:        #18202a;
+--color-bg-card:          #202833;
+--color-bg-elevated:      #2a323e;
 
---color-text:         #e2e8f0;
---color-text-sub:     #94a3b8;
---color-text-muted:   #64748b;
+--color-text:             #e3e8f0;
+--color-text-sub:         #b0b8c3;
+--color-text-muted:       #939ca9;
 
---color-border:       #2d3f6b;
---color-border-strong:#3d5490;
+--color-border:           #2e3641;
+--color-border-strong:    #454e5a;
+--color-border-control:   #6a7585;
 
---color-accent:       #60a5fa;
---color-accent-sub:   #1e3058;
---color-accent-hover: #93c5fd;
+--color-accent:           #5b8df9;
+--color-accent-sub:       #182749;
+--color-accent-hover:     #7fa9ff;
 
---color-error:        #f87171;
---color-success:      #4ade80;
---color-warning:      #fbbf24;
+--color-info:             #84aee4;
+--color-error:            #e48087;
+--color-rise:             #fe8070;
+--color-fall:             #65afff;
 ```
 
-**雰囲気:** ネイビー・落ち着き・投資ダッシュボード感
-**切り替えコスト:** 高（Pattern B と同様）
+**雰囲気:** 暗いが黒ではない。Light と同じ青みグレーの軸を保った、落ち着いた夜間表示。
+
+実値の正本は `app/globals.css`。上のブロックは代表値の抜粋であり、
+全トークンを写経しない（二重管理を避ける）。
 
 ---
 
@@ -118,19 +166,36 @@ GitHub / Bloomberg ライクなプロ感。「かっこいい・クール」重�
 
 ### トークン分類
 
-各トークンの実値は `app/globals.css` を実装上の正本とし、この文書では役割と使用規約を固定する。
-
 | 分類 | 用途 | 代表トークン |
 |---|---|---|
 | Surface | ページ、弱い面、入力、カード、モーダル、overlay | `--color-bg*` |
 | Text | 本文、補助、muted、反転文字 | `--color-text*` |
-| Border / focus | 通常境界、強調境界、focus | `--color-border*`, `--color-focus-ring` |
+| Border / focus | 通常境界、強調境界、操作部品の輪郭、focus | `--color-border*`, `--color-focus-ring` |
 | Action | ブランド、リンク、主要操作 | `--color-accent*` |
 | Semantic | info / success / warning / error / neutral | `--color-*-bg/text/border` |
 | Financial direction | 上昇 / 下落 | `--color-rise*`, `--color-fall*` |
 | Data visualization | グラフ系列 | `--color-chart-1` ～ `6` |
 | Elevation | カード、hover、モーダルの影 | `--shadow-*` |
 | Global header | 固定ナビゲーション帯 | `--color-header-*` |
+
+### 境界線 3 段の使い分け
+
+| トークン | 用途 | コントラスト |
+|---|---|---|
+| `--color-border` | 装飾的な区切り線、カードの縁 | 基準なし |
+| `--color-border-strong` | 強調したい区切り、選択中の縁 | 基準なし |
+| `--color-border-control` | 入力欄・チェックボックスなど**操作できる部品の輪郭** | 背景に対し 3:1 以上 |
+
+面に対して 3:1 が要るのは操作部品だけなので、装飾線に `--color-border-control` を使うと画面が硬くなる。逆に入力欄を `--color-border` で描くと、その欄が操作可能だと分からなくなる。
+
+### ヘッダーだけ半透明を残す
+
+面（`--color-bg*`）と境界線は不透明に統一するが、`--color-header-*` だけは半透明のままにする。
+共通ヘッダーは `backdropFilter: blur(14px)` を敷いた帯で、不透明にすると blur が効かなくなり、
+スクロール中にコンテンツが下を通る表現が消えるため。両テーマで同じ値を使う。
+
+半透明トークンのコントラストは、**いちばん明るい下地（白）にヘッダーを合成し、その面の上に文字を重ねた**
+最悪ケースで検証する。
 
 ### 適用規約
 
@@ -141,7 +206,18 @@ GitHub / Bloomberg ライクなプロ感。「かっこいい・クール」重�
 5. グラフ系列色、ロゴ、ゲーム固有色などは直書きを許容できるが、本文やカードへ流用しない。
 6. テーマ選択 UI は `components/ColorThemeSelector.tsx`、初回描画前の適用は `lib/color-theme.ts` と `app/layout.tsx` が担当する。
 7. 保存値が壊れている場合や LocalStorage が利用できない場合は `端末設定` と同じ解決方法へフォールバックする。
-8. 新しいテーマを追加するときは、本文・カード・入力欄・境界線・focus・状態色が各テーマで判読できることを確認する。
+8. 値を変えるときは上の生成規則に従い、`lib/__tests__/theme-contrast.test.ts` を通してから確定する。
+   このテストはコントラストのほか、neutral チップが面に溶けないこと、
+   役割の違う色が dE 0.045 以上離れていることも見る。
+
+### 廃止した配色
+
+- **Pattern C — Midnight Navy**: 3 つ目の独立した配色として持つと軸が増えるだけなので、候補から外した。
+  ネイビー寄りにしたい場合は neutral hue 256 の彩度を上げる形で表現する。
+- **旧 Dark（GitHub 由来の `#0d1117` 系）**: neutral の彩度が Light の半分以下で、
+  同じ製品に見えないことが今回の作り直しの直接の原因だった。[判断記録](../../decision-log/2026-09-11-unified-color-theme.md)
+
+---
 
 ## 確認項目
 
@@ -151,26 +227,12 @@ GitHub / Bloomberg ライクなプロ感。「かっこいい・クール」重�
 - 「端末設定」は端末のライト / ダーク変更に追従する。
 - キーボード操作で選択でき、フォーカス位置が見える。
 - LocalStorage が利用できなくても画面操作を妨げない。
+- `npm run test` で `theme-token-contract` と `theme-contrast` が通る。
 
 ## 関連
 
 - [表示テーマ切替の設計判断](../../decision-log/2026-08-30-global-color-theme-selector.md)
 - [テーマトークン基盤の設計判断](../../decision-log/2026-09-03-theme-token-foundation.md)
+- [Light / Dark を同一 hue 軸から生成する判断](../../decision-log/2026-09-11-unified-color-theme.md)
 - [UI デザインコンセプト](./ui-design-concept.md)
 - [Product Spec](../../product-spec.md)
-
----
-
-## 派生ルール
-
-芯の4色から残りを導く考え方：
-
-| トークン | 導き方 |
-|---|---|
-| `bg-input` | `bg` より少し暗め |
-| `text-sub` | `text` より一段弱いが、本文として読めるコントラストを保つ |
-| `text-muted` | 補助ラベルとして読めるコントラストを保つ |
-| `border` | `bg` を少し暗く |
-| `accent-sub` | `accent` を90%薄く（背景用） |
-| `accent-hover` | `accent` を10%暗く |
-| `error` | 赤系・変更不要なことが多い |

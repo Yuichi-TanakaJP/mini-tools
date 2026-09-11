@@ -50,12 +50,12 @@ export default function RootLayout({
         <meta
           name="theme-color"
           media="(prefers-color-scheme: light)"
-          content="#eef2f7"
+          content="#ecf1f7"
         />
         <meta
           name="theme-color"
           media="(prefers-color-scheme: dark)"
-          content="#0d1117"
+          content="#0d131c"
         />
         <script dangerouslySetInnerHTML={{ __html: createColorThemeInitScript() }} />
         {GA_ID ? (

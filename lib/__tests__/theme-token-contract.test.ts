@@ -15,6 +15,7 @@ const THEME_SPECIFIC_TOKENS = [
   "--color-text-inverse",
   "--color-border",
   "--color-border-strong",
+  "--color-border-control",
   "--color-border-accent",
   "--color-focus-ring",
   "--color-accent",
