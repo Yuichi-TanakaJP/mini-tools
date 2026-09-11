@@ -43,6 +43,8 @@ class InitialScanRunnerTests(unittest.TestCase):
             self.assertEqual(1, summary["scanned_repository_count"])
             self.assertEqual(["owner/missing"], summary["missing_repositories"])
             self.assertEqual([], summary["skipped_dirty_repositories"])
+            self.assertEqual([], summary["skipped_branch_repositories"])
+            self.assertEqual("current_checkout", summary["snapshot_role"])
             self.assertEqual("discovered", summary["review_status"])
             self.assertEqual("0.2", summary["normalization_version"])
             self.assertTrue((output_root / "mini-tools.executables.json").is_file())
@@ -92,6 +94,7 @@ class InitialScanRunnerTests(unittest.TestCase):
                 output_root,
                 (("mini-tools", "owner/mini-tools"),),
                 allow_dirty=True,
+                snapshot_role="working_draft",
             )
             report = json.loads(
                 (output_root / "mini-tools.executables.json").read_text(
@@ -105,6 +108,7 @@ class InitialScanRunnerTests(unittest.TestCase):
                 "working_tree_snapshot",
                 report["repository_evidence_scope"],
             )
+            self.assertEqual("working_draft", report["repository_snapshot_role"])
             self.assertTrue(report["repository_snapshot_stable"])
             self.assertEqual(
                 report["repository_ref"],
@@ -112,8 +116,117 @@ class InitialScanRunnerTests(unittest.TestCase):
             )
             self.assertNotIn(str(root), json.dumps(summary, sort_keys=True))
 
+    def test_canonical_main_records_branch_and_snapshot_role(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            dev_root = root / "dev"
+            output_root = root / "reports"
+            self._create_clean_repository(dev_root, folder="mini-tools", branch="main")
+
+            summary = runner.run_initial_scans(
+                dev_root,
+                output_root,
+                (("mini-tools", "owner/mini-tools"),),
+                snapshot_role="canonical_main",
+            )
+            report = json.loads(
+                (output_root / "mini-tools.executables.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual("main", summary["required_branch"])
+            self.assertEqual("canonical_main", summary["snapshot_role"])
+            self.assertEqual("main", report["repository_branch"])
+            self.assertEqual("canonical_main", report["repository_snapshot_role"])
+            self.assertEqual("commit", report["repository_evidence_scope"])
+            self.assertTrue(
+                all(
+                    candidate["repository_branch"] == "main"
+                    and candidate["repository_snapshot_role"] == "canonical_main"
+                    for candidate in report["candidates"]
+                )
+            )
+
+    def test_canonical_main_skips_clean_feature_branch(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            dev_root = root / "dev"
+            output_root = root / "reports"
+            self._create_clean_repository(
+                dev_root,
+                folder="mini-tools",
+                branch="feat/device-map",
+            )
+
+            summary = runner.run_initial_scans(
+                dev_root,
+                output_root,
+                (("mini-tools", "owner/mini-tools"),),
+                snapshot_role="canonical_main",
+            )
+
+            self.assertEqual(0, summary["scanned_repository_count"])
+            self.assertEqual(
+                [
+                    {
+                        "repository": "owner/mini-tools",
+                        "current_branch": "feat/device-map",
+                        "required_branch": "main",
+                    }
+                ],
+                summary["skipped_branch_repositories"],
+            )
+            self.assertFalse((output_root / "mini-tools.executables.json").exists())
+
+    def test_development_branch_is_recorded_separately(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            dev_root = root / "dev"
+            output_root = root / "reports"
+            self._create_clean_repository(
+                dev_root,
+                folder="mini-tools",
+                branch="feat/device-map",
+            )
+
+            summary = runner.run_initial_scans(
+                dev_root,
+                output_root,
+                (("mini-tools", "owner/mini-tools"),),
+                snapshot_role="development_branch",
+            )
+            report = json.loads(
+                (output_root / "mini-tools.executables.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(1, summary["scanned_repository_count"])
+            self.assertEqual("development_branch", summary["snapshot_role"])
+            self.assertEqual("feat/device-map", report["repository_branch"])
+            self.assertEqual(
+                "development_branch",
+                report["repository_snapshot_role"],
+            )
+
+    def test_rejects_dirty_canonical_main_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            with self.assertRaises(ValueError):
+                runner.run_initial_scans(
+                    Path(temp),
+                    Path(temp) / "reports",
+                    (),
+                    allow_dirty=True,
+                    snapshot_role="canonical_main",
+                )
+
     @staticmethod
-    def _create_dirty_repository(root: Path, folder: str = "repo") -> Path:
+    def _create_clean_repository(
+        root: Path,
+        folder: str = "repo",
+        branch: str = "main",
+    ) -> Path:
         repo = root / folder
         repo.mkdir(parents=True)
         subprocess.run(["git", "init", "-q", str(repo)], check=True)
@@ -134,6 +247,15 @@ class InitialScanRunnerTests(unittest.TestCase):
             ["git", "-C", str(repo), "commit", "-q", "-m", "fixture"],
             check=True,
         )
+        subprocess.run(
+            ["git", "-C", str(repo), "branch", "-M", branch],
+            check=True,
+        )
+        return repo
+
+    @classmethod
+    def _create_dirty_repository(cls, root: Path, folder: str = "repo") -> Path:
+        repo = cls._create_clean_repository(root, folder=folder)
         (repo / "untracked_tool.py").write_text(
             'if __name__ == "__main__":\n    print("fixture")\n',
             encoding="utf-8",
