@@ -9,41 +9,46 @@
   --selection-col-offset: calc(var(--selection-col-width) + var(--selection-col-gap));
   --content-right-gap: 10px;
 
-  /* Color tokens */
-  --clr-primary: #4338ca;
-  --clr-primary-hover: #3730a3;
-  --clr-primary-light: #e0e7ff;
-  --clr-primary-border: var(--color-border-accent);   /* indigo-200: hover borders, badge borders */
-  --clr-primary-text: #3730a3;
-  --clr-primary-ring: rgba(67, 56, 202, 0.15);
-  --clr-success: #059669;
-  --clr-success-light: #d1fae5;
-  --clr-success-text: #065f46;
-  --clr-amber: #d97706;
-  --clr-amber-light: #fef3c7;
-  --clr-amber-text: #92400e;
+  /* Color tokens
+     役割色は共通トークンへ委譲する。violet / sky はタグの「分類」であって
+     状態でも騰落でもないので、分類色 (--color-chart-*) から導く。
+     背景と境界は面に対する color-mix で作るため、Light / Dark の両方に追従する。 */
+  --clr-primary: var(--color-accent);
+  --clr-primary-hover: var(--color-accent-hover);
+  --clr-primary-light: var(--color-accent-sub);
+  --clr-primary-border: var(--color-border-accent);
+  --clr-primary-text: var(--color-accent);
+  --clr-primary-ring: var(--color-focus-ring);
+  --clr-success: var(--color-success);
+  --clr-success-light: var(--color-success-bg);
+  --clr-success-text: var(--color-success-text);
+  --clr-amber: var(--color-warning);
+  --clr-amber-light: var(--color-warning-bg);
+  --clr-amber-text: var(--color-warning-text);
   --clr-amber-border: var(--color-warning-border);
-  --clr-amber-help-bg: var(--color-warning-bg);    /* amber-50: help box background */
-  --clr-amber-help-border: var(--color-warning-border);/* amber-200: help box border */
-  --clr-amber-help-text: #92400e;  /* amber-800 */
-  --clr-amber-help-body: #78350f;  /* amber-900 */
-  --clr-amber-help-strong: #451a03;/* amber-950 */
-  --clr-danger: #dc2626;
-  --clr-danger-light: #fff1f2;
-  --clr-danger-hover: #ffe4e6;     /* rose-100: danger hover background */
-  --clr-danger-text: #9f1239;
+  --clr-amber-help-bg: var(--color-warning-bg);
+  --clr-amber-help-border: var(--color-warning-border);
+  --clr-amber-help-text: var(--color-warning-text);
+  --clr-amber-help-body: var(--color-warning-text);
+  --clr-amber-help-strong: var(--color-text);
+  --clr-danger: var(--color-error);
+  --clr-danger-light: var(--color-error-bg);
+  --clr-danger-hover: color-mix(in srgb, var(--color-error) 16%, var(--color-bg-card));
+  --clr-danger-text: var(--color-error-text);
   --clr-danger-border: var(--color-error-border);
-  --clr-violet: #7c3aed;
-  --clr-violet-light: #f5f3ff;
-  --clr-violet-hover: #ede9fe;     /* violet-100: strategy badge hover */
-  --clr-violet-border: #ddd6fe;
-  --clr-violet-text: #5b21b6;
-  --clr-sky: #0284c7;
-  --clr-sky-light: #e0f2fe;
-  --clr-sky-border: #7dd3fc;
-  --clr-sky-text: #0369a1;
-  --clr-sky-active: #bae6fd;       /* sky-200: one-share active bg */
-  --clr-sky-active-text: #0c4a6e;  /* sky-950: one-share active text */
+  /* タグ分類 1: 戦略バッジ */
+  --clr-violet: var(--color-chart-6);
+  --clr-violet-light: color-mix(in srgb, var(--color-chart-6) 10%, var(--color-bg-card));
+  --clr-violet-hover: color-mix(in srgb, var(--color-chart-6) 18%, var(--color-bg-card));
+  --clr-violet-border: color-mix(in srgb, var(--color-chart-6) 34%, var(--color-bg-card));
+  --clr-violet-text: var(--color-chart-6);
+  /* タグ分類 2: 単元・1株 */
+  --clr-sky: var(--color-chart-7);
+  --clr-sky-light: color-mix(in srgb, var(--color-chart-7) 10%, var(--color-bg-card));
+  --clr-sky-border: color-mix(in srgb, var(--color-chart-7) 34%, var(--color-bg-card));
+  --clr-sky-text: var(--color-chart-7);
+  --clr-sky-active: color-mix(in srgb, var(--color-chart-7) 22%, var(--color-bg-card));
+  --clr-sky-active-text: var(--color-chart-7);
 
   max-width: 780px;
   margin: 0 auto;

@@ -53,7 +53,6 @@ export const COLOR_LITERAL_BUDGET: Readonly<Record<string, number>> = {
   "app/tools/yutai-dashboard/ToolClient.tsx": 11,
   "app/tools/yutai-expiry/ToolClient.module.css": 3,
   "app/tools/yutai-expiry/scan-poc/page.tsx": 1,
-  "app/tools/yutai-memo/ToolClient.module.css": 28,
   "app/tools/yutai-memo/ToolClient.tsx": 4,
   "components/ColorThemeSelector.tsx": 2,
 };
