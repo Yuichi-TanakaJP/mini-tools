@@ -14,7 +14,7 @@ export default function Loading() {
 
       {/* Date nav card: ← date → */}
       <div style={{
-        background: "#fff",
+        background: "var(--color-bg-card)",
         border: "1px solid rgba(15,23,42,0.04)",
         borderRadius: 22,
         boxShadow: "var(--shadow-card)",

@@ -70,7 +70,7 @@ export default async function PremiumLoginPage({ searchParams }: PageProps) {
             display: "grid",
             placeItems: "center",
             background: "linear-gradient(135deg, #f59e0b 0%, #facc15 100%)",
-            color: "#fff",
+            color: "var(--color-text-inverse)",
             boxShadow: "0 16px 32px rgba(245, 158, 11, 0.28)",
             marginBottom: 18,
             fontSize: 22,

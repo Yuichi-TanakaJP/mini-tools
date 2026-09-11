@@ -391,7 +391,7 @@ const monthNavLinkStyle: CSSProperties = {
   padding: "8px 14px",
   borderRadius: 999,
   border: "1px solid var(--color-border)",
-  background: "#fff",
+  background: "var(--color-bg-card)",
   color: "var(--color-accent)",
   textDecoration: "none",
   fontSize: 13,
@@ -450,7 +450,7 @@ export default async function PremiumMarketPage({
           style={{
             background:
               "radial-gradient(circle at top left, rgba(250, 204, 21, 0.30), transparent 30%), radial-gradient(circle at bottom right, rgba(96, 165, 250, 0.22), transparent 34%), linear-gradient(135deg, #0f172a 0%, #172554 48%, #1d4ed8 100%)",
-            color: "#fff",
+            color: "var(--color-text-inverse)",
             borderRadius: 30,
             padding: "30px 24px",
             boxShadow: "var(--shadow-panel)",
@@ -492,7 +492,7 @@ export default async function PremiumMarketPage({
 
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 18 }}>
                 {preview.nextMonth ? (
-                  <Link href={`/premium/market?month=${preview.nextMonth}`} style={{ ...monthNavLinkStyle, background: "#fff" }}>
+                  <Link href={`/premium/market?month=${preview.nextMonth}`} style={{ ...monthNavLinkStyle, background: "var(--color-bg-card)" }}>
                     翌月へ: {formatMonthLabel(`${preview.nextMonth}-01`)}
                   </Link>
                 ) : null}
@@ -510,7 +510,7 @@ export default async function PremiumMarketPage({
                   表示中: {preview.targetMonthLabel}
                 </div>
                 {preview.previousMonth ? (
-                  <Link href={`/premium/market?month=${preview.previousMonth}`} style={{ ...monthNavLinkStyle, background: "#fff" }}>
+                  <Link href={`/premium/market?month=${preview.previousMonth}`} style={{ ...monthNavLinkStyle, background: "var(--color-bg-card)" }}>
                     前月へ: {formatMonthLabel(`${preview.previousMonth}-01`)}
                   </Link>
                 ) : null}

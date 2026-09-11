@@ -549,7 +549,7 @@ function ImpactMap({ records, selectedCode, onSelect }: ImpactMapProps) {
                       maxWidth: 240,
                       padding: "10px 12px",
                       background: "rgba(15,23,42,0.92)",
-                      color: "#f8fafc",
+                      color: "var(--color-text-inverse)",
                       border: "1px solid rgba(255,255,255,0.14)",
                       boxShadow: "var(--shadow-panel)",
                       backdropFilter: "blur(8px)",
@@ -876,7 +876,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
 
       <section
         style={{
-          background: "#fff",
+          background: "var(--color-bg-card)",
           border: "1px solid rgba(15, 23, 42, 0.04)",
           borderRadius: 22,
           boxShadow: "var(--shadow-card)",
@@ -934,7 +934,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
               minWidth: 210,
               borderRadius: 10,
               border: "1.5px solid rgba(148, 163, 184, 0.35)",
-              background: "#fff",
+              background: "var(--color-bg-card)",
               color: "var(--color-text)",
               fontSize: 13,
               fontWeight: 700,

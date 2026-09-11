@@ -602,7 +602,7 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      <section style={{ background: "#102033", color: "#fff", borderRadius: 12, padding: "22px 20px", display: "grid", gap: 12 }}>
+      <section style={{ background: "var(--color-bg-emphasis)", color: "var(--color-text-on-emphasis)", borderRadius: 12, padding: "22px 20px", display: "grid", gap: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <div>
             <div style={{ color: "#93c5fd", fontSize: 12, fontWeight: 800 }}>Portfolio</div>

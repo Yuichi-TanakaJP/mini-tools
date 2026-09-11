@@ -881,7 +881,7 @@ const styles: Record<string, CSSProperties> = {
     margin: 0,
     fontSize: 13,
     lineHeight: 1.6,
-    color: "#667085",
+    color: "var(--color-text-muted)",
   },
   tabRow: {
     display: "grid",
@@ -919,7 +919,7 @@ const styles: Record<string, CSSProperties> = {
     lineHeight: 1.2,
   },
   calendarCard: {
-    background: "#fff",
+    background: "var(--color-bg-card)",
     borderRadius: 22,
     padding: 16,
     boxShadow: "var(--shadow-card)",
@@ -1060,7 +1060,7 @@ const styles: Record<string, CSSProperties> = {
   },
   countBadgeActive: {
     background: "var(--color-accent)",
-    color: "#fff",
+    color: "var(--color-text-inverse)",
   },
   countBadgeBusy: {
     background: "var(--color-accent-sub)",
@@ -1100,7 +1100,7 @@ const styles: Record<string, CSSProperties> = {
     gap: 12,
   },
   itemCard: {
-    background: "#fff",
+    background: "var(--color-bg-card)",
     borderRadius: 18,
     padding: 14,
     display: "grid",
@@ -1157,7 +1157,7 @@ const styles: Record<string, CSSProperties> = {
     color: "var(--color-text-sub)",
   },
   emptyCard: {
-    background: "#fff",
+    background: "var(--color-bg-card)",
     borderRadius: 18,
     padding: 18,
     boxShadow: "var(--shadow-card)",
@@ -1171,7 +1171,7 @@ const styles: Record<string, CSSProperties> = {
     marginTop: 6,
     fontSize: 13,
     lineHeight: 1.6,
-    color: "#667085",
+    color: "var(--color-text-muted)",
   },
   updatedAt: {
     marginTop: 22,
@@ -1186,7 +1186,7 @@ const styles: Record<string, CSSProperties> = {
     display: "flex",
     alignItems: "center",
     gap: 8,
-    background: "#fff",
+    background: "var(--color-bg-card)",
     borderRadius: 14,
     padding: "9px 12px",
     boxShadow: "var(--shadow-card)",

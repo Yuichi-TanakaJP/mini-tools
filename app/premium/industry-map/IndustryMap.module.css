@@ -811,7 +811,7 @@
   border-radius: 7px;
   font-size: 9px;
   font-weight: 900;
-  color: #fff;
+  color: var(--color-text-inverse);
   animation: popIn 300ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
@@ -1014,7 +1014,7 @@
   font-weight: 900;
   border-radius: 999px;
   padding: 2px 7px;
-  color: #fff;
+  color: var(--color-text-inverse);
 }
 
 .detailEmpty {

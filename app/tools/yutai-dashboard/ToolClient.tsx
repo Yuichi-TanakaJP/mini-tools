@@ -3465,7 +3465,7 @@ const styles: Record<string, React.CSSProperties> = {
     flex: 1,
     border: "1px solid rgba(79,70,229,0.30)",
     background: INDIGO,
-    color: "#ffffff",
+    color: "var(--color-text-inverse)",
     borderRadius: 8,
     padding: "9px 12px",
     fontSize: 13,

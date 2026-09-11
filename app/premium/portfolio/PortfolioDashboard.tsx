@@ -171,8 +171,8 @@ export default function PortfolioDashboard({ holdings, events, today }: Props) {
     <div style={{ display: "grid", gap: 18 }}>
       <section
         style={{
-          background: "#102033",
-          color: "#fff",
+          background: "var(--color-bg-emphasis)",
+          color: "var(--color-text-on-emphasis)",
           borderRadius: 8,
           padding: "24px 20px",
           display: "grid",
@@ -305,7 +305,7 @@ export default function PortfolioDashboard({ holdings, events, today }: Props) {
                   style={{
                     height: 34,
                     borderRadius: 8,
-                    border: sortKey === key ? "1px solid #2563eb" : "1px solid var(--color-border)",
+                    border: sortKey === key ? "1px solid var(--color-accent)" : "1px solid var(--color-border)",
                     background: sortKey === key ? "#eff6ff" : "#fff",
                     color: sortKey === key ? "#1d4ed8" : "var(--color-text-sub)",
                     fontWeight: 800,

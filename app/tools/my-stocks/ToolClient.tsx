@@ -1514,7 +1514,7 @@ function TreemapChart({
               <>
                 <span
                   style={{
-                    color: "#fff",
+                    color: "var(--color-text-inverse)",
                     fontSize: 11,
                     fontWeight: 800,
                     lineHeight: 1.25,
@@ -1528,7 +1528,7 @@ function TreemapChart({
                 </span>
                 <span
                   style={{
-                    color: "#fff",
+                    color: "var(--color-text-inverse)",
                     fontSize: 11,
                     fontWeight: 800,
                     textShadow: "0 1px 2px rgba(0,0,0,0.35)",
