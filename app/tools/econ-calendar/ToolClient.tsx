@@ -656,7 +656,7 @@ const styles: Record<string, CSSProperties> = {
     minHeight: "100vh",
     padding: "18px 12px 56px",
     background:
-      "radial-gradient(1000px 420px at 20% 0%, rgba(37, 99, 235, 0.08), transparent 58%), #eef2f7",
+      "radial-gradient(1000px 420px at 20% 0%, var(--color-accent-glow), transparent 58%), var(--color-bg)",
   },
   shell: {
     width: "100%",
@@ -708,7 +708,7 @@ const styles: Record<string, CSSProperties> = {
   },
   viewTabActive: {
     color: "var(--color-accent)",
-    borderBottom: "2px solid #2554ff",
+    borderBottom: "2px solid var(--color-accent)",
     background: "rgba(37,84,255,0.04)",
   },
   weekNav: {
@@ -780,7 +780,7 @@ const styles: Record<string, CSSProperties> = {
     borderTopColor: "rgba(37, 84, 255, 0.15)",
     borderRightColor: "rgba(37, 84, 255, 0.15)",
     borderBottomColor: "rgba(37, 84, 255, 0.15)",
-    borderLeftColor: "#2554ff",
+    borderLeftColor: "var(--color-accent)",
     boxShadow: "0 2px 8px rgba(37, 84, 255, 0.08)",
   },
   upcomingLabel: {

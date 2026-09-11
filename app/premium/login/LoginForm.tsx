@@ -125,7 +125,7 @@ export default function LoginForm() {
           borderRadius: 14,
           background: isSubmitting || !password
             ? "#9db0ff"
-            : "linear-gradient(135deg, #1d44d8 0%, #2554ff 60%, #6ea8fe 100%)",
+            : "linear-gradient(135deg, var(--color-accent-hover) 0%, var(--color-accent) 60%, #6ea8fe 100%)",
           color: "#fff",
           fontSize: 15,
           fontWeight: 800,

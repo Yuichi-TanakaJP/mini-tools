@@ -825,7 +825,7 @@ const styles: Record<string, CSSProperties> = {
     minHeight: "100vh",
     padding: "18px 12px 56px",
     background:
-      "radial-gradient(1000px 420px at 20% 0%, rgba(37, 99, 235, 0.08), transparent 58%), #eef2f7",
+      "radial-gradient(1000px 420px at 20% 0%, var(--color-accent-glow), transparent 58%), var(--color-bg)",
   },
   mobileShell: {
     width: "100%",
@@ -1059,7 +1059,7 @@ const styles: Record<string, CSSProperties> = {
     textAlign: "center",
   },
   countBadgeActive: {
-    background: "#2554ff",
+    background: "var(--color-accent)",
     color: "#fff",
   },
   countBadgeBusy: {

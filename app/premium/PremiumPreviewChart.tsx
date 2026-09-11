@@ -172,7 +172,7 @@ export default function PremiumPreviewChart({
               fontSize: 13,
               fontWeight: 800,
               cursor: "pointer",
-              boxShadow: isShowingAll ? "inset 0 0 0 1px rgba(37, 99, 235, 0.08)" : "none",
+              boxShadow: isShowingAll ? "inset 0 0 0 1px var(--color-accent-glow)" : "none",
               transition: "all 120ms ease",
             }}
           >
@@ -200,7 +200,7 @@ export default function PremiumPreviewChart({
                   fontSize: 13,
                   fontWeight: 800,
                   cursor: "pointer",
-                  boxShadow: active ? "inset 0 0 0 1px rgba(37, 99, 235, 0.08)" : "none",
+                  boxShadow: active ? "inset 0 0 0 1px var(--color-accent-glow)" : "none",
                   transition: "all 120ms ease",
                 }}
               >

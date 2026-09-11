@@ -139,8 +139,8 @@ export default function GroupRadialView({
                     }
                   }}
                 >
-                  {selected ? <circle className={styles.pulse} r="35" fill="none" stroke="#2554ff" strokeWidth={2} /> : null}
-                  <circle r="25" fill="var(--color-bg-card)" stroke="#2554ff" strokeWidth={selected || focusCompanyId === company.id ? 3 : 2} />
+                  {selected ? <circle className={styles.pulse} r="35" fill="none" stroke="var(--color-accent)" strokeWidth={2} /> : null}
+                  <circle r="25" fill="var(--color-bg-card)" stroke="var(--color-accent)" strokeWidth={selected || focusCompanyId === company.id ? 3 : 2} />
                   <text textAnchor="middle" y="-2" className={styles.radialNodeLabel}>{truncate(company.name)}</text>
                   <text textAnchor="middle" y="13" className={styles.radialNodeMeta}>{listingLabel(company.listingStatus)}</text>
                 </g>
