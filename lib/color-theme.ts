@@ -22,10 +22,6 @@ export function createColorThemeInitScript(): string {
     const apply = (resolved) => {
       document.documentElement.dataset.theme = resolved;
       document.documentElement.style.colorScheme = resolved;
-      const themeColor = resolved === "dark" ? "#0d131c" : "#ecf1f7";
-      document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
-        meta.setAttribute("content", themeColor);
-      });
     };
     try {
       const saved = localStorage.getItem(${JSON.stringify(COLOR_THEME_STORAGE_KEY)});

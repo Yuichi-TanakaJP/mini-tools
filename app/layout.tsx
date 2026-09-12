@@ -58,16 +58,7 @@ export default function RootLayout({
   return (
     <html lang="ja" suppressHydrationWarning>
       <head>
-        <meta
-          name="theme-color"
-          media="(prefers-color-scheme: light)"
-          content="#ecf1f7"
-        />
-        <meta
-          name="theme-color"
-          media="(prefers-color-scheme: dark)"
-          content="#0d131c"
-        />
+        <meta name="theme-color" content="#0d131c" />
         <script dangerouslySetInnerHTML={{ __html: createColorThemeInitScript() }} />
         {GA_ID ? (
           <>
