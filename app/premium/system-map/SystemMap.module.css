@@ -46,15 +46,15 @@
   padding: 26px 24px;
   color: var(--color-text-inverse);
   background:
-    radial-gradient(circle at 92% 12%, rgba(34, 211, 238, 0.25), transparent 29%),
-    radial-gradient(circle at 8% 100%, rgba(139, 92, 246, 0.26), transparent 34%),
-    linear-gradient(135deg, #0f172a 0%, #172554 44%, #312e81 100%);
+    radial-gradient(circle at 92% 12%, color-mix(in srgb, var(--color-info) 24%, transparent), transparent 29%),
+    radial-gradient(circle at 8% 100%, color-mix(in srgb, var(--color-accent) 26%, transparent), transparent 34%),
+    var(--color-bg-emphasis);
   box-shadow: var(--shadow-panel);
 }
 
 .eyebrow {
   margin-bottom: 8px;
-  color: #a5b4fc;
+  color: var(--color-info-solid);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 1.15px;
@@ -70,7 +70,7 @@
 .hero p {
   max-width: 860px;
   margin: 13px 0 0;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--color-text-inverse);
   font-size: 14px;
   line-height: 1.85;
 }
@@ -80,10 +80,10 @@
   align-items: center;
   gap: 7px;
   padding: 7px 11px;
-  border: 1px solid rgba(187, 247, 208, 0.28);
+  border: 1px solid var(--color-success-border);
   border-radius: 999px;
-  background: rgba(34, 197, 94, 0.14);
-  color: #bbf7d0;
+  background: var(--color-success-sub);
+  color: var(--color-success-text);
   font-size: 11px;
   font-weight: 850;
 }
@@ -98,15 +98,15 @@
 .purposeStep {
   min-height: 88px;
   padding: 13px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid color-mix(in srgb, var(--color-text-inverse) 16%, transparent);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--color-text-inverse) 8%, transparent);
 }
 
 .purposeStep span {
   display: block;
   margin-bottom: 7px;
-  color: #c7d2fe;
+  color: var(--color-info-solid);
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.7px;
@@ -287,23 +287,23 @@
 }
 
 .current {
-  background: var(--color-success-bg);
-  color: #166534;
+  background: var(--color-success-sub);
+  color: var(--color-success-text);
 }
 
 .runtime {
-  background: var(--color-info-bg);
-  color: #1d4ed8;
+  background: var(--color-info-sub);
+  color: var(--color-info-text);
 }
 
 .proposed {
   background: var(--color-accent-sub);
-  color: #5b21b6;
+  color: var(--color-accent);
 }
 
 .development {
-  background: var(--color-warning-bg);
-  color: #9a3412;
+  background: var(--color-warning-sub);
+  color: var(--color-warning-text);
 }
 
 .edgeGrid {
@@ -357,7 +357,7 @@
 
 .flowStepManual {
   border-color: var(--color-warning-border);
-  background: color-mix(in srgb, var(--color-warning-bg) 62%, var(--color-bg-card));
+  background: color-mix(in srgb, var(--color-warning-sub) 62%, var(--color-bg-card));
 }
 
 .flowIndex {
@@ -403,23 +403,23 @@
 }
 
 .keepHuman {
-  background: var(--color-warning-bg);
-  color: #9a3412;
+  background: var(--color-warning-sub);
+  color: var(--color-warning-text);
 }
 
 .aiAssist {
-  background: var(--color-info-bg);
-  color: #1d4ed8;
+  background: var(--color-info-sub);
+  color: var(--color-info-text);
 }
 
 .automate {
-  background: var(--color-success-bg);
-  color: #166534;
+  background: var(--color-success-sub);
+  color: var(--color-success-text);
 }
 
 .investigate {
   background: var(--color-neutral-bg);
-  color: #475569;
+  color: var(--color-text-sub);
 }
 
 .constraint {
