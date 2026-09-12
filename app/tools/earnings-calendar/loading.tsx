@@ -23,7 +23,7 @@ export default function Loading() {
 
         {/* Calendar card */}
         <div style={{
-          background: "rgba(255,255,255,0.8)",
+          background: "color-mix(in srgb, var(--color-bg-card) 80%, transparent)",
           borderRadius: 22,
           padding: 16,
           boxShadow: "var(--shadow-card)",

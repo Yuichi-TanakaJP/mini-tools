@@ -287,8 +287,8 @@ export default function ToolClient() {
             <div style={{
               padding: "10px 14px",
               borderRadius: 12,
-              background: isOver ? "#fef2f2" : isEmpty ? "var(--color-bg-input)" : "var(--color-accent-sub)",
-              border: `1px solid ${isOver ? "#fecaca" : isEmpty ? "var(--color-border)" : "#c7d2fe"}`,
+              background: isOver ? "var(--color-error-bg)" : isEmpty ? "var(--color-bg-input)" : "var(--color-accent-sub)",
+              border: `1px solid ${isOver ? "var(--color-error-border)" : isEmpty ? "var(--color-border)" : "var(--color-border-accent)"}`,
               transition: "background 0.2s, border-color 0.2s",
             }}>
               <div style={{
@@ -364,7 +364,7 @@ export default function ToolClient() {
                   border: "none",
                   borderRadius: 12,
                   background: isEmpty ? "var(--color-bg-input)" : "var(--color-accent)",
-                  color: isEmpty ? "var(--color-text-muted)" : "#fff",
+                  color: isEmpty ? "var(--color-text-muted)" : "var(--color-accent-text)",
                   fontSize: 14,
                   fontWeight: 700,
                   cursor: isEmpty ? "default" : "pointer",

@@ -102,7 +102,7 @@ function ImpactDots({ impact }: { impact: number | null }) {
             width: 7,
             height: 7,
             borderRadius: "50%",
-            background: i <= level ? color : "#e5e7eb",
+            background: i <= level ? color : "var(--color-neutral-bg)",
           }}
         />
       ))}
@@ -735,7 +735,7 @@ const styles: Record<string, CSSProperties> = {
     cursor: "pointer",
   },
   weekNavBtnDisabled: {
-    color: "#d1d5db",
+    color: "var(--color-text-disabled)",
     cursor: "default",
     borderColor: "rgba(15,23,42,0.04)",
   },
@@ -980,7 +980,7 @@ const styles: Record<string, CSSProperties> = {
     color: "var(--color-text)",
   },
   resultPending: {
-    color: "#d1d5db",
+    color: "var(--color-text-disabled)",
   },
   emptyCard: {
     background: "var(--color-bg-card)",

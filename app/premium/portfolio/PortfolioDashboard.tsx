@@ -306,7 +306,7 @@ export default function PortfolioDashboard({ holdings, events, today }: Props) {
                     height: 34,
                     borderRadius: 8,
                     border: sortKey === key ? "1px solid var(--color-accent)" : "1px solid var(--color-border)",
-                    background: sortKey === key ? "#eff6ff" : "#fff",
+                    background: sortKey === key ? "var(--color-bg-input)" : "var(--color-bg-card)",
                     color: sortKey === key ? "#1d4ed8" : "var(--color-text-sub)",
                     fontWeight: 800,
                     fontSize: 12,

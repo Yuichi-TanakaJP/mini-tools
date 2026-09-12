@@ -1077,7 +1077,7 @@ const styles: Record<string, CSSProperties> = {
   page: {
     minHeight: "100vh",
     padding: "24px 16px 72px",
-    background: "var(--color-bg-subtle)",
+    background: "var(--color-bg)",
   },
   shell: {
     maxWidth: 1080,

@@ -91,7 +91,7 @@ function fmtPct(value: number) {
 }
 
 function getHeatColor(value: number | null) {
-  if (value === null) return "#e2e8f0";
+  if (value === null) return "var(--color-neutral-bg)";
 
   const clamped = Math.max(-2.5, Math.min(2.5, value));
   const alpha = 0.14 + (Math.abs(clamped) / 2.5) * 0.72;
@@ -101,11 +101,11 @@ function getHeatColor(value: number | null) {
   if (clamped < 0) {
     return `rgba(220, 38, 38, ${alpha.toFixed(3)})`;
   }
-  return "#cbd5e1";
+  return "var(--color-neutral-border)";
 }
 
 function getTextColor(value: number | null) {
-  if (value === null) return "#64748b";
+  if (value === null) return "var(--color-text-muted)";
   if (value > 0.6) return "#14532d";
   if (value < -0.6) return "#7f1d1d";
   if (value > 0) return "#166534";

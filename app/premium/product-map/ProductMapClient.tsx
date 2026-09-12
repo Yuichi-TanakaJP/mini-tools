@@ -252,7 +252,7 @@ export default function ProductMapClient() {
   }
 
   return (
-    <main style={{ padding: "28px 14px 72px", background: "linear-gradient(#f8fafc, #fff 420px)" }}>
+    <main style={{ padding: "28px 14px 72px", background: "linear-gradient(var(--color-bg-subtle), var(--color-bg-card) 420px)" }}>
       <section style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gap: 18 }}>
         <div
           style={{
@@ -361,7 +361,7 @@ export default function ProductMapClient() {
                     style={{
                       textAlign: "left",
                       border: active ? "1px solid #818cf8" : "1px solid transparent",
-                      background: active ? "#eef2ff" : "#fff",
+                      background: active ? "var(--color-info-bg)" : "var(--color-bg-card)",
                       borderRadius: 14,
                       padding: "11px 12px",
                       cursor: "pointer",
@@ -371,7 +371,7 @@ export default function ProductMapClient() {
                   >
                     <div style={{ fontWeight: 900, color: active ? "#312e81" : "var(--color-text)", overflowWrap: "anywhere" }}>{product.name}</div>
                     <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                      <span style={badgeStyle("#f1f5f9", "#475569")}>{PRODUCT_TYPE_LABELS[product.productType] ?? product.productType}</span>
+                      <span style={badgeStyle("var(--color-neutral-bg)", "var(--color-neutral-text)")}>{PRODUCT_TYPE_LABELS[product.productType] ?? product.productType}</span>
                       <span style={badgeStyle(tone.bg, tone.fg)}>{product.lifecycleStatus}</span>
                     </div>
                     <div style={{ fontSize: 10, color: "var(--color-text-sub)" }}>
@@ -422,9 +422,9 @@ function ProductDetail({
             </p>
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <span style={badgeStyle("#eef2ff", "#3730a3")}>{PRODUCT_TYPE_LABELS[detail.product.productType] ?? detail.product.productType}</span>
+            <span style={badgeStyle("var(--color-accent-sub)", "var(--color-accent)")}>{PRODUCT_TYPE_LABELS[detail.product.productType] ?? detail.product.productType}</span>
             <span style={badgeStyle(lifecycle.bg, lifecycle.fg)}>{detail.product.lifecycleStatus}</span>
-            <span style={badgeStyle("#f8fafc", "#475569")}>importance {detail.product.importance}</span>
+            <span style={badgeStyle("var(--color-neutral-bg)", "var(--color-neutral-text)")}>importance {detail.product.importance}</span>
           </div>
         </div>
       </div>
@@ -466,7 +466,7 @@ function ProductDetail({
             <div key={repo.repositoryId} style={{ padding: "10px 0", borderBottom: "1px solid var(--color-border)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                 {repo.htmlUrl ? <a href={repo.htmlUrl} target="_blank" rel="noreferrer" style={{ color: "var(--color-accent)", fontWeight: 850, textDecoration: "none", overflowWrap: "anywhere" }}>{repo.fullName}</a> : <strong>{repo.fullName}</strong>}
-                {repo.isPrimary ? <span style={badgeStyle("#dcfce7", "#166534")}>primary</span> : null}
+                {repo.isPrimary ? <span style={badgeStyle("var(--color-success-bg)", "var(--color-success-text)")}>primary</span> : null}
               </div>
               <div style={{ color: "var(--color-text-sub)", fontSize: 10, marginTop: 5 }}>{repo.visibility} · {repo.defaultBranch ?? "branch ?"} · {repo.role}</div>
             </div>
@@ -478,7 +478,7 @@ function ProductDetail({
             <div key={tech.technologyId} style={{ padding: "10px 0", borderBottom: "1px solid var(--color-border)", display: "grid", gap: 5 }}>
               <div style={{ display: "flex", gap: 7, alignItems: "center", flexWrap: "wrap" }}>
                 <strong>{tech.technologyName}</strong>
-                <span style={badgeStyle("#f1f5f9", "#475569")}>{tech.category}</span>
+                <span style={badgeStyle("var(--color-neutral-bg)", "var(--color-neutral-text)")}>{tech.category}</span>
                 {tech.version ? <span style={{ fontSize: 10, color: "var(--color-text-sub)" }}>{tech.version}</span> : null}
               </div>
               <div style={{ fontSize: 10, color: "var(--color-text-sub)" }}>{tech.role ?? "role未設定"} · confidence {confidencePercent(tech.confidence)}</div>
@@ -492,7 +492,7 @@ function ProductDetail({
             <div key={instance.serviceInstanceId} style={{ padding: "10px 0", borderBottom: "1px solid var(--color-border)", display: "grid", gap: 4 }}>
               <div style={{ display: "flex", gap: 7, flexWrap: "wrap", alignItems: "center" }}>
                 <strong>{instance.providerName}</strong>
-                <span style={badgeStyle("#dbeafe", "#1d4ed8")}>concrete instance</span>
+                <span style={badgeStyle("var(--color-info-bg)", "var(--color-info-text)")}>concrete instance</span>
               </div>
               <div style={{ fontSize: 11 }}>{instance.instanceName}</div>
               <div style={{ fontSize: 10, color: "var(--color-text-sub)" }}>{instance.relationType} · {instance.environment} · {instance.region ?? "region ?"}</div>
@@ -533,7 +533,7 @@ function ProviderRow({ link, monitoring = false }: { link: WorkspaceCoreProvider
     <div style={{ padding: "10px 0", borderBottom: "1px solid var(--color-border)", display: "grid", gap: 4 }}>
       <div style={{ display: "flex", gap: 7, flexWrap: "wrap", alignItems: "center" }}>
         <strong>{link.providerName}</strong>
-        <span style={badgeStyle(monitoring ? "#fef3c7" : "#e0e7ff", monitoring ? "#92400e" : "#3730a3")}>
+        <span style={badgeStyle(monitoring ? "var(--color-warning-bg)" : "var(--color-accent-sub)", monitoring ? "var(--color-warning-text)" : "var(--color-accent)")}>
           {PROVIDER_RELATION_LABELS[link.relationType] ?? link.relationType}
         </span>
       </div>
@@ -546,7 +546,7 @@ function ProviderRow({ link, monitoring = false }: { link: WorkspaceCoreProvider
 
 function AssetPanel({ children, title, tone = "default" }: { children: ReactNode; title: string; tone?: "default" | "monitoring" }) {
   return (
-    <div style={{ background: tone === "monitoring" ? "#fffbeb" : "#fff", border: `1px solid ${tone === "monitoring" ? "#fde68a" : "var(--color-border)"}`, borderRadius: 20, padding: 15, minWidth: 0 }}>
+    <div style={{ background: tone === "monitoring" ? "var(--color-warning-bg)" : "var(--color-bg-card)", border: `1px solid ${tone === "monitoring" ? "var(--color-warning-border)" : "var(--color-border)"}`, borderRadius: 20, padding: 15, minWidth: 0 }}>
       <div style={{ fontWeight: 950, fontSize: 14, marginBottom: 5 }}>{title}</div>
       <div>{children}</div>
     </div>

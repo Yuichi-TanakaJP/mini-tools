@@ -375,7 +375,7 @@ function ImpactMap({ records, selectedCode, onSelect }: ImpactMapProps) {
               background: "var(--color-bg-input)",
               overflow: "hidden",
               border: "1px solid var(--color-border)",
-              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.7)",
+              boxShadow: "inset 0 1px 0 color-mix(in srgb, var(--color-bg-card) 70%, transparent)",
             }}
           >
             {placements.map(({ record, rect }) => {
