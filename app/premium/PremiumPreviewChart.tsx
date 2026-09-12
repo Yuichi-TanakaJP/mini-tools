@@ -167,8 +167,8 @@ export default function PremiumPreviewChart({
               border: isShowingAll
                 ? "1px solid #1d4ed8"
                 : "1px solid var(--color-border)",
-              background: isShowingAll ? "#dbeafe" : "#fff",
-              color: isShowingAll ? "#1e3a8a" : "var(--color-text-sub)",
+              background: isShowingAll ? "var(--color-accent-sub)" : "var(--color-bg-card)",
+              color: isShowingAll ? "var(--color-accent)" : "var(--color-text-sub)",
               fontSize: 13,
               fontWeight: 800,
               cursor: "pointer",
@@ -195,8 +195,8 @@ export default function PremiumPreviewChart({
                   border: active
                     ? `1px solid ${item.color}`
                     : "1px solid var(--color-border)",
-                  background: active ? "#dbeafe" : "#fff",
-                  color: active ? "#1e3a8a" : "var(--color-text-sub)",
+                  background: active ? "var(--color-accent-sub)" : "var(--color-bg-card)",
+                  color: active ? "var(--color-accent)" : "var(--color-text-sub)",
                   fontSize: 13,
                   fontWeight: 800,
                   cursor: "pointer",
@@ -238,7 +238,7 @@ export default function PremiumPreviewChart({
 
       <div
         style={{
-          background: "linear-gradient(180deg, #f8fbff 0%, #ffffff 100%)",
+          background: "linear-gradient(180deg, var(--color-bg-subtle) 0%, var(--color-bg-card) 100%)",
           borderRadius: 22,
           border: "1px solid rgba(37, 84, 255, 0.10)",
           padding: "18px 14px 14px",

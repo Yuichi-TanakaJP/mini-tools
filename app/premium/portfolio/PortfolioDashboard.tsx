@@ -12,10 +12,10 @@ type Props = {
 type SortKey = "value" | "profit" | "yield" | "event";
 
 const toneColor = {
-  earnings: { bg: "var(--color-info-bg)", fg: "#1d4ed8", label: "決算" },
-  dividend: { bg: "var(--color-success-bg)", fg: "#166534", label: "配当" },
-  benefit: { bg: "var(--color-warning-bg)", fg: "#c2410c", label: "優待" },
-  price: { bg: "var(--color-bg-subtle)", fg: "#334155", label: "価格" },
+  earnings: { bg: "var(--color-info-bg)", fg: "var(--color-info-text)", label: "決算" },
+  dividend: { bg: "var(--color-success-bg)", fg: "var(--color-success-text)", label: "配当" },
+  benefit: { bg: "var(--color-warning-bg)", fg: "var(--color-warning-text)", label: "優待" },
+  price: { bg: "var(--color-neutral-bg)", fg: "var(--color-neutral-text)", label: "価格" },
 } as const;
 
 function formatYen(value: number) {
@@ -87,10 +87,10 @@ function SummaryTile({
   tone: "blue" | "green" | "orange" | "slate";
 }) {
   const toneMap = {
-    blue: { bg: "var(--color-info-bg)", border: "var(--color-info-border)", fg: "#1d4ed8" },
-    green: { bg: "var(--color-success-bg)", border: "var(--color-success-border)", fg: "#166534" },
-    orange: { bg: "var(--color-warning-bg)", border: "var(--color-warning-border)", fg: "#c2410c" },
-    slate: { bg: "var(--color-bg-subtle)", border: "var(--color-border-strong)", fg: "#334155" },
+    blue: { bg: "var(--color-info-bg)", border: "var(--color-info-border)", fg: "var(--color-info-text)" },
+    green: { bg: "var(--color-success-bg)", border: "var(--color-success-border)", fg: "var(--color-success-text)" },
+    orange: { bg: "var(--color-warning-bg)", border: "var(--color-warning-border)", fg: "var(--color-warning-text)" },
+    slate: { bg: "var(--color-neutral-bg)", border: "var(--color-neutral-border)", fg: "var(--color-neutral-text)" },
   } as const;
 
   return (
@@ -306,8 +306,8 @@ export default function PortfolioDashboard({ holdings, events, today }: Props) {
                     height: 34,
                     borderRadius: 8,
                     border: sortKey === key ? "1px solid var(--color-accent)" : "1px solid var(--color-border)",
-                    background: sortKey === key ? "#eff6ff" : "#fff",
-                    color: sortKey === key ? "#1d4ed8" : "var(--color-text-sub)",
+                    background: sortKey === key ? "var(--color-accent-sub)" : "var(--color-bg-card)",
+                    color: sortKey === key ? "var(--color-accent)" : "var(--color-text-sub)",
                     fontWeight: 800,
                     fontSize: 12,
                     padding: "0 10px",

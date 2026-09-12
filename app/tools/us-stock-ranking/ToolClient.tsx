@@ -173,9 +173,9 @@ function RankingTable({ records }: RankingTableProps) {
                       padding: "2px 7px",
                       borderRadius: 6,
                       background: up
-                        ? "#fee2e2"
+                        ? "var(--color-rise-bg)"
                         : down
-                        ? "#dbeafe"
+                        ? "var(--color-fall-bg)"
                         : "var(--color-bg-input)",
                       color: rateColor,
                       fontWeight: 700,

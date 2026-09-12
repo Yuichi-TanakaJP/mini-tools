@@ -15,7 +15,12 @@ const EXEMPT = [
   "penguin-rabbit-shooter",
   join("app", "admin"),
 ];
-const HEX = /#[0-9a-fA-F]{3,8}\b/g;
+/**
+ * 色リテラルの数え方。#hex だけでなく rgb() / rgba() も数える。
+ * 最初は #hex しか見ていなかったため、rgba(255,255,255,.8) で書かれた
+ * 白いカードを全部取りこぼしていた（ダークで白い面が残っていた）。
+ */
+const COLOR = /#[0-9a-fA-F]{3,8}\b|\brgba?\(\s*(?:\d+(?:\.\d+)?%?\s*,|[^,)]+\s+)[^)]*/g;
 
 function collect(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
@@ -45,7 +50,7 @@ function countLiterals(): Map<string, number> {
       .join("/");
     if (rel === "app/globals.css") continue;
     if (rel.includes("__tests__")) continue;
-    const n = (readFileSync(file, "utf8").match(HEX) ?? []).length;
+    const n = (readFileSync(file, "utf8").match(COLOR) ?? []).length;
     if (n > 0) counts.set(rel, n);
   }
   return counts;

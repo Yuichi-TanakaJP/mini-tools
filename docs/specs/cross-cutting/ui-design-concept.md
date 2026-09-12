@@ -59,6 +59,34 @@ mini-tools は、派手な情報量や装飾で注意を奪うのではなく、
 - `prefers-reduced-motion` が指定された環境では、テーマ切替に不要なアニメーションを追加しない。
 - 状態表示は色名や色相だけを前提にせず、テキストで意味を確認できるようにする。
 
+## 外部リファレンスから定めた審美・品質基準
+
+Apple Human Interface Guidelines の Dark Mode / Materials と、Web UI の実装観点を整理した
+Zenn記事を参考に、mini-tools では次を「おしゃれで統一された状態」の判定基準とする。
+
+1. **反転ではなく適応**: Light の固定色を Dark へ持ち込まず、意味を持つトークンで明度と彩度を適応させる。
+2. **奥行きは静かな面差で作る**: page → input → subtle → card → elevated の順を守り、Dark では大きな影や発光より明度差を優先する。
+3. **アクセントは選択と主要操作に限定**: 通常カードを青く染めず、選択中だけ `accent-sub / accent / border-accent` を組で使う。
+4. **状態色は三点セット**: `info / success / warning / error / neutral` は `-bg / -text / -border` を同じファミリーから選び、直書き前景色と混ぜない。
+5. **白く光る面を作らない**: Dark のカード、ローディング、空状態、エラー、画像背景に高輝度の固定面を残さない。
+6. **装飾より可読性**: 通常本文は 4.5:1 以上を必須、小さい独自色テキストは 7:1 を目標、主要UI境界は 3:1 以上とする。
+7. **彩度の予算を守る**: 同時に強く見せる色は原則1系統とし、金融の騰落色・エラー・主要操作を同じ面で競わせない。
+
+選択状態の標準形は次とする。
+
+```css
+background: var(--color-accent-sub);
+color: var(--color-accent);
+border-color: var(--color-border-accent);
+box-shadow: inset 0 0 0 1px var(--color-accent-glow);
+```
+
+参考資料:
+
+- [Apple Human Interface Guidelines: Dark Mode](https://developer.apple.com/design/human-interface-guidelines/dark-mode)
+- [Apple Human Interface Guidelines: Materials](https://developer.apple.com/design/human-interface-guidelines/materials)
+- [Zenn: WebアプリケーションのUI構築のポイント](https://zenn.dev/tomokusaba/articles/c37aadf984fcd0)
+
 ## テーマ例外
 
 - ペンギン系ゲームはゲーム世界の固有パレットを維持してよい。ただし共通ヘッダー、設定UI、ゲーム外モーダルは共通テーマへ従う。

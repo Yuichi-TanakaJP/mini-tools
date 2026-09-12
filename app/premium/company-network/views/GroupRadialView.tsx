@@ -160,7 +160,7 @@ export default function GroupRadialView({
               }}
             >
               {selectedNodeId === groupNodeId ? <circle className={styles.pulse} r="78" fill="none" stroke="#d97706" strokeWidth={2} /> : null}
-              <circle r="64" fill="#fff7ed" stroke="#d97706" strokeWidth={selectedNodeId === groupNodeId ? 4 : 3} />
+              <circle r="64" fill="var(--color-warning-bg)" stroke="var(--color-warning)" strokeWidth={selectedNodeId === groupNodeId ? 4 : 3} />
               <text textAnchor="middle" y="-4" className={styles.radialGroupLabel}>{truncate(group.name, 14)}</text>
               <text textAnchor="middle" y="14" className={styles.radialGroupMeta}>{groupTypeLabel(group.groupType)}</text>
             </g>

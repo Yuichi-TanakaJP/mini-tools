@@ -599,7 +599,7 @@ const styles: Record<string, React.CSSProperties> = {
     background:
       "radial-gradient(ellipse 1000px 400px at 0% 0%, rgba(14,165,233,0.10) 0%, transparent 60%), " +
       "radial-gradient(ellipse 900px 500px at 100% 80%, rgba(16,185,129,0.08) 0%, transparent 55%), " +
-      "#f8fafc",
+      "var(--color-bg)",
   },
   shell: {
     maxWidth: 1080,
@@ -814,7 +814,7 @@ const styles: Record<string, React.CSSProperties> = {
   tableWrap: {
     border: "1px solid rgba(15,23,42,0.08)",
     borderRadius: 16,
-    background: "rgba(255,255,255,0.72)",
+    background: "color-mix(in srgb, var(--color-bg-card) 72%, transparent)",
     overflowX: "auto",
     WebkitOverflowScrolling: "touch",
   },
@@ -1139,7 +1139,7 @@ const styles: Record<string, React.CSSProperties> = {
   inlineCode: {
     fontFamily: "monospace",
     fontSize: "0.95em",
-    background: "rgba(255,255,255,0.7)",
+    background: "color-mix(in srgb, var(--color-bg-card) 70%, transparent)",
     padding: "1px 4px",
     borderRadius: 6,
   },

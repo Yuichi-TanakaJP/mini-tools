@@ -177,7 +177,7 @@ export default function ToolClient() {
                   border: "none",
                   borderRadius: 12,
                   background: isEmpty ? "var(--color-bg-input)" : "var(--color-accent)",
-                  color: isEmpty ? "var(--color-text-muted)" : "#fff",
+                  color: isEmpty ? "var(--color-text-muted)" : "var(--color-accent-text)",
                   fontSize: 14,
                   fontWeight: 700,
                   cursor: isEmpty ? "default" : "pointer",

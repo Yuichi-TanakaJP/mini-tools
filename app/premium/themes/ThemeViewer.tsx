@@ -203,8 +203,8 @@ function ViewerState({
         : result.status === "invalid_response"
           ? "APIレスポンスを表示できません"
           : "stock-notes APIから取得できません";
-  const background = result.status === "not_configured" ? "#fffbeb" : "#fef2f2";
-  const border = result.status === "not_configured" ? "#fde68a" : "#fecaca";
+  const background = result.status === "not_configured" ? "var(--color-warning-bg)" : "var(--color-error-bg)";
+  const border = result.status === "not_configured" ? "var(--color-warning-border)" : "var(--color-error-border)";
   const foreground = result.status === "not_configured" ? "#92400e" : "#991b1b";
 
   return (
@@ -738,7 +738,7 @@ const styles: Record<string, CSSProperties> = {
   page: {
     minHeight: "100vh",
     padding: "24px 16px 72px",
-    background: "var(--color-bg-subtle)",
+    background: "var(--color-bg)",
   },
   shell: {
     maxWidth: 1120,

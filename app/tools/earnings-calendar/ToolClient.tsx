@@ -892,7 +892,7 @@ const styles: Record<string, CSSProperties> = {
   tabButton: {
     border: "1px solid rgba(15, 23, 42, 0.08)",
     borderRadius: 16,
-    background: "rgba(255, 255, 255, 0.84)",
+    background: "color-mix(in srgb, var(--color-bg-card) 84%, transparent)",
     padding: "8px 14px 7px",
     textAlign: "left",
     cursor: "pointer",

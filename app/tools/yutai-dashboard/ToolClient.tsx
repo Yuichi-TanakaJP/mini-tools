@@ -2309,7 +2309,7 @@ const styles: Record<string, React.CSSProperties> = {
     background:
       "radial-gradient(ellipse 1200px 500px at 0% -10%, rgba(99,102,241,0.10) 0%, transparent 60%), " +
       "radial-gradient(ellipse 800px 600px at 100% 80%, rgba(79,70,229,0.06) 0%, transparent 55%), " +
-      "#f1f5f9",
+      "var(--color-bg)",
   },
   shell: {
     width: "100%",
@@ -2730,7 +2730,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "block",
     height: 5,
     borderRadius: 3,
-    background: "#5eead4",
+    background: "var(--color-chart-2)",
   },
   calHoldStart: {
     display: "block",
@@ -2843,7 +2843,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
   },
   cellMuted: {
-    color: "#cbd5e1",
+    color: "var(--color-text-disabled)",
   },
   cellEditTrigger: {
     // border はロングハンドで指定する。active 時に borderStyle/borderColor を

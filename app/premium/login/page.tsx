@@ -36,7 +36,7 @@ export default async function PremiumLoginPage({ searchParams }: PageProps) {
         style={{
           maxWidth: 540,
           margin: "0 auto",
-          background: "linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)",
+          background: "linear-gradient(180deg, var(--color-bg-card) 0%, var(--color-bg-subtle) 100%)",
           borderRadius: 28,
           border: "1px solid rgba(15, 23, 42, 0.08)",
           boxShadow: "var(--shadow-card-hover)",

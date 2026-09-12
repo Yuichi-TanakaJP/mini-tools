@@ -222,7 +222,7 @@ const styles: Record<string, CSSProperties> = {
   page: {
     minHeight: "100vh",
     padding: "24px 16px 72px",
-    background: "var(--color-bg-subtle)",
+    background: "var(--color-bg)",
   },
   shell: {
     maxWidth: 1080,
@@ -386,7 +386,7 @@ const styles: Record<string, CSSProperties> = {
   },
   emptyCell: {
     fontSize: 11,
-    color: "#cbd5e1",
+    color: "var(--color-text-disabled)",
   },
   legend: {
     display: "flex",

@@ -120,7 +120,7 @@ function RankingTable({ records, rankingType }: RankingTableProps) {
                     display: "inline-block",
                     padding: "2px 7px",
                     borderRadius: 6,
-                    background: up ? "#fee2e2" : down ? "#dbeafe" : "var(--color-bg-input)",
+                    background: up ? "var(--color-rise-bg)" : down ? "var(--color-fall-bg)" : "var(--color-bg-input)",
                     color: rateColor,
                     fontWeight: 700,
                     fontSize: 12,

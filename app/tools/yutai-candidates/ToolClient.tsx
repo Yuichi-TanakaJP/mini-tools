@@ -1070,7 +1070,7 @@ function CalendarView({ data, connection: db }: { data: MonthlyYutaiPageData; co
 }
 
 const INDIGO = "#4f46e5";
-const INDIGO_LIGHT = "#eef2ff";
+const INDIGO_LIGHT = "var(--color-accent-sub)";
 const INDIGO_MID = "#6366f1";
 
 const baseDot: React.CSSProperties = {
@@ -1129,7 +1129,7 @@ const styles: Record<string, React.CSSProperties> = {
     background:
       "radial-gradient(ellipse 1200px 500px at 0% -10%, rgba(99,102,241,0.10) 0%, transparent 60%), " +
       "radial-gradient(ellipse 800px 600px at 100% 80%, rgba(79,70,229,0.06) 0%, transparent 55%), " +
-      "#f1f5f9",
+      "var(--color-bg)",
   },
   shell: {
     width: "100%",
@@ -1760,7 +1760,7 @@ const styles: Record<string, React.CSSProperties> = {
   noticeButton: {
     border: "1px solid rgba(255,255,255,0.15)",
     background: "rgba(255,255,255,0.08)",
-    color: "#e2e8f0",
+    color: "var(--color-text-on-emphasis)",
     padding: "6px 12px",
     borderRadius: 10,
     cursor: "pointer",
