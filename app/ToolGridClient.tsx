@@ -263,7 +263,12 @@ export default function ToolGridClient({ tools }: Props) {
                   {inner}
                 </a>
               ) : (
-                <Link key={t.href} href={t.href} {...sharedProps}>
+                <Link
+                  key={t.href}
+                  href={t.href}
+                  prefetch={t.href === "/tools/yutai-dashboard" ? false : undefined}
+                  {...sharedProps}
+                >
                   {inner}
                 </Link>
               );

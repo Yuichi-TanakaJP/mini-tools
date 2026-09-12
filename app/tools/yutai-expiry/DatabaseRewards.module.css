@@ -5,3 +5,8 @@
 .table summary { cursor: pointer; min-width: 150px; padding: 8px; }
 .table th[scope="row"] { overflow-wrap: anywhere; min-width: 120px; }
 .table details[open] { min-width: 280px; }
+.primaryActions { margin-bottom: 8px; }
+.page .primaryAction { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-accent-text); font-weight: 700; }
+.secondaryActions { margin: 4px 0 12px; }
+.secondaryActions > summary { width: fit-content; cursor: pointer; color: var(--color-text-sub); font-weight: 700; padding: 6px 0; }
+.secondaryActions[open] > summary { color: var(--color-accent); }
