@@ -14,7 +14,7 @@
 export const COLOR_LITERAL_BUDGET: Readonly<Record<string, number>> = {
   "app/account/AccountClient.tsx": 3,
   "app/account/reset-password/ResetPasswordClient.tsx": 2,
-  "app/layout.tsx": 2,
+  "app/layout.tsx": 1,
   "app/premium/LogoutButton.tsx": 1,
   "app/premium/PremiumPreviewChart.tsx": 6,
   "app/premium/company-network/ClaudeUi.module.css": 7,
@@ -61,7 +61,6 @@ export const COLOR_LITERAL_BUDGET: Readonly<Record<string, number>> = {
   "app/tools/yutai-expiry/scan-poc/page.tsx": 1,
   "app/tools/yutai-memo/ToolClient.module.css": 24,
   "app/tools/yutai-memo/ToolClient.tsx": 4,
-  "components/ColorThemeSelector.tsx": 2,
   "components/LoadingSpinner.module.css": 1,
   "components/MobileBottomNav.module.css": 1,
   "components/MonetizeBar.tsx": 1,
