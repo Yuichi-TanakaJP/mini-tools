@@ -64,12 +64,18 @@ function ConnectedRewards({ view, scanEnabled }: { view: ViewState; scanEnabled:
         <p className={styles.memo}>{reward.memo}</p>
         {reward.link && (/^https?:\/\//i.test(reward.link) ? <a href={reward.link} target="_blank" rel="noopener noreferrer">関連URL</a> : <p>関連URL（原文）: {reward.link}</p>)}
         {reward.profile_id && <p>銘柄: {data.profiles.find(p => p.id === reward.profile_id)?.display_name ?? "名称未設定"} / 仕込み履歴: {reward.cycle_id ? (() => { const c = data.cycles.find(c => c.id === reward.cycle_id); return c ? `${c.entitlement_year}年${c.entitlement_month}月` : "参照不明"; })() : "未設定"}</p>}
-        <div className={styles.row}>
+        <div className={`${styles.row} ${listStyles.primaryActions}`}>
+          <button className={listStyles.primaryAction} disabled={Boolean(reward.archived_at)} onClick={() => openAction(reward, "consume")}>使う</button>
           <button onClick={() => { setAction(null); setEditor({ snapshot: data, reward }); }}>優待を編集</button>
-          {(["consume", "restock", "adjust", "mode"] as const).map(kind => <button key={kind} disabled={Boolean(reward.archived_at)} onClick={() => openAction(reward, kind)}>{rewardActions[kind]}</button>)}
-          <button onClick={() => { if (window.confirm(`${reward.title}を${reward.archived_at ? "アーカイブ解除" : "アーカイブ"}します。残高と利用履歴は残ります。`)) run(archiveReward(reward)); }}>{reward.archived_at ? "アーカイブ解除" : "アーカイブ"}</button>
-          <button onClick={() => openAction(reward, "delete")}>優待を削除</button>
         </div>
+        <details className={listStyles.secondaryActions}>
+          <summary>その他の操作</summary>
+          <div className={styles.row}>
+            {(["restock", "adjust", "mode"] as const).map(kind => <button key={kind} disabled={Boolean(reward.archived_at)} onClick={() => openAction(reward, kind)}>{rewardActions[kind]}</button>)}
+            <button onClick={() => { if (window.confirm(`${reward.title}を${reward.archived_at ? "アーカイブ解除" : "アーカイブ"}します。残高と利用履歴は残ります。`)) run(archiveReward(reward)); }}>{reward.archived_at ? "アーカイブ解除" : "アーカイブ"}</button>
+            <button onClick={() => openAction(reward, "delete")}>優待を削除</button>
+          </div>
+        </details>
         <details><summary>利用履歴（{data.reward_events.filter(e => e.reward_id === reward.id).length}件）</summary>
           {data.reward_events.filter(e => e.reward_id === reward.id).sort((a, b) => b.occurred_at.localeCompare(a.occurred_at)).map(event => <div key={event.id}>
             <p>{new Date(event.occurred_at).toLocaleString("ja-JP")} / {event.event_type} / {rewardAmount(event.delta_value)}{rewardUnit(event.track_mode)} / {event.note}</p>

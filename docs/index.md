@@ -159,6 +159,7 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
   - [UI カラーパレット仕様](./specs/cross-cutting/ui-color-palette.md)
   - [UI デザインコンセプト](./specs/cross-cutting/ui-design-concept.md)
   - [株価ランキング UI JSON CLI 仕様](./specs/cross-cutting/stock-ranking-ui-json-cli-spec.md)
+- [モバイル外枠・認証遷移・優待カード操作の判断](./decision-log/2026-09-12-mobile-shell-auth-and-reward-actions.md)
 
 ---
 

@@ -211,7 +211,7 @@ test(`reward lifecycle preserves history and old storage (disrupted: ${disrupted
       profiles: [], month_states: [], cycles: [], tags: [], profile_tags: [], rewards, reward_events: events, selections: [], effective_selections: [] } });
   });
   await page.goto("/tools/yutai-expiry");
-  await expect(page.getByText("Supabase接続の検証モード（残高・期限）")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "クラウド保存" })).toBeVisible();
   await page.getByRole("button", { name: "優待を追加", exact: true }).click();
   await page.getByLabel("優待名", { exact: true }).fill("検証優待");
   await page.getByLabel("初期残高", { exact: true }).fill("10");
@@ -263,6 +263,7 @@ test(`reward lifecycle preserves history and old storage (disrupted: ${disrupted
   }
   await expect(card.getByText("残高: 8枚 / 初期: 10枚", { exact: true })).toBeVisible();
   await expect(page.getByRole("dialog", { name: "残高操作" })).toHaveCount(0);
+  await card.locator("details").filter({ hasText: "その他の操作" }).evaluate((node: HTMLDetailsElement) => { node.open = true; });
   await card.getByRole("button", { name: "補充", exact: true }).click();
   await page.getByLabel("操作する値").fill("3"); await page.getByRole("button", { name: "操作を保存" }).click();
   await expect(card.getByText("残高: 11枚 / 初期: 10枚", { exact: true })).toBeVisible();
@@ -282,8 +283,10 @@ test(`reward lifecycle preserves history and old storage (disrupted: ${disrupted
   await expect(card).toHaveCount(0);
   await page.getByRole("checkbox", { name: "アーカイブを含む" }).check();
   await expect(card.getByRole("button", { name: "使う", exact: true })).toBeDisabled();
+  await card.locator("details").filter({ hasText: "その他の操作" }).evaluate((node: HTMLDetailsElement) => { node.open = true; });
   page.once("dialog", d => d.accept()); await card.getByRole("button", { name: "アーカイブ解除", exact: true }).click();
   await expect(card.getByRole("button", { name: "使う", exact: true })).toBeEnabled();
+  await card.locator("details").filter({ hasText: "その他の操作" }).evaluate((node: HTMLDetailsElement) => { node.open = true; });
   await card.getByRole("button", { name: "管理単位を変更" }).click();
   await page.getByLabel("操作する値").fill("123.45"); await page.getByLabel("理由・利用メモ").fill("金額へ変更");
   page.once("dialog", d => d.accept()); await page.getByRole("button", { name: "操作を保存" }).click();
@@ -295,6 +298,7 @@ test(`reward lifecycle preserves history and old storage (disrupted: ${disrupted
   await expect(card.getByText("残高: 123.16円 / 初期: 123.45円", { exact: true })).toBeVisible();
   await expect(page.getByRole("dialog", { name: "残高操作" })).toHaveCount(0);
   await page.screenshot({ path: ".tmp/yutai-rewards-connected.png", fullPage: true });
+  await card.locator("details").filter({ hasText: "その他の操作" }).evaluate((node: HTMLDetailsElement) => { node.open = true; });
   await card.getByRole("button", { name: "優待を削除", exact: true }).click();
   await page.getByLabel("理由・利用メモ").fill("合成記録を削除");
   page.once("dialog", d => d.dismiss()); await page.getByRole("button", { name: "操作を保存" }).click();

@@ -88,6 +88,7 @@ export default function NavDrawer({ open, onClose }: NavDrawerProps) {
       <Link
         key={tool.href}
         href={tool.href}
+        prefetch={tool.href === "/tools/yutai-dashboard" ? false : undefined}
         className={`${styles.item} ${active ? styles.itemActive : ""}`}
         aria-current={active ? "page" : undefined}
         onClick={() => handleNavigate(tool.href)}
