@@ -223,6 +223,9 @@ html[data-theme="dark"] {
 
 body {
   margin: 0;
+  min-height: 100%;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
   background: var(--color-bg);
   color: var(--color-text);
 }
@@ -237,6 +240,8 @@ body {
 }
 
 html {
+  min-height: 100%;
+  background: var(--color-bg);
   -webkit-tap-highlight-color: transparent;
   scrollbar-gutter: stable;
 }

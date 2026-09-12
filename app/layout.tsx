@@ -1,5 +1,5 @@
 // app/layout.tsx
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import Header from "@/components/Header";
 import MobileBottomNav from "@/components/MobileBottomNav";
@@ -42,6 +42,12 @@ export const metadata: Metadata = {
     title: "mini-tools",
     statusBarStyle: "black",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
