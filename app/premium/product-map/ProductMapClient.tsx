@@ -369,7 +369,7 @@ export default function ProductMapClient() {
                       gap: 6,
                     }}
                   >
-                    <div style={{ fontWeight: 900, color: active ? "#312e81" : "var(--color-text)", overflowWrap: "anywhere" }}>{product.name}</div>
+                    <div style={{ fontWeight: 900, color: active ? "var(--color-info-text)" : "var(--color-text)", overflowWrap: "anywhere" }}>{product.name}</div>
                     <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                       <span style={badgeStyle("var(--color-neutral-bg)", "var(--color-neutral-text)")}>{PRODUCT_TYPE_LABELS[product.productType] ?? product.productType}</span>
                       <span style={badgeStyle(tone.bg, tone.fg)}>{product.lifecycleStatus}</span>

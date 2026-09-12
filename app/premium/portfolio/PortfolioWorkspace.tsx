@@ -376,7 +376,7 @@ function ExternalAssetsView({ data }: { data: PortfolioData }) {
         ) : null}
         {hasReadySnapshot ? (
           <>
-            {externalAssets.errorMessage ? <div style={{ borderRadius: 10, background: externalAssets.status === "error" ? "var(--color-error-bg)" : "var(--color-warning-bg)", color: externalAssets.status === "error" ? "#991b1b" : "#92400e", padding: 12, lineHeight: 1.7 }}>{externalAssets.errorMessage} 公式snapshotの表示・集計には影響していません。</div> : null}
+            {externalAssets.errorMessage ? <div style={{ borderRadius: 10, background: externalAssets.status === "error" ? "var(--color-error-bg)" : "var(--color-warning-bg)", color: externalAssets.status === "error" ? "var(--color-error-text)" : "var(--color-warning-text)", padding: 12, lineHeight: 1.7 }}>{externalAssets.errorMessage} 公式snapshotの表示・集計には影響していません。</div> : null}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
               <Metric label="外部資産評価額" value={formatYen(externalAssets.totalMarketValue)} sub={`${externalAssets.positions.length}明細`} />
               <Metric label="基準日" value={formatDate(externalAssets.snapshot.asOf)} sub={externalAssets.snapshot.sourceLabel ?? externalAssets.snapshot.sourceType} />
@@ -443,7 +443,7 @@ function ReviewHistoryView({ data }: { data: PortfolioData }) {
                     <strong>{review.title}</strong>
                     <div style={{ marginTop: 4, color: "var(--color-text-muted)", fontSize: 12 }}>基準日 {formatDateTime(review.asOf)} / 更新 {formatDateTime(review.updatedAt)}</div>
                   </div>
-                  <span style={{ borderRadius: 999, padding: "4px 9px", background: review.status === "superseded" ? "var(--color-bg-input)" : review.status === "finalized" ? "var(--color-success-bg)" : "var(--color-neutral-bg)", color: review.status === "superseded" ? "#475569" : review.status === "finalized" ? "#166534" : "#1d4ed8", fontSize: 11, fontWeight: 900 }}>
+                  <span style={{ borderRadius: 999, padding: "4px 9px", background: review.status === "superseded" ? "var(--color-neutral-bg)" : review.status === "finalized" ? "var(--color-success-bg)" : "var(--color-info-bg)", color: review.status === "superseded" ? "var(--color-neutral-text)" : review.status === "finalized" ? "var(--color-success-text)" : "var(--color-info-text)", fontSize: 11, fontWeight: 900 }}>
                     {reviewStatusLabel(review, data.review?.id ?? null)}
                   </span>
                 </div>
@@ -615,7 +615,7 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {(Object.keys(tabLabels) as Tab[]).map((key) => (
-            <button key={key} type="button" onClick={() => setTab(key)} style={{ border: tab === key ? "1px solid var(--color-info-border)" : "1px solid rgba(255,255,255,0.2)", borderRadius: 999, background: tab === key ? "var(--color-bg-input)" : "transparent", color: tab === key ? "#1d4ed8" : "#fff", padding: "8px 14px", fontWeight: 800, cursor: "pointer" }}>
+            <button key={key} type="button" onClick={() => setTab(key)} style={{ border: tab === key ? "1px solid var(--color-border-accent)" : "1px solid rgba(255,255,255,0.2)", borderRadius: 999, background: tab === key ? "var(--color-accent-sub)" : "transparent", color: tab === key ? "var(--color-accent)" : "var(--color-text-on-emphasis)", boxShadow: tab === key ? "inset 0 0 0 1px var(--color-accent-glow)" : "none", padding: "8px 14px", fontWeight: 800, cursor: "pointer" }}>
               {tabLabels[key]}
             </button>
           ))}

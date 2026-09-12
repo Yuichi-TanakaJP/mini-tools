@@ -20,7 +20,7 @@ const EXEMPT = [
  * 最初は #hex しか見ていなかったため、rgba(255,255,255,.8) で書かれた
  * 白いカードを全部取りこぼしていた（ダークで白い面が残っていた）。
  */
-const COLOR = /#[0-9a-fA-F]{3,8}\b|\brgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+/g;
+const COLOR = /#[0-9a-fA-F]{3,8}\b|\brgba?\(\s*(?:\d+(?:\.\d+)?%?\s*,|[^,)]+\s+)[^)]*/g;
 
 function collect(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {

@@ -167,8 +167,8 @@ export default function PremiumPreviewChart({
               border: isShowingAll
                 ? "1px solid #1d4ed8"
                 : "1px solid var(--color-border)",
-              background: isShowingAll ? "var(--color-neutral-bg)" : "var(--color-bg-card)",
-              color: isShowingAll ? "#1e3a8a" : "var(--color-text-sub)",
+              background: isShowingAll ? "var(--color-accent-sub)" : "var(--color-bg-card)",
+              color: isShowingAll ? "var(--color-accent)" : "var(--color-text-sub)",
               fontSize: 13,
               fontWeight: 800,
               cursor: "pointer",
@@ -195,8 +195,8 @@ export default function PremiumPreviewChart({
                   border: active
                     ? `1px solid ${item.color}`
                     : "1px solid var(--color-border)",
-                  background: active ? "var(--color-neutral-bg)" : "var(--color-bg-card)",
-                  color: active ? "#1e3a8a" : "var(--color-text-sub)",
+                  background: active ? "var(--color-accent-sub)" : "var(--color-bg-card)",
+                  color: active ? "var(--color-accent)" : "var(--color-text-sub)",
                   fontSize: 13,
                   fontWeight: 800,
                   cursor: "pointer",
