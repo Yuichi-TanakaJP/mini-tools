@@ -101,6 +101,30 @@ Light の card / elevated は同値なので、そちらは `--shadow-*` で差�
 色相をずらして静かにする案（金・マスタード寄り）も検討したが、
 「警告」ではなく「補足」に見える方向へ寄るため採らなかった。
 
+### 前景色を「塗り」に流用しない
+
+状態色には 5 つの部品がある。**役割が違うので入れ替えられない。**
+
+| トークン | 何に使うか | 明るさの狙い |
+|---|---|---|
+| `--color-success` | 明るい面に乗る文字・アイコン・細い線 | 面に対して読めるよう**暗め** |
+| `--color-success-text` | `-bg` の上に置く文字 | さらに暗い |
+| `--color-success-bg` | チップ・バナーの淡い背景 | ごく淡い |
+| `--color-success-border` | その境界 | 中間 |
+| `--color-success-solid` | **7〜12px の点・丸など塗りつぶしマークの地** | 一目で気づけるよう**鮮やか** |
+
+前景色を塗りに使うと沈む。実際、優待カレンダーのマークでこれをやってしまい、
+オレンジは明度が **22 ポイント**、グリーンは **13 ポイント**落ちて、
+利用者から「色が弱くなった」と指摘された。
+
+`-solid` は「必ず前景色より彩度が高い」ことを `theme-contrast.test.ts` で保証している。
+
+`-solid` の上に短いグリフ（✓ など）を置く場合は `--color-text-inverse` を使う。
+ライトでは白、ダークでは濃い字になり、どちらの地でも読める側に倒れる。
+**長い文章は `-solid` の上に置かない。** 鮮やかさを優先しているので、
+本文に必要な 4.5:1 を満たさない組み合わせがある（特に warning）。
+文章を載せるときは `-bg` と `-text` の組を使う。
+
 ### 役割の違う色が混ざらないこと
 
 ブランドが青で、日本株の下落も青なので、accent / info / fall は必然的に近い色になる。
@@ -195,6 +219,7 @@ Oklab 上の距離 dE で 0.045 以上を保つ。上の彩度倍率と明度補
 | Border / focus | 通常境界、強調境界、操作部品の輪郭、focus | `--color-border*`, `--color-focus-ring` |
 | Action | ブランド、リンク、主要操作 | `--color-accent*` |
 | Semantic | info / success / warning / error / neutral | `--color-*-bg/text/border` |
+| Semantic（塗り） | 小さな塗りつぶしマークの地 | `--color-*-solid` |
 | Financial direction | 上昇 / 下落 | `--color-rise*`, `--color-fall*` |
 | Data visualization（分類） | グラフ系列 | `--color-chart-1` ～ `12` |
 | Data visualization（順序） | 重要度・深刻度の段階 | `--color-severity-1` ～ `5` |

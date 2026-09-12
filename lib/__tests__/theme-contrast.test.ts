@@ -30,6 +30,8 @@ const PAIRS: ReadonlyArray<
   ["--color-text-muted", "--color-bg-subtle", BODY],
   ["--color-text-muted", "--color-bg-elevated", BODY],
   ["--color-text-on-emphasis", "--color-bg-emphasis", BODY],
+  // 塗りマークに乗せる短いグリフ（カレンダーの✓など）
+  ["--color-text-inverse", "--color-success-solid", UI],
   ["--color-accent", "--color-bg-card", BODY],
   ["--color-accent", "--color-bg", BODY],
   ["--color-accent", "--color-accent-sub", BODY],
@@ -85,6 +87,9 @@ const PAIRS: ReadonlyArray<
  * 明度比では色相の違いを測れない（同じ明度なら必ず 1.0 付近になる）ので、
  * ここだけ Oklab 上の距離で見る。
  */
+/** 塗り用トークンと、その前景色の対 */
+const SOLID_FAMILIES = ["info", "success", "warning", "error"] as const;
+
 const DISTINCT: ReadonlyArray<readonly [string, string]> = [
   ["--color-fall", "--color-info"],
   ["--color-fall", "--color-accent"],
@@ -214,6 +219,20 @@ describe("theme contrast", () => {
             0.03,
           );
         }
+      });
+
+      /**
+       * 塗り用 (-solid) は、小さなマークの地として一目で気づける必要がある。
+       * 前景色 (--color-success など) は「明るい面に乗る文字」向けに暗く作って
+       * あるので、塗りに流用すると沈む。実際にカレンダーのマークでそれをやって
+       * 明度が 22 ポイント落ちた。彩度で必ず上回ることを条件にして再発を防ぐ。
+       */
+      it.each(SOLID_FAMILIES)("%s-solid は前景色より彩度が高い", (family) => {
+        const solid = tokens.get(`--color-${family}-solid`);
+        const fg = tokens.get(`--color-${family}`);
+        expect(solid, `--color-${family}-solid が未定義`).toBeDefined();
+        expect(fg, `--color-${family} が未定義`).toBeDefined();
+        expect(chroma(solid as string)).toBeGreaterThan(chroma(fg as string));
       });
 
       it.each(DISTINCT)("%s and %s stay distinguishable", (a, b) => {

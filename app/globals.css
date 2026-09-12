@@ -57,6 +57,13 @@
   --color-warning-bg:       #fff1e5;
   --color-warning-border:   #fccda5;
   --color-warning-text:     #6e3c00;
+  /* solid — 小さな塗りつぶしマーク用。前景色は「明るい面に乗る文字」向けに
+     暗く作ってあるので、7-12px の点や丸に使うと沈む。塗りにはこちらを使う */
+  --color-info-solid:       #5588c9;
+  --color-success-solid:    #00a151;
+  --color-warning-solid:    #f58e00;
+  --color-error-solid:      #d95f6c;
+
   --color-neutral-bg:       #e0e7f0;
   --color-neutral-text:     #424e5f;
   --color-neutral-border:   #c2cbd8;
@@ -162,6 +169,11 @@ html[data-theme="dark"] {
   --color-warning-bg:       #372617;
   --color-warning-border:   #63462d;
   --color-warning-text:     #e8b68a;
+  --color-info-solid:       #6192cf;
+  --color-success-solid:    #18aa5a;
+  --color-warning-solid:    #fd9929;
+  --color-error-solid:      #e06b76;
+
   --color-neutral-bg:       #2e3641;
   --color-neutral-text:     #b6bec9;
   --color-neutral-border:   #4d5663;

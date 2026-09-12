@@ -2689,7 +2689,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: 12,
     height: 12,
     borderRadius: 999,
-    background: "var(--color-success)",
+    background: "var(--color-success-solid)",
     color: "var(--color-text-inverse)",
     fontSize: 9,
     fontWeight: 900,
@@ -2718,7 +2718,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: 7,
     height: 7,
     borderRadius: 999,
-    background: "var(--color-warning)",
+    background: "var(--color-warning-solid)",
     border: "1px solid var(--color-bg-card)",
   },
   calHoldEmpty: {
