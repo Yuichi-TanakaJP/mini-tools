@@ -75,7 +75,7 @@ export const SYSTEM_CONTEXT_NODES: SystemMapNode[] = [
     accessSurfaces: ["Windows PC", "Smartphone"],
     executionLocus: "human",
     dataResidency: null,
-    evidence: ["Issue #598", "Workstream personal-system-architecture-loop"],
+    evidence: ["GitHub Issue 598", "Workstream personal-system-architecture-loop"],
   },
   {
     id: "chatgpt",
@@ -86,7 +86,7 @@ export const SYSTEM_CONTEXT_NODES: SystemMapNode[] = [
     accessSurfaces: ["PC browser", "Smartphone app"],
     executionLocus: "hosted AI runtime",
     dataResidency: "chat history（SoTではない）",
-    evidence: ["Issue #598 runtime observation", "Portfolio chat-first operating model"],
+    evidence: ["GitHub Issue 598 runtime observation", "Portfolio chat-first operating model"],
   },
   {
     id: "claude-code",
@@ -152,7 +152,7 @@ export const SYSTEM_CONTEXT_NODES: SystemMapNode[] = [
     accessSurfaces: ["Windows tray", "localhost dashboard", "CLI"],
     executionLocus: "local Windows PC",
     dataResidency: "local SQLite Operational SoT",
-    evidence: ["pc-saas-health-monitor/docs/ARCHITECTURE.md", "Issue #168"],
+    evidence: ["pc-saas-health-monitor/docs/ARCHITECTURE.md", "GitHub Issue 168"],
   },
   {
     id: "local-windows",
@@ -163,7 +163,7 @@ export const SYSTEM_CONTEXT_NODES: SystemMapNode[] = [
     accessSurfaces: ["Windows PC"],
     executionLocus: "local Windows PC",
     dataResidency: "local filesystem / process state",
-    evidence: ["Issue #598 device boundary observations"],
+    evidence: ["GitHub Issue 598 device boundary observations"],
   },
   {
     id: "github",
@@ -245,7 +245,7 @@ export const SYSTEM_CONTEXT_NODES: SystemMapNode[] = [
 ];
 
 export const SYSTEM_CONTEXT_EDGES: SystemMapEdge[] = [
-  { id: "user-chatgpt", source: "user", target: "chatgpt", relation: "instructs", label: "相談・指示・承認", state: "runtime_observed", evidence: ["Issue #598 smartphone runtime evidence"] },
+  { id: "user-chatgpt", source: "user", target: "chatgpt", relation: "instructs", label: "相談・指示・承認", state: "runtime_observed", evidence: ["GitHub Issue 598 smartphone runtime evidence"] },
   { id: "user-claude", source: "user", target: "claude-code", relation: "instructs", label: "実装・ローカル確認を依頼", state: "current", evidence: ["Development workflow"] },
   { id: "chatgpt-workspace", source: "chatgpt", target: "workspace-core", relation: "reads", label: "構造・Workstreamを参照", state: "runtime_observed", evidence: ["Connected Tool runtime evidence"] },
   { id: "chatgpt-workspace-write", source: "chatgpt", target: "workspace-core", relation: "writes", label: "合意・進捗・Evidenceを記録", state: "runtime_observed", evidence: ["Connected Tool runtime evidence"] },
@@ -254,14 +254,14 @@ export const SYSTEM_CONTEXT_EDGES: SystemMapEdge[] = [
   { id: "github-actions", source: "github", target: "github", relation: "verifies", label: "lint / test / build", state: "current", evidence: ["mini-tools CI"] },
   { id: "github-vercel", source: "github", target: "vercel", relation: "deploys", label: "Mini Toolsをdeploy", state: "current", evidence: ["mini-tools deployment contract"] },
   { id: "github-cloud-run", source: "github", target: "cloud-run", relation: "deploys", label: "API containerをdeploy", state: "current", evidence: ["Cloud Build contracts"] },
-  { id: "mini-workspace", source: "mini-tools", target: "workspace-core", relation: "reads", label: "Product / Service read model", state: "current", evidence: ["PR #563 / #569"] },
+  { id: "mini-workspace", source: "mini-tools", target: "workspace-core", relation: "reads", label: "Product / Service read model", state: "current", evidence: ["GitHub PR 563 and 569"] },
   { id: "mini-stock-notes", source: "mini-tools", target: "stock-notes", relation: "consumes", label: "投資read model / API", state: "current", evidence: ["Workspace Core product relation"] },
   { id: "market-local", source: "market-info", target: "local-artifacts", relation: "writes", label: "CSV / JSON / PNG / logs", state: "current", evidence: ["market_info daily operations"] },
   { id: "market-r2", source: "market-info", target: "r2", relation: "publishes", label: "fresh artifactを公開", state: "current", evidence: ["market_info publish wrapper"] },
   { id: "r2-api", source: "r2", target: "market-info-api", relation: "consumes", label: "published artifactを配信", state: "current", evidence: ["market-info-api architecture"] },
   { id: "api-mini", source: "market-info-api", target: "mini-tools", relation: "consumes", label: "市場データを表示", state: "current", evidence: ["Workspace Core product relation"] },
   { id: "health-local", source: "health-monitor", target: "local-artifacts", relation: "writes", label: "Operational SoT", state: "current", evidence: ["Health Monitor architecture"] },
-  { id: "health-workspace", source: "health-monitor", target: "workspace-core", relation: "mirrors", label: "重要状態・遷移をCloud Mirror", state: "approved_proposed", evidence: ["Issue #168; runtime not yet verified"] },
+  { id: "health-workspace", source: "health-monitor", target: "workspace-core", relation: "mirrors", label: "重要状態・遷移をCloud Mirror", state: "approved_proposed", evidence: ["GitHub Issue 168; runtime not yet verified"] },
   { id: "stock-db", source: "stock-notes", target: "investment-db", relation: "reads", label: "投資文脈を取得", state: "current", evidence: ["Portfolio Platform V2"] },
   { id: "stock-db-write", source: "stock-notes", target: "investment-db", relation: "writes", label: "判断・Action・履歴を保存", state: "current", evidence: ["Portfolio Platform V2"] },
 ];
