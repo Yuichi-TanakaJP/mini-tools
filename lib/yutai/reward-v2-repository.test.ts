@@ -28,7 +28,8 @@ describe("Reward Model v2 repository", () => {
   it("does not publish a delayed A response after the session changes to B", async () => {
     const f=fixture(); let release!:(v:{data:ReturnType<typeof ledger>;error:null})=>void;
     f.rpc.mockImplementationOnce(() => new Promise(resolve=>{release=resolve;}));
-    const pending=f.repository.load("2026-09-13"); await Promise.resolve();
+    const pending=f.repository.load("2026-09-13");
+    await vi.waitFor(() => expect(f.rpc).toHaveBeenCalledTimes(1));
     f.setOwner("B"); f.repository.setIdentity("B",2); release({data:ledger(),error:null}); await pending;
     expect(f.repository.getSnapshot()).toMatchObject({ownerId:"B",ledger:null});
   });
