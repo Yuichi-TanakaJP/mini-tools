@@ -165,7 +165,7 @@ export default function PremiumPreviewChart({
               padding: "9px 12px",
               borderRadius: 999,
               border: isShowingAll
-                ? "1px solid #1d4ed8"
+                ? "1px solid var(--color-border-accent)"
                 : "1px solid var(--color-border)",
               background: isShowingAll ? "var(--color-accent-sub)" : "var(--color-bg-card)",
               color: isShowingAll ? "var(--color-accent)" : "var(--color-text-sub)",
@@ -394,7 +394,7 @@ export default function PremiumPreviewChart({
             <div
               style={{
                 fontSize: 12,
-                color: item.latestChange >= 0 ? "#166534" : "#991b1b",
+                color: item.latestChange >= 0 ? "var(--color-rise)" : "var(--color-fall)",
                 fontWeight: 800,
               }}
             >

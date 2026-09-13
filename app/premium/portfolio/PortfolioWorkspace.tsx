@@ -263,7 +263,7 @@ function PositionTable({ positions }: { positions: PortfolioPosition[] }) {
               <td style={{ padding: "11px 7px", borderBottom: "1px solid var(--color-border)" }}>{formatYen(position.quotedPrice)}</td>
               <td style={{ padding: "11px 7px", borderBottom: "1px solid var(--color-border)" }}>{formatYen(position.costBasis)}</td>
               <td style={{ padding: "11px 7px", borderBottom: "1px solid var(--color-border)", fontWeight: 800 }}>{formatYen(position.marketValue)}</td>
-              <td style={{ padding: "11px 7px", borderBottom: "1px solid var(--color-border)", color: (position.unrealizedPnl ?? 0) >= 0 ? "#166534" : "#991b1b", fontWeight: 800 }}>{formatYen(position.unrealizedPnl)}</td>
+              <td style={{ padding: "11px 7px", borderBottom: "1px solid var(--color-border)", color: (position.unrealizedPnl ?? 0) >= 0 ? "var(--color-rise)" : "var(--color-fall)", fontWeight: 800 }}>{formatYen(position.unrealizedPnl)}</td>
             </tr>
           ))}
         </tbody>
@@ -344,7 +344,7 @@ function ExternalAssetPositionTable({ positions }: { positions: PortfolioExterna
                   {position.fxRate !== null ? <div style={{ marginTop: 3, color: "var(--color-text-muted)", fontSize: 11 }}>換算 {formatNumber(position.fxRate, 4)}</div> : null}
                 </td>
                 <td style={{ padding: "11px 7px", borderBottom: "1px solid var(--color-border)", fontWeight: 800 }}>{formatYen(position.marketValue)}</td>
-                <td style={{ padding: "11px 7px", borderBottom: "1px solid var(--color-border)", color: missingValue || unresolved ? "#92400e" : "#166534", fontWeight: 800 }}>
+                <td style={{ padding: "11px 7px", borderBottom: "1px solid var(--color-border)", color: missingValue || unresolved ? "var(--color-warning)" : "var(--color-success)", fontWeight: 800 }}>
                   {missingValue ? "評価額未取得" : unresolved ? "銘柄未紐付け" : "表示可能"}
                   {missingValue && unresolved ? <div style={{ marginTop: 3, fontSize: 11, fontWeight: 500 }}>外部資産として保持</div> : null}
                 </td>
@@ -465,7 +465,7 @@ function ReviewHistoryView({ data }: { data: PortfolioData }) {
             {snapshots.map((snapshot) => (
               <div key={snapshot.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", borderBottom: "1px solid var(--color-border)", padding: "8px 0", fontSize: 13 }}>
                 <span>{formatDateTime(snapshot.asOf)} / {snapshot.portfolioScope === "external_reference" ? "外部参照" : "公式"} / {snapshot.sourceType}</span>
-                <span style={{ color: snapshot.status === "ready" ? "#166534" : "var(--color-text-muted)", fontWeight: 800 }}>{snapshot.status}</span>
+                <span style={{ color: snapshot.status === "ready" ? "var(--color-success)" : "var(--color-text-muted)", fontWeight: 800 }}>{snapshot.status}</span>
               </div>
             ))}
           </div>
@@ -500,7 +500,7 @@ function DbPositionTable({ positions }: { positions: PortfolioDbPosition[] }) {
                 <td style={{ padding: "10px 7px", borderBottom: "1px solid var(--color-border)" }}>{position.accountName ?? position.accountId}</td>
                 <td style={{ padding: "10px 7px", borderBottom: "1px solid var(--color-border)" }}>{formatNumber(position.quantity, 2)}</td>
                 <td style={{ padding: "10px 7px", borderBottom: "1px solid var(--color-border)" }}>{formatYen(position.marketValue)}</td>
-                <td style={{ padding: "10px 7px", borderBottom: "1px solid var(--color-border)", color: resolved ? "#166534" : "#991b1b", fontWeight: 800 }}>{resolved ? "関連解決済み" : "関連行なし"}</td>
+                <td style={{ padding: "10px 7px", borderBottom: "1px solid var(--color-border)", color: resolved ? "var(--color-success)" : "var(--color-error)", fontWeight: 800 }}>{resolved ? "関連解決済み" : "関連行なし"}</td>
               </tr>
             );
           })}
@@ -605,7 +605,7 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
       <section style={{ background: "var(--color-bg-emphasis)", color: "var(--color-text-on-emphasis)", borderRadius: 12, padding: "22px 20px", display: "grid", gap: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <div>
-            <div style={{ color: "#93c5fd", fontSize: 12, fontWeight: 800 }}>Portfolio</div>
+            <div style={{ color: "var(--color-accent-highlight)", fontSize: 12, fontWeight: 800 }}>Portfolio</div>
             <h1 style={{ margin: "7px 0 0", fontSize: 30 }}>ポートフォリオ</h1>
           </div>
           <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 12, textAlign: "right" }}>
@@ -679,7 +679,7 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
             {data.currentSnapshot ? <><div style={{ marginBottom: 14, color: "var(--color-text-muted)", fontSize: 12 }}>基準日 {formatDateTime(data.currentSnapshot.asOf)} / 取込 {formatDateTime(data.currentSnapshot.importedAt)} / {data.currentSnapshot.sourceType}</div><PositionTable positions={data.positions} /></> : <EmptyState>ready状態のスナップショットがありません。</EmptyState>}
           </Section>
           <Section title="取込履歴">
-            {snapshotHistory(data).length === 0 ? <EmptyState>取込履歴がありません。</EmptyState> : <div style={{ display: "grid", gap: 8 }}>{snapshotHistory(data).map((snapshot) => <div key={snapshot.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", borderBottom: "1px solid var(--color-border)", padding: "8px 0", fontSize: 13 }}><span>{formatDateTime(snapshot.asOf)} / {snapshot.portfolioScope === "external_reference" ? "外部参照" : "公式"} / {snapshot.sourceType}</span><span style={{ color: snapshot.status === "ready" ? "#166534" : "var(--color-text-muted)", fontWeight: 800 }}>{snapshot.status}</span></div>)}</div>}
+            {snapshotHistory(data).length === 0 ? <EmptyState>取込履歴がありません。</EmptyState> : <div style={{ display: "grid", gap: 8 }}>{snapshotHistory(data).map((snapshot) => <div key={snapshot.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", borderBottom: "1px solid var(--color-border)", padding: "8px 0", fontSize: 13 }}><span>{formatDateTime(snapshot.asOf)} / {snapshot.portfolioScope === "external_reference" ? "外部参照" : "公式"} / {snapshot.sourceType}</span><span style={{ color: snapshot.status === "ready" ? "var(--color-success)" : "var(--color-text-muted)", fontWeight: 800 }}>{snapshot.status}</span></div>)}</div>}
           </Section>
           {data.source !== "empty" ? <ExternalAssetsView data={data} /> : null}
         </>
@@ -693,7 +693,7 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
             {!data.activePolicy ? <EmptyState>activeな投資方針はまだありません。ChatGPTで方針案を相談し、確認後にactive化してください。</EmptyState> : <div style={{ display: "grid", gap: 12 }}><div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}><h3 style={{ margin: 0, fontSize: 18 }}>{data.activePolicy.title}</h3><span style={{ borderRadius: 999, background: "var(--color-success-bg)", color: "var(--color-success)", padding: "4px 9px", fontSize: 11, fontWeight: 900 }}>v{data.activePolicy.versionNumber} / active</span><span style={{ color: "var(--color-text-muted)", fontSize: 12 }}>適用開始 {formatDateTime(data.activePolicy.effectiveFrom)}</span></div>{data.activePolicy.objective ? <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.7, color: "var(--color-text-sub)" }}>{data.activePolicy.objective}</div> : null}{data.activePolicy.principles.length > 0 ? <div style={{ color: "var(--color-text-sub)", fontSize: 13 }}><strong>原則</strong><ul style={{ margin: "6px 0 0", paddingLeft: 20 }}>{data.activePolicy.principles.map((principle) => <li key={principle}>{principle}</li>)}</ul></div> : null}{data.activePolicy.rules.length > 0 ? <div style={{ color: "var(--color-text-sub)", fontSize: 13 }}><strong>構造化ルール</strong><ul style={{ margin: "6px 0 0", paddingLeft: 20 }}>{data.activePolicy.rules.map((rule) => <li key={rule.id}>{rule.dimension} / {rule.targetKey}: {rule.minPct !== null ? `${rule.minPct}%` : "下限なし"}〜{rule.maxPct !== null ? `${rule.maxPct}%` : "上限なし"}</li>)}</ul></div> : null}<div style={{ color: "var(--color-text-muted)", fontSize: 12 }}>reviewに書かれた一時的な判断ではなく、現在の正本方針を表示しています。</div></div>}
           </Section>
           <Section title="方針の変更履歴">
-            {data.policyHistory.length === 0 ? <EmptyState>方針履歴はありません。</EmptyState> : <div style={{ display: "grid", gap: 8 }}>{data.policyHistory.map((policy) => <div key={policy.id} style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 12, display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}><div><strong>v{policy.versionNumber} {policy.title}</strong><div style={{ marginTop: 4, color: "var(--color-text-muted)", fontSize: 12 }}>{formatDateTime(policy.effectiveFrom ?? policy.createdAt)} / {policy.changeReason ?? "変更理由未登録"}</div></div><span style={{ color: policy.status === "active" ? "#166534" : "var(--color-text-muted)", fontWeight: 800, fontSize: 12 }}>{policy.status === "active" ? "active" : policy.status === "superseded" ? "旧版" : "draft"}</span></div>)}</div>}
+            {data.policyHistory.length === 0 ? <EmptyState>方針履歴はありません。</EmptyState> : <div style={{ display: "grid", gap: 8 }}>{data.policyHistory.map((policy) => <div key={policy.id} style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: 12, display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}><div><strong>v{policy.versionNumber} {policy.title}</strong><div style={{ marginTop: 4, color: "var(--color-text-muted)", fontSize: 12 }}>{formatDateTime(policy.effectiveFrom ?? policy.createdAt)} / {policy.changeReason ?? "変更理由未登録"}</div></div><span style={{ color: policy.status === "active" ? "var(--color-success)" : "var(--color-text-muted)", fontWeight: 800, fontSize: 12 }}>{policy.status === "active" ? "active" : policy.status === "superseded" ? "旧版" : "draft"}</span></div>)}</div>}
           </Section>
           <Section title="最新reviewの一時判断">
             {!data.review ? <EmptyState>{data.reviewHistory.some((review) => review.status === "superseded") ? "現行reviewはありません。旧reviewは履歴タブで置換済みとして確認できます。ChatGPTで新しいreviewを作成してください。" : "reviewはまだありません。"}</EmptyState> : <div style={{ display: "grid", gap: 14 }}><div><h3 style={{ margin: 0, fontSize: 18 }}>{data.review.title}</h3><div style={{ marginTop: 5, color: "var(--color-text-muted)", fontSize: 12 }}>{formatDateTime(data.review.asOf)} / {data.review.status === "finalized" ? "確定" : "下書き"}</div></div>{data.review.newCapitalAmount !== null ? <div style={{ fontWeight: 800 }}>想定新規資金: {formatYen(data.review.newCapitalAmount)}</div> : null}{data.review.summary ? <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.7, color: "var(--color-text-sub)" }}>{data.review.summary}</div> : null}{data.review.allocationPolicy ? <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.7, color: "var(--color-text-sub)" }}><strong>今回の判断メモ</strong><br />{data.review.allocationPolicy}</div> : null}{data.review.items.length === 0 ? <EmptyState>銘柄別の方針項目はまだありません。</EmptyState> : <ol style={{ display: "grid", gap: 9, margin: 0, padding: 0, listStyle: "none" }}>{data.review.items.slice().sort((a, b) => (a.priorityRank ?? 999) - (b.priorityRank ?? 999)).map((item) => <PolicyItem key={item.id} item={item} />)}</ol>}</div>}

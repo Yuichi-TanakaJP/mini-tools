@@ -69,11 +69,11 @@ function badgeStyle(background: string, color: string) {
 }
 
 function lifecycleTone(status: string) {
-  if (status === "active") return { bg: "var(--color-success-bg)", fg: "#166534" };
-  if (status === "experimental") return { bg: "var(--color-warning-bg)", fg: "#92400e" };
-  if (status === "archived") return { bg: "var(--color-neutral-bg)", fg: "#475569" };
-  if (status === "paused") return { bg: "var(--color-error-bg)", fg: "#991b1b" };
-  return { bg: "var(--color-accent-sub)", fg: "#3730a3" };
+  if (status === "active") return { bg: "var(--color-success-bg)", fg: "var(--color-success-text)" };
+  if (status === "experimental") return { bg: "var(--color-warning-bg)", fg: "var(--color-warning-text)" };
+  if (status === "archived") return { bg: "var(--color-neutral-bg)", fg: "var(--color-neutral-text)" };
+  if (status === "paused") return { bg: "var(--color-error-bg)", fg: "var(--color-error-text)" };
+  return { bg: "var(--color-accent-sub)", fg: "var(--color-accent)" };
 }
 
 function RelationCard({ relation, direction }: { relation: WorkspaceCoreProductRelation; direction: "incoming" | "outgoing" }) {

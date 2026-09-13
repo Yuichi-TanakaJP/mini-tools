@@ -78,10 +78,10 @@ function formatNumber(value: number | null | undefined) {
 
 function StatusBadge({ status }: { status: ThemeStatus }) {
   const color = status === "active"
-    ? { bg: "var(--color-success-bg)", fg: "#166534", border: "var(--color-success-border)" }
+    ? { bg: "var(--color-success-bg)", fg: "var(--color-success-text)", border: "var(--color-success-border)" }
     : status === "draft"
-      ? { bg: "var(--color-info-bg)", fg: "#1d4ed8", border: "var(--color-info-border)" }
-      : { bg: "var(--color-bg-subtle)", fg: "#475569", border: "var(--color-border-strong)" };
+      ? { bg: "var(--color-info-bg)", fg: "var(--color-info-text)", border: "var(--color-info-border)" }
+      : { bg: "var(--color-bg-subtle)", fg: "var(--color-text-sub)", border: "var(--color-border-strong)" };
   return (
     <span style={{ ...styles.badge, background: color.bg, color: color.fg, borderColor: color.border }}>
       {STATUS_LABELS[status]}
@@ -205,7 +205,7 @@ function ViewerState({
           : "stock-notes APIから取得できません";
   const background = result.status === "not_configured" ? "var(--color-warning-bg)" : "var(--color-error-bg)";
   const border = result.status === "not_configured" ? "var(--color-warning-border)" : "var(--color-error-border)";
-  const foreground = result.status === "not_configured" ? "#92400e" : "#991b1b";
+  const foreground = result.status === "not_configured" ? "var(--color-warning-text)" : "var(--color-error-text)";
 
   return (
     <div style={{ ...cardStyle, background, borderColor: border, color: foreground }}>

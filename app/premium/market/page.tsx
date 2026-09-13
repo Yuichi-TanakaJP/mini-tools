@@ -96,21 +96,22 @@ function getHeatColor(value: number | null) {
   const clamped = Math.max(-2.5, Math.min(2.5, value));
   const alpha = 0.14 + (Math.abs(clamped) / 2.5) * 0.72;
   if (clamped > 0) {
-    return `rgba(22, 163, 74, ${alpha.toFixed(3)})`;
+    return `color-mix(in srgb, var(--color-rise) ${(alpha * 100).toFixed(1)}%, transparent)`;
   }
   if (clamped < 0) {
-    return `rgba(220, 38, 38, ${alpha.toFixed(3)})`;
+    return `color-mix(in srgb, var(--color-fall) ${(alpha * 100).toFixed(1)}%, transparent)`;
   }
   return "var(--color-neutral-border)";
 }
 
 function getTextColor(value: number | null) {
   if (value === null) return "var(--color-text-muted)";
-  if (value > 0.6) return "#14532d";
-  if (value < -0.6) return "#7f1d1d";
-  if (value > 0) return "#166534";
-  if (value < 0) return "#991b1b";
-  return "#475569";
+  // Strong cells use the theme-aware inverse foreground so the label does not
+  // collapse into the same rise/fall color as its dense background.
+  if (Math.abs(value) >= 1.6) return "var(--color-text-inverse)";
+  if (value > 0) return "var(--color-rise)";
+  if (value < 0) return "var(--color-fall)";
+  return "var(--color-text-muted)";
 }
 
 function buildFallbackPreviewData(): PremiumPreviewData {
@@ -318,10 +319,10 @@ function MomentumCard({
   tone: "green" | "red" | "blue" | "slate";
 }) {
   const toneMap = {
-    green: { bg: "var(--color-success-bg)", border: "var(--color-success-border)", text: "#166534" },
-    red: { bg: "var(--color-error-bg)", border: "var(--color-error-border)", text: "#991b1b" },
-    blue: { bg: "var(--color-info-bg)", border: "var(--color-info-border)", text: "#1d4ed8" },
-    slate: { bg: "var(--color-bg-subtle)", border: "var(--color-border-strong)", text: "#334155" },
+    green: { bg: "var(--color-success-bg)", border: "var(--color-success-border)", text: "var(--color-success-text)" },
+    red: { bg: "var(--color-error-bg)", border: "var(--color-error-border)", text: "var(--color-error-text)" },
+    blue: { bg: "var(--color-info-bg)", border: "var(--color-info-border)", text: "var(--color-info-text)" },
+    slate: { bg: "var(--color-bg-subtle)", border: "var(--color-border-strong)", text: "var(--color-text-sub)" },
   } as const;
 
   return (
@@ -449,8 +450,9 @@ export default async function PremiumMarketPage({
         <div
           style={{
             background:
-              "radial-gradient(circle at top left, rgba(250, 204, 21, 0.30), transparent 30%), radial-gradient(circle at bottom right, rgba(96, 165, 250, 0.22), transparent 34%), linear-gradient(135deg, #0f172a 0%, #172554 48%, #1d4ed8 100%)",
-            color: "var(--color-text-inverse)",
+              "radial-gradient(circle at top left, color-mix(in srgb, var(--color-warning-solid) 18%, transparent), transparent 32%), radial-gradient(circle at bottom right, color-mix(in srgb, var(--color-accent) 34%, transparent), transparent 42%), var(--color-bg-emphasis)",
+            color: "var(--color-text-on-emphasis)",
+            border: "1px solid var(--color-border-strong)",
             borderRadius: 30,
             padding: "30px 24px",
             boxShadow: "var(--shadow-panel)",
@@ -476,7 +478,7 @@ export default async function PremiumMarketPage({
                   letterSpacing: 0.6,
                   padding: "8px 12px",
                   borderRadius: 999,
-                  background: "rgba(255,255,255,0.12)",
+                  background: "color-mix(in srgb, var(--color-text-on-emphasis) 12%, transparent)",
                   marginBottom: 14,
                 }}
               >
@@ -485,7 +487,7 @@ export default async function PremiumMarketPage({
               <h1 style={{ margin: "0 0 12px", fontSize: 32, lineHeight: 1.1, letterSpacing: -1 }}>
                 TOPIX33 業種モメンタム
               </h1>
-              <p style={{ margin: 0, fontSize: 15, lineHeight: 1.9, color: "rgba(255,255,255,0.82)" }}>
+              <p style={{ margin: 0, fontSize: 15, lineHeight: 1.9, color: "color-mix(in srgb, var(--color-text-on-emphasis) 82%, transparent)" }}>
                 {preview.targetMonthLabel}の月初を100にした業種比較チャートと、月内ヒートマップで、
                 業種の強さの継続・反転・偏りを短時間で確認できます。
               </p>
@@ -502,7 +504,7 @@ export default async function PremiumMarketPage({
                     alignItems: "center",
                     padding: "8px 14px",
                     borderRadius: 999,
-                    background: "rgba(255,255,255,0.12)",
+                    background: "color-mix(in srgb, var(--color-text-on-emphasis) 12%, transparent)",
                     fontSize: 13,
                     fontWeight: 800,
                   }}

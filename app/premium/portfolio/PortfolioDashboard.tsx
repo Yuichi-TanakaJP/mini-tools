@@ -181,7 +181,7 @@ export default function PortfolioDashboard({ holdings, events, today }: Props) {
       >
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 800, color: "#93c5fd", marginBottom: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "var(--color-accent-highlight)", marginBottom: 8 }}>
               Premium Portfolio
             </div>
             <h1 style={{ margin: 0, fontSize: 32, lineHeight: 1.15, letterSpacing: 0 }}>
@@ -224,7 +224,9 @@ export default function PortfolioDashboard({ holdings, events, today }: Props) {
               style={{
                 fontSize: 28,
                 fontWeight: 900,
-                color: summary.totalProfit >= 0 ? "#86efac" : "#fca5a5",
+                color: summary.totalProfit >= 0
+                  ? "color-mix(in srgb, var(--color-rise) 62%, var(--color-text-on-emphasis))"
+                  : "color-mix(in srgb, var(--color-fall) 62%, var(--color-text-on-emphasis))",
               }}
             >
               {summary.totalProfit >= 0 ? "+" : ""}
@@ -371,7 +373,7 @@ export default function PortfolioDashboard({ holdings, events, today }: Props) {
                         {formatYen(getMarketValue(holding))}
                       </td>
                       <td style={{ padding: "14px 8px", borderBottom: "1px solid var(--color-border)" }}>
-                        <div style={{ color: profit >= 0 ? "#166534" : "#991b1b", fontWeight: 900 }}>
+                        <div style={{ color: profit >= 0 ? "var(--color-rise)" : "var(--color-fall)", fontWeight: 900 }}>
                           {profit >= 0 ? "+" : ""}
                           {formatYen(profit)}
                         </div>
