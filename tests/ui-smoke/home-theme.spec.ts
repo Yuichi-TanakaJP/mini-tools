@@ -22,3 +22,43 @@ test("home stays concise and theme is selected with icons", async ({ page }) => 
   await page.getByRole("button", { name: "ダーク" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
+
+test("home notifications separate market totals from personal alerts", async ({ page }) => {
+  await page.route("**/api/disclosure-events/manifest", (route) =>
+    route.fulfill({ status: 200, json: { latest: "2026-09-13", dates: [] } }),
+  );
+  await page.route("**/api/earnings-calendar/notifications", (route) =>
+    route.fulfill({
+      status: 200,
+      json: {
+        schema_version: "earnings-calendar-home-notifications-v1",
+        generated_at: "2026-09-13T00:00:00Z",
+        days: [
+          {
+            date: "2026-09-14",
+            domestic: { count: 70, items: [] },
+            overseas: { count: 3, items: [] },
+          },
+        ],
+      },
+    }),
+  );
+  await page.route("**/api/econ-calendar/notifications", (route) =>
+    route.fulfill({
+      status: 200,
+      json: {
+        schema_version: "econ-calendar-home-notifications-v1",
+        generated_at: "2026-09-13T00:00:00Z",
+        min_impact: 3,
+        days: [],
+      },
+    }),
+  );
+
+  await page.goto("/", { waitUntil: "networkidle" });
+
+  await expect(page.getByRole("heading", { name: "今日のチェック" })).toBeVisible();
+  await expect(page.getByText("決算予定", { exact: true })).toBeVisible();
+  await expect(page.getByText("73件", { exact: true })).toBeVisible();
+  await expect(page.getByText(/注目\s*73件/)).toHaveCount(0);
+});

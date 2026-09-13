@@ -18,7 +18,7 @@ type FeatureCard = {
   href: string;
   icon: string;
   title: string;
-  description: string;
+  short: string;
   group: "investment" | "workspace";
 };
 
@@ -27,87 +27,81 @@ const FEATURE_CARDS: FeatureCard[] = [
     href: "/premium/portfolio",
     icon: "📊",
     title: "保有銘柄分析",
-    description: "保有・損益・配当・優待・直近の予定をまとめて確認します。",
+    short: "保有・損益・方針を横断確認",
     group: "investment",
   },
   {
     href: "/premium/market",
     icon: "📈",
     title: "業種モメンタム",
-    description: "月内の業種モメンタムを、ヒートマップと業種比較チャートで読みます。",
+    short: "月内の業種トレンドを比較",
     group: "investment",
   },
   {
     href: "/premium/themes",
     icon: "🧭",
     title: "テーマViewer",
-    description: "ChatGPT + Supabaseで整備したテーマの概要・根拠・履歴を読み取り専用で確認します。",
+    short: "投資テーマの概要・根拠・履歴",
     group: "investment",
   },
   {
     href: "/premium/industry-map",
     icon: "🗺",
     title: "業界マップ",
-    description:
-      "Supabaseに保存した産業構造・企業経済圏を、階層・放射・ネットワーク・マトリクス・表に切り替えて俯瞰します。",
+    short: "産業構造と企業経済圏を俯瞰",
     group: "investment",
   },
   {
     href: "/premium/company-network",
     icon: "🕸",
     title: "企業関係マップ",
-    description:
-      "出資・親子・歴史的関係と財閥・企業グループ所属を、根拠付きのネットワークとして確認します。",
+    short: "出資・親子・企業グループを確認",
     group: "investment",
   },
   {
     href: "/premium/theme-company-network",
     icon: "🔗",
     title: "テーマ × 企業関係",
-    description:
-      "テーマへの直接企業と、出資・支配などの企業関係で見つかる企業を分けて横断探索します。",
+    short: "テーマと企業関係を横断探索",
     group: "investment",
   },
   {
     href: "/premium/product-map/dashboard",
     icon: "▦",
     title: "Workspace Dashboard",
-    description:
-      "複数の個人開発Productを、状態・重要度・運用先・接続の観点から俯瞰し、次に見るべき対象を判断します。",
+    short: "個人開発Productの状態を俯瞰",
     group: "workspace",
   },
   {
     href: "/premium/product-map",
     icon: "🧩",
     title: "Product Map",
-    description:
-      "Workspace Coreに登録したProduct・Repository・Technology・Service・依存関係を、Product単位で根拠付き確認します。",
+    short: "ProductとRepositoryの関係を確認",
     group: "workspace",
   },
   {
     href: "/premium/routines",
     icon: "🗓",
     title: "ルーティン一覧",
-    description: "自動・半自動・手動で回している定期作業を、週間タイムテーブルで棚卸しします。",
+    short: "定期作業を週間で棚卸し",
     group: "workspace",
   },
   {
     href: "/admin",
     icon: "⚙",
     title: "管理コンソール",
-    description: "各データソースの最終更新日・スケジュール・SLA を一望します。",
+    short: "更新状況・スケジュール・SLA",
     group: "workspace",
   },
 ];
 
 const cardBaseStyle: CSSProperties = {
-  display: "grid",
-  gap: 10,
-  alignContent: "start",
-  padding: "22px 20px",
-  borderRadius: 20,
+  display: "flex",
+  alignItems: "center",
+  gap: 14,
+  padding: "16px 14px",
+  borderRadius: 18,
   textDecoration: "none",
-  minHeight: 150,
   background: "var(--color-bg-card)",
   border: "1px solid var(--color-border)",
   color: "var(--color-text)",
@@ -231,10 +225,11 @@ export default async function PremiumHomePage() {
                   style={{
                     display: "grid",
                     placeItems: "center",
-                    width: 46,
-                    height: 46,
+                    flexShrink: 0,
+                    width: 44,
+                    height: 44,
                     borderRadius: 14,
-                    fontSize: 26,
+                    fontSize: 22,
                     lineHeight: 1,
                     background: "var(--color-accent-sub)",
                     border: "1px solid var(--color-border-accent)",
@@ -242,21 +237,16 @@ export default async function PremiumHomePage() {
                 >
                   {card.icon}
                 </span>
-                <span style={{ fontSize: 18, fontWeight: 900, color: "var(--color-text)" }}>
-                  {card.title}
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "block", fontSize: 15, fontWeight: 800, color: "var(--color-text)", marginBottom: 4 }}>
+                    {card.title}
+                  </span>
+                  <span style={{ display: "block", fontSize: 12, lineHeight: 1.55, color: "var(--color-text-muted)" }}>
+                    {card.short}
+                  </span>
                 </span>
-                <span style={{ fontSize: 13, lineHeight: 1.7, color: "var(--color-text-sub)" }}>
-                  {card.description}
-                </span>
-                <span
-                  style={{
-                    marginTop: "auto",
-                    fontSize: 13,
-                    fontWeight: 800,
-                    color: "var(--color-accent)",
-                  }}
-                >
-                  開く →
+                <span aria-hidden="true" style={{ flexShrink: 0, fontSize: 16, color: "var(--color-text-muted)", opacity: 0.45 }}>
+                  →
                 </span>
                   </Link>
                 );
