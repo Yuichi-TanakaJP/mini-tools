@@ -5,6 +5,7 @@
 
 | ドキュメント | 内容 |
 |---|---|
+| [mini-tools 機能ポートフォリオ台帳](./function-portfolio-review.md) | 通常・Premium投資・Workspaceの所属、全機能の現状、見直し論点 |
 | [月100円マネタイズ計画](./month-100-yen-monetization-plan.md) | 月100円収益化検証の全体計画 |
 | [月100円プロジェクト進捗チェックリスト](./month-100-yen-progress-checklist.md) | 月100円検証の進捗確認リスト |
 | [ペンギンシューター新ゲーム作成計画](./penguin-shooter-new-game-plan.md) | PDF企画書をベースにした新規ゲーム tool の段階実装計画 |
