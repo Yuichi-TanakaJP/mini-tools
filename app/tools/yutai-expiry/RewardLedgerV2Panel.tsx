@@ -1,8 +1,9 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { useState } from "react";
+import type { FormEvent } from "react";
 import { useYutaiRewardLedgerV2 } from "../../../lib/yutai/reward-v2-browser";
-import type { RewardV2Account, RewardV2BenefitKind, RewardV2Entitlement } from "../../../lib/yutai/reward-v2-contracts";
+import type { RewardV2Account, RewardV2BenefitKind, RewardV2Coverage, RewardV2Entitlement } from "../../../lib/yutai/reward-v2-contracts";
 import styles from "./RewardLedgerV2Panel.module.css";
 
 function localDate() {
@@ -20,7 +21,7 @@ function valueText(value: number, unit: string) {
 function coverageLabel(value: string) { return value === "native_complete" ? "追跡完全" : "履歴一部"; }
 
 export function RewardLedgerV2Panel() {
-  const today = useMemo(localDate, []);
+  const [today] = useState(localDate);
   const { state, repository } = useYutaiRewardLedgerV2(today);
   const [accountTitle,setAccountTitle] = useState("");
   const [accountKind,setAccountKind] = useState<RewardV2BenefitKind>("stored_value");
@@ -41,11 +42,11 @@ export function RewardLedgerV2Panel() {
     const result = await repository.save({ command_type:"create_account", target:{}, payload, expected_revision:0, note:"MiniTools: Reward Model v2 Account作成" });
     if (result) setAccountTitle("");
   }
-  async function linkLegacy(rewardId: string, revision: number) {
+  async function linkLegacy(rewardId: string, revision: number, coverageState: RewardV2Coverage) {
     if (!repository) return;
     const accountId = linkTargets[rewardId];
     if (!accountId) return;
-    await repository.save({ command_type:"link_legacy_reward", target:{id:rewardId}, payload:{account_id:accountId,coverage_state:"legacy_opening_balance"}, expected_revision:revision, note:"MiniTools: legacy Rewardをv2 Accountへ紐付け" });
+    await repository.save({ command_type:"link_legacy_reward", target:{id:rewardId}, payload:{account_id:accountId,coverage_state:coverageState}, expected_revision:revision, note:"MiniTools: legacy Rewardをv2 Accountへ紐付け（coverageは推測せず維持）" });
   }
 
   if (state.status === "signed_out" || !state.ownerId) return null;
@@ -80,7 +81,7 @@ export function RewardLedgerV2Panel() {
     {ledger && <>
       <div className={styles.grid}>{ledger.accounts.map(account => <AccountCard key={account.id} account={account} repository={repository} busy={busy} today={today} />)}</div>
       {ledger.entitlements.length>0 && <div className={styles.section}><h4>権利・申込期限</h4><div className={styles.grid}>{ledger.entitlements.map(e=><EntitlementCard key={e.id} entitlement={e} repository={repository} busy={busy} />)}</div></div>}
-      {ledger.unassigned_rewards.length>0 && <div className={styles.section}><h4>未割当Reward（旧データ）</h4><p className={styles.muted}>残高・履歴は変更せず、Accountへの所属だけを追加します。過去の取得履歴は推測しません。</p><div className={styles.legacyList}>{ledger.unassigned_rewards.map(r=><div className={styles.card} key={r.id}><strong>{r.title}</strong> <span className={styles.muted}>{r.company}</span><div className={styles.muted}>現在 {valueText(r.remaining_value,r.track_mode === "amount" ? "yen" : "count")} / 期限 {r.expires_on ?? "なし"} / {coverageLabel(r.coverage_state)}</div>{ledger.accounts.length>0 && <div className={styles.inline}><label>紐付け先<select value={linkTargets[r.id] ?? ""} onChange={e=>setLinkTargets(v=>({...v,[r.id]:e.target.value}))}><option value="">選択</option>{ledger.accounts.map(a=><option key={a.id} value={a.id}>{a.title}</option>)}</select></label><button type="button" disabled={busy || !linkTargets[r.id]} onClick={()=>void linkLegacy(r.id,r.revision)}>残高を変えず紐付け</button></div>}</div>)}</div></div>}
+      {ledger.unassigned_rewards.length>0 && <div className={styles.section}><h4>未割当Reward（旧データ）</h4><p className={styles.muted}>残高・履歴は変更せず、Accountへの所属だけを追加します。過去の取得履歴や開始残高の意味は推測しません。</p><div className={styles.legacyList}>{ledger.unassigned_rewards.map(r=><div className={styles.card} key={r.id}><strong>{r.title}</strong> <span className={styles.muted}>{r.company}</span><div className={styles.muted}>現在 {valueText(r.remaining_value,r.track_mode === "amount" ? "yen" : "count")} / 期限 {r.expires_on ?? "なし"} / {coverageLabel(r.coverage_state)}</div>{ledger.accounts.length>0 && <div className={styles.inline}><label>紐付け先<select value={linkTargets[r.id] ?? ""} onChange={e=>setLinkTargets(v=>({...v,[r.id]:e.target.value}))}><option value="">選択</option>{ledger.accounts.map(a=><option key={a.id} value={a.id}>{a.title}</option>)}</select></label><button type="button" disabled={busy || !linkTargets[r.id]} onClick={()=>void linkLegacy(r.id,r.revision,r.coverage_state)}>残高を変えず紐付け</button></div>}</div>)}</div></div>}
     </>}
   </section>;
 }
