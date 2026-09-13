@@ -31,5 +31,21 @@ export function useYutaiRewardLedgerV2(today: string, enabled = true) {
     if (!repo || !enabled || !state.ownerId) return;
     void repo.load(today);
   }, [repo, enabled, state.ownerId, state.sessionRevision, today]);
+  useEffect(() => {
+    if (!repo || !enabled) return;
+    const refresh = () => {
+      const snapshot = repo.getSnapshot();
+      if (snapshot.ownerId && document.visibilityState !== "hidden" && navigator.onLine) void repo.load(today);
+    };
+    window.addEventListener("focus", refresh);
+    window.addEventListener("online", refresh);
+    const onVisibility = () => { if (document.visibilityState === "visible") refresh(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("online", refresh);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [repo, enabled, today]);
   return { state, repository: repo };
 }
