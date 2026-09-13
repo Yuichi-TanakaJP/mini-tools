@@ -4,13 +4,13 @@
 .header p { margin: 4px 0 0; color: var(--color-text-sub); }
 .badges { display: flex; gap: 6px; flex-wrap: wrap; }
 .badge { border: 1px solid var(--color-border-strong); border-radius: 999px; padding: 3px 8px; font-size: 12px; }
-.warning { margin: 12px 0; padding: 10px; border: 1px solid var(--color-warning, #b7791f); border-radius: 10px; }
-.error { margin: 12px 0; padding: 10px; border: 1px solid var(--color-danger, #c53030); border-radius: 10px; overflow-wrap: anywhere; }
+.warning { margin: 12px 0; padding: 10px; border: 1px solid var(--color-warning); border-radius: 10px; }
+.error { margin: 12px 0; padding: 10px; border: 1px solid var(--color-danger); border-radius: 10px; overflow-wrap: anywhere; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 12px; margin-top: 14px; }
 .card { border: 1px solid var(--color-border-strong); border-radius: 12px; padding: 12px; min-width: 0; }
 .card h4 { margin: 0 0 6px; overflow-wrap: anywhere; }
 .metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 10px 0; }
-.metric { padding: 8px; border-radius: 8px; background: var(--color-surface-subtle, rgba(127,127,127,.08)); min-width: 0; }
+.metric { padding: 8px; border-radius: 8px; background: var(--color-bg-subtle); min-width: 0; }
 .metric small { display: block; color: var(--color-text-sub); }
 .metric strong { display: block; overflow-wrap: anywhere; }
 .form { display: grid; gap: 8px; margin-top: 10px; }
