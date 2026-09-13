@@ -1,0 +1,30 @@
+.panel { margin: 20px 0; border: 1px solid var(--color-border-strong); border-radius: 14px; padding: 16px; background: var(--color-surface); }
+.header { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.header h3 { margin: 0; }
+.header p { margin: 4px 0 0; color: var(--color-text-sub); }
+.badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.badge { border: 1px solid var(--color-border-strong); border-radius: 999px; padding: 3px 8px; font-size: 12px; }
+.warning { margin: 12px 0; padding: 10px; border: 1px solid var(--color-warning, #b7791f); border-radius: 10px; }
+.error { margin: 12px 0; padding: 10px; border: 1px solid var(--color-danger, #c53030); border-radius: 10px; overflow-wrap: anywhere; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 12px; margin-top: 14px; }
+.card { border: 1px solid var(--color-border-strong); border-radius: 12px; padding: 12px; min-width: 0; }
+.card h4 { margin: 0 0 6px; overflow-wrap: anywhere; }
+.metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 10px 0; }
+.metric { padding: 8px; border-radius: 8px; background: var(--color-surface-subtle, rgba(127,127,127,.08)); min-width: 0; }
+.metric small { display: block; color: var(--color-text-sub); }
+.metric strong { display: block; overflow-wrap: anywhere; }
+.form { display: grid; gap: 8px; margin-top: 10px; }
+.inline { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+.inline > label { flex: 1 1 120px; min-width: 0; }
+.form label, .inline label { font-size: 12px; color: var(--color-text-sub); }
+.form input, .form select, .inline input, .inline select { width: 100%; box-sizing: border-box; margin-top: 3px; padding: 8px; border: 1px solid var(--color-border-strong); border-radius: 8px; background: var(--color-surface); color: inherit; }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.actions button, .form button, .inline button { min-height: 36px; }
+.lots { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.lot { border-top: 1px solid var(--color-border-strong); padding-top: 8px; }
+.muted { color: var(--color-text-sub); font-size: 12px; overflow-wrap: anywhere; }
+.section { margin-top: 18px; }
+.section > h4 { margin-bottom: 8px; }
+.deadline { display: flex; justify-content: space-between; gap: 8px; align-items: center; border-top: 1px solid var(--color-border-strong); padding: 6px 0; }
+.legacyList { display: grid; gap: 8px; }
+@media (max-width: 420px) { .panel { padding: 12px; } .metrics { grid-template-columns: 1fr; } .inline { display: grid; grid-template-columns: 1fr; } }
