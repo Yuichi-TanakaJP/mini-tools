@@ -12,15 +12,29 @@ export type RewardV2State = {
 };
 export const EMPTY_REWARD_V2_STATE: RewardV2State = { ownerId:null, sessionRevision:0, status:"idle", ledger:null, error:null, uncertain:null, today:null };
 
-type RpcReply = Promise<{ data: unknown; error: { message?: string; code?: string } | null }>;
+type RpcValue = { data: unknown; error: { message?: string; code?: string } | null };
 export interface RewardV2ClientLike {
   auth: { getSession(): Promise<{ data: { session: { user: { id: string } } | null } }> };
-  rpc(name: string, args: Record<string, unknown>): RpcReply;
+  rpc(name: string, args: Record<string, unknown>): PromiseLike<RpcValue>;
 }
 
 function message(error: unknown) { return error instanceof Error ? error.message : String(error); }
 function networkLike(error: unknown) { const m = message(error).toLowerCase(); return m.includes("fetch") || m.includes("network") || m.includes("timeout") || m.includes("failed"); }
-function uuid() { return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`; }
+function uuid() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  const bytes = new Uint8Array(16); crypto.getRandomValues(bytes); bytes[6] = (bytes[6] & 0x0f) | 0x40; bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const h = Array.from(bytes, b => b.toString(16).padStart(2,"0")).join("");
+  return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+}
+async function withTimeout<T>(value: PromiseLike<T>, milliseconds = 15_000): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(value),
+      new Promise<T>((_resolve,reject)=>{ timer=setTimeout(()=>reject(new Error("RPC_TIMEOUT")),milliseconds); }),
+    ]);
+  } finally { if (timer) clearTimeout(timer); }
+}
 
 export class RewardV2Repository {
   #state: RewardV2State = EMPTY_REWARD_V2_STATE;
@@ -44,7 +58,7 @@ export class RewardV2Repository {
     this.#emit({ ...this.#state, status:"loading", error:null, today });
     try {
       await this.#assertOwner(ownerId, sessionRevision);
-      const { data, error } = await this.#client.rpc("stock_notes_get_yutai_reward_ledger_v2", { p_today: today });
+      const { data, error } = await withTimeout(this.#client.rpc("stock_notes_get_yutai_reward_ledger_v2", { p_today: today }));
       if (error) throw new Error(error.code ? `${error.code}:${error.message ?? "RPC_ERROR"}` : error.message ?? "RPC_ERROR");
       await this.#assertOwner(ownerId, sessionRevision);
       const ledger = parseRewardLedgerV2(data);
@@ -61,7 +75,7 @@ export class RewardV2Repository {
     this.#emit({ ...this.#state, status:"saving", error:null, uncertain:null });
     try {
       await this.#assertOwner(ownerId, sessionRevision);
-      const { data, error } = await this.#client.rpc("stock_notes_record_yutai_v2_command", { p_input: wire });
+      const { data, error } = await withTimeout(this.#client.rpc("stock_notes_record_yutai_v2_command", { p_input: wire }));
       if (error) throw new Error(error.code ? `${error.code}:${error.message ?? "RPC_ERROR"}` : error.message ?? "RPC_ERROR");
       await this.#assertOwner(ownerId, sessionRevision);
       const result = parseRewardV2CommandResult(data);
