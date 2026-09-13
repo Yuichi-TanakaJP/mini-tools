@@ -89,7 +89,12 @@ function WeeklyTimetable() {
                   key={day}
                   style={{
                     ...styles.th,
-                    color: day === 0 ? "#dc2626" : day === 6 ? "#2563eb" : "#475569",
+                    color:
+                      day === 0
+                        ? "var(--color-error)"
+                        : day === 6
+                          ? "var(--color-info)"
+                          : "var(--color-text-muted)",
                   }}
                 >
                   {WEEKDAY_LABELS[day]}
