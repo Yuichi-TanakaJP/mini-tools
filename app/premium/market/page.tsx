@@ -106,6 +106,9 @@ function getHeatColor(value: number | null) {
 
 function getTextColor(value: number | null) {
   if (value === null) return "var(--color-text-muted)";
+  // Strong cells use the theme-aware inverse foreground so the label does not
+  // collapse into the same rise/fall color as its dense background.
+  if (Math.abs(value) >= 1.6) return "var(--color-text-inverse)";
   if (value > 0) return "var(--color-rise)";
   if (value < 0) return "var(--color-fall)";
   return "var(--color-text-muted)";
