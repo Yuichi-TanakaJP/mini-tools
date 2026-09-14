@@ -10,7 +10,8 @@ const valid = {
     id: "a", account_key: "quo", title: "QUO", benefit_kind: "stored_value", native_unit: "yen",
     expiry_policy: "none", rolling_expiry_days: null, rolling_expiry_months: null, allocation_policy: "fifo", status: "active",
     recorded_balance_native: 54000, available_balance_native: 54000, expired_unprocessed_native: 0, nearest_expiry: null, rolling_expires_on: null,
-    opening_balance_native: 43500, tracked_granted_native: 10500, tracked_consumed_native: 0, tracked_expired_native: 0,
+    opening_balance_native: 43500, tracked_granted_native: 0, tracked_consumed_native: 0, tracked_expired_native: 0,
+    unclassified_adjustment_native: 10500, unclassified_increase_native: 13000, unclassified_decrease_native: 2500,
     coverage_state: "history_partial", revision: 2,
     lots: [{ id:"l", entitlement_id:null, profile_id:null, cycle_id:null, title:"opening", company:"", granted_at:null, expires_on:null, track_mode:"amount", initial_value:43500, remaining_value:54000, unit_yen:null, coverage_state:"legacy_opening_balance", archived_at:null, revision:1 }],
   }],
@@ -24,15 +25,25 @@ const valid = {
 };
 
 describe("Reward Model v2 wire parser", () => {
-  it("keeps opening balance separate from tracked grants", () => {
+  it("keeps opening balance, tracked grants, and unclassified legacy adjustments separate", () => {
     const parsed = parseRewardLedgerV2(valid);
-    expect(parsed.accounts[0]).toMatchObject({ recorded_balance_native:54000, opening_balance_native:43500, tracked_granted_native:10500 });
+    expect(parsed.accounts[0]).toMatchObject({
+      recorded_balance_native:54000,
+      opening_balance_native:43500,
+      tracked_granted_native:0,
+      unclassified_adjustment_native:10500,
+      unclassified_increase_native:13000,
+      unclassified_decrease_native:2500,
+    });
     expect(parsed.entitlements[0].deadlines[0].deadline_type).toBe("claim_by");
   });
-  it("rejects an unsupported schema, enum, or inconsistent count instead of silently falling back", () => {
+  it("rejects an unsupported schema, enum, missing additive field, or inconsistent count instead of silently falling back", () => {
     expect(() => parseRewardLedgerV2({ ...valid, schema_version:1 })).toThrow(/INVALID_V2_WIRE/);
     const broken = structuredClone(valid); broken.accounts[0].expiry_policy = "mystery";
     expect(() => parseRewardLedgerV2(broken)).toThrow(/INVALID_V2_WIRE/);
+    const missing = structuredClone(valid) as Record<string, unknown> & { accounts: Record<string, unknown>[] };
+    delete missing.accounts[0].unclassified_adjustment_native;
+    expect(() => parseRewardLedgerV2(missing)).toThrow(/INVALID_V2_WIRE:account.unclassified_adjustment_native/);
     expect(() => parseRewardLedgerV2({ ...valid, counts:{...valid.counts,accounts:2} })).toThrow(/INVALID_V2_WIRE:counts/);
   });
   it("rejects malformed command receipts instead of coercing them", () => {
