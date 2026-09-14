@@ -19,15 +19,17 @@ export interface RewardV2ClientLike {
   rpc(name: string, args: Record<string, unknown>): PromiseLike<RpcValue>;
 }
 
-type CodedError = Error & { code?: string };
+type CodedError = Error & { code?: string; definitelyNotSaved?: boolean };
 function message(error: unknown) { return error instanceof Error ? error.message : String(error); }
 function code(error: unknown) { return error instanceof Error && "code" in error && typeof (error as CodedError).code === "string" ? (error as CodedError).code ?? "" : ""; }
-function rpcError(error: RpcError): CodedError {
+function rpcError(error: RpcError, definitelyNotSaved = false): CodedError {
   const result = new Error(error.message ?? "RPC_ERROR") as CodedError;
   result.code = error.code;
+  result.definitelyNotSaved = definitelyNotSaved;
   return result;
 }
 function definitelyNotSaved(error: unknown) {
+  if (error instanceof Error && (error as CodedError).definitelyNotSaved) return true;
   const c = code(error);
   return c === "40001" || c === "42501" || c === "P0002" || /^2[23]/.test(c) || ["PGRST301","PGRST302","PGRST303"].includes(c);
 }
@@ -95,7 +97,7 @@ export class RewardV2Repository {
     try {
       await this.#assertOwner(ownerId, sessionRevision);
       const { data, error } = await withTimeout(this.#client.rpc("stock_notes_record_yutai_v2_command", { p_input: wire }));
-      if (error) throw rpcError(error);
+      if (error) throw rpcError(error, true);
       await this.#assertOwner(ownerId, sessionRevision);
       const result = parseRewardV2CommandResult(data);
       if (today) await this.load(today);
