@@ -4,7 +4,7 @@ export type RewardV2BenefitKind =
 export type RewardV2ExpiryPolicy = "none" | "fixed_per_grant" | "rolling_inactivity" | "rolling_on_grant" | "external_managed";
 export type RewardV2AllocationPolicy = "fefo" | "fifo" | "manual" | "not_applicable";
 export type RewardV2Coverage = "native_complete" | "legacy_opening_balance" | "history_partial" | "unknown";
-export type RewardV2EntitlementStatus = "eligible" | "claim_required" | "claimed" | "activated" | "fulfilled" | "expired" | "waived" | "cancelled";
+export type RewardV2EntitlementStatus = "unknown" | "eligible" | "claim_required" | "claimed" | "activated" | "fulfilled" | "expired" | "waived" | "cancelled";
 export type RewardV2DeadlineType = "claim_by" | "activate_by" | "book_by" | "usable_from" | "use_by" | "service_starts_at" | "service_ends_at";
 
 export type RewardV2Lot = {
@@ -183,7 +183,7 @@ function parseEntitlement(v: unknown): RewardV2Entitlement {
   if (!isObject(v)) throw new Error("INVALID_V2_WIRE:entitlement");
   return {
     id:str(v.id,"entitlement.id"), profile_id:optStr(v.profile_id,"entitlement.profile_id"), cycle_id:optStr(v.cycle_id,"entitlement.cycle_id"), account_id:optStr(v.account_id,"entitlement.account_id"), benefit_kind:oneOf(v.benefit_kind,benefitKinds,"entitlement.benefit_kind"),
-    status:oneOf(v.status,["eligible","claim_required","claimed","activated","fulfilled","expired","waived","cancelled"] as const,"entitlement.status"), native_quantity:optNum(v.native_quantity,"entitlement.native_quantity"), native_unit:optStr(v.native_unit,"entitlement.native_unit"),
+    status:oneOf(v.status,["unknown","eligible","claim_required","claimed","activated","fulfilled","expired","waived","cancelled"] as const,"entitlement.status"), native_quantity:optNum(v.native_quantity,"entitlement.native_quantity"), native_unit:optStr(v.native_unit,"entitlement.native_unit"),
     face_value_yen:optNum(v.face_value_yen,"entitlement.face_value_yen"), user_value_yen:optNum(v.user_value_yen,"entitlement.user_value_yen"), selected_option:optStr(v.selected_option,"entitlement.selected_option"), claimed_at:optStr(v.claimed_at,"entitlement.claimed_at"), activated_at:optStr(v.activated_at,"entitlement.activated_at"), fulfilled_at:optStr(v.fulfilled_at,"entitlement.fulfilled_at"), coverage_state:oneOf(v.coverage_state,coverages,"entitlement.coverage_state"), memo:str(v.memo,"entitlement.memo"), revision:integer(v.revision,"entitlement.revision"), deadlines:arr(v.deadlines,"entitlement.deadlines").map(parseDeadline),
   };
 }
