@@ -31,3 +31,93 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  workspace-core-discovery:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Test read-only executable discovery
+        run: >-
+          python -m unittest discover
+          -s infra/workspace-core/discovery/tests
+          -v
+
+      - name: Scan current repository without executing its code
+        env:
+          REPORT_PATH: ${{ runner.temp }}/mini-tools.executables.json
+        run: |
+          started_at=$(date +%s)
+          python infra/workspace-core/discovery/scan_repository.py \
+            --repo . \
+            --repository Yuichi-TanakaJP/mini-tools \
+            --repository-ref "$GITHUB_SHA" \
+            --output "$REPORT_PATH"
+          elapsed_seconds=$(($(date +%s) - started_at))
+          python - <<'PY'
+          import json
+          import os
+          from collections import Counter
+          from pathlib import Path
+
+          report = json.loads(Path(os.environ["REPORT_PATH"]).read_text(encoding="utf-8"))
+          assert report["repository"] == "Yuichi-TanakaJP/mini-tools"
+          assert report["repository_ref"] == os.environ["GITHUB_SHA"]
+          assert report["review_status"] == "discovered"
+          assert report["normalization_version"] == "0.2"
+          assert report["raw_candidate_count"] >= report["candidate_count"]
+          assert all(
+              candidate["review_status"] == "discovered"
+              for candidate in report["candidates"]
+          )
+          assert not any(path.startswith("node_modules/") for path in report["scanned_files"])
+          assert not any(".env" in Path(path).name for path in report["scanned_files"])
+          assert not any(
+              invocation.strip() in {"|", "|-", ">", ">-"}
+              for candidate in report["candidates"]
+              for invocation in candidate["invokes"]
+          )
+          assert not any(
+              candidate["executable_type"] == "declared_pipeline_map"
+              and candidate["path"].endswith("discover_executables.py")
+              for candidate in report["candidates"]
+          )
+          assert any(
+              candidate["executable_type"] == "python_test_entrypoint"
+              for candidate in report["candidates"]
+          )
+
+          counts = Counter(
+              candidate["executable_type"] for candidate in report["candidates"]
+          )
+          print(
+              json.dumps(
+                  {
+                      "candidate_count": report["candidate_count"],
+                      "candidate_types": dict(sorted(counts.items())),
+                      "normalization_dropped_count": len(
+                          report["normalization_dropped"]
+                      ),
+                      "raw_candidate_count": report["raw_candidate_count"],
+                      "scanned_file_count": len(report["scanned_files"]),
+                  },
+                  sort_keys=True,
+              )
+          )
+          PY
+          echo "scan_elapsed_seconds=$elapsed_seconds"
+
+      - name: Upload private discovery report
+        uses: actions/upload-artifact@v4
+        with:
+          name: workspace-core-discovery-mini-tools-${{ github.run_id }}
+          path: ${{ runner.temp }}/mini-tools.executables.json
+          if-no-files-found: error
+          retention-days: 7
