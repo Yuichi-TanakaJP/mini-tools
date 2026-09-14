@@ -43,8 +43,10 @@ export function RewardLedgerV2Panel() {
   const [rollingMonths,setRollingMonths] = useState("12");
   const [allocationPolicy,setAllocationPolicy] = useState("fifo");
   const [linkTargets,setLinkTargets] = useState<Record<string,string>>({});
+  const [entitlementTargets,setEntitlementTargets] = useState<Record<string,string>>({});
   const busy = state.status !== "ready" || Boolean(state.uncertain);
   const ledger = state.ledger;
+  const standaloneEntitlements = ledger?.entitlements.filter(e=>e.account_id === null) ?? [];
   useEffect(() => {
     const update = () => setToday(localDate());
     const timer = setInterval(update, 60_000);
@@ -66,6 +68,12 @@ export function RewardLedgerV2Panel() {
     const accountId = linkTargets[rewardId];
     if (!accountId) return;
     await repository.save({ command_type:"link_legacy_reward", target:{id:rewardId}, payload:{account_id:accountId,coverage_state:coverageState}, expected_revision:revision, note:"MiniTools: legacy Rewardをv2 Accountへ紐付け（coverageは推測せず維持）" });
+  }
+  async function linkLegacyEntitlement(rewardId:string, revision:number) {
+    if (!repository) return;
+    const entitlementId = entitlementTargets[rewardId];
+    if (!entitlementId) return;
+    await repository.save({ command_type:"link_legacy_entitlement", target:{id:rewardId}, payload:{entitlement_id:entitlementId}, expected_revision:revision, note:"MiniTools: legacy RewardをAccountなしEntitlementへ非破壊紐付け" });
   }
 
   if (state.status === "signed_out" || !state.ownerId) return null;
@@ -100,7 +108,7 @@ export function RewardLedgerV2Panel() {
     {ledger && <>
       <div className={styles.grid}>{ledger.accounts.map(account => <AccountCard key={account.id} account={account} repository={repository} busy={busy} today={today} />)}</div>
       {ledger.entitlements.length>0 && <div className={styles.section}><h4>権利・申込期限</h4><div className={styles.grid}>{ledger.entitlements.map(e=><EntitlementCard key={e.id} entitlement={e} repository={repository} busy={busy} />)}</div></div>}
-      {ledger.unassigned_rewards.length>0 && <div className={styles.section}><h4>未割当Reward（旧データ）</h4><p className={styles.muted}>残高・履歴は変更せず、Accountへの所属だけを追加します。過去の取得履歴や開始残高の意味は推測しません。</p><div className={styles.legacyList}>{ledger.unassigned_rewards.map(r=><div className={styles.card} key={r.id}><strong>{r.title}</strong> <span className={styles.muted}>{r.company}</span><div className={styles.muted}>現在 {valueText(r.remaining_value,r.track_mode === "amount" ? "yen" : "count")} / 期限 {r.expires_on ?? "なし"} / {coverageLabel(r.coverage_state)}</div>{ledger.accounts.length>0 && <div className={styles.inline}><label>紐付け先<select value={linkTargets[r.id] ?? ""} onChange={e=>setLinkTargets(v=>({...v,[r.id]:e.target.value}))}><option value="">選択</option>{ledger.accounts.map(a=><option key={a.id} value={a.id}>{a.title}</option>)}</select></label><button type="button" disabled={busy || !linkTargets[r.id]} onClick={()=>void linkLegacy(r.id,r.revision,r.coverage_state)}>残高を変えず紐付け</button></div>}</div>)}</div></div>}
+      {ledger.unassigned_rewards.length>0 && <div className={styles.section}><h4>未割当Reward（旧データ）</h4><p className={styles.muted}>残高・履歴は変更せず、残高型はAccountへ、割引・サービス・選択型などはAccountなしEntitlementへ所属だけを追加できます。過去の取得履歴や単位は推測しません。</p><div className={styles.legacyList}>{ledger.unassigned_rewards.map(r=><div className={styles.card} key={r.id}><strong>{r.title}</strong> <span className={styles.muted}>{r.company}</span><div className={styles.muted}>現在 {valueText(r.remaining_value,r.track_mode === "amount" ? "yen" : "count")} / 期限 {r.expires_on ?? "なし"} / {coverageLabel(r.coverage_state)}</div>{ledger.accounts.length>0 && <div className={styles.inline}><label>Account<select value={linkTargets[r.id] ?? ""} onChange={e=>setLinkTargets(v=>({...v,[r.id]:e.target.value}))}><option value="">選択</option>{ledger.accounts.map(a=><option key={a.id} value={a.id}>{a.title}</option>)}</select></label><button type="button" disabled={busy || !linkTargets[r.id]} onClick={()=>void linkLegacy(r.id,r.revision,r.coverage_state)}>Accountへ紐付け</button></div>}{standaloneEntitlements.length>0 && <div className={styles.inline}><label>Accountなし権利<select value={entitlementTargets[r.id] ?? ""} onChange={e=>setEntitlementTargets(v=>({...v,[r.id]:e.target.value}))}><option value="">選択</option>{standaloneEntitlements.map(e=><option key={e.id} value={e.id}>{e.benefit_kind} / {e.status}{e.memo ? ` / ${e.memo.slice(0,28)}` : ""}</option>)}</select></label><button type="button" disabled={busy || !entitlementTargets[r.id]} onClick={()=>void linkLegacyEntitlement(r.id,r.revision)}>権利へ紐付け</button></div>}</div>)}</div></div>}
     </>}
   </section>;
 }
