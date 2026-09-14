@@ -45,6 +45,16 @@ describe("Reward Model v2 wire parser", () => {
     rolling.accounts[0].rolling_expires_on = "2027-03-23";
     expect(parseRewardLedgerV2(rolling).accounts[0].expiry_policy).toBe("rolling_on_grant");
   });
+  it("accepts unknown entitlement lifecycle state without inventing timestamps", () => {
+    const legacy = structuredClone(valid);
+    legacy.entitlements[0].status = "unknown";
+    legacy.entitlements[0].coverage_state = "history_partial";
+    legacy.entitlements[0].claimed_at = null;
+    legacy.entitlements[0].activated_at = null;
+    legacy.entitlements[0].fulfilled_at = null;
+    const parsed = parseRewardLedgerV2(legacy);
+    expect(parsed.entitlements[0]).toMatchObject({ status:"unknown", coverage_state:"history_partial", claimed_at:null, activated_at:null, fulfilled_at:null });
+  });
   it("accepts entitlement-only legacy link receipts", () => {
     const receipt = {
       schema_version:2, request_id:"r", replayed:false, command_type:"link_legacy_entitlement",
