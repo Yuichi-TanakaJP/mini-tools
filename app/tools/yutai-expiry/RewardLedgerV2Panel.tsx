@@ -14,11 +14,17 @@ function localDate() {
   return `${y}-${m}-${day}`;
 }
 function valueText(value: number, unit: string) {
-  if (unit === "yen") return `¥${Math.round(value).toLocaleString("ja-JP")}`;
-  if (unit === "point") return `${value.toLocaleString("ja-JP")} pt`;
-  return `${value.toLocaleString("ja-JP")} ${unit}`;
+  const formatted = value.toLocaleString("ja-JP", { maximumFractionDigits: 2 });
+  if (unit === "yen") return `¥${formatted}`;
+  if (unit === "point") return `${formatted} pt`;
+  return `${formatted} ${unit}`;
 }
-function coverageLabel(value: string) { return value === "native_complete" ? "追跡完全" : "履歴一部"; }
+function coverageLabel(value: string) {
+  if (value === "native_complete") return "追跡完全";
+  if (value === "legacy_opening_balance") return "移行時残高";
+  if (value === "history_partial") return "履歴一部";
+  return "履歴不明";
+}
 
 export function RewardLedgerV2Panel() {
   const [today] = useState(localDate);
@@ -36,7 +42,7 @@ export function RewardLedgerV2Panel() {
   async function createAccount(e: FormEvent) {
     e.preventDefault();
     if (!repository || !accountTitle.trim()) return;
-    const key = `custom-${Date.now().toString(36)}`;
+    const key = `custom-${crypto.randomUUID()}`;
     const payload: Record<string, unknown> = { account_key:key, title:accountTitle.trim(), benefit_kind:accountKind, native_unit:accountUnit.trim() || "count", expiry_policy:expiryPolicy, allocation_policy:allocationPolicy };
     if (expiryPolicy === "rolling_inactivity") payload.rolling_expiry_months = Number(rollingMonths);
     const result = await repository.save({ command_type:"create_account", target:{}, payload, expected_revision:0, note:"MiniTools: Reward Model v2 Account作成" });
