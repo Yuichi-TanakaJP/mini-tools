@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseRewardLedgerV2 } from "./reward-v2-contracts";
+import { parseRewardLedgerV2, parseRewardV2CommandResult } from "./reward-v2-contracts";
 
 const valid = {
   schema_version: 2,
@@ -29,9 +29,16 @@ describe("Reward Model v2 wire parser", () => {
     expect(parsed.accounts[0]).toMatchObject({ recorded_balance_native:54000, opening_balance_native:43500, tracked_granted_native:10500 });
     expect(parsed.entitlements[0].deadlines[0].deadline_type).toBe("claim_by");
   });
-  it("rejects an unsupported schema or enum instead of silently falling back", () => {
+  it("rejects an unsupported schema, enum, or inconsistent count instead of silently falling back", () => {
     expect(() => parseRewardLedgerV2({ ...valid, schema_version:1 })).toThrow(/INVALID_V2_WIRE/);
     const broken = structuredClone(valid); broken.accounts[0].expiry_policy = "mystery";
     expect(() => parseRewardLedgerV2(broken)).toThrow(/INVALID_V2_WIRE/);
+    expect(() => parseRewardLedgerV2({ ...valid, counts:{...valid.counts,accounts:2} })).toThrow(/INVALID_V2_WIRE:counts/);
+  });
+  it("rejects malformed command receipts instead of coercing them", () => {
+    const receipt = { schema_version:2, request_id:"r", replayed:false, command_type:"create_account", target_id:"a", revision:1 };
+    expect(parseRewardV2CommandResult(receipt).replayed).toBe(false);
+    expect(() => parseRewardV2CommandResult({ ...receipt, replayed:"false" })).toThrow(/INVALID_V2_WIRE:replayed/);
+    expect(() => parseRewardV2CommandResult({ ...receipt, command_type:"unknown" })).toThrow(/INVALID_V2_WIRE:command_type/);
   });
 });
