@@ -1,5 +1,7 @@
 # 横断仕様インデックス
 
+- [機能ポートフォリオ台帳（通常 / Premium投資 / Workspace）](./feature-portfolio.md)
+
 複数ツールにまたがる現在仕様、データ contract、設計境界を整理する場所です。
 
 | 仕様 | 内容 |
