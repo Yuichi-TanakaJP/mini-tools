@@ -1,7 +1,7 @@
 export type RewardV2BenefitKind =
   | "stored_value" | "points" | "voucher" | "admission" | "discount" | "service_access"
   | "service_period" | "choice" | "goods" | "cashback" | "composite" | "other";
-export type RewardV2ExpiryPolicy = "none" | "fixed_per_grant" | "rolling_inactivity" | "external_managed";
+export type RewardV2ExpiryPolicy = "none" | "fixed_per_grant" | "rolling_inactivity" | "rolling_on_grant" | "external_managed";
 export type RewardV2AllocationPolicy = "fefo" | "fifo" | "manual" | "not_applicable";
 export type RewardV2Coverage = "native_complete" | "legacy_opening_balance" | "history_partial" | "unknown";
 export type RewardV2EntitlementStatus = "eligible" | "claim_required" | "claimed" | "activated" | "fulfilled" | "expired" | "waived" | "cancelled";
@@ -164,7 +164,7 @@ function parseAccount(v: unknown): RewardV2Account {
   if (!isObject(v)) throw new Error("INVALID_V2_WIRE:account");
   return {
     id:str(v.id,"account.id"), account_key:str(v.account_key,"account.account_key"), title:str(v.title,"account.title"), benefit_kind:oneOf(v.benefit_kind,benefitKinds,"account.benefit_kind"),
-    native_unit:str(v.native_unit,"account.native_unit"), expiry_policy:oneOf(v.expiry_policy,["none","fixed_per_grant","rolling_inactivity","external_managed"] as const,"account.expiry_policy"),
+    native_unit:str(v.native_unit,"account.native_unit"), expiry_policy:oneOf(v.expiry_policy,["none","fixed_per_grant","rolling_inactivity","rolling_on_grant","external_managed"] as const,"account.expiry_policy"),
     rolling_expiry_days:optInteger(v.rolling_expiry_days,"account.rolling_expiry_days"), rolling_expiry_months:optInteger(v.rolling_expiry_months,"account.rolling_expiry_months"),
     allocation_policy:oneOf(v.allocation_policy,["fefo","fifo","manual","not_applicable"] as const,"account.allocation_policy"), status:oneOf(v.status,["active","archived"] as const,"account.status"),
     recorded_balance_native:num(v.recorded_balance_native,"account.recorded_balance_native"), available_balance_native:num(v.available_balance_native,"account.available_balance_native"),
