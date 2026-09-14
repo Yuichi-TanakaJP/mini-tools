@@ -45,6 +45,9 @@ export type RewardV2Account = {
   tracked_granted_native: number;
   tracked_consumed_native: number;
   tracked_expired_native: number;
+  unclassified_adjustment_native: number;
+  unclassified_increase_native: number;
+  unclassified_decrease_native: number;
   coverage_state: "native_complete" | "history_partial";
   revision: number;
   lots: RewardV2Lot[];
@@ -167,6 +170,7 @@ function parseAccount(v: unknown): RewardV2Account {
     recorded_balance_native:num(v.recorded_balance_native,"account.recorded_balance_native"), available_balance_native:num(v.available_balance_native,"account.available_balance_native"),
     expired_unprocessed_native:num(v.expired_unprocessed_native,"account.expired_unprocessed_native"), nearest_expiry:optStr(v.nearest_expiry,"account.nearest_expiry"), rolling_expires_on:optStr(v.rolling_expires_on,"account.rolling_expires_on"),
     opening_balance_native:num(v.opening_balance_native,"account.opening_balance_native"), tracked_granted_native:num(v.tracked_granted_native,"account.tracked_granted_native"), tracked_consumed_native:num(v.tracked_consumed_native,"account.tracked_consumed_native"), tracked_expired_native:num(v.tracked_expired_native,"account.tracked_expired_native"),
+    unclassified_adjustment_native:num(v.unclassified_adjustment_native,"account.unclassified_adjustment_native"), unclassified_increase_native:num(v.unclassified_increase_native,"account.unclassified_increase_native"), unclassified_decrease_native:num(v.unclassified_decrease_native,"account.unclassified_decrease_native"),
     coverage_state:oneOf(v.coverage_state,["native_complete","history_partial"] as const,"account.coverage_state"), revision:integer(v.revision,"account.revision"), lots:arr(v.lots,"account.lots").map(parseLot),
   };
 }
