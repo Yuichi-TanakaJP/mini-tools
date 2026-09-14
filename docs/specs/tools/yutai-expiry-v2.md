@@ -70,8 +70,10 @@ UIでは、`rolling_inactivity` は「最終活動から」、`rolling_on_grant`
 - U-NEXT: point Account + 月次1,800pt Grant + FEFO。旧「1,800pt相当×個数」のcount行はpointへ推測換算しない
 - majicaポイント: points Account + `rolling_on_grant` 12か月。利用では期限を延長せず、新しいポイント付与だけで更新
 - rolling wallet: `rolling_inactivity` days/months。利用や残高増減が活動になる制度に使用
-- choice/catalog: Entitlement selected_option + claim_by
-- service: Entitlement + activate/service start/end
+- 三越伊勢丹割引: Accountなし discount Entitlement + use_by。購入限度額が未記録なら推測しない
+- 博物館会員権: Accountなし service_access Entitlement + use_by
+- choice/catalog: Accountなし Entitlement + selected_option + claim_by
+- service: Accountなしまたは必要なAccount付きEntitlement + activate/service start/end
 
 ## 6. 更新契約
 
@@ -83,11 +85,14 @@ MiniToolsはschema_version=2、UUID request_id、occurred_at、expected_revision
 
 対応command:
 - create_account / create_entitlement / add_deadline / set_entitlement_status
-- create_grant / link_legacy_reward
+- create_grant / link_legacy_reward / link_legacy_entitlement
 - consume_account / consume_lot
 - expire_lot / expire_account / extend_account
 - move_account_value
 - select_entitlement_option / complete_deadline
+
+`link_legacy_reward` は残高型legacyをAccountへ所属させる。
+`link_legacy_entitlement` は割引・サービス・選択型などのlegacyを **AccountなしEntitlement** へ所属させる。どちらもlegacy Rewardの残高・期限・event historyを移行操作だけで変更しない。
 
 `extend_account` は `rolling_inactivity` 専用。`rolling_on_grant` は手動延長せず、新しいGrant/receiveだけで期限が更新される。
 
@@ -103,12 +108,15 @@ MiniToolsはschema_version=2、UUID request_id、occurred_at、expected_revision
 
 ## 8. legacy移行
 
-- 初回画面表示だけで自動Account linkしない。
-- linkは `link_legacy_reward` を明示実行する。
-- linkでremaining/initial/event historyを変更しない。
+- 初回画面表示だけで自動linkしない。
+- 残高型は `link_legacy_reward` でAccountへ明示linkする。
+- Accountを持たない割引・サービス・選択型は `link_legacy_entitlement` で standalone Entitlementへ明示linkする。
+- Entitlement link先は `account_id = null` に限定する。Account所属済みRewardや既にEntitlement所属済みRewardは二重linkしない。
+- linkでremaining/initial/expires_on/event historyを変更しない。
 - 過去取得を推測分割しない。
 - legacyの管理単位とv2 Accountのnative unitが一致しない行は推測換算してlinkしない。
 - `rolling_on_grant` へ移すlegacyに「最後の付与日」の確実な証跡がない場合、旧expires_onから逆算してreceive operationを捏造しない。将来付与から正しく追跡する。
+- 明白な旧データ誤記を訂正する場合は、linkとは別Commandで根拠を残して修正する。
 
 ## 9. Responsive
 
@@ -120,5 +128,6 @@ MiniToolsはschema_version=2、UUID request_id、occurred_at、expected_revision
 - stock-notes#200 / PR#201
 - stock-notes#202 / PR#203
 - stock-notes#204 / PR#205
+- stock-notes#206 / PR#207
 - `docs/decision-log/2026-09-13-yutai-reward-model-v2.md`
 - `docs/uat/yutai-reward-model-v2.md`
