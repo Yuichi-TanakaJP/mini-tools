@@ -36,7 +36,7 @@ export function RewardLedgerV2Panel() {
   const [rollingMonths,setRollingMonths] = useState("12");
   const [allocationPolicy,setAllocationPolicy] = useState("fifo");
   const [linkTargets,setLinkTargets] = useState<Record<string,string>>({});
-  const busy = state.status === "saving" || state.status === "loading";
+  const busy = state.status === "saving" || state.status === "loading" || Boolean(state.uncertain);
   const ledger = state.ledger;
 
   async function createAccount(e: FormEvent) {
