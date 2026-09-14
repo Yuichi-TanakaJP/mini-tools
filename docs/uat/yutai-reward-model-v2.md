@@ -4,7 +4,7 @@
 
 `/tools/yutai-expiry` のDB previewで、既存v1期限帳を維持したままv2 Account / Grant Lot / Entitlement / Deadlineを併設する。
 
-関連: mini-tools#634 / stock-notes#200 / stock-notes#202
+関連: mini-tools#634 / stock-notes#200 / stock-notes#202 / stock-notes#204
 
 ## 前提
 
@@ -76,19 +76,37 @@
 - 他Lotは変化しない。
 - stale revisionは保存されない。
 
-## UAT-07 Rolling expiry
+## UAT-07 Rolling inactivity
 
-1. rolling expiry 12か月のAccountを作る。
+1. `rolling_inactivity` 12か月のAccountを作る。
 2. transfer/利用等で活動日を更新する。
 3. 期限後に開く。
 
 期待:
 - 12か月を365日に丸めず表示する。
+- UIは「最終活動から12か月」と表示する。
 - transfer先Accountでも活動日が更新される。
 - 期限後は利用可能=0、期限切れ未処理へ移る。
 - 「失効を確定」でLot残高0＋expired eventになる。
 
-## UAT-08 Entitlement / Deadline
+## UAT-08 Rolling on grant / majica型
+
+1. `rolling_on_grant` 12か月のpoint Accountを作る。
+2. 2026-03-23にGrantを追加する。
+3. 2026-06-01に一部利用する。
+4. 2026-07-10に別Grantを追加する。
+5. 2027-07-11 00:00 JSTで利用を試す。
+
+期待:
+- 初回期限は2027-03-23。
+- 6月の利用では期限が延長されない。
+- 7/10の新規付与で期限が2027-07-10へ延長される。
+- UIは「最後の付与から12か月」と表示する。
+- `extend_account` 相当の手動延長は提供しない/DBが拒否する。
+- 2027-07-11 00:00 JSTでは利用が拒否され、UTC日付へのずれで猶予されない。
+- 期限後は「失効を確定」で残高0＋expired eventになる。
+
+## UAT-09 Entitlement / Deadline
 
 1. choice Entitlementの選択肢を保存する。
 2. claim/activate/fulfillを更新する。
@@ -99,7 +117,7 @@
 - status timestampがDBに残る。
 - Deadline完了はcompleted_atを持つ。
 
-## UAT-09 owner switch / uncertain retry
+## UAT-10 owner switch / uncertain retry
 
 1. Aでv2を表示する。
 2. Bへ切り替える。
@@ -112,7 +130,7 @@
 - uncertain writeは同じrequest_id＋occurred_atの再確認だけを提供し、別writeを送らない。
 - DBが明示エラーを返した要求は結果不明と表示しない。
 
-## UAT-10 mobile / 日付境界
+## UAT-11 mobile / 日付境界
 
 390px幅と日付跨ぎを確認する。
 
@@ -121,3 +139,4 @@
 - form/buttonが横にはみ出さない。
 - 長いAccount名/Lot名が折り返される。
 - 画面を開いたまま日付が変わった場合、1分以内またはfocus時に基準日が更新され、期限判定も更新される。
+- 日本の期限判定はAsia/Tokyoの暦日で行われる。
