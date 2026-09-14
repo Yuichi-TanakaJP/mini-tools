@@ -22,6 +22,7 @@ function message(error: unknown) { return error instanceof Error ? error.message
 function networkLike(error: unknown) { const m = message(error).toLowerCase(); return m.includes("fetch") || m.includes("network") || m.includes("timeout") || m.includes("failed"); }
 function uuid() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  if (typeof crypto === "undefined") throw new Error("CRYPTO_UNAVAILABLE");
   const bytes = new Uint8Array(16); crypto.getRandomValues(bytes); bytes[6] = (bytes[6] & 0x0f) | 0x40; bytes[8] = (bytes[8] & 0x3f) | 0x80;
   const h = Array.from(bytes, b => b.toString(16).padStart(2,"0")).join("");
   return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
@@ -40,12 +41,14 @@ export class RewardV2Repository {
   #state: RewardV2State = EMPTY_REWARD_V2_STATE;
   #listeners = new Set<() => void>();
   #client: RewardV2ClientLike;
+  #loadVersion = 0;
   constructor(client: RewardV2ClientLike) { this.#client = client; }
   subscribe = (listener: () => void) => { this.#listeners.add(listener); return () => this.#listeners.delete(listener); };
   getSnapshot = () => this.#state;
   #emit(next: RewardV2State) { this.#state = next; this.#listeners.forEach(l => l()); }
   setIdentity(ownerId: string | null, sessionRevision: number) {
     if (ownerId === this.#state.ownerId && sessionRevision === this.#state.sessionRevision) return;
+    this.#loadVersion++;
     this.#emit({ ...EMPTY_REWARD_V2_STATE, ownerId, sessionRevision, status: ownerId ? "idle" : "signed_out" });
   }
   async #assertOwner(ownerId: string, revision: number) {
@@ -54,6 +57,7 @@ export class RewardV2Repository {
   }
   async load(today: string) {
     const { ownerId, sessionRevision } = this.#state;
+    const loadVersion = ++this.#loadVersion;
     if (!ownerId) { this.#emit({ ...this.#state, status:"signed_out", ledger:null, error:null, today }); return; }
     this.#emit({ ...this.#state, status:"loading", error:null, today });
     try {
@@ -61,16 +65,18 @@ export class RewardV2Repository {
       const { data, error } = await withTimeout(this.#client.rpc("stock_notes_get_yutai_reward_ledger_v2", { p_today: today }));
       if (error) throw new Error(error.code ? `${error.code}:${error.message ?? "RPC_ERROR"}` : error.message ?? "RPC_ERROR");
       await this.#assertOwner(ownerId, sessionRevision);
+      if (loadVersion !== this.#loadVersion) return;
       const ledger = parseRewardLedgerV2(data);
       this.#emit({ ownerId, sessionRevision, status:"ready", ledger, error:null, uncertain:null, today });
     } catch (e) {
-      if (message(e)==="SESSION_CHANGED") return;
+      if (message(e)==="SESSION_CHANGED" || loadVersion !== this.#loadVersion) return;
       if (this.#state.ownerId===ownerId && this.#state.sessionRevision===sessionRevision) this.#emit({ ...this.#state, status:"error", error:message(e), ledger:null });
     }
   }
   async save(draft: RewardV2CommandDraft, requestId?: string): Promise<RewardV2CommandResult | null> {
     const { ownerId, sessionRevision, today } = this.#state;
     if (!ownerId) throw new Error("AUTH_REQUIRED");
+    this.#loadVersion++;
     const wire: RewardV2CommandWire = { ...draft, schema_version:2, request_id:requestId ?? uuid(), occurred_at:new Date().toISOString(), source:"mini_tools" };
     this.#emit({ ...this.#state, status:"saving", error:null, uncertain:null });
     try {
