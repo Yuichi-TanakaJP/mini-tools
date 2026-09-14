@@ -27,9 +27,13 @@ DB preview時:
 - 追跡後取得 `tracked_granted_native`
 - 追跡後利用 `tracked_consumed_native`
 - 失効済 `tracked_expired_native`
+- 未分類増減 `unclassified_adjustment_native`
+- 未分類増加 `unclassified_increase_native`
+- 未分類減少 `unclassified_decrease_native`
 - coverage
 
 `opening_balance_native` は累計取得額と表示しない。
+旧 `adjusted` eventは、取得・利用・訂正のどれかを確定できないため `unclassified_*` へ投影し、`tracked_granted_native` / `tracked_consumed_native` へ推測分類しない。
 
 ### Grant Lot
 
@@ -48,9 +52,9 @@ DB preview時:
 
 ## 4. 優待モデル例
 
-- QUO: Account合計 + legacy opening + 新規Grant
-- EDION: Account合計 + 期限別Grant Lot + FEFO
-- U-NEXT: point Account + 月次1,800pt Grant + FEFO
+- QUO: Account合計 + legacy opening + 未分類の旧adjusted増減 + 新規Grant
+- EDION: Account合計 + 期限別Grant Lot + FEFO。旧adjustedの使用実績は未分類減少のまま保持
+- U-NEXT: point Account + 月次1,800pt Grant + FEFO。旧「1,800pt相当×個数」のcount行はpointへ推測換算しない
 - rolling point: rolling expiry days/months policy
 - choice/catalog: Entitlement selected_option + claim_by
 - service: Entitlement + activate/service start/end
@@ -77,8 +81,9 @@ MiniToolsはschema_version=2、UUID request_id、occurred_at、expected_revision
 - owner change時にv2 snapshotを即時破棄する。
 - RPC前後にauth session ownerを再確認する。
 - 15秒timeout。
-- uncertain writeは元request_idを保持してretryする。
-- 別request_idでの自動再送は禁止。
+- uncertain writeは元request_idとoccurred_atを保持してretryする。
+- uncertain中は別writeを禁止し、通常readをしてもuncertain状態を消さない。
+- DBが明示エラーを返した要求は未保存、transport失敗/timeout/成功応答破損は結果不明として扱う。
 
 ## 7. legacy移行
 
@@ -86,6 +91,7 @@ MiniToolsはschema_version=2、UUID request_id、occurred_at、expected_revision
 - linkは `link_legacy_reward` を明示実行する。
 - linkでremaining/initial/event historyを変更しない。
 - 過去取得を推測分割しない。
+- legacyの管理単位とv2 Accountのnative unitが一致しない行は推測換算してlinkしない。
 
 ## 8. Responsive
 
@@ -95,5 +101,6 @@ MiniToolsはschema_version=2、UUID request_id、occurred_at、expected_revision
 
 - mini-tools#634
 - stock-notes#200 / PR#201
+- stock-notes#202 / PR#203
 - `docs/decision-log/2026-09-13-yutai-reward-model-v2.md`
 - `docs/uat/yutai-reward-model-v2.md`
