@@ -21,7 +21,7 @@ export function useYutaiRewardLedgerV2(today: string, enabled = true) {
     const legacy = getYutaiRepository();
     const syncIdentity = () => {
       const identity = legacy.getIdentity();
-      repo.setIdentity(identity.ownerId, identity.sessionRevision);
+      repo.setIdentity(identity.owner, identity.sessionRevision);
     };
     syncIdentity();
     const unsubscribe = legacy.subscribe(syncIdentity);
