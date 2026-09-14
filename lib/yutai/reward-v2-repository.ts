@@ -12,14 +12,28 @@ export type RewardV2State = {
 };
 export const EMPTY_REWARD_V2_STATE: RewardV2State = { ownerId:null, sessionRevision:0, status:"idle", ledger:null, error:null, uncertain:null, today:null };
 
-type RpcValue = { data: unknown; error: { message?: string; code?: string } | null };
+type RpcError = { message?: string; code?: string };
+type RpcValue = { data: unknown; error: RpcError | null };
 export interface RewardV2ClientLike {
   auth: { getSession(): Promise<{ data: { session: { user: { id: string } } | null } }> };
   rpc(name: string, args: Record<string, unknown>): PromiseLike<RpcValue>;
 }
 
+type CodedError = Error & { code?: string };
 function message(error: unknown) { return error instanceof Error ? error.message : String(error); }
-function networkLike(error: unknown) { const m = message(error).toLowerCase(); return m.includes("fetch") || m.includes("network") || m.includes("timeout") || m.includes("failed"); }
+function code(error: unknown) { return error instanceof Error && "code" in error && typeof (error as CodedError).code === "string" ? (error as CodedError).code ?? "" : ""; }
+function rpcError(error: RpcError): CodedError {
+  const result = new Error(error.message ?? "RPC_ERROR") as CodedError;
+  result.code = error.code;
+  return result;
+}
+function definitelyNotSaved(error: unknown) {
+  const c = code(error);
+  return c === "40001" || c === "42501" || c === "P0002" || /^2[23]/.test(c) || ["PGRST301","PGRST302","PGRST303"].includes(c);
+}
+function writeOutcomeUncertain(error: unknown) {
+  return message(error) !== "SESSION_CHANGED" && !definitelyNotSaved(error);
+}
 function uuid() {
   const browserCrypto = globalThis.crypto;
   if (!browserCrypto || typeof browserCrypto.randomUUID !== "function") throw new Error("CRYPTO_UNAVAILABLE");
@@ -61,11 +75,11 @@ export class RewardV2Repository {
     try {
       await this.#assertOwner(ownerId, sessionRevision);
       const { data, error } = await withTimeout(this.#client.rpc("stock_notes_get_yutai_reward_ledger_v2", { p_today: today }));
-      if (error) throw new Error(error.code ? `${error.code}:${error.message ?? "RPC_ERROR"}` : error.message ?? "RPC_ERROR");
+      if (error) throw rpcError(error);
       await this.#assertOwner(ownerId, sessionRevision);
       if (loadVersion !== this.#loadVersion) return;
       const ledger = parseRewardLedgerV2(data);
-      this.#emit({ ownerId, sessionRevision, status:"ready", ledger, error:null, uncertain:null, today });
+      this.#emit({ ownerId, sessionRevision, status:"ready", ledger, error:null, uncertain:this.#state.uncertain, today });
     } catch (e) {
       if (message(e)==="SESSION_CHANGED" || loadVersion !== this.#loadVersion) return;
       if (this.#state.ownerId===ownerId && this.#state.sessionRevision===sessionRevision) this.#emit({ ...this.#state, status:"error", error:message(e), ledger:null });
@@ -81,7 +95,7 @@ export class RewardV2Repository {
     try {
       await this.#assertOwner(ownerId, sessionRevision);
       const { data, error } = await withTimeout(this.#client.rpc("stock_notes_record_yutai_v2_command", { p_input: wire }));
-      if (error) throw new Error(error.code ? `${error.code}:${error.message ?? "RPC_ERROR"}` : error.message ?? "RPC_ERROR");
+      if (error) throw rpcError(error);
       await this.#assertOwner(ownerId, sessionRevision);
       const result = parseRewardV2CommandResult(data);
       if (today) await this.load(today);
@@ -89,7 +103,7 @@ export class RewardV2Repository {
     } catch (e) {
       if (message(e)==="SESSION_CHANGED") return null;
       if (this.#state.ownerId===ownerId && this.#state.sessionRevision===sessionRevision) {
-        this.#emit({ ...this.#state, status:"error", error:message(e), uncertain:networkLike(e) ? wire : null });
+        this.#emit({ ...this.#state, status:"error", error:message(e), uncertain:writeOutcomeUncertain(e) ? wire : null });
       }
       return null;
     }
