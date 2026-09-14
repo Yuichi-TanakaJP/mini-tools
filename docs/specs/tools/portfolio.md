@@ -3,6 +3,8 @@
 > **実装状態:** 2026-08-23時点の画面は、最新snapshot、active policy・policy履歴、保存済みreview/recommendation/action、latest reflectionを読むUI-1〜UI-2初回版に、UI-3のreview履歴分離表示と外部口座・参考資産の読み取り表示を加えたものである。reviewが参照したpolicy versionも表示する。
 > ポートフォリオ意思決定プラットフォームの完成品ではない。目標運用とUIの実装順序は
 > [ポートフォリオ意思決定ワークスペース実装計画](../../plans/portfolio-decision-workspace-plan.md) を参照する。
+> クロスリポジトリの現行正本はstock-notesの
+> [V2正本設計](https://github.com/Yuichi-TanakaJP/stock-notes/blob/main/docs/portfolio-platform-v2.md) であり、旧V1計画より優先する。
 
 ## 概要
 
@@ -58,7 +60,7 @@
 - MiniToolsからChatGPTの相談・保存を開始する
 - MiniToolsからrecommendation/actionを作成・更新・完了する
 - stock-notesのdecision-context全体をMiniTools専用の共通読み取り契約として集約する（現時点はSupabaseの本人行を読み取る暫定実装）
-- 金額指定を含む新規資金の順位・配分を表示する（現在は金額なし候補の表示のみ）
+- ユーザーが金額配分を依頼した場合の新規資金の順位・配分を表示する（現在は金額なし候補の表示のみ）
 - 前回reviewとの差分を表示する
 - 銘柄ダッシュボードとportfolio方針を往復する
 - 外部資産を商品別構成・意思決定context・配分分析へ統合する。通貨換算、重複排除、分析対象外ルールは後続で定義する
@@ -131,3 +133,5 @@
 - Decision Log: [外部資産の表示と公式集計の分離](../../decision-log/2026-08-23-portfolio-external-assets-display.md)
 - Decision Log: [公式保有と外部参照資産の総資産評価額](../../decision-log/2026-08-28-portfolio-total-assets-valuation.md)
 - Plan: [ポートフォリオ意思決定ワークスペース実装計画](../../plans/portfolio-decision-workspace-plan.md)
+- Cross-repository source: [stock-notes Portfolio V2](https://github.com/Yuichi-TanakaJP/stock-notes/blob/main/docs/portfolio-platform-v2.md)
+- Acceptance checklist: [stock-notes Portfolio V2 checklist](https://github.com/Yuichi-TanakaJP/stock-notes/blob/main/docs/portfolio-platform-v2-checklist.md)
