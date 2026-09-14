@@ -9,6 +9,8 @@ PR マージ後・リリース前に「何を確認すれば OK か」をツー�
 
 - [優待共通データ層（工程3）](./yutai-repository.md): 共通処理の自動検証と工程4〜5の接続時受入手順。
 
+- [優待 Reward Model v2](./yutai-reward-model-v2.md): Account / Grant Lot / Entitlement / Deadline、legacy非破壊移行、U-NEXT・EDION・QUO・rolling expiryの確認。
+
 | ツール | URL パス | データ取得元 | ドキュメント |
 |---|---|---|---|
 | 決算カレンダー | `/tools/earnings-calendar` | 国内: 同梱 JSON / 海外: API | [earnings-calendar.md](./earnings-calendar.md) |
@@ -21,7 +23,7 @@ PR マージ後・リリース前に「何を確認すれば OK か」をツー�
 | 日経225寄与度 | `/tools/nikkei-contribution` | 同梱 JSON + JPX 休場日 API | [nikkei-contribution.md](./nikkei-contribution.md) |
 | TOPIX33業種 | `/tools/topix33` | 同梱 JSON + JPX 休場日 API | [topix33.md](./topix33.md) |
 | 優待カレンダー | `/tools/yutai-candidates` | 同梱 JSON (+ API) | [yutai-candidates.md](./yutai-candidates.md) |
-| 株主優待期限帳 | `/tools/yutai-expiry` | LocalStorage のみ | [yutai-expiry.md](./yutai-expiry.md) |
+| 株主優待期限帳 | `/tools/yutai-expiry` | LocalStorage / Supabase（切替状態に従う） | [yutai-expiry.md](./yutai-expiry.md) / [Reward Model v2](./yutai-reward-model-v2.md) |
 | 優待銘柄メモ帳 | `/tools/yutai-memo` | LocalStorage のみ | [yutai-memo.md](./yutai-memo.md) |
 | 優待ダッシュボード | `/tools/yutai-dashboard` | API + LocalStorage | [yutai-dashboard.md](./yutai-dashboard.md) |
 | 銘柄分析ダッシュボード | `/tools/stock-notes` | Supabase（読み取り専用）、要ログイン | [stock-notes.md](./stock-notes.md) |
