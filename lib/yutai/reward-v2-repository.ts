@@ -73,11 +73,12 @@ export class RewardV2Repository {
       if (this.#state.ownerId===ownerId && this.#state.sessionRevision===sessionRevision) this.#emit({ ...this.#state, status:"error", error:message(e), ledger:null });
     }
   }
-  async save(draft: RewardV2CommandDraft, requestId?: string): Promise<RewardV2CommandResult | null> {
+  async save(draft: RewardV2CommandDraft, requestId?: string, occurredAt?: string): Promise<RewardV2CommandResult | null> {
     const { ownerId, sessionRevision, today } = this.#state;
     if (!ownerId) throw new Error("AUTH_REQUIRED");
+    if (this.#state.uncertain && requestId !== this.#state.uncertain.request_id) return null;
     this.#loadVersion++;
-    const wire: RewardV2CommandWire = { ...draft, schema_version:2, request_id:requestId ?? uuid(), occurred_at:new Date().toISOString(), source:"mini_tools" };
+    const wire: RewardV2CommandWire = { ...draft, schema_version:2, request_id:requestId ?? uuid(), occurred_at:occurredAt ?? new Date().toISOString(), source:"mini_tools" };
     this.#emit({ ...this.#state, status:"saving", error:null, uncertain:null });
     try {
       await this.#assertOwner(ownerId, sessionRevision);
@@ -98,7 +99,7 @@ export class RewardV2Repository {
   async retryUncertain() {
     const wire = this.#state.uncertain;
     if (!wire) return null;
-    const { schema_version: _sv, request_id, occurred_at: _at, source: _source, ...draft } = wire;
-    return this.save(draft, request_id);
+    const { schema_version: _sv, request_id, occurred_at, source: _source, ...draft } = wire;
+    return this.save(draft, request_id, occurred_at);
   }
 }
