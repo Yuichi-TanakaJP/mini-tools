@@ -50,16 +50,30 @@ DB preview時:
 - claim/activate/booking/use/service period deadline
 - deadline completed state
 
-## 4. 優待モデル例
+## 4. 期限ポリシー
+
+- `none`: Account自体に期限なし。
+- `fixed_per_grant`: Grant Lotごとに固定期限を持つ。EDION/U-NEXT月次ポイント等。
+- `rolling_inactivity`: 最終活動をanchorに期限を更新する。receive/consume/transfer/convert/adjust/extendが活動となる。
+- `rolling_on_grant`: 最後の付与（`receive`）だけをanchorに期限を更新する。consume/transfer等では延長しない。majicaポイント等に使う。
+- `external_managed`: 外部サービス側が期限を管理し、StockNoteでは独自期限計算をしない。
+
+`rolling_inactivity` / `rolling_on_grant` はdaysまたはcalendar monthsのどちらか一方を持つ。12か月ルールを365日へ丸めない。
+日本の優待期限判定では、操作timestampを **Asia/Tokyoの暦日**へ変換して比較する。UTC日付への単純castを使わない。
+
+UIでは、`rolling_inactivity` は「最終活動から」、`rolling_on_grant` は「最後の付与から」と明示する。
+
+## 5. 優待モデル例
 
 - QUO: Account合計 + legacy opening + 未分類の旧adjusted増減 + 新規Grant
 - EDION: Account合計 + 期限別Grant Lot + FEFO。旧adjustedの使用実績は未分類減少のまま保持
 - U-NEXT: point Account + 月次1,800pt Grant + FEFO。旧「1,800pt相当×個数」のcount行はpointへ推測換算しない
-- rolling point: rolling expiry days/months policy
+- majicaポイント: points Account + `rolling_on_grant` 12か月。利用では期限を延長せず、新しいポイント付与だけで更新
+- rolling wallet: `rolling_inactivity` days/months。利用や残高増減が活動になる制度に使用
 - choice/catalog: Entitlement selected_option + claim_by
 - service: Entitlement + activate/service start/end
 
-## 5. 更新契約
+## 6. 更新契約
 
 Read: `stock_notes_get_yutai_reward_ledger_v2(p_today)`
 
@@ -75,7 +89,9 @@ MiniToolsはschema_version=2、UUID request_id、occurred_at、expected_revision
 - move_account_value
 - select_entitlement_option / complete_deadline
 
-## 6. セキュリティ / 競合
+`extend_account` は `rolling_inactivity` 専用。`rolling_on_grant` は手動延長せず、新しいGrant/receiveだけで期限が更新される。
+
+## 7. セキュリティ / 競合
 
 - v1 Repositoryのowner/sessionRevisionへv2 Repositoryを同期する。
 - owner change時にv2 snapshotを即時破棄する。
@@ -85,22 +101,24 @@ MiniToolsはschema_version=2、UUID request_id、occurred_at、expected_revision
 - uncertain中は別writeを禁止し、通常readをしてもuncertain状態を消さない。
 - DBが明示エラーを返した要求は未保存、transport失敗/timeout/成功応答破損は結果不明として扱う。
 
-## 7. legacy移行
+## 8. legacy移行
 
 - 初回画面表示だけで自動Account linkしない。
 - linkは `link_legacy_reward` を明示実行する。
 - linkでremaining/initial/event historyを変更しない。
 - 過去取得を推測分割しない。
 - legacyの管理単位とv2 Accountのnative unitが一致しない行は推測換算してlinkしない。
+- `rolling_on_grant` へ移すlegacyに「最後の付与日」の確実な証跡がない場合、旧expires_onから逆算してreceive operationを捏造しない。将来付与から正しく追跡する。
 
-## 8. Responsive
+## 9. Responsive
 
 390pxではmetricsを1列、formを縦積みし、Account/Lot名は折返す。横スクロールを主要操作要件にしない。
 
-## 9. 関連
+## 10. 関連
 
 - mini-tools#634
 - stock-notes#200 / PR#201
 - stock-notes#202 / PR#203
+- stock-notes#204 / PR#205
 - `docs/decision-log/2026-09-13-yutai-reward-model-v2.md`
 - `docs/uat/yutai-reward-model-v2.md`

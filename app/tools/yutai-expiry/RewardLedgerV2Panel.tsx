@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useYutaiRewardLedgerV2 } from "../../../lib/yutai/reward-v2-browser";
-import type { RewardV2Account, RewardV2BenefitKind, RewardV2Coverage, RewardV2Entitlement } from "../../../lib/yutai/reward-v2-contracts";
+import type { RewardV2Account, RewardV2BenefitKind, RewardV2Coverage, RewardV2Entitlement, RewardV2ExpiryPolicy } from "../../../lib/yutai/reward-v2-contracts";
 import styles from "./RewardLedgerV2Panel.module.css";
 
 function localDate() {
@@ -29,6 +29,9 @@ function coverageLabel(value: string) {
   if (value === "history_partial") return "履歴一部";
   return "履歴不明";
 }
+function isRollingPolicy(value: RewardV2ExpiryPolicy) {
+  return value === "rolling_inactivity" || value === "rolling_on_grant";
+}
 
 export function RewardLedgerV2Panel() {
   const [today,setToday] = useState(localDate);
@@ -36,7 +39,7 @@ export function RewardLedgerV2Panel() {
   const [accountTitle,setAccountTitle] = useState("");
   const [accountKind,setAccountKind] = useState<RewardV2BenefitKind>("stored_value");
   const [accountUnit,setAccountUnit] = useState("yen");
-  const [expiryPolicy,setExpiryPolicy] = useState("none");
+  const [expiryPolicy,setExpiryPolicy] = useState<RewardV2ExpiryPolicy>("none");
   const [rollingMonths,setRollingMonths] = useState("12");
   const [allocationPolicy,setAllocationPolicy] = useState("fifo");
   const [linkTargets,setLinkTargets] = useState<Record<string,string>>({});
@@ -54,7 +57,7 @@ export function RewardLedgerV2Panel() {
     if (!repository || !accountTitle.trim()) return;
     const key = `custom-${crypto.randomUUID()}`;
     const payload: Record<string, unknown> = { account_key:key, title:accountTitle.trim(), benefit_kind:accountKind, native_unit:accountUnit.trim() || "count", expiry_policy:expiryPolicy, allocation_policy:allocationPolicy };
-    if (expiryPolicy === "rolling_inactivity") payload.rolling_expiry_months = Number(rollingMonths);
+    if (isRollingPolicy(expiryPolicy)) payload.rolling_expiry_months = Number(rollingMonths);
     const result = await repository.save({ command_type:"create_account", target:{}, payload, expected_revision:0, note:"MiniTools: Reward Model v2 Account作成" });
     if (result) setAccountTitle("");
   }
@@ -87,8 +90,8 @@ export function RewardLedgerV2Panel() {
         <label>単位<input value={accountUnit} onChange={e=>setAccountUnit(e.target.value)} placeholder="yen / point / count" /></label>
       </div>
       <div className={styles.inline}>
-        <label>期限<select value={expiryPolicy} onChange={e=>setExpiryPolicy(e.target.value)}><option value="none">なし</option><option value="fixed_per_grant">付与Lotごと</option><option value="rolling_inactivity">最終活動から更新</option><option value="external_managed">外部管理</option></select></label>
-        {expiryPolicy === "rolling_inactivity" && <label>更新月数<input type="number" min="1" value={rollingMonths} onChange={e=>setRollingMonths(e.target.value)} /></label>}
+        <label>期限<select value={expiryPolicy} onChange={e=>setExpiryPolicy(e.target.value as RewardV2ExpiryPolicy)}><option value="none">なし</option><option value="fixed_per_grant">付与Lotごと</option><option value="rolling_inactivity">最終活動から更新</option><option value="rolling_on_grant">最後の付与から更新</option><option value="external_managed">外部管理</option></select></label>
+        {isRollingPolicy(expiryPolicy) && <label>更新月数<input type="number" min="1" value={rollingMonths} onChange={e=>setRollingMonths(e.target.value)} /></label>}
         <label>消費順<select value={allocationPolicy} onChange={e=>setAllocationPolicy(e.target.value)}><option value="fifo">取得順</option><option value="fefo">期限が近い順</option><option value="manual">Lot指定</option><option value="not_applicable">残高消費なし</option></select></label>
         <button type="submit" disabled={busy}>作成</button>
       </div>
@@ -107,6 +110,8 @@ function AccountCard({account,repository,busy,today}:{account:RewardV2Account;re
   const [grantValue,setGrantValue] = useState("");
   const [grantTitle,setGrantTitle] = useState("");
   const [grantExpiry,setGrantExpiry] = useState("");
+  const rollingAnchorLabel = account.expiry_policy === "rolling_inactivity" ? "最終活動から" : account.expiry_policy === "rolling_on_grant" ? "最後の付与から" : null;
+  const rollingDuration = account.rolling_expiry_months ? `${account.rolling_expiry_months}か月` : `${account.rolling_expiry_days}日`;
   async function consumeAccount(e:FormEvent) { e.preventDefault(); if(!repository) return; const value=Number(consume); if(!(value>0)) return; const result=await repository.save({command_type:"consume_account",target:{id:account.id},payload:{value},expected_revision:account.revision,note:"MiniTools: Accountから使用"}); if(result)setConsume(""); }
   async function addGrant(e:FormEvent) { e.preventDefault(); if(!repository) return; const value=Number(grantValue); if(!(value>=0)||!grantTitle.trim()) return; const payload:Record<string,unknown>={title:grantTitle.trim(),track_mode:account.native_unit==="yen"?"amount":"count",initial_value:value}; if(grantExpiry)payload.expires_on=grantExpiry; const result=await repository.save({command_type:"create_grant",target:{id:account.id},payload,expected_revision:account.revision,note:"MiniTools: 新規Grant Lot追加"}); if(result){setGrantValue("");setGrantTitle("");setGrantExpiry("");} }
   async function expireAccount(){ if(!repository)return; await repository.save({command_type:"expire_account",target:{id:account.id},payload:{},expected_revision:account.revision,note:"MiniTools: rolling期限切れ残高を失効確定"}); }
@@ -121,8 +126,8 @@ function AccountCard({account,repository,busy,today}:{account:RewardV2Account;re
       <div className={styles.metric}><small>失効済み</small><strong>{valueText(account.tracked_expired_native,account.native_unit)}</strong></div>
     </div>
     {(account.unclassified_increase_native>0 || account.unclassified_decrease_native>0) && <div className={styles.warning}><strong>未分類増減: {signedValueText(account.unclassified_adjustment_native,account.native_unit)}</strong><div>増加 {valueText(account.unclassified_increase_native,account.native_unit)} / 減少 {valueText(account.unclassified_decrease_native,account.native_unit)}</div><div className={styles.muted}>旧adjusted履歴のため、取得・利用・訂正のどれかは断定せず、追跡後の取得・利用には含めていません。</div></div>}
-    <div className={styles.muted}>次回期限: {account.nearest_expiry ?? "なし"}{account.expiry_policy==="rolling_inactivity" ? `（最終活動から${account.rolling_expiry_months ? `${account.rolling_expiry_months}か月` : `${account.rolling_expiry_days}日`}）` : ""}</div>
-    {account.expired_unprocessed_native>0 && <div className={styles.warning}>期限切れ未処理: {valueText(account.expired_unprocessed_native,account.native_unit)}{account.expiry_policy==="rolling_inactivity" && <div className={styles.actions}><button type="button" disabled={busy} onClick={()=>void expireAccount()}>失効を確定</button></div>}</div>}
+    <div className={styles.muted}>次回期限: {account.nearest_expiry ?? "なし"}{rollingAnchorLabel ? `（${rollingAnchorLabel}${rollingDuration}）` : ""}</div>
+    {account.expired_unprocessed_native>0 && <div className={styles.warning}>期限切れ未処理: {valueText(account.expired_unprocessed_native,account.native_unit)}{rollingAnchorLabel && <div className={styles.actions}><button type="button" disabled={busy} onClick={()=>void expireAccount()}>失効を確定</button></div>}</div>}
     {account.allocation_policy!=="manual" && account.allocation_policy!=="not_applicable" && <form className={styles.inline} onSubmit={consumeAccount}><label>使った量<input type="number" min="0" step={account.native_unit==="yen"?"0.01":"1"} value={consume} onChange={e=>setConsume(e.target.value)} /></label><button disabled={busy || !consume}>Accountから使用</button></form>}
     <details><summary>Grant Lot ({account.lots.length})</summary><ul className={styles.lots}>{account.lots.map(lot=><LotRow key={lot.id} lot={lot} account={account} repository={repository} busy={busy} today={today} />)}</ul></details>
     <details><summary>新しい付与を追加</summary><form className={styles.form} onSubmit={addGrant}><label>名称<input value={grantTitle} onChange={e=>setGrantTitle(e.target.value)} placeholder="例: 2026年9月付与" /></label><div className={styles.inline}><label>付与量<input type="number" min="0" step={account.native_unit==="yen"?"0.01":"1"} value={grantValue} onChange={e=>setGrantValue(e.target.value)} /></label><label>期限<input type="date" value={grantExpiry} onChange={e=>setGrantExpiry(e.target.value)} /></label><button disabled={busy}>追加</button></div></form></details>
