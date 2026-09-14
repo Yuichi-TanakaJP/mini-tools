@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { RewardV2Repository } from "./reward-v2-repository";
 
-function ledger() {
-  return { schema_version:2, as_of:"2026-09-13T00:00:00Z", today:"2026-09-13", counts:{accounts:0,entitlements:0,unassigned_rewards:0}, accounts:[], entitlements:[], unassigned_rewards:[] };
+function ledger(asOf = "2026-09-13T00:00:00Z") {
+  return { schema_version:2, as_of:asOf, today:"2026-09-13", counts:{accounts:0,entitlements:0,unassigned_rewards:0}, accounts:[], entitlements:[], unassigned_rewards:[] };
 }
 function fixture() {
   let owner: string | null = "A";
@@ -32,6 +32,17 @@ describe("Reward Model v2 repository", () => {
     await vi.waitFor(() => expect(f.rpc).toHaveBeenCalledTimes(1));
     f.setOwner("B"); f.repository.setIdentity("B",2); release({data:ledger(),error:null}); await pending;
     expect(f.repository.getSnapshot()).toMatchObject({ownerId:"B",ledger:null});
+  });
+  it("does not let an older same-owner read overwrite a newer read", async () => {
+    const f=fixture(); let release!:(v:{data:ReturnType<typeof ledger>;error:null})=>void;
+    f.rpc.mockImplementationOnce(() => new Promise(resolve=>{release=resolve;}));
+    const first=f.repository.load("2026-09-13");
+    await vi.waitFor(() => expect(f.rpc).toHaveBeenCalledTimes(1));
+    f.rpc.mockResolvedValueOnce({data:ledger("2026-09-13T02:00:00Z"),error:null});
+    await f.repository.load("2026-09-13");
+    release({data:ledger("2026-09-13T01:00:00Z"),error:null});
+    await first;
+    expect(f.repository.getSnapshot().ledger?.as_of).toBe("2026-09-13T02:00:00Z");
   });
   it("retains the exact request_id for an uncertain retry", async () => {
     const f=fixture(); f.rpc.mockImplementationOnce(async()=>({data:null,error:{message:"fetch failed"}}));
