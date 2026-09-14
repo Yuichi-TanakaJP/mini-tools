@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useYutaiRewardLedgerV2 } from "../../../lib/yutai/reward-v2-browser";
 import type { RewardV2Account, RewardV2BenefitKind, RewardV2Coverage, RewardV2Entitlement } from "../../../lib/yutai/reward-v2-contracts";
@@ -27,7 +27,7 @@ function coverageLabel(value: string) {
 }
 
 export function RewardLedgerV2Panel() {
-  const [today] = useState(localDate);
+  const [today,setToday] = useState(localDate);
   const { state, repository } = useYutaiRewardLedgerV2(today);
   const [accountTitle,setAccountTitle] = useState("");
   const [accountKind,setAccountKind] = useState<RewardV2BenefitKind>("stored_value");
@@ -36,8 +36,14 @@ export function RewardLedgerV2Panel() {
   const [rollingMonths,setRollingMonths] = useState("12");
   const [allocationPolicy,setAllocationPolicy] = useState("fifo");
   const [linkTargets,setLinkTargets] = useState<Record<string,string>>({});
-  const busy = state.status === "saving" || state.status === "loading" || Boolean(state.uncertain);
+  const busy = state.status !== "ready" || Boolean(state.uncertain);
   const ledger = state.ledger;
+  useEffect(() => {
+    const update = () => setToday(localDate());
+    const timer = setInterval(update, 60_000);
+    window.addEventListener("focus", update);
+    return () => { clearInterval(timer); window.removeEventListener("focus", update); };
+  }, []);
 
   async function createAccount(e: FormEvent) {
     e.preventDefault();
