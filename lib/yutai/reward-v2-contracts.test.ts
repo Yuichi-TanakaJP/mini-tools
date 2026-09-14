@@ -45,6 +45,15 @@ describe("Reward Model v2 wire parser", () => {
     rolling.accounts[0].rolling_expires_on = "2027-03-23";
     expect(parseRewardLedgerV2(rolling).accounts[0].expiry_policy).toBe("rolling_on_grant");
   });
+  it("accepts entitlement-only legacy link receipts", () => {
+    const receipt = {
+      schema_version:2, request_id:"r", replayed:false, command_type:"link_legacy_entitlement",
+      target_id:"legacy", entitlement_id:"entitlement", revision:2, operation_id:null, allocations:[],
+    };
+    expect(parseRewardV2CommandResult(receipt)).toMatchObject({
+      command_type:"link_legacy_entitlement", target_id:"legacy", entitlement_id:"entitlement", revision:2,
+    });
+  });
   it("rejects an unsupported schema, enum, missing additive field, or inconsistent count instead of silently falling back", () => {
     expect(() => parseRewardLedgerV2({ ...valid, schema_version:1 })).toThrow(/INVALID_V2_WIRE/);
     const broken = structuredClone(valid); broken.accounts[0].expiry_policy = "mystery";
@@ -59,5 +68,6 @@ describe("Reward Model v2 wire parser", () => {
     expect(parseRewardV2CommandResult(receipt).replayed).toBe(false);
     expect(() => parseRewardV2CommandResult({ ...receipt, replayed:"false" })).toThrow(/INVALID_V2_WIRE:replayed/);
     expect(() => parseRewardV2CommandResult({ ...receipt, command_type:"unknown" })).toThrow(/INVALID_V2_WIRE:command_type/);
+    expect(() => parseRewardV2CommandResult({ ...receipt, command_type:"link_legacy_entitlement", entitlement_id:12 })).toThrow(/INVALID_V2_WIRE:entitlement_id/);
   });
 });
