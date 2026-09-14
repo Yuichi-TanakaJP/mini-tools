@@ -45,7 +45,7 @@ describe("Reward Model v2 repository", () => {
     expect(f.repository.getSnapshot().ledger?.as_of).toBe("2026-09-13T02:00:00Z");
   });
   it("retains request_id and occurred_at for an uncertain retry, even across a refresh, and blocks a different write", async () => {
-    const f=fixture(); f.rpc.mockImplementationOnce(async()=>({data:null,error:{message:"fetch failed"}}));
+    const f=fixture(); f.rpc.mockImplementationOnce(async()=>{ throw new Error("fetch failed"); });
     const draft = {command_type:"create_account" as const,target:{},payload:{},expected_revision:0,note:"test"};
     await f.repository.save(draft);
     const wire=f.repository.getSnapshot().uncertain;
