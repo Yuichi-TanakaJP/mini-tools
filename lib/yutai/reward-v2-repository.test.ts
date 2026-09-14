@@ -44,13 +44,16 @@ describe("Reward Model v2 repository", () => {
     await first;
     expect(f.repository.getSnapshot().ledger?.as_of).toBe("2026-09-13T02:00:00Z");
   });
-  it("retains request_id and occurred_at for an uncertain retry and blocks a different write", async () => {
+  it("retains request_id and occurred_at for an uncertain retry, even across a refresh, and blocks a different write", async () => {
     const f=fixture(); f.rpc.mockImplementationOnce(async()=>({data:null,error:{message:"fetch failed"}}));
     const draft = {command_type:"create_account" as const,target:{},payload:{},expected_revision:0,note:"test"};
     await f.repository.save(draft);
     const wire=f.repository.getSnapshot().uncertain;
     expect(wire?.request_id).toBeTruthy();
     expect(wire?.occurred_at).toBeTruthy();
+
+    await f.repository.load("2026-09-13");
+    expect(f.repository.getSnapshot().uncertain?.request_id).toBe(wire?.request_id);
 
     const beforeBlocked = f.rpc.mock.calls.length;
     const blocked = await f.repository.save({command_type:"create_account",target:{},payload:{},expected_revision:0,note:"different"});
@@ -64,5 +67,16 @@ describe("Reward Model v2 repository", () => {
     const second = calls[1][1].p_input as Record<string,unknown>;
     expect(second.request_id).toBe(first.request_id);
     expect(second.occurred_at).toBe(first.occurred_at);
+  });
+  it("treats a malformed successful write reply as uncertain but a database rejection as definitely not saved", async () => {
+    const f=fixture();
+    f.rpc.mockImplementationOnce(async()=>({data:{schema_version:2},error:null}));
+    await f.repository.save({command_type:"create_account",target:{},payload:{},expected_revision:0,note:"malformed"});
+    expect(f.repository.getSnapshot().uncertain?.command_type).toBe("create_account");
+
+    f.setOwner("B"); f.repository.setIdentity("B",2); f.setOwner("A"); f.repository.setIdentity("A",3);
+    f.rpc.mockImplementationOnce(async()=>({data:null,error:{message:"REVISION_CONFLICT",code:"40001"}}));
+    await f.repository.save({command_type:"create_account",target:{},payload:{},expected_revision:0,note:"conflict"});
+    expect(f.repository.getSnapshot().uncertain).toBeNull();
   });
 });
