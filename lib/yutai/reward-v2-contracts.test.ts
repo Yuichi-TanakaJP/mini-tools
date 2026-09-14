@@ -37,6 +37,14 @@ describe("Reward Model v2 wire parser", () => {
     });
     expect(parsed.entitlements[0].deadlines[0].deadline_type).toBe("claim_by");
   });
+  it("accepts rolling_on_grant as an explicit expiry policy", () => {
+    const rolling = structuredClone(valid);
+    rolling.accounts[0].expiry_policy = "rolling_on_grant";
+    rolling.accounts[0].rolling_expiry_months = 12;
+    rolling.accounts[0].nearest_expiry = "2027-03-23";
+    rolling.accounts[0].rolling_expires_on = "2027-03-23";
+    expect(parseRewardLedgerV2(rolling).accounts[0].expiry_policy).toBe("rolling_on_grant");
+  });
   it("rejects an unsupported schema, enum, missing additive field, or inconsistent count instead of silently falling back", () => {
     expect(() => parseRewardLedgerV2({ ...valid, schema_version:1 })).toThrow(/INVALID_V2_WIRE/);
     const broken = structuredClone(valid); broken.accounts[0].expiry_policy = "mystery";
