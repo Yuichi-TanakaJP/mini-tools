@@ -19,6 +19,10 @@ function valueText(value: number, unit: string) {
   if (unit === "point") return `${formatted} pt`;
   return `${formatted} ${unit}`;
 }
+function signedValueText(value: number, unit: string) {
+  if (value === 0) return valueText(0,unit);
+  return `${value > 0 ? "+" : "-"}${valueText(Math.abs(value),unit)}`;
+}
 function coverageLabel(value: string) {
   if (value === "native_complete") return "追跡完全";
   if (value === "legacy_opening_balance") return "移行時残高";
@@ -116,6 +120,7 @@ function AccountCard({account,repository,busy,today}:{account:RewardV2Account;re
       <div className={styles.metric}><small>追跡後の利用</small><strong>{valueText(account.tracked_consumed_native,account.native_unit)}</strong></div>
       <div className={styles.metric}><small>失効済み</small><strong>{valueText(account.tracked_expired_native,account.native_unit)}</strong></div>
     </div>
+    {(account.unclassified_increase_native>0 || account.unclassified_decrease_native>0) && <div className={styles.warning}><strong>未分類増減: {signedValueText(account.unclassified_adjustment_native,account.native_unit)}</strong><div>増加 {valueText(account.unclassified_increase_native,account.native_unit)} / 減少 {valueText(account.unclassified_decrease_native,account.native_unit)}</div><div className={styles.muted}>旧adjusted履歴のため、取得・利用・訂正のどれかは断定せず、追跡後の取得・利用には含めていません。</div></div>}
     <div className={styles.muted}>次回期限: {account.nearest_expiry ?? "なし"}{account.expiry_policy==="rolling_inactivity" ? `（最終活動から${account.rolling_expiry_months ? `${account.rolling_expiry_months}か月` : `${account.rolling_expiry_days}日`}）` : ""}</div>
     {account.expired_unprocessed_native>0 && <div className={styles.warning}>期限切れ未処理: {valueText(account.expired_unprocessed_native,account.native_unit)}{account.expiry_policy==="rolling_inactivity" && <div className={styles.actions}><button type="button" disabled={busy} onClick={()=>void expireAccount()}>失効を確定</button></div>}</div>}
     {account.allocation_policy!=="manual" && account.allocation_policy!=="not_applicable" && <form className={styles.inline} onSubmit={consumeAccount}><label>使った量<input type="number" min="0" step={account.native_unit==="yen"?"0.01":"1"} value={consume} onChange={e=>setConsume(e.target.value)} /></label><button disabled={busy || !consume}>Accountから使用</button></form>}
