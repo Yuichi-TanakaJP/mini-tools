@@ -21,11 +21,9 @@ export interface RewardV2ClientLike {
 function message(error: unknown) { return error instanceof Error ? error.message : String(error); }
 function networkLike(error: unknown) { const m = message(error).toLowerCase(); return m.includes("fetch") || m.includes("network") || m.includes("timeout") || m.includes("failed"); }
 function uuid() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
-  if (typeof crypto === "undefined") throw new Error("CRYPTO_UNAVAILABLE");
-  const bytes = new Uint8Array(16); crypto.getRandomValues(bytes); bytes[6] = (bytes[6] & 0x0f) | 0x40; bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const h = Array.from(bytes, b => b.toString(16).padStart(2,"0")).join("");
-  return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+  const browserCrypto = globalThis.crypto;
+  if (!browserCrypto || typeof browserCrypto.randomUUID !== "function") throw new Error("CRYPTO_UNAVAILABLE");
+  return browserCrypto.randomUUID();
 }
 async function withTimeout<T>(value: PromiseLike<T>, milliseconds = 15_000): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
