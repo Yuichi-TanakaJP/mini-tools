@@ -44,13 +44,25 @@ describe("Reward Model v2 repository", () => {
     await first;
     expect(f.repository.getSnapshot().ledger?.as_of).toBe("2026-09-13T02:00:00Z");
   });
-  it("retains the exact request_id for an uncertain retry", async () => {
+  it("retains request_id and occurred_at for an uncertain retry and blocks a different write", async () => {
     const f=fixture(); f.rpc.mockImplementationOnce(async()=>({data:null,error:{message:"fetch failed"}}));
-    await f.repository.save({command_type:"create_account",target:{},payload:{},expected_revision:0,note:"test"});
-    const wire=f.repository.getSnapshot().uncertain; expect(wire?.request_id).toBeTruthy();
+    const draft = {command_type:"create_account" as const,target:{},payload:{},expected_revision:0,note:"test"};
+    await f.repository.save(draft);
+    const wire=f.repository.getSnapshot().uncertain;
+    expect(wire?.request_id).toBeTruthy();
+    expect(wire?.occurred_at).toBeTruthy();
+
+    const beforeBlocked = f.rpc.mock.calls.length;
+    const blocked = await f.repository.save({command_type:"create_account",target:{},payload:{},expected_revision:0,note:"different"});
+    expect(blocked).toBeNull();
+    expect(f.rpc.mock.calls.length).toBe(beforeBlocked);
+
     f.rpc.mockImplementationOnce(async(_name,args)=>{const input=args.p_input as Record<string,unknown>;return {data:{schema_version:2,request_id:input.request_id,replayed:true,command_type:input.command_type,target_id:"target",revision:1},error:null};});
     await f.repository.retryUncertain();
     const calls=f.rpc.mock.calls.filter(([name])=>name==="stock_notes_record_yutai_v2_command");
-    expect((calls[0][1].p_input as Record<string,unknown>).request_id).toBe((calls[1][1].p_input as Record<string,unknown>).request_id);
+    const first = calls[0][1].p_input as Record<string,unknown>;
+    const second = calls[1][1].p_input as Record<string,unknown>;
+    expect(second.request_id).toBe(first.request_id);
+    expect(second.occurred_at).toBe(first.occurred_at);
   });
 });
