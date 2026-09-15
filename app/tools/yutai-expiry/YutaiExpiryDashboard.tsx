@@ -112,9 +112,8 @@ function entitlementTitle(entitlement: RewardV2Entitlement) {
 
 function deadlineSatisfied(entitlement: RewardV2Entitlement, type: RewardV2DeadlineType) {
   if (entitlement.status === "fulfilled") return true;
-  if (type === "claim_by" && ["claimed", "activated", "fulfilled"].includes(entitlement.status)) return true;
-  if (type === "activate_by" && ["activated", "fulfilled"].includes(entitlement.status)) return true;
-  if (type === "use_by" && entitlement.status === "fulfilled") return true;
+  if (type === "claim_by" && ["claimed", "activated"].includes(entitlement.status)) return true;
+  if (type === "activate_by" && entitlement.status === "activated") return true;
   return false;
 }
 
