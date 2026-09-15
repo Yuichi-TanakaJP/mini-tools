@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { RewardLedgerV2Panel } from "./RewardLedgerV2Panel";
 import { useYutaiRewardLedgerV2 } from "../../../lib/yutai/reward-v2-browser";
 import type {
+  RewardV2Account,
   RewardV2Coverage,
   RewardV2EntitlementStatus,
   RewardV2LegacyReward,
 } from "../../../lib/yutai/reward-v2-contracts";
 import styles from "./RewardLedgerV2Panel.module.css";
+import compactStyles from "./RewardLedgerV2Workspace.module.css";
 
 function localDate() {
   const d = new Date();
@@ -25,11 +27,33 @@ function valueText(value: number, reward: RewardV2LegacyReward) {
   return `${formatted} count`;
 }
 
+function accountValueText(account: RewardV2Account) {
+  const formatted = account.recorded_balance_native.toLocaleString("ja-JP", { maximumFractionDigits: 2 });
+  if (account.native_unit === "yen") return `¥${formatted}`;
+  if (account.native_unit === "point") return `${formatted} pt`;
+  return `${formatted} ${account.native_unit}`;
+}
+
 function coverageLabel(value: RewardV2Coverage) {
   if (value === "native_complete") return "追跡完全";
   if (value === "legacy_opening_balance") return "移行時残高";
   if (value === "history_partial") return "履歴一部";
   return "履歴不明";
+}
+
+function entitlementStatusLabel(value: RewardV2EntitlementStatus) {
+  const labels: Record<RewardV2EntitlementStatus, string> = {
+    unknown: "状態未確認",
+    eligible: "権利あり",
+    claim_required: "申込必要",
+    claimed: "申込済み",
+    activated: "有効化済み",
+    fulfilled: "完了",
+    expired: "失効",
+    waived: "利用しない",
+    cancelled: "取消",
+  };
+  return labels[value];
 }
 
 const statusOptions: Array<{ value: Exclude<RewardV2EntitlementStatus, "unknown">; label: string }> = [
@@ -62,6 +86,15 @@ export function RewardLedgerV2Workspace() {
     };
   }, []);
 
+  const accounts = useMemo(
+    () => [...(ledger?.accounts ?? [])].sort((a, b) => {
+      if (a.expired_unprocessed_native !== b.expired_unprocessed_native) return b.expired_unprocessed_native - a.expired_unprocessed_native;
+      const ae = a.nearest_expiry ?? "9999-12-31";
+      const be = b.nearest_expiry ?? "9999-12-31";
+      return ae.localeCompare(be) || a.title.localeCompare(b.title, "ja");
+    }),
+    [ledger]
+  );
   const actionable = useMemo(
     () => ledger?.unassigned_rewards.filter((r) => !r.archived_at && r.remaining_value > 0) ?? [],
     [ledger]
@@ -119,13 +152,67 @@ export function RewardLedgerV2Workspace() {
   }
 
   const hideLegacyStyle = ledger && ledger.unassigned_rewards.length > 0
-    ? `[data-yutai-v2-workspace] > section.${styles.panel}:first-of-type > .${styles.section}:last-child{display:none}`
+    ? `[data-yutai-v2-advanced] > section.${styles.panel} > .${styles.section}:last-child{display:none}`
     : "";
 
   return (
     <div data-yutai-v2-workspace>
-      {hideLegacyStyle && <style>{hideLegacyStyle}</style>}
-      <RewardLedgerV2Panel />
+      {ledger && (
+        <section className={`${styles.panel} ${compactStyles.overview}`} aria-labelledby="reward-v2-overview-title">
+          <div className={compactStyles.overviewHeader}>
+            <div>
+              <h3 id="reward-v2-overview-title">優待の残高・期限</h3>
+              <p>普段は残高と次の期限だけ確認できます。詳細な履歴や編集は下の「高度な編集」から開きます。</p>
+            </div>
+            <div className={styles.badges}>
+              <span className={styles.badge}>残高 {ledger.counts.accounts}</span>
+              <span className={styles.badge}>権利 {ledger.counts.entitlements}</span>
+              <span className={styles.badge}>要確認 {actionable.length + unknownEntitlements.length}</span>
+            </div>
+          </div>
+
+          <div>
+            <h4 className={compactStyles.sectionTitle}>残高</h4>
+            <div className={compactStyles.compactList}>
+              {accounts.map((account) => (
+                <div className={`${compactStyles.compactRow} ${account.expired_unprocessed_native > 0 ? compactStyles.warningRow : ""}`} key={account.id}>
+                  <div className={compactStyles.compactTitle}>{account.title}</div>
+                  <div className={compactStyles.compactValue}>{accountValueText(account)}</div>
+                  <div className={compactStyles.compactMeta}>
+                    次回期限 {account.nearest_expiry ?? "なし"}
+                    {account.expired_unprocessed_native > 0 ? ` / 期限切れ未処理 ${account.expired_unprocessed_native.toLocaleString("ja-JP")} ${account.native_unit}` : ""}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {ledger.entitlements.length > 0 && (
+            <details>
+              <summary>申込・利用権 {ledger.entitlements.length}件</summary>
+              <div className={compactStyles.compactList}>
+                {ledger.entitlements.map((entitlement) => (
+                  <div className={compactStyles.compactRow} key={entitlement.id}>
+                    <div className={compactStyles.compactTitle}>{entitlement.benefit_kind}</div>
+                    <div className={compactStyles.compactValue}>{entitlementStatusLabel(entitlement.status)}</div>
+                    <div className={compactStyles.compactMeta}>
+                      {entitlement.deadlines.map((d) => `${d.deadline_type} ${d.due_on}${d.completed_at ? " ✓" : ""}`).join(" / ") || "期限なし"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+        </section>
+      )}
+
+      <details className={compactStyles.advanced}>
+        <summary>高度な編集・履歴管理</summary>
+        <div className={compactStyles.advancedBody} data-yutai-v2-advanced>
+          {hideLegacyStyle && <style>{hideLegacyStyle}</style>}
+          <RewardLedgerV2Panel />
+        </div>
+      </details>
 
       {ledger && (ledger.unassigned_rewards.length > 0 || unknownEntitlements.length > 0) && (
         <section className={styles.panel} aria-labelledby="reward-v2-migration-title">
@@ -152,7 +239,7 @@ export function RewardLedgerV2Workspace() {
                     <div className={styles.muted}>
                       現在 {valueText(reward.remaining_value, reward)} / 期限 {reward.expires_on ?? "なし"} / {coverageLabel(reward.coverage_state)}
                     </div>
-                    {reward.title === "U-NEXTポイント" && <div className={styles.warning}>旧count形式をpointへ推測換算しません。今後の付与はU-NEXT point Accountへ登録します。</div>}
+                    {reward.title === "U-NEXTポイント" && <div className={styles.warning}>旧データは過去分として整理済みです。現在分はU-NEXT point Accountで追跡します。</div>}
                     {reward.title === "マジカポイント" && <div className={styles.warning}>最後の付与日を旧期限から逆算しません。今後の付与はmajica Accountで追跡します。</div>}
                     {ledger.accounts.length > 0 && (
                       <div className={styles.inline}>
