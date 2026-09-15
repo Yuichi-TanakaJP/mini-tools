@@ -82,8 +82,9 @@ export default function YutaiValuePerformanceView(){
 }
 
 function ValueRow({item,displayName}:{item:YutaiValuePerformanceItem;displayName:string}){
+  const subtitle=item.company||(item.source_type==="entitlement"?"権利":"残高・券");
   return <div className={styles.row}>
-    <div className={styles.name}><strong>{displayName}</strong><span>{item.company||item.source_type==="entitlement"?"権利":"残高・券"}{item.quality!=="native_complete"?" / 履歴一部":""}</span></div>
+    <div className={styles.name}><strong>{displayName}</strong><span>{subtitle}{item.quality!=="native_complete"?" / 履歴一部":""}</span></div>
     <div className={styles.metric}><small>取得</small><b>{item.acquired_yen==null?"未換算":yen(item.acquired_yen)}</b></div>
     <div className={styles.metric}><small>利用</small><b>{yen(item.used_yen)}</b></div>
     <div className={styles.metric}><small>失効</small><b>{yen(item.expired_yen)}</b></div>
