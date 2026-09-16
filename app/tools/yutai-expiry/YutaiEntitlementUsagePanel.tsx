@@ -84,7 +84,7 @@ export default function YutaiEntitlementUsagePanel() {
       if (form.unit.trim()) payload.native_unit = form.unit.trim();
       if (form.merchant.trim()) payload.merchant_name = form.merchant.trim();
       if (form.purpose.trim()) payload.purpose = form.purpose.trim();
-      const occurredAt = new Date(form.occurredAt).toISOString();
+      const occurredAt = new Date(form.occurredAt || localDateTimeInput()).toISOString();
       const command = {
         schema_version: 2,
         request_id: crypto.randomUUID(),
