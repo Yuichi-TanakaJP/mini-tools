@@ -183,9 +183,13 @@ end $case$; rollback;"""
 
 for name, mutation in CORRUPTIONS.items():
     for entry, code in [('apply',APPLY),('verify',VERIFY)]:
-        def case(self, mutation=mutation, code=code): self.assert_rejected(code,mutation)
+        # The verifier is read-only: the deleted resource is detected before the
+        # conflicting item. Apply restores it tentatively, then rolls it back.
+        missing = entry == 'verify' and name == 'earlier_insert_rolled_back'
+        def case(self, mutation=mutation, code=code, missing=missing):
+            self.assert_rejected(code,mutation,missing_row=missing)
         setattr(ReplayTest,f'test_{entry}_{name}',case)
-for name, value in [('absent',None),('empty',''),('space','  '),('wrong_resource','https://github.com/example/other/blob/'+'1'*40+'/README.md')]:
+for name, value in [('absent',None),('null',None),('empty',''),('space','  '),('wrong_resource','https://github.com/example/other/blob/'+'1'*40+'/README.md')]:
     def case(self,value=value,name=name):
         m=copy.deepcopy(M)
         if name=='absent': del m['predecessor_evidence_url']
