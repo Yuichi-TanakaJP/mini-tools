@@ -32,6 +32,7 @@ PR マージ後・リリース前に「何を確認すれば OK か」をツー�
 | ポートフォリオ | `/premium/portfolio` | Supabase（RLS付き読み取り）、Premium + Supabase Auth | [portfolio.md](./portfolio.md) |
 | テーマViewer | `/premium/themes` | stock-notes Viewer API（server-only token）、Premium | [theme-viewer.md](./theme-viewer.md) |
 | 業界マップ | `/premium/industry-map` | Supabase直読み（RLS）、Premium | [industry-map.md](./industry-map.md) |
+| Product Map | `/premium/product-map` | Workspace Core server-only read、Premium | [product-map.md](./product-map.md) |
 
 ## 確認環境
 
