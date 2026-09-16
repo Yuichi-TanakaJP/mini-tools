@@ -3,6 +3,7 @@
 import { useState } from "react";
 import YutaiExpiryDailyView from "./YutaiExpiryDailyView";
 import YutaiHistoryView from "./YutaiHistoryView";
+import YutaiEntitlementUsagePanel from "./YutaiEntitlementUsagePanel";
 import YutaiValuePerformanceView from "./YutaiValuePerformanceView";
 import { RewardLedgerV2Workspace } from "./RewardLedgerV2Workspace";
 import DatabaseRewardsGate from "./DatabaseRewardsGate";
@@ -30,7 +31,7 @@ export default function YutaiExpiryApp({ scanEnabled = false }: { scanEnabled?: 
 
       <div className={styles.content}>
         {view === "deadline" && <YutaiExpiryDailyView onManage={() => setView("management")} />}
-        {view === "history" && <YutaiHistoryView />}
+        {view === "history" && <><YutaiHistoryView /><YutaiEntitlementUsagePanel /></>}
         {view === "performance" && <YutaiValuePerformanceView />}
         {view === "management" && (
           <section className={styles.management}>
