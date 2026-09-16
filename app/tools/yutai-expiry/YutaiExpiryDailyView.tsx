@@ -12,11 +12,20 @@ function localDate() {
 function num(v:number){ return v.toLocaleString("ja-JP",{maximumFractionDigits:2}); }
 function shortDate(value:string){ const [,m,d]=value.split("-").map(Number); return `${m}/${d}`; }
 function dateLabel(value:string,today:string){ const [y,m,d]=value.split("-").map(Number); return y===Number(today.slice(0,4))?`${m}月${d}日`:`${y}年${m}月${d}日`; }
+function voucherUnitYen(account:RewardV2Account){
+  const values=[...new Set(account.lots.filter(l=>!l.archived_at&&l.unit_yen!=null).map(l=>l.unit_yen as number))];
+  return values.length===1?values[0]:null;
+}
 function accountValueText(account:RewardV2Account,value=account.available_balance_native){
   const n=num(value);
   if(account.native_unit==="yen") return `¥${n}`;
   if(["point","points","pt"].includes(account.native_unit)) return `${n} pt`;
-  if(account.benefit_kind==="voucher"||account.benefit_kind==="admission") return `${n}枚`;
+  if(account.benefit_kind==="voucher"){
+    const unitYen=voucherUnitYen(account);
+    if(unitYen!=null) return `¥${num(value*unitYen)}（${n}枚）`;
+    return `${n}枚`;
+  }
+  if(account.benefit_kind==="admission") return `${n}枚`;
   if(account.native_unit==="month") return `${n}か月`;
   if(account.native_unit==="membership") return `${n}口`;
   return `${n}${["count","unit"].includes(account.native_unit)?"個":` ${account.native_unit}`}`;
@@ -25,10 +34,10 @@ function legacyValueText(reward:RewardV2LegacyReward){
   const n=num(reward.remaining_value);
   if(reward.title.includes("ポイント")) return `${n} pt`;
   if(reward.track_mode==="amount") return `¥${n}`;
-  if(reward.unit_yen!=null) return `${n}枚（1枚 ¥${num(reward.unit_yen)}）`;
+  if(reward.unit_yen!=null) return `¥${num(reward.remaining_value*reward.unit_yen)}（${n}枚）`;
   return `${n}個`;
 }
-const benefitLabels:Record<RewardV2BenefitKind,string>={stored_value:"電子マネー・金額残高",points:"ポイント",voucher:"優待券",admission:"入場・招待",discount:"割引優待",service_access:"サービス利用権",service_period:"サービス利用期間",choice:"選択型優待",goods:"商品優待",cashback:"還元",composite:"複合優待",other:"その他の優待"};
+const benefitLabels:Record<RewardV2BenefitKind,string>={stored_value:"電子マネー・金額残高",points:"ポイント",voucher:"商品券・金券",admission:"入場・招待",discount:"割引優待",service_access:"サービス利用権",service_period:"サービス利用期間",choice:"選択型優待",goods:"商品優待",cashback:"還元",composite:"複合優待",other:"その他の優待"};
 const statusLabels:Record<RewardV2EntitlementStatus,string>={unknown:"状態未確認",eligible:"権利あり",claim_required:"申込が必要",claimed:"申込済み",activated:"利用開始済み",fulfilled:"受取・完了",expired:"失効",waived:"利用しない",cancelled:"取消"};
 const deadlineLabels:Record<RewardV2DeadlineType,string>={claim_by:"申込期限",activate_by:"利用開始期限",book_by:"予約期限",usable_from:"利用開始日",use_by:"利用期限",service_starts_at:"サービス開始",service_ends_at:"サービス終了"};
 function entitlementTitle(e:RewardV2Entitlement){ const t=e.memo.split(/\n|。/).map(x=>x.trim()).find(Boolean); return t?(t.length>42?`${t.slice(0,42)}…`:t):benefitLabels[e.benefit_kind]; }
