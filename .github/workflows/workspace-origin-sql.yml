@@ -1,0 +1,50 @@
+name: Workspace Origin SQL
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'infra/workspace-core/operations/**'
+      - 'infra/workspace-core/tests/**'
+      - '.github/workflows/workspace-origin-sql.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/workspace-core/operations/**'
+      - 'infra/workspace-core/tests/**'
+      - '.github/workflows/workspace-origin-sql.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  origin-sql-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: origin_followup_test
+          POSTGRES_USER: postgres
+          # Only this disposable local service. Never use a production secret.
+          POSTGRES_PASSWORD: fixture-only
+        ports:
+          - '127.0.0.1:5432:5432'
+        options: >-
+          --health-cmd 'pg_isready -U postgres -d origin_followup_test'
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: '127.0.0.1'
+      PGPORT: '5432'
+      PGDATABASE: origin_followup_test
+      PGUSER: postgres
+      PGPASSWORD: fixture-only
+    steps:
+      - uses: actions/checkout@v4
+      - name: SQL replay and conflict regression tests
+        run: |
+          psql --version
+          python3 infra/workspace-core/tests/test_origin_followup.py
