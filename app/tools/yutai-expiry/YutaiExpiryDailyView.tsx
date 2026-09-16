@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useYutaiRewardLedgerV2 } from "../../../lib/yutai/reward-v2-browser";
+import { useYutaiScheduledGrants } from "../../../lib/yutai/scheduled-grants-browser";
 import type { RewardV2Account, RewardV2BenefitKind, RewardV2DeadlineType, RewardV2Entitlement, RewardV2EntitlementStatus, RewardV2LegacyReward } from "../../../lib/yutai/reward-v2-contracts";
+import type { YutaiScheduledGrantItem } from "../../../lib/yutai/scheduled-grants";
 import styles from "./YutaiExpiryDashboard.module.css";
 
 function localDate() {
@@ -30,6 +32,13 @@ function accountValueText(account:RewardV2Account,value=account.available_balanc
   if(account.native_unit==="membership") return `${n}口`;
   return `${n}${["count","unit"].includes(account.native_unit)?"個":` ${account.native_unit}`}`;
 }
+function scheduledValueText(item:YutaiScheduledGrantItem){
+  const n=num(item.expected_native_value);
+  if(item.native_unit==="yen") return `+¥${n}`;
+  if(["point","points","pt"].includes(item.native_unit)) return `+${n} pt`;
+  if(item.expected_yen!=null) return `+¥${num(item.expected_yen)}`;
+  return `+${n} ${item.native_unit}`;
+}
 function legacyValueText(reward:RewardV2LegacyReward){
   const n=num(reward.remaining_value);
   if(reward.title.includes("ポイント")) return `${n} pt`;
@@ -51,12 +60,19 @@ export default function YutaiExpiryDailyView({onManage}:{onManage:()=>void}){
   const [today,setToday]=useState(localDate);
   const [query,setQuery]=useState("");
   const {state}=useYutaiRewardLedgerV2(today);
+  const scheduleState=useYutaiScheduledGrants(today);
   const ledger=state.ledger;
   useEffect(()=>{const update=()=>setToday(localDate()); const timer=setInterval(update,60000); window.addEventListener("focus",update); return()=>{clearInterval(timer);window.removeEventListener("focus",update);};},[]);
 
   const accounts=useMemo(()=> (ledger?.accounts??[]).filter(a=>a.status==="active"&&a.recorded_balance_native>0),[ledger]);
   const unknown=useMemo(()=> (ledger?.entitlements??[]).filter(e=>e.status==="unknown"),[ledger]);
   const legacy=useMemo(()=> (ledger?.unassigned_rewards??[]).filter(r=>!r.archived_at&&r.remaining_value>0),[ledger]);
+  const scheduled=useMemo(()=>{
+    const q=query.trim().toLocaleLowerCase("ja");
+    const rows=(scheduleState.data?.items??[]).filter(item=>item.status==="scheduled");
+    const visible=q?rows.filter(item=>`${item.account_title} ${item.title} ${item.company}`.toLocaleLowerCase("ja").includes(q)):rows;
+    return [...visible].sort((a,b)=>a.scheduled_on.localeCompare(b.scheduled_on)||a.title.localeCompare(b.title,"ja"));
+  },[scheduleState.data,query]);
 
   const items=useMemo(()=>{
     const out:Item[]=[];
@@ -87,6 +103,7 @@ export default function YutaiExpiryDailyView({onManage}:{onManage:()=>void}){
   const nextCount=nextDate?items.filter(i=>i.date===nextDate).length:0;
   const review=unknown.length+legacy.length;
   const past=groups.filter(g=>g.date<today), future=groups.filter(g=>g.date>=today), primary=[...past,...future.slice(0,3)], later=future.slice(3);
+  const scheduledPrimary=scheduled.slice(0,3), scheduledLater=scheduled.slice(3);
 
   if(state.status==="signed_out"||!state.ownerId) return <section className={styles.hero}><h1>株主優待期限帳</h1><p>優待データを見るにはログインが必要です。</p><a className={styles.primaryLink} href="/account">ログイン画面へ</a></section>;
   if(!ledger) return <section className={styles.hero}><h1>株主優待期限帳</h1><p>{state.error?`優待データを取得できませんでした: ${state.error}`:"優待データを読み込んでいます…"}</p></section>;
@@ -108,9 +125,19 @@ export default function YutaiExpiryDailyView({onManage}:{onManage:()=>void}){
       {primary.map(g=><DeadlineGroupView key={g.date} group={g} today={today}/>) }
       {later.length>0&&<details className={styles.later}><summary>その先の期限を見る（{later.reduce((s,g)=>s+g.items.length,0)}件）</summary><div className={styles.laterBody}>{later.map(g=><DeadlineGroupView key={g.date} group={g} today={today}/>)}</div></details>}
     </section>
+    {scheduleState.status==="error"&&<div className={styles.alert} role="alert">付与予定を取得できませんでした: {scheduleState.error}</div>}
+    {scheduled.length>0&&<section className={styles.deadlines}>
+      <div className={styles.sectionHeader}><div><h2>今後の付与予定</h2><p>まだ残高・取得実績には含めていません。付与日を迎えると自動的に残高へ移ります。</p></div><span>{scheduled.length}件</span></div>
+      <div className={styles.simpleList}>{scheduledPrimary.map(item=><ScheduledGrantRow key={item.id} item={item} today={today}/>)}</div>
+      {scheduledLater.length>0&&<details className={styles.later}><summary>その先の付与予定を見る（{scheduledLater.length}件）</summary><div className={styles.simpleList}>{scheduledLater.map(item=><ScheduledGrantRow key={item.id} item={item} today={today}/>)}</div></details>}
+    </section>}
     {noExpiry.length>0&&<details className={styles.secondarySection}><summary>期限なし・期限未設定の残高（{noExpiry.length}件）</summary><div className={styles.simpleList}>{noExpiry.map(a=><div className={styles.simpleRow} key={a.id}><div><strong>{a.title}</strong><span>{benefitLabels[a.benefit_kind]}</span></div><b>{accountValueText(a)}</b></div>)}</div></details>}
     {review>0&&<section className={styles.review}><button type="button" onClick={onManage}>要確認 {review}件を管理画面で確認</button><div className={styles.reviewBody}>{unknown.map(e=><p key={e.id}><strong>{entitlementTitle(e)}</strong> — {statusLabels[e.status]}</p>)}{legacy.map(r=><p key={r.id}><strong>{r.title}</strong> — {legacyValueText(r)}</p>)}</div></section>}
   </>;
+}
+
+function ScheduledGrantRow({item,today}:{item:YutaiScheduledGrantItem;today:string}){
+  return <div className={styles.simpleRow}><div><strong>{dateLabel(item.scheduled_on,today)}　{item.account_title}</strong><span>付与予定・予定失効 {item.expected_expires_on?dateLabel(item.expected_expires_on,today):"未設定"}</span></div><b>{scheduledValueText(item)}</b></div>;
 }
 
 function DeadlineGroupView({group,today}:{group:Group;today:string}){
