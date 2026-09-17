@@ -97,7 +97,7 @@ export class RewardV2Repository {
     try {
       await this.#assertOwner(ownerId, sessionRevision);
       const { data, error } = await withTimeout(this.#client.rpc("stock_notes_record_yutai_v2_command", { p_input: wire }));
-      if (error) throw rpcError(error, true);
+      if (error) throw rpcError(error);
       await this.#assertOwner(ownerId, sessionRevision);
       const result = parseRewardV2CommandResult(data);
       if (today) await this.load(today);

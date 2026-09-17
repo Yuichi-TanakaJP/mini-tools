@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
-  testDir: "./tests/ui-smoke", testMatch: ["yutai-connection.spec.ts", "yutai-rewards.spec.ts", "yutai-dashboard.spec.ts", "yutai-transfer.spec.ts", "yutai-restore.spec.ts"], timeout: 60_000,
+  testDir: "./tests/ui-smoke", testMatch: ["yutai-connection.spec.ts", "yutai-rewards.spec.ts", "yutai-dashboard.spec.ts", "yutai-transfer.spec.ts", "yutai-restore.spec.ts", "yutai-entitlement-usage.spec.ts"], timeout: 60_000,
   workers: 1, retries: 0, outputDir: ".tmp/yutai-browser-results",
   use: { baseURL: "http://127.0.0.1:3146", trace: "retain-on-failure", ...devices["Desktop Chrome"] },
   webServer: [

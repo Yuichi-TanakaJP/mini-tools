@@ -106,4 +106,11 @@ describe("Reward Model v2 repository", () => {
     await f.repository.save({command_type:"create_account",target:{},payload:{},expected_revision:0,note:"conflict"});
     expect(f.repository.getSnapshot().uncertain).toBeNull();
   });
+  it("keeps a transport failure returned as an RPC error uncertain", async () => {
+    const f = fixture();
+    f.rpc.mockResolvedValueOnce({ data: null, error: { message: "TypeError: Failed to fetch", code: "" } });
+    await f.repository.save({ command_type: "record_entitlement_usage", target: { id: "entitlement-1" },
+      payload: { value_yen: 2000 }, expected_revision: 1 });
+    expect(f.repository.getSnapshot().uncertain?.command_type).toBe("record_entitlement_usage");
+  });
 });

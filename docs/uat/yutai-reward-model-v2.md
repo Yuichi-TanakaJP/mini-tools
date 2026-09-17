@@ -143,6 +143,8 @@
 
 ## UAT-12 固定額でない優待の利用実績
 
+合成認証・RPCによる画面テスト: `node node_modules/@playwright/test/cli.js test --config=playwright.yutai.config.ts yutai-entitlement-usage.spec.ts`。実DBは変更しない。
+
 1. PreviewでAccountなしの割引・サービスEntitlementを用意し、履歴タブの「利用実績を記録」で円換算価値、数量・単位、利用先、用途、利用日時を入力して保存する。
 2. 保存後、履歴と集計が更新されることを確認する。
 3. 送信後に応答だけ失う状況を作り、「同じ要求で再確認」を押す。
