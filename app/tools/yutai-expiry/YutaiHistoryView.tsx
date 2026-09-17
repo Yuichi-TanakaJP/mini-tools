@@ -6,6 +6,7 @@ import type { YutaiHistoryCategory, YutaiRewardHistoryItem } from "../../../lib/
 import styles from "./YutaiHistoryView.module.css";
 
 type Filter = "all" | "acquired" | "used" | "expired";
+export type YutaiHistoryFocus = { title:string; accountKeys:string[]; rewardIds:string[] };
 const labels: Record<YutaiHistoryCategory,string> = { acquired:"取得",used:"利用",expired:"失効",transfer:"移動",conversion:"交換",adjustment:"補正" };
 
 function formatDate(value:string){ return new Intl.DateTimeFormat("ja-JP",{year:"numeric",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}).format(new Date(value)); }
@@ -28,24 +29,30 @@ function cleanedDetail(value:string|null){
   return value.replace("（履歴正規化済み）","");
 }
 
-export default function YutaiHistoryView(){
+export default function YutaiHistoryView({focus,onClearFocus}:{focus?:YutaiHistoryFocus|null;onClearFocus?:()=>void}){
   const history=useYutaiRewardHistory(300);
   const [filter,setFilter]=useState<Filter>("all");
   const [query,setQuery]=useState("");
   const items=history.data?.items??[];
+  const focusedItems=useMemo(()=>{
+    if(!focus) return items;
+    const accountKeys=new Set(focus.accountKeys);
+    const rewardIds=new Set(focus.rewardIds);
+    return items.filter(item=>(item.account_key!=null&&accountKeys.has(item.account_key))||rewardIds.has(item.reward_id));
+  },[items,focus]);
   const filtered=useMemo(()=>{
     const needle=query.trim().toLocaleLowerCase("ja");
-    return items.filter(item=>{
+    return focusedItems.filter(item=>{
       if(filter!=="all"&&item.event_category!==filter) return false;
       if(!needle) return true;
       return `${item.display_title} ${item.company} ${item.merchant_name??""} ${item.detail??""}`.toLocaleLowerCase("ja").includes(needle);
     });
-  },[items,filter,query]);
+  },[focusedItems,filter,query]);
   const counts=useMemo(()=>({
-    acquired:items.filter(i=>i.event_category==="acquired").length,
-    used:items.filter(i=>i.event_category==="used").length,
-    expired:items.filter(i=>i.event_category==="expired").length,
-  }),[items]);
+    acquired:focusedItems.filter(i=>i.event_category==="acquired").length,
+    used:focusedItems.filter(i=>i.event_category==="used").length,
+    expired:focusedItems.filter(i=>i.event_category==="expired").length,
+  }),[focusedItems]);
 
   if(history.status==="loading"&&!history.data) return <section className={styles.view}><p>履歴を読み込んでいます…</p></section>;
   if(history.status==="signed_out") return <section className={styles.view}><p>履歴を見るにはログインが必要です。</p></section>;
@@ -53,8 +60,9 @@ export default function YutaiHistoryView(){
 
   return <section className={styles.view}>
     <header className={styles.header}>
-      <h2>優待の履歴</h2>
+      <h2>{focus?`${focus.title}の履歴`:"優待の履歴"}</h2>
       <p>いつ取得し、どこでいくら使い、何が失効したかを時系列で確認します。</p>
+      {focus&&<div className={styles.focus}><span>優待一覧から絞り込み中</span>{onClearFocus&&<button type="button" onClick={onClearFocus}>すべての履歴に戻す</button>}</div>}
     </header>
 
     <div className={styles.summary}>
