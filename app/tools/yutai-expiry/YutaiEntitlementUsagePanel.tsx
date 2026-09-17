@@ -55,7 +55,7 @@ export default function YutaiEntitlementUsagePanel({ onSaved }: { onSaved: () =>
     !["cancelled", "waived"].includes(entitlement.status)
   ), [state.ledger]);
 
-  if (state.status === "signed_out" || (targets.length === 0 && !state.uncertain)) return null;
+  if (state.status === "signed_out" || (targets.length === 0 && !state.uncertain && state.status !== "error")) return null;
 
   function formFor(id: string) {
     return forms[id] ?? emptyForm();
@@ -125,6 +125,7 @@ export default function YutaiEntitlementUsagePanel({ onSaved }: { onSaved: () =>
         <p>固定額がない割引・サービス優待は、実際に得した金額を円換算して記録します。履歴には利用回数・人数など元の単位も残せます。</p>
         {(error || state.error) && <div className={styles.error} role="alert">{error || state.error}</div>}
         {state.uncertain && <div className={styles.error} role="alert">保存結果を確認できません。重複を避けるため、同じ要求IDで再確認してください。<button type="button" disabled={Boolean(saving)} onClick={() => void retryUncertain()}>同じ要求で再確認</button></div>}
+        {state.status === "error" && !state.uncertain && <button type="button" onClick={() => void repository?.load(today)}>最新台帳を再取得</button>}
         {targets.map((entitlement) => {
           const form = formFor(entitlement.id);
           return (

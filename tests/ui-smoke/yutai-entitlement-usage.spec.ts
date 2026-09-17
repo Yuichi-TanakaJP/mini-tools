@@ -11,6 +11,7 @@ test("entitlement usage retries the same request and refreshes history without a
   await context.addCookies([{ name: "sb-yutai-test-auth-token", value: `base64-${Buffer.from(JSON.stringify(session)).toString("base64url")}`, url: "http://127.0.0.1:3146" }]);
   const writes: Array<Record<string, unknown>> = [];
   let saved = false;
+  let rejectNext = false;
   let loads = 0;
   await page.route("**/api/sync**", route => route.fulfill({ json: { items: [] } }));
   await page.route("https://yutai-test.supabase.co/**", async route => {
@@ -36,6 +37,10 @@ test("entitlement usage retries the same request and refreshes history without a
     if (url.endsWith("stock_notes_record_yutai_v2_command")) {
       const wire = route.request().postDataJSON().p_input as Record<string, unknown>;
       writes.push(wire);
+      if (rejectNext) {
+        rejectNext = false;
+        return route.fulfill({ status: 409, json: { code: "40001", message: "REVISION_CONFLICT" } });
+      }
       saved = true;
       if (writes.length === 1) return route.abort("failed");
       return route.fulfill({ json: { schema_version: 2, request_id: wire.request_id, replayed: true,
@@ -61,4 +66,10 @@ test("entitlement usage retries the same request and refreshes history without a
   expect(writes[1]).toEqual(writes[0]);
   expect(loads).toBeGreaterThan(1);
   expect(pageLoads).toBe(1);
+  rejectNext = true;
+  await page.getByLabel("円換算価値").fill("1000");
+  await page.getByRole("button", { name: "利用実績を保存" }).click();
+  await expect(page.getByRole("button", { name: "最新台帳を再取得" })).toBeVisible();
+  await page.getByRole("button", { name: "最新台帳を再取得" }).click();
+  await expect(page.getByRole("button", { name: "利用実績を保存" })).toBeEnabled();
 });
