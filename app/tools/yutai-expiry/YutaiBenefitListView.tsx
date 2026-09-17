@@ -76,14 +76,19 @@ export default function YutaiBenefitListView({onOpenHistory}:{onOpenHistory:(ite
         return <details className={styles.card} key={item.group_key}>
           <summary className={styles.cardSummary}>
             <span className={styles.summaryIdentity}>
-              <span className={styles.title}><strong>{item.title}</strong>{item.company&&<span>{item.company}</span>}</span>
-              <span className={styles.flags}>{item.source_count>1&&<span className={styles.flag}>{item.source_count}件を統合</span>}{item.history_partial&&<span className={styles.flag}>履歴一部</span>}{item.has_unvalued&&<span className={styles.flag}>一部未換算</span>}</span>
+              <span className={styles.title}><strong>{item.title}</strong></span>
+              <span className={styles.identityMeta}>
+                {item.company&&<span className={styles.company}>{item.company}</span>}
+                <span className={styles.flags}>{item.source_count>1&&<span className={styles.flag}>{item.source_count}件を統合</span>}{item.history_partial&&<span className={styles.flag}>履歴一部</span>}{item.has_unvalued&&<span className={styles.flag}>一部未換算</span>}</span>
+              </span>
             </span>
-            <span className={styles.compactMetrics}>
-              <span className={styles.compactMetric}><small>現在</small><b>{current.main}</b>{current.sub&&<span>{current.sub}</span>}</span>
-              <span className={styles.compactMetric}><small>累計取得</small><b>{acquired.main}</b>{acquired.sub&&<span>{acquired.sub}</span>}</span>
+            <span className={styles.summaryAside}>
+              <span className={styles.expandLabel} aria-hidden="true">詳細 <span className={styles.chevron}>⌄</span></span>
+              <span className={styles.compactMetrics}>
+                <span className={styles.compactMetric}><small>現在</small><b>{current.main}</b>{current.sub&&<span>{current.sub}</span>}</span>
+                <span className={styles.compactMetric}><small>累計取得</small><b>{acquired.main}</b>{acquired.sub&&<span>{acquired.sub}</span>}</span>
+              </span>
             </span>
-            <span className={styles.expandLabel} aria-hidden="true">詳細 <span className={styles.chevron}>⌄</span></span>
           </summary>
           <div className={styles.cardBody}>
             <div className={styles.metrics}>
