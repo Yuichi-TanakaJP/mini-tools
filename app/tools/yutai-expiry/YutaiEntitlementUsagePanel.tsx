@@ -40,7 +40,7 @@ type FormState = {
 
 const emptyForm = (): FormState => ({ valueYen: "", quantity: "", unit: "", merchant: "", purpose: "", occurredAt: localDateTimeInput() });
 
-export default function YutaiEntitlementUsagePanel() {
+export default function YutaiEntitlementUsagePanel({ onSaved }: { onSaved: () => void }) {
   const [today] = useState(localDate);
   const { state, repository } = useYutaiRewardLedgerV2(today);
   const [forms, setForms] = useState<Record<string, FormState>>({});
@@ -89,7 +89,10 @@ export default function YutaiEntitlementUsagePanel() {
         expected_revision: entitlement.revision,
         note: "MiniTools: 固定額でない優待の利用実績を記録",
       }, undefined, occurredAt);
-      if (result) setForms((current) => ({ ...current, [entitlement.id]: emptyForm() }));
+      if (result) {
+        setForms((current) => ({ ...current, [entitlement.id]: emptyForm() }));
+        onSaved();
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
@@ -106,6 +109,7 @@ export default function YutaiEntitlementUsagePanel() {
       if (result && state.uncertain.command_type === "record_entitlement_usage") {
         const id = state.uncertain.target.id;
         if (typeof id === "string") setForms((current) => ({ ...current, [id]: emptyForm() }));
+        onSaved();
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));

@@ -6,7 +6,7 @@ mini-tools PR #654で追加した利用実績Panelは、v2台帳をRepositoryか
 
 ## 今回決めたこと
 
-このPanelの `record_entitlement_usage` はv2 Repositoryから保存する。通信結果が不明な場合は同じ要求IDで再確認し、その間は別の保存を止める。保存後の表示更新にはRepositoryの台帳再取得を使う。
+このPanelの `record_entitlement_usage` はv2 Repositoryから保存する。通信結果が不明な場合は同じ要求IDで再確認し、その間は別の保存を止める。保存後はRepositoryの台帳と、履歴タブの履歴一覧を再取得する。
 
 ## 判断理由
 
