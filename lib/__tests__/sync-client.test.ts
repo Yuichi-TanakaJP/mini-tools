@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { pushAll } from "../sync/client";
+import { pullAll, pushAll } from "../sync/client";
 
 class MemoryLocalStorage {
   private store = new Map<string, string>();
@@ -47,6 +47,20 @@ afterEach(() => {
 });
 
 describe("sync client", () => {
+  it("neither uploads nor restores retired my-stocks data", async () => {
+    const storage = new MemoryLocalStorage();
+    installWindow(storage);
+    const local = JSON.stringify([{ code: "7203", memo: "keep" }]);
+    storage.setItem("my_stocks_items_v1", local);
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      if (init?.method === "POST") expect(JSON.parse(String(init.body)).items.some((item: { key: string }) => item.key === "my_stocks_items_v1")).toBe(false);
+      return jsonResponse({ items: [{ key: "my_stocks_items_v1", value: [{ code: "6758" }], updatedAt: "2099-01-01T00:00:00Z" }] });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await pushAll();
+    await pullAll();
+    expect(storage.getItem("my_stocks_items_v1")).toBe(local);
+  });
   it("repairs a newer empty server value by retrying with the preserved local data", async () => {
     const storage = new MemoryLocalStorage();
     installWindow(storage);

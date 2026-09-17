@@ -18,7 +18,7 @@ import type { DashboardData } from "./load";
 import type { StockNotesManifest } from "./delta";
 
 const CACHE_KEY_PREFIX = "stock_notes_dashboard_cache_v1_";
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 
 /**
  * キャッシュの有効期限（ミリ秒）。根拠は本ファイル冒頭のコメントを参照。
@@ -148,7 +148,7 @@ export function writeStockNotesCache(
       version: CACHE_VERSION,
       userId,
       fetchedAt: new Date(now).toISOString(),
-      data,
+      data: { ...data, holdings: [], holdingsUpdatedAt: null, holdingsState: "unavailable" },
       ...(manifest ? { manifest } : {}),
     };
     window.localStorage.setItem(cacheKey(userId), JSON.stringify(envelope));

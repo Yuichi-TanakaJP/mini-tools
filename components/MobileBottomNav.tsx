@@ -6,7 +6,7 @@ import styles from "./MobileBottomNav.module.css";
 
 const PUBLIC_ITEMS = [
   { href: "/", label: "ホーム", exact: true },
-  { href: "/tools/my-stocks", label: "マイ銘柄", exact: false },
+  { href: "/tools/stock-notes", label: "銘柄分析", exact: false },
   { href: "/tools/yutai-candidates", label: "優待", exact: false },
   { href: "/tools/earnings-calendar", label: "カレンダー", exact: false },
   { href: "/tools/disclosure-radar", label: "開示", exact: false },

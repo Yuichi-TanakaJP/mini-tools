@@ -19,7 +19,7 @@ import type {
 } from "@/app/tools/disclosure-radar/types";
 import type { EarningsCalendarItem } from "@/app/tools/earnings-calendar/types";
 import type { EconCalendarEvent } from "@/app/tools/econ-calendar/types";
-import { loadItems } from "@/app/tools/my-stocks/storage";
+import { useAudience } from "@/lib/portfolio/useAudience";
 import { isSyncConfigured } from "@/lib/supabase/config";
 import { getYutaiRepository, useYutaiWorkspace } from "@/lib/yutai/browser";
 import {
@@ -373,6 +373,8 @@ async function loadEconNotifications(): Promise<EconNotificationData | null> {
 }
 
 export default function HomeNotifications() {
+  const audience = useAudience();
+  const [notificationAudience, setNotificationAudience] = useState<ReadonlySet<string> | null>(null);
   const [state, setState] = useState<NotificationState>({ status: "loading" });
   const [today, setToday] = useState(todayLocalDateKey);
   const database = process.env.NEXT_PUBLIC_YUTAI_EXPIRY_DB_PREVIEW === "true";
@@ -419,9 +421,7 @@ export default function HomeNotifications() {
     let active = true;
 
     async function loadNotifications() {
-      const myStockCodes = new Set(
-        loadItems().map((item) => normalizeSecurityCode(item.code)),
-      );
+      const myStockCodes = audience.codes;
       const [disclosure, earnings, econ] = await Promise.all([
         loadDisclosureNotifications(myStockCodes),
         loadEarningsNotifications(myStockCodes),
@@ -429,6 +429,7 @@ export default function HomeNotifications() {
       ]);
 
       if (!active) return;
+      setNotificationAudience(myStockCodes);
       setState(
         hasDisclosureNotifications(disclosure) ||
           hasEarningsNotifications(earnings) ||
@@ -443,11 +444,8 @@ export default function HomeNotifications() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [audience.codes, today]);
 
-  if (!database && state.status !== "ready" && upcomingBenefitExpiries.length === 0) {
-    return null;
-  }
 
   const disclosure = state.status === "ready" ? state.disclosure : null;
   const earnings = state.status === "ready" ? state.earnings : null;
@@ -472,6 +470,7 @@ export default function HomeNotifications() {
       </div>
 
       <div className="home-notifications__groups">
+        <p>{audience.status} <Link href="/tools/stock-notes">ウォッチ管理</Link> / <Link href="/premium/portfolio">Portfolio</Link></p>
         {database && (
           <div className="home-notifications__group" aria-label="優待期限の取得状態">
             <span className="home-notifications__status">{benefitStatus}</span>
@@ -497,14 +496,14 @@ export default function HomeNotifications() {
         ) : null}
         {earnings ? (
           <>
-            <EarningsPreviewList items={earnings.personalItems} label="決算: 保有/ウォッチ" />
+            <EarningsPreviewList items={notificationAudience === audience.codes ? earnings.personalItems : []} label="決算: 保有/ウォッチ" />
             <EarningsPreviewList items={earnings.nikkei225Items} label="決算: 日経225" />
           </>
         ) : null}
         {econ ? <EconPreviewList events={econ.events} /> : null}
         {disclosure ? (
           <>
-            <DisclosurePreviewList items={disclosure.myStockUnreadItems} label="開示: マイ銘柄" />
+            <DisclosurePreviewList items={notificationAudience === audience.codes ? disclosure.myStockUnreadItems : []} label="開示: 保有/ウォッチ" />
             <DisclosurePreviewList items={disclosure.yutaiUnreadItems} label="開示: 優待変更" />
           </>
         ) : null}

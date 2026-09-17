@@ -8,6 +8,8 @@
 
 ## 概要
 
+- 2026-09-18: 国内株式の保有判定を銘柄分析・ホーム通知・開示レーダーと共有する。対象Portfolio・公式ready snapshotの選択は共通selector。CSV再取込は不要。詳細は[統合判断](../../decision-log/2026-09-18-portfolio-holdings-authority.md)。全資産の表示範囲は従来どおり。
+
 - URL: `/premium/portfolio`
 - 分類: Premium / 投資管理
 - 現行の主な用途: ChatGPTで保存したポートフォリオ判断を「意思決定」画面で確認し、保有明細・履歴・DB確認を補助表示として利用する
