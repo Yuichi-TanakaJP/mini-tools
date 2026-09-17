@@ -90,6 +90,9 @@ MiniToolsはschema_version=2、UUID request_id、occurred_at、expected_revision
 - expire_lot / expire_account / extend_account
 - move_account_value
 - select_entitlement_option / complete_deadline
+- record_entitlement_usage（Accountなしの固定額でないEntitlementの利用実績）
+
+履歴タブの利用実績はv2 Repositoryから保存する。保存結果が不明な場合は新しい要求を送らず、同じrequest_idとoccurred_atで再確認する。保存後はv2台帳を再取得し、ページ全体は再読み込みしない。
 
 `link_legacy_reward` は残高型legacyをAccountへ所属させる。
 `link_legacy_entitlement` は割引・サービス・選択型などのlegacyを **AccountなしEntitlement** へ所属させる。どちらもlegacy Rewardの残高・期限・event historyを移行操作だけで変更しない。

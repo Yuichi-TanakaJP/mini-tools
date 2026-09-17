@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { createSupabaseBrowserClient } from "../../../lib/supabase/client";
 import { useYutaiRewardLedgerV2 } from "../../../lib/yutai/reward-v2-browser";
 import type { RewardV2Entitlement } from "../../../lib/yutai/reward-v2-contracts";
 import styles from "./YutaiEntitlementUsagePanel.module.css";
@@ -43,7 +42,7 @@ const emptyForm = (): FormState => ({ valueYen: "", quantity: "", unit: "", merc
 
 export default function YutaiEntitlementUsagePanel() {
   const [today] = useState(localDate);
-  const { state } = useYutaiRewardLedgerV2(today);
+  const { state, repository } = useYutaiRewardLedgerV2(today);
   const [forms, setForms] = useState<Record<string, FormState>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +55,7 @@ export default function YutaiEntitlementUsagePanel() {
     !["cancelled", "waived"].includes(entitlement.status)
   ), [state.ledger]);
 
-  if (state.status === "signed_out" || targets.length === 0) return null;
+  if (state.status === "signed_out" || (targets.length === 0 && !state.uncertain)) return null;
 
   function formFor(id: string) {
     return forms[id] ?? emptyForm();
@@ -73,34 +72,44 @@ export default function YutaiEntitlementUsagePanel() {
     const quantity = form.quantity.trim() ? Number(form.quantity) : null;
     if (quantity != null && !(quantity > 0)) return;
 
+    if (!repository || state.status !== "ready" || state.uncertain || saving) return;
     setSaving(entitlement.id);
     setError(null);
     try {
-      const client = createSupabaseBrowserClient();
-      const { data: auth, error: authError } = await client.auth.getSession();
-      if (authError || !auth.session) throw authError ?? new Error("ログインが必要です");
       const payload: Record<string, unknown> = { value_yen: valueYen };
       if (quantity != null) payload.native_quantity = quantity;
       if (form.unit.trim()) payload.native_unit = form.unit.trim();
       if (form.merchant.trim()) payload.merchant_name = form.merchant.trim();
       if (form.purpose.trim()) payload.purpose = form.purpose.trim();
       const occurredAt = new Date(form.occurredAt || localDateTimeInput()).toISOString();
-      const command = {
-        schema_version: 2,
-        request_id: crypto.randomUUID(),
+      const result = await repository.save({
         command_type: "record_entitlement_usage",
         target: { id: entitlement.id },
         payload,
-        occurred_at: occurredAt,
         expected_revision: entitlement.revision,
-        source: "mini_tools",
         note: "MiniTools: 固定額でない優待の利用実績を記録",
-      };
-      const { error: rpcError } = await client.rpc("stock_notes_record_yutai_v2_command", { p_input: command });
-      if (rpcError) throw rpcError;
-      window.location.reload();
+      }, undefined, occurredAt);
+      if (result) setForms((current) => ({ ...current, [entitlement.id]: emptyForm() }));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function retryUncertain() {
+    if (!repository || saving || !state.uncertain) return;
+    setSaving("retry");
+    setError(null);
+    try {
+      const result = await repository.retryUncertain();
+      if (result && state.uncertain.command_type === "record_entitlement_usage") {
+        const id = state.uncertain.target.id;
+        if (typeof id === "string") setForms((current) => ({ ...current, [id]: emptyForm() }));
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
       setSaving(null);
     }
   }
@@ -110,7 +119,8 @@ export default function YutaiEntitlementUsagePanel() {
       <summary>利用実績を記録</summary>
       <div className={styles.body}>
         <p>固定額がない割引・サービス優待は、実際に得した金額を円換算して記録します。履歴には利用回数・人数など元の単位も残せます。</p>
-        {error && <div className={styles.error}>{error}</div>}
+        {(error || state.error) && <div className={styles.error} role="alert">{error || state.error}</div>}
+        {state.uncertain && <div className={styles.error} role="alert">保存結果を確認できません。重複を避けるため、同じ要求IDで再確認してください。<button type="button" disabled={Boolean(saving)} onClick={() => void retryUncertain()}>同じ要求で再確認</button></div>}
         {targets.map((entitlement) => {
           const form = formFor(entitlement.id);
           return (
@@ -127,7 +137,7 @@ export default function YutaiEntitlementUsagePanel() {
                 <label className={styles.wide}>用途<input value={form.purpose} onChange={(event) => patch(entitlement.id, { purpose: event.target.value })} placeholder="例: 10%割引 / 無料入館" /></label>
                 <label className={styles.wide}>利用日時<input type="datetime-local" value={form.occurredAt} onChange={(event) => patch(entitlement.id, { occurredAt: event.target.value })} /></label>
               </div>
-              <button type="button" disabled={saving === entitlement.id || !form.valueYen} onClick={() => void save(entitlement)}>{saving === entitlement.id ? "保存中…" : "利用実績を保存"}</button>
+              <button type="button" disabled={state.status !== "ready" || Boolean(state.uncertain) || Boolean(saving) || !form.valueYen} onClick={() => void save(entitlement)}>{saving === entitlement.id ? "保存中…" : "利用実績を保存"}</button>
             </section>
           );
         })}
