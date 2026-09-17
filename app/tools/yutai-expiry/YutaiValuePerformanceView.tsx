@@ -23,8 +23,8 @@ export default function YutaiValuePerformanceView(){
 
   return <section className={styles.view}>
     <header className={styles.intro}>
-      <h1>優待全体の実績</h1>
-      <p>すべての優待を円換算して、取得・利用・失効・現在保有の全体像を確認します。優待ごとの通算は「優待一覧」で確認します。</p>
+      <h2>優待全体の実績</h2>
+      <p>すべての優待を円換算して、取得・利用・失効・現在保有の全体像を確認します。この下に優待ごとの内訳を表示します。</p>
     </header>
 
     <div className={styles.quality}>
@@ -41,8 +41,8 @@ export default function YutaiValuePerformanceView(){
     </div>
 
     <section className={styles.panel}>
-      <h2>取得した価値の行き先</h2>
-      <p>利用・現在保有・失効など、分類できた価値の構成です。優待別の内訳は「優待一覧」に分離しました。</p>
+      <h3>取得した価値の行き先</h3>
+      <p>利用・現在保有・失効など、分類できた価値の構成です。優待別の内訳はこの下の一覧で確認できます。</p>
       <div className={styles.bar} aria-label="取得価値の分類">
         <div className={styles.used} style={{width:pct(summary.used_yen)}} title={`利用 ${yen(summary.used_yen)}`} />
         <div className={styles.current} style={{width:pct(summary.current_yen)}} title={`現在 ${yen(summary.current_yen)}`} />
