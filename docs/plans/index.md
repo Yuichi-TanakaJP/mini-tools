@@ -16,6 +16,7 @@
 | [Phase 1 クロスデバイス同期 実装計画](./phase1-cross-device-sync-plan.md) | 任意ログイン + Supabase でツールデータをデバイス間同期する段階実装計画 |
 | [優待統合ダッシュボード（PC）実装計画](./yutai-dashboard-plan.md) | 優待候補の発掘と運用管理を PC 向けテーブルで統合する段階実装計画 |
 | [ポートフォリオ意思決定ワークスペース実装計画](./portfolio-decision-workspace-plan.md) | ChatGPT起点の相談・保存・表示・銘柄連携を完成させるクロスリポジトリ計画 |
+| [Portfolio保有正本・銘柄連携設計](./portfolio-holdings-authority-design.md) | 調査に基づく正本・ウォッチ・分析・通知の責務、共有読み取り、移行/復旧の提案（未実装） |
 | [Workspace Core V1 実装計画](./workspace-core-v1.md) | 完了済みV1 DB基盤の境界・inventory・監査結果と、Product Mapへ進む次工程 |
 | [Workspace Core V3 Semantic Foundation](./workspace-core-v3-semantic-foundation.md) | Knowledge / Evolution / Capability / Value Flowの境界、Golden Dataset、Replay/Advisor検証結果 |
 
