@@ -57,7 +57,7 @@ export default function YutaiBenefitListView({onOpenHistory}:{onOpenHistory:(ite
 
   return <section className={styles.view}>
     <header className={styles.header}>
-      <div><h2>これまでの優待一覧</h2><p>同じ優待の過去分・現在分・今後予定をまとめた通算台帳です。</p></div>
+      <div><h2>優待ごとの内訳</h2><p>全体実績を、同じ優待の過去分・現在分・今後予定に分けて確認できます。カードを開くと詳しい通算が表示されます。</p></div>
       <div className={styles.summary}><span className={styles.badge}>全 {summary.data.count}種類</span><span className={styles.badge}>現在あり {currentCount}種類</span>{scheduledCount>0&&<span className={styles.badge}>今後予定 {scheduledCount}種類</span>}</div>
     </header>
 
@@ -70,23 +70,36 @@ export default function YutaiBenefitListView({onOpenHistory}:{onOpenHistory:(ite
 
     <div className={styles.list}>
       {filtered.length===0&&<div className={styles.empty}>条件に一致する優待はありません。</div>}
-      {filtered.map(item=><article className={styles.card} key={item.group_key}>
-        <div className={styles.top}>
-          <div className={styles.title}><strong>{item.title}</strong>{item.company&&<span>{item.company}</span>}</div>
-          <div className={styles.flags}>{item.source_count>1&&<span className={styles.flag}>{item.source_count}件を統合</span>}{item.history_partial&&<span className={styles.flag}>履歴一部</span>}{item.has_unvalued&&<span className={styles.flag}>一部未換算</span>}</div>
-        </div>
-        <div className={styles.metrics}>
-          <Metric label="累計取得" nativeValue={item.acquired_native} yenValue={item.acquired_yen} item={item}/>
-          <Metric label="利用" nativeValue={item.used_native} yenValue={item.used_yen} item={item}/>
-          <Metric label="失効" nativeValue={item.expired_native} yenValue={item.expired_yen} item={item}/>
-          <Metric label="現在" nativeValue={item.current_native} yenValue={item.current_yen} item={item}/>
-          <Metric label="今後予定" nativeValue={item.scheduled_native} yenValue={item.scheduled_yen} item={item}/>
-        </div>
-        <div className={styles.footer}>
-          <span>{item.next_scheduled_on?`次回予定 ${item.next_scheduled_on}${item.next_expected_expires_on?` / 予定期限 ${item.next_expected_expires_on}`:""}`:"記録済み優待"}</span>
-          {(item.account_keys.length>0||item.reward_ids.length>0)&&<button className={styles.historyButton} type="button" onClick={()=>onOpenHistory(item)}>この優待の履歴</button>}
-        </div>
-      </article>)}
+      {filtered.map(item=>{
+        const current=metric(item.current_native,item.current_yen,item);
+        const acquired=metric(item.acquired_native,item.acquired_yen,item);
+        return <details className={styles.card} key={item.group_key}>
+          <summary className={styles.cardSummary}>
+            <span className={styles.summaryIdentity}>
+              <span className={styles.title}><strong>{item.title}</strong>{item.company&&<span>{item.company}</span>}</span>
+              <span className={styles.flags}>{item.source_count>1&&<span className={styles.flag}>{item.source_count}件を統合</span>}{item.history_partial&&<span className={styles.flag}>履歴一部</span>}{item.has_unvalued&&<span className={styles.flag}>一部未換算</span>}</span>
+            </span>
+            <span className={styles.compactMetrics}>
+              <span className={styles.compactMetric}><small>現在</small><b>{current.main}</b>{current.sub&&<span>{current.sub}</span>}</span>
+              <span className={styles.compactMetric}><small>累計取得</small><b>{acquired.main}</b>{acquired.sub&&<span>{acquired.sub}</span>}</span>
+            </span>
+            <span className={styles.expandLabel} aria-hidden="true">詳細 <span className={styles.chevron}>⌄</span></span>
+          </summary>
+          <div className={styles.cardBody}>
+            <div className={styles.metrics}>
+              <Metric label="累計取得" nativeValue={item.acquired_native} yenValue={item.acquired_yen} item={item}/>
+              <Metric label="利用" nativeValue={item.used_native} yenValue={item.used_yen} item={item}/>
+              <Metric label="失効" nativeValue={item.expired_native} yenValue={item.expired_yen} item={item}/>
+              <Metric label="現在" nativeValue={item.current_native} yenValue={item.current_yen} item={item}/>
+              <Metric label="今後予定" nativeValue={item.scheduled_native} yenValue={item.scheduled_yen} item={item}/>
+            </div>
+            <div className={styles.footer}>
+              <span>{item.next_scheduled_on?`次回予定 ${item.next_scheduled_on}${item.next_expected_expires_on?` / 予定期限 ${item.next_expected_expires_on}`:""}`:"記録済み優待"}</span>
+              {(item.account_keys.length>0||item.reward_ids.length>0)&&<button className={styles.historyButton} type="button" onClick={()=>onOpenHistory(item)}>この優待の履歴</button>}
+            </div>
+          </div>
+        </details>;
+      })}
     </div>
   </section>;
 }
