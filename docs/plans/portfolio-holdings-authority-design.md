@@ -60,7 +60,95 @@
 
 ### E. 残る確認と今回の到達点
 
-集約方向についてユーザーから進行指示を受けた。実装・データ削除までの一括承認とは扱わない。固有機能を上表で特定したが、本番Portfolioの最新性、利用口座、自由メモ移行先、分類とは独立したwatchの要否、未ログイン利用の終了条件はまだ確定していない。次の作業はこの契約確認であり、新しいCSVの用意ではない。
+集約方向についてユーザーから進行指示を受けた。実装・データ削除までの一括承認とは扱わない。追加の本番読み取り調査と具体的な実装判断を次節に記録する。新しいCSVの用意は不要。
+
+### F. 追加調査：本番の読み取り結果と限界
+
+2026-09-18、Supabase接続のプロジェクト一覧とstock-notesの同居方針を照合し、対象DBでSELECTのみを実施した。schema、snapshotのscope/source/status/日時、明細の資産種別/リンク欠落、旧同期データの件数・メモ存在・一致判定、分類との重複を確認。銘柄名・金額・メモ本文・user IDはrepo/PRへ記録しない。以下はこの時点の確認であって継続監視結果ではない。
+
+**確認済み**:
+
+- 現行ready/officialは`source_type=manual`。`broker_csv`は古いsuperseded版であり、CSVを最新データ扱いしていた前提を撤回する。
+- 現行officialに国内株だけでなく外国株・投信・現金等が既に含まれる。scopeは取込形式や資産種別と同義ではない。「公式＝国内株CSVのみ」と実装しない。
+- 現行国内株はstock_id接続があり、分析側holding分類と一致している。ただし現時点の一致は、categoryを将来も保有の正本にできる根拠ではない。
+- クラウド同期済みの旧holdingは現行Portfolioに銘柄単位で存在し、旧watchは分析側watchに存在する。確認したコピーでは保有/ウォッチの新規作成は必要ない。口座・数量の同一性や端末未同期データまで保証するものではない。
+- 旧holdingの自由メモと、現行Portfolio position.noteの完全一致は確認できなかった。メモは移行不要と判断できない。
+- 本番`stock_notes_stocks`には自由メモ列も独立watchフラグもない。category_change_reasonを自由メモ欄として流用しない。
+- 本番に`stock_notes_portfolio_current_account_positions_v`があり、`security_invoker=true`。基礎テーブルにはowner条件付きRLSがある。管理接続のSELECT成功を一般ユーザーの認証/UAT成功とは扱わない。
+
+**未確認の範囲を限定する**:
+
+- manual更新を実際に誰がどの操作で行ったかはsource_typeだけでは特定できない。APIにはCSV importとexternal-assets preview/commitがあるが、manual/officialの現行版を作った操作の監査証跡とは言えない。
+- as_ofはDBの基準日であり、その後の売買まで反映済みとは言えない。今回の連携はその版を表示し、更新処理自体は変えない。
+- ブラウザーLocalStorageの未同期コピー、他端末、実画面の操作性、一般ログインでのRLS動作は未確認。全データ移行完了・廃止可能とはまだ宣言しない。
+
+### G. 実装判断：既存契約を使い、必要な追加だけ行う
+
+#### 保有取得
+
+既存のcurrent_account_positions viewを共有読み取りの第一候補とする。新しい独自の保有DBを作らない。ただしそのままの採用には次の補正が必要。
+
+- viewはready/officialを先に絞り、user/portfolio単位に選ぶため「最新20件内にreadyなし」の問題を避けられる。
+- viewの同日時順序は`created_at`、MiniTools/APIは`imported_at`で異なる。基準snapshotの選択を`as_of, imported_at, id`へ統一する案をstock-notes所有の契約変更として扱う。
+- viewはstock_id・unit_cost・quote_unit等を返さず、snapshotなしとpositionゼロも一覧だけでは区別できない。薄い読み取り契約でsnapshot状態/IDを先に返し、同一snapshotの明細とinstrument接続を取得する。既存ビューの互換を壊さないversion付き拡張か隣接RPCを選ぶ。
+- 国内株通知は`asset_type=domestic_stock`かつ正の数量で絞る。official内の外国株・投信等をコード形式だけで混入させない。通知対象外とPortfolio集計対象外を混同しない。
+- `manual`を除外するsource_typeフィルターを置かない。externalの旧supersededを現行officialへ再加算しない。
+
+#### ウォッチ
+
+初期統合は既存`category=watch`をそのまま利用し、独立watchテーブルやフラグを先に増やさない。今回の同期コピーでは分類競合がないことを確認したため、分類モデルの全面改造は初期連携の必須条件から外す。
+
+端末移行でresearch/holding/archivedとの競合が出た行だけ、現行分類維持を既定として個別確認する。「分析分類と独立して通知だけwatchしたい」という要件が確認された場合に限り、別属性の追加へ進む。CSV取込のcategory昇格変更も独立案件とし、今回の読み取り連携のために既存取込挙動を無条件で変更しない。
+
+#### 自由メモ
+
+提案する保存先は銘柄分析の「ユーザーメモ」。分析本文・thesis・category_change_reason・snapshot内position.noteとは別データにする。snapshotは更新で交代するため、日常メモの恒久保存先にしない。
+
+論理契約案（DDL未実施）:
+
+- user ID、メモID、stock ID nullable、元のコード/市場、本文、旧口座区分/ラベル nullable、作成/更新日時、出典キー、旧item ID、移行batch IDを保持。
+- 銘柄へ接続できないメモも「未接続」として保持し、名前の類似で自動接続しない。旧口座ラベルから実口座IDを推測しない。
+- 銘柄詳細に複数メモを表示し、「旧マイ銘柄・口座未確定」等の出典を明示。既存Portfolio noteは上書きしない。
+- 同一user・出典・旧item ID・元内容digestを移行の再実行識別に使い、同じIDでも端末/同期コピーで本文が異なれば競合として両方保全する。
+- 移行後のユーザー編集で旧本文を失わない履歴/原本参照を用意する。解析モデルへの自動投入は今回追加しない。
+- 作成/参照/編集/削除は本人のみ。将来のstock削除でメモを連鎖削除せず、未接続化または削除制限を採る。
+
+これはメモ保存機能の追加であり、分析GPTの領域を画面編集へ開放する変更ではない。schema所有者stock-notesで契約を定義し、一般ユーザー認可・権限・履歴・復元をTier 3で検証してから移行する。
+
+### H. 認証とキャッシュの確定した差
+
+| 機能 | 現行の入口 | 集約後の初期案 |
+|---|---|---|
+| マイ銘柄 | 未ログイン可、同期はログイン | 通常の編集導線は廃止候補。未ログインでも端末原本の退避/移行案内は残す |
+| 銘柄分析/watch | Supabaseログイン | 現行維持。Portfolio権限不足でもwatch/分析全体を使用不能にしない |
+| Portfolio保有 | Premium Cookie＋Supabaseログイン | 現行維持。保有だけ権限待ち表示。watch取得と分離 |
+
+Premium CookieはユーザーIDに紐付く有料プラン情報ではなく、現在のパスワード入口のセッションである。本人データの境界は別途Supabase認証/RLSで検証する。DBのRLS自体にPremium条件があると誤認しない。
+
+現行`load.ts`は分析＋保有をまとめて失敗扱いにし、`cache.ts`はDashboardData全体を15分LocalStorageへ保存する。新保有取得にPremium判定を追加するだけでは分析まで止まるため、保有を独立stateに分離する。キャッシュversionを更新し、保有projectionは永続キャッシュへ保存しない。分析キャッシュから旧holdingを復活させない。セッション失効時は本人データを消去する。
+
+### I. 撤去・変更対象の具体的な一覧
+
+| 系統 | 確認したファイル | 必要な対応 |
+|---|---|---|
+| 通知 | `app/HomeNotifications.tsx`, `app/tools/disclosure-radar/ToolClient.tsx` | local loadItemsを共通保有＋分析watchへ置換。登録リンク変更 |
+| 分析取得/型/表示 | `app/tools/stock-notes/{data,load,logic,ToolClient,cache}.ts(x)` | `/api/sync`保有・MyStockItem依存を除去、保有判定を派生化、旧一括holding登録バナー撤去/再設計 |
+| 同期/回復 | `lib/sync/registry.ts`, `lib/sync/client.ts`, `app/tools/my-stocks/{storage,backup}.ts` | 原本退避後に旧キーの通常同期停止。回復用reader/parserはUI撤去と分離 |
+| ナビ/掲載 | `components/MobileBottomNav.tsx`, `lib/tools-catalog.ts`, `app/sitemap.ts`, `app/admin/page.tsx` | Portfolio/銘柄分析へ目的別に付替え。旧URLのデータ救済導線を残す |
+| 参照データ | `app/tools/my-stocks/data-loader.ts`, `app/api/stock-notes/stock-master/route.ts`, `useStockNotesStockMaster.ts` | 株マスタ取得の共有/重複を確認。旧画面撤去で必要な参照データを削除しない |
+| 検証 | `tests/ui-smoke/ui-smoke.spec.ts`, stock-notes tests, my-stocks backup tests, share-url tests, yutai cutover tests | 廃止導線と回復導線の期待値更新。単なるURLテスト例は動作依存と区別 |
+
+検索範囲はapp/lib/components/tests/scripts。docsや個人のブックマーク、未同期端末の存在をコード検索だけで網羅したとは言わない。
+
+### J. 実装を止める条件と、止めずに進められる範囲
+
+初期読み取り連携の設計は上記で具体化できた。watch独立属性の全面設計、CSV再取込、全資産取込方式の再設計を前提作業にしない。既存ビューの選択規則統一、保有state分離、共通通知対象、分析キャッシュ更新を最初の実装単位にする。
+
+マイ銘柄の最終撤去は、端末原本比較とメモ移行、未ログイン編集終了の確認、取得額/推定配当構成の代替判断が終わるまで実行しない。銘柄検索は分析側にコード補完があるが、旧株マスタ一覧と同等の名前検索体験まで確認済みではないため、小さな検索補完を移行UATで検証する。
+
+実装受入例: manual/official＋国内/外国/投信混在、同時刻snapshot、watch取得成功＋保有403、分析キャッシュ残存、実件数に依存しない複数口座/複数メモfixture、同一旧ID/異なる本文、未接続メモ、他ユーザーID、移行途中失敗、再実行、旧URLからの退避。実データはfixtureへ転記しない。
+
+今回の調査ではDB書込み・schema変更・取込・ブラウザー操作は実施していない。Supabaseスキルに従い、[公式RLS仕様](https://supabase.com/docs/guides/database/postgres/row-level-security)と[changelog](https://supabase.com/changelog)を確認した。権限設計は既存の本人境界を維持し、新規メモのData API grants/RLSは実装時に明示検証する。
 
 ---
 
