@@ -110,7 +110,8 @@ export type RewardLedgerV2 = {
 export type RewardV2CommandType =
   | "create_account" | "create_entitlement" | "add_deadline" | "set_entitlement_status"
   | "create_grant" | "link_legacy_reward" | "link_legacy_entitlement" | "consume_account" | "consume_lot" | "expire_lot"
-  | "expire_account" | "extend_account" | "move_account_value" | "select_entitlement_option" | "complete_deadline";
+  | "expire_account" | "extend_account" | "move_account_value" | "select_entitlement_option" | "complete_deadline"
+  | "record_entitlement_usage";
 export type RewardV2CommandDraft = {
   command_type: RewardV2CommandType;
   target: Record<string, unknown>;
@@ -150,7 +151,7 @@ function arr(v: unknown, field: string) { if (!Array.isArray(v)) throw new Error
 function oneOf<T extends string>(v: unknown, values: readonly T[], field: string): T { const s = str(v, field); if (!values.includes(s as T)) throw new Error(`INVALID_V2_WIRE:${field}`); return s as T; }
 const benefitKinds = ["stored_value","points","voucher","admission","discount","service_access","service_period","choice","goods","cashback","composite","other"] as const;
 const coverages = ["native_complete","legacy_opening_balance","history_partial","unknown"] as const;
-const commandTypes = ["create_account","create_entitlement","add_deadline","set_entitlement_status","create_grant","link_legacy_reward","link_legacy_entitlement","consume_account","consume_lot","expire_lot","expire_account","extend_account","move_account_value","select_entitlement_option","complete_deadline"] as const;
+const commandTypes = ["create_account","create_entitlement","add_deadline","set_entitlement_status","create_grant","link_legacy_reward","link_legacy_entitlement","consume_account","consume_lot","expire_lot","expire_account","extend_account","move_account_value","select_entitlement_option","complete_deadline","record_entitlement_usage"] as const;
 
 function parseLot(v: unknown): RewardV2Lot {
   if (!isObject(v)) throw new Error("INVALID_V2_WIRE:lot");

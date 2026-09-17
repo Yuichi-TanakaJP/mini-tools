@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useYutaiRewardHistory } from "../../../lib/yutai/reward-history-browser";
 import type { YutaiHistoryCategory, YutaiRewardHistoryItem } from "../../../lib/yutai/reward-history";
 import styles from "./YutaiHistoryView.module.css";
@@ -29,8 +29,15 @@ function cleanedDetail(value:string|null){
   return value.replace("（履歴正規化済み）","");
 }
 
-export default function YutaiHistoryView({focus,onClearFocus}:{focus?:YutaiHistoryFocus|null;onClearFocus?:()=>void}){
+export default function YutaiHistoryView({focus,onClearFocus,refreshVersion=0}:{focus?:YutaiHistoryFocus|null;onClearFocus?:()=>void;refreshVersion?:number}){
   const history=useYutaiRewardHistory(300);
+  const {reload}=history;
+  const lastRefreshVersion=useRef(refreshVersion);
+  useEffect(()=>{
+    if(lastRefreshVersion.current===refreshVersion) return;
+    lastRefreshVersion.current=refreshVersion;
+    void reload();
+  },[refreshVersion,reload]);
   const [filter,setFilter]=useState<Filter>("all");
   const [query,setQuery]=useState("");
   const items=history.data?.items??[];

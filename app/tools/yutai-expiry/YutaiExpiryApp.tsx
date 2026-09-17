@@ -16,6 +16,7 @@ type View = "deadline" | "benefits" | "history" | "management";
 export default function YutaiExpiryApp({ scanEnabled = false }: { scanEnabled?: boolean }) {
   const [view, setView] = useState<View>("deadline");
   const [historyFocus,setHistoryFocus] = useState<YutaiHistoryFocus|null>(null);
+  const [historyRefreshVersion,setHistoryRefreshVersion] = useState(0);
   const openHistory = (item:YutaiBenefitSummaryItem) => {
     setHistoryFocus({title:item.title,accountKeys:item.account_keys,rewardIds:item.reward_ids});
     setView("history");
@@ -39,7 +40,7 @@ export default function YutaiExpiryApp({ scanEnabled = false }: { scanEnabled?: 
       <div className={styles.content}>
         {view === "deadline" && <YutaiExpiryDailyView onManage={() => setView("management")} />}
         {view === "benefits" && <div className={styles.benefits}><YutaiValuePerformanceView /><YutaiBenefitListView onOpenHistory={openHistory} /></div>}
-        {view === "history" && <><YutaiHistoryView focus={historyFocus} onClearFocus={()=>setHistoryFocus(null)} />{!historyFocus&&<YutaiEntitlementUsagePanel />}</>}
+        {view === "history" && <><YutaiHistoryView focus={historyFocus} onClearFocus={()=>setHistoryFocus(null)} refreshVersion={historyRefreshVersion} />{!historyFocus&&<YutaiEntitlementUsagePanel onSaved={()=>setHistoryRefreshVersion(value=>value+1)} />}</>}
         {view === "management" && (
           <section className={styles.management}>
             <div className={styles.managementIntro}>
