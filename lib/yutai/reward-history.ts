@@ -10,6 +10,7 @@ export type YutaiRewardHistoryItem = {
   company: string;
   account_id: string | null;
   account_key: string | null;
+  benefit_key: string;
   display_title: string;
   native_delta: number;
   native_unit: string;
@@ -46,7 +47,7 @@ function parseItem(value: unknown): YutaiRewardHistoryItem {
   return {
     event_id:str(value.event_id,"event_id"), occurred_at:str(value.occurred_at,"occurred_at"), event_type:str(value.event_type,"event_type"), event_category:category(value.event_category),
     reward_id:str(value.reward_id,"reward_id"), reward_title:str(value.reward_title,"reward_title"), company:str(value.company,"company"),
-    account_id:optStr(value.account_id,"account_id"), account_key:optStr(value.account_key,"account_key"), display_title:str(value.display_title,"display_title"),
+    account_id:optStr(value.account_id,"account_id"), account_key:optStr(value.account_key,"account_key"), benefit_key:str(value.benefit_key,"benefit_key"), display_title:str(value.display_title,"display_title"),
     native_delta:num(value.native_delta,"native_delta"), native_unit:str(value.native_unit,"native_unit"), unit_yen:optNum(value.unit_yen,"unit_yen"), yen_delta:optNum(value.yen_delta,"yen_delta"),
     event_note:optStr(value.event_note,"event_note"), operation_id:optStr(value.operation_id,"operation_id"), operation_type:optStr(value.operation_type,"operation_type"), operation_source:optStr(value.operation_source,"operation_source"), operation_note:optStr(value.operation_note,"operation_note"),
     merchant_name:optStr(value.merchant_name,"merchant_name"), merchant_amount_native:optNum(value.merchant_amount_native,"merchant_amount_native"), unattributed_amount_native:optNum(value.unattributed_amount_native,"unattributed_amount_native"), detail:optStr(value.detail,"detail"),

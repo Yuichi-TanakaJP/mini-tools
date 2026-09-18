@@ -6,7 +6,7 @@ import type { YutaiHistoryCategory, YutaiRewardHistoryItem } from "../../../lib/
 import styles from "./YutaiHistoryView.module.css";
 
 type Filter = "all" | "acquired" | "used" | "expired";
-export type YutaiHistoryFocus = { title:string; accountKeys:string[]; rewardIds:string[] };
+export type YutaiHistoryFocus = { title:string; benefitKey:string };
 const labels: Record<YutaiHistoryCategory,string> = { acquired:"取得",used:"利用",expired:"失効",transfer:"移動",conversion:"交換",adjustment:"補正" };
 
 function formatDate(value:string){ return new Intl.DateTimeFormat("ja-JP",{year:"numeric",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}).format(new Date(value)); }
@@ -41,12 +41,7 @@ export default function YutaiHistoryView({focus,onClearFocus,refreshVersion=0}:{
   const [filter,setFilter]=useState<Filter>("all");
   const [query,setQuery]=useState("");
   const items=history.data?.items??[];
-  const focusedItems=useMemo(()=>{
-    if(!focus) return items;
-    const accountKeys=new Set(focus.accountKeys);
-    const rewardIds=new Set(focus.rewardIds);
-    return items.filter(item=>(item.account_key!=null&&accountKeys.has(item.account_key))||rewardIds.has(item.reward_id));
-  },[items,focus]);
+  const focusedItems=useMemo(()=>focus?items.filter(item=>item.benefit_key===focus.benefitKey):items,[items,focus]);
   const filtered=useMemo(()=>{
     const needle=query.trim().toLocaleLowerCase("ja");
     return focusedItems.filter(item=>{
@@ -85,7 +80,7 @@ export default function YutaiHistoryView({focus,onClearFocus,refreshVersion=0}:{
 
     <div className={styles.list}>
       {filtered.length===0&&<div className={styles.empty}>条件に一致する履歴はありません。</div>}
-      {filtered.map(item=><HistoryRow key={item.event_id} item={item}/>) }
+      {filtered.map(item=><HistoryRow key={item.event_id} item={item}/>)}
     </div>
   </section>;
 }
