@@ -15,6 +15,7 @@ import type {
   PortfolioSnapshot,
   PortfolioExternalAssetPosition,
   PortfolioExternalAssetSnapshot,
+  PortfolioInstrumentAnalysis,
 } from "./types";
 
 type PortfolioRow = {
@@ -69,6 +70,18 @@ type PositionRow = {
   fx_as_of?: string | null;
   fx_source?: string | null;
   note?: string | null;
+};
+
+type InstrumentClassificationRow = {
+  instrument_id: string;
+  stock_id: string | null;
+  sector_33_code: string | null;
+  sector_33_name: string | null;
+  cycle_profile: string | null;
+  income_profile: string | null;
+  market_cap_profile: string | null;
+  valid_from: string;
+  valid_to: string | null;
 };
 
 type ReviewRow = {
@@ -289,6 +302,8 @@ function emptyPortfolio(): PortfolioData {
     dbPositionSnapshot: null,
     externalAssets: emptyExternalAssets(),
     positions: [],
+    instrumentAnalysis: [],
+    instrumentAnalysisStatus: "loaded",
     dbPositions: [],
     review: null,
     reviewHistory: [],
@@ -545,6 +560,40 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
   if (instrumentsError) throw instrumentsError;
   const instrumentRows = instrumentData ?? [];
 
+  let instrumentAnalysis: PortfolioInstrumentAnalysis[] = [];
+  let instrumentAnalysisStatus: PortfolioData["instrumentAnalysisStatus"] = "loaded";
+  const positionInstrumentIds = [...new Set(positionRows.map((row) => row.instrument_id))];
+  if (currentSnapshot && positionInstrumentIds.length > 0) {
+    const { data: classificationData, error: classificationError } = await supabase
+      .from("stock_notes_instrument_classifications")
+      .select("instrument_id, stock_id, sector_33_code, sector_33_name, cycle_profile, income_profile, market_cap_profile, valid_from, valid_to")
+      .in("instrument_id", positionInstrumentIds)
+      .order("valid_from", { ascending: false })
+      .returns<InstrumentClassificationRow[]>();
+
+    if (classificationError) {
+      instrumentAnalysisStatus = "error";
+    } else {
+      const snapshotTime = new Date(currentSnapshot.importedAt).getTime();
+      const currentByInstrument = new Map<string, InstrumentClassificationRow>();
+      for (const row of classificationData ?? []) {
+        const validFrom = new Date(row.valid_from).getTime();
+        const validTo = row.valid_to ? new Date(row.valid_to).getTime() : null;
+        if (!Number.isFinite(validFrom) || validFrom > snapshotTime || (validTo !== null && validTo <= snapshotTime)) continue;
+        if (!currentByInstrument.has(row.instrument_id)) currentByInstrument.set(row.instrument_id, row);
+      }
+      instrumentAnalysis = [...currentByInstrument.values()].map((row) => ({
+        instrumentId: row.instrument_id,
+        stockId: row.stock_id,
+        sector33Code: row.sector_33_code,
+        sector33Name: row.sector_33_name,
+        cycleProfile: row.cycle_profile,
+        incomeProfile: row.income_profile,
+        marketCapProfile: row.market_cap_profile,
+      }));
+    }
+  }
+
   const accounts = new Map(accountRows.map((row) => [row.id, row]));
   const instruments = new Map(instrumentRows.map((row) => [row.id, row]));
   let externalAssets = externalSnapshotsError ? externalAssetsError() : emptyExternalAssets();
@@ -734,6 +783,8 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     currentSnapshot,
     dbPositionSnapshot,
     positions,
+    instrumentAnalysis,
+    instrumentAnalysisStatus,
     dbPositions,
     review,
     reviewHistory,

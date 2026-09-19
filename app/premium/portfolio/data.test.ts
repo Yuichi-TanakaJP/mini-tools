@@ -28,6 +28,7 @@ class QueryStub {
 
   in(column?: string, values?: unknown[]) {
     if (column === "status") this.predicates.push({ column, matches: (candidate) => values?.includes(candidate) ?? false });
+    if (column === "instrument_id") this.predicates.push({ column, matches: (candidate) => values?.includes(candidate) ?? false });
     return this;
   }
 
@@ -113,6 +114,10 @@ describe("portfolio data loader", () => {
           data: [{ id: "instrument-1", asset_type: "domestic_stock", identifier: "9999", name: "テスト銘柄" }],
           error: null,
         },
+        stock_notes_instrument_classifications: {
+          data: [{ instrument_id: "instrument-1", stock_id: "stock-1", sector_33_code: "electric", sector_33_name: "電気機器", cycle_profile: "cyclical", income_profile: "balanced", market_cap_profile: "large", valid_from: "2026-08-01T00:00:00Z", valid_to: null }],
+          error: null,
+        },
         stock_notes_portfolio_positions: {
           data: [
             { id: "position-1", account_id: "account-1", instrument_id: "instrument-1", quantity: "2", unit_cost: "1000", quoted_price: "1200", quote_unit: "1", cost_basis: "2000", market_value: "2400", unrealized_pnl: "400", distribution_method: null },
@@ -154,6 +159,8 @@ describe("portfolio data loader", () => {
     expect(data.source).toBe("server");
     expect(data.positions[0]).toMatchObject({ identifier: "9999", quantity: 2, marketValue: 2400 });
     expect(data.positions).toHaveLength(2);
+    expect(data.instrumentAnalysis).toEqual([expect.objectContaining({ instrumentId: "instrument-1", sector33Name: "電気機器", cycleProfile: "cyclical" })]);
+    expect(data.instrumentAnalysisStatus).toBe("loaded");
     expect(data.positions[1]).toMatchObject({ id: "position-2", accountName: "account-missing", accountType: "other", institutionName: "不明" });
     expect(data.dbPositions).toHaveLength(2);
     expect(data.dbPositions[1]).toMatchObject({ id: "position-2", accountName: null, accountId: "account-missing" });
@@ -268,6 +275,28 @@ describe("portfolio data loader", () => {
     expect(data.currentSnapshot?.id).toBe("legacy-snapshot");
     expect(data.currentSnapshot?.portfolioScope).toBe("official");
     expect(data.source).toBe("server");
+  });
+
+  it("classification取得失敗を保有データから分離する", async () => {
+    const data = await loadPortfolio(stubClient({
+      stock_notes_portfolios: { data: { id: "portfolio-1", name: "メイン", base_currency: "JPY" }, error: null },
+      stock_notes_portfolio_snapshots: { data: [{ id: "snapshot-1", as_of: "2026-08-14T00:00:00Z", status: "ready", source_type: "manual", imported_at: "2026-08-14T00:01:00Z", portfolio_scope: "official" }], error: null },
+      stock_notes_portfolio_accounts: { data: [{ id: "account-1", account_name: "NISA", account_type: "nisa_growth", institution_name: "証券会社" }], error: null },
+      stock_notes_portfolio_positions: { data: [{ id: "position-1", snapshot_id: "snapshot-1", account_id: "account-1", instrument_id: "instrument-1", quantity: "1", unit_cost: "100", quoted_price: "120", quote_unit: "1", cost_basis: "100", market_value: "120", unrealized_pnl: "20", distribution_method: null }], error: null },
+      stock_notes_portfolio_instruments: { data: [{ id: "instrument-1", asset_type: "domestic_stock", identifier: "1111", name: "テスト株" }], error: null },
+      stock_notes_instrument_classifications: { data: null, error: { message: "unavailable" } },
+      stock_notes_portfolio_reviews: { data: [], error: null },
+      stock_notes_portfolio_policy_versions: { data: [], error: null },
+      stock_notes_portfolio_policy_rules: { data: [], error: null },
+      stock_notes_portfolio_reflections: { data: [], error: null },
+      stock_notes_portfolio_review_items: { data: [], error: null },
+      stock_notes_portfolio_recommendations: { data: [], error: null },
+      stock_notes_portfolio_actions: { data: [], error: null },
+    }));
+
+    expect(data.positions).toHaveLength(1);
+    expect(data.instrumentAnalysis).toEqual([]);
+    expect(data.instrumentAnalysisStatus).toBe("error");
   });
 
   it("最新の外部取込が失敗中でも、最後に成功したsnapshotを警告付きで表示する", async () => {

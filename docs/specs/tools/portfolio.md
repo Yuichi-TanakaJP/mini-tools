@@ -19,7 +19,7 @@
 ### 主な画面要素
 
 - **意思決定**: 判断状態、snapshot/reviewの基準日、全体要約、金額なしの補強・調査recommendation、未完了portfolio action
-- **保有一覧**: 公式保有と外部参照資産を合算した総資産評価額、scope別内訳のドーナツ図と数値凡例、公式保有の取得額・含み損益・商品別配分
+- **保有一覧**: 公式保有と外部参照資産を合算した総資産評価額、scope別内訳、公式保有の取得額・含み損益・商品別配分、分析軸を切り替えられる構成分析
 - **口座・取込**: 最新の公式snapshotの口座別ポジション明細、過去の取込履歴、外部口座・参考資産の別明細。外部資産はiDeCo・企業型DC・海外口座・暗号資産・現金等を対象とする
 - **方針**: active policyの版・原則・構造化ルール・変更履歴、現行reviewの一時判断、latest reflection
 - **履歴**: snapshot履歴とreview履歴。reviewは`draft` / `finalized` / `superseded`を表示し、置換済みreviewは現行判断と分けて表示する
@@ -52,6 +52,12 @@
 - scope別内訳は金額と構成比をドーナツ図・凡例の両方で表示し、色だけに依存せず判別できるようにする
 - `official` / `external_reference` は証券会社や口座の信頼度ではなく、snapshotに保存されたデータ管理scopeである
 - 取得額・含み損益・公式保有の商品別構成比は、外部資産に原価や同一基準日の情報がない場合があるため、現段階では公式保有だけを対象とする
+- 「ポートフォリオ分析」は最新readyの公式snapshotを、資産クラス、口座種別、東証33業種、景気感応度、インカム特性、時価総額帯、銘柄別で切り替えて表示する
+- 構成比は評価額を基準とし、分類できない評価額も「未分類」として分母に残す。評価額未取得は0円とせず、件数を注記して分母から除く
+- 「個別株のみ」は `domestic_stock` / `foreign_stock` だけへ対象を絞る。対象内の分類欠損は引き続き「未分類」とする
+- 分類が6以下ならドーナツ、分類が多い場合は横棒を使う。横棒は上位分類を表示し、残りも「その他」へ集約して金額・構成比を失わない
+- 業種、景気感応度、インカム特性、時価総額帯はsnapshot取込日時点で有効なclassificationを使う。classification取得失敗は構成分析内に表示し、保有一覧全体を失敗させない
+- role、theme、industry map、corporate groupは複数所属可能なExposureであり、合計100%を前提とするAllocationへ混ぜない
 
 ### 現段階でできないこと
 
@@ -62,6 +68,7 @@
 - 前回reviewとの差分を表示する
 - 銘柄ダッシュボードとportfolio方針を往復する
 - 外部資産を商品別構成・意思決定context・配分分析へ統合する。通貨換算、重複排除、分析対象外ルールは後続で定義する
+- role/theme等の重複Exposureを、今回のAllocation切替へ統合する
 
 ### DB確認タブの位置づけ
 
@@ -121,6 +128,8 @@
 - [portfolio workspace](/c:/Users/yutaz/dev/mini-tools/app/premium/portfolio/PortfolioWorkspace.tsx)
 - [portfolio decision view](/c:/Users/yutaz/dev/mini-tools/app/premium/portfolio/PortfolioDecision.tsx)
 - [external asset display model](/c:/Users/yutaz/dev/mini-tools/app/premium/portfolio/external-assets.ts)
+- [portfolio allocation engine](/c:/Users/yutaz/dev/mini-tools/app/premium/portfolio/allocation.ts)
+- [portfolio analysis card](/c:/Users/yutaz/dev/mini-tools/app/premium/portfolio/PortfolioAnalysisCard.tsx)
 
 ## 関連 docs
 
@@ -130,4 +139,5 @@
 - Decision Log: [ポートフォリオのWhatとpolicy/reflection表示](../../decision-log/2026-08-22-portfolio-what-and-policy-reflection-display.md)
 - Decision Log: [外部資産の表示と公式集計の分離](../../decision-log/2026-08-23-portfolio-external-assets-display.md)
 - Decision Log: [公式保有と外部参照資産の総資産評価額](../../decision-log/2026-08-28-portfolio-total-assets-valuation.md)
+- Decision Log: [ポートフォリオ構成分析とExposureの分離](../../decision-log/2026-09-07-portfolio-allocation-analysis.md)
 - Plan: [ポートフォリオ意思決定ワークスペース実装計画](../../plans/portfolio-decision-workspace-plan.md)
