@@ -390,7 +390,7 @@ function ExternalAssetsView({ data }: { data: PortfolioData }) {
               <Metric label="評価額未取得" value={`${externalAssets.missingMarketValueCount}件`} sub="—は0円ではありません" />
             </div>
             <div style={{ borderRadius: 10, background: "var(--color-info-bg)", color: "var(--color-info-text)", padding: 12, fontSize: 12, lineHeight: 1.7 }}>
-              公式snapshotとは別の <code>external_reference</code> として管理しています。現段階では「保有一覧」や意思決定の公式集計へ自動合算していません。二重計上を避けるため、合算ルールは別途決めます。
+              公式snapshotとは別の <code>external_reference</code> として管理し、総資産評価額とscope別内訳には合算しています。商品別構成・ポートフォリオ分析・意思決定contextは、二重計上を避けるため現段階では公式snapshotだけを対象にします。
             </div>
             <ExternalAssetPositionTable positions={externalAssets.positions} />
           </>
