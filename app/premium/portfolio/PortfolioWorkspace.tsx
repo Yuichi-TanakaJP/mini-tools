@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { PortfolioData, PortfolioDbPosition, PortfolioExternalAssetPosition, PortfolioReviewHistoryItem, PortfolioReviewItem, PortfolioPosition } from "./types";
 import { aggregatePortfolioPositions } from "./aggregates";
 import { summarizePortfolioDbResult } from "./db-check";
@@ -595,7 +595,7 @@ function DbCheckView({ data }: { data: PortfolioData }) {
   );
 }
 
-export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
+export default function PortfolioWorkspace({ data, groupExposure }: { data: PortfolioData; groupExposure?: ReactNode }) {
   const [tab, setTab] = useState<Tab>("decision");
   const grouped = useMemo(() => aggregatePortfolioPositions(data.positions), [data.positions]);
   const valuation = useMemo(() => summarizePortfolioValuation(data.positions, data.externalAssets), [data.externalAssets, data.positions]);
@@ -619,12 +619,18 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {(Object.keys(tabLabels) as Tab[]).map((key) => (
+          {(["decision", "overview", "history"] as Tab[]).map((key) => (
             <button key={key} type="button" onClick={() => setTab(key)} style={{ border: tab === key ? "1px solid var(--color-border-accent)" : "1px solid rgba(255,255,255,0.2)", borderRadius: 999, background: tab === key ? "var(--color-accent-sub)" : "transparent", color: tab === key ? "var(--color-accent)" : "var(--color-text-on-emphasis)", boxShadow: tab === key ? "inset 0 0 0 1px var(--color-accent-glow)" : "none", padding: "8px 14px", fontWeight: 800, cursor: "pointer" }}>
               {tabLabels[key]}
             </button>
           ))}
         </div>
+        <details>
+          <summary style={{ cursor: "pointer", color: "var(--color-text-on-emphasis)", fontSize: 13 }}>詳細メニュー{(["record", "policy", "db"] as Tab[]).includes(tab) ? `：${tabLabels[tab]}` : "（口座・方針・DB確認）"}</summary>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+            {(["record", "policy", "db"] as Tab[]).map((key) => <button key={key} type="button" aria-pressed={tab === key} onClick={() => setTab(key)} style={{ padding: "8px 14px", cursor: "pointer", borderRadius: 8 }}>{tabLabels[key]}</button>)}
+          </div>
+        </details>
       </section>
 
       {data.authState === "required" ? (
@@ -646,6 +652,7 @@ export default function PortfolioWorkspace({ data }: { data: PortfolioData }) {
 
       {tab === "overview" ? (
         <>
+          {groupExposure ? <details><summary style={{ cursor: "pointer", padding: 12 }}>企業グループ集中の詳細</summary>{groupExposure}</details> : null}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
             <Metric label="総資産評価額" value={formatYen(valuation.totalMarketValue)} sub={valuation.missingMarketValueCount > 0 ? `評価額未取得 ${valuation.missingMarketValueCount}件を除く` : "公式保有 + 外部参照資産"} />
             <Metric label="取得額（公式保有）" value={formatYen(totalCost)} sub={`${grouped.length}商品`} />
