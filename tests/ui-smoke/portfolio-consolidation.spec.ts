@@ -1,11 +1,10 @@
 import { expect, test } from "@playwright/test";
 
-test("retired my-stocks provides destinations without touching legacy storage", async ({ page }) => {
+test("removed my-stocks returns 404 without touching legacy storage", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("my_stocks_items_v1", JSON.stringify([{ code: "7203", memo: "local-only" }])));
-  await page.goto("/tools/my-stocks");
-  await expect(page.getByRole("heading", { name: /マイ銘柄/ })).toBeVisible();
-  await expect(page.locator('main a[href="/premium/portfolio"]')).toBeVisible();
-  await expect(page.locator('main a[href="/tools/stock-notes"]')).toBeVisible();
+  const response = await page.goto("/tools/my-stocks");
+  expect(response?.status()).toBe(404);
+  await expect(page.getByRole("heading", { name: /マイ銘柄/ })).toHaveCount(0);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("my_stocks_items_v1")!)[0].memo)).toBe("local-only");
   await expect(page.getByRole("button", { name: "追加", exact: true })).toHaveCount(0);
 });
