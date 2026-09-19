@@ -73,7 +73,8 @@ type PositionRow = {
 };
 
 type InstrumentClassificationRow = {
-  instrument_id: string;
+  id: string;
+  instrument_id: string | null;
   stock_id: string | null;
   sector_33_code: string | null;
   sector_33_name: string | null;
@@ -83,6 +84,34 @@ type InstrumentClassificationRow = {
   valid_from: string;
   valid_to: string | null;
 };
+
+const classificationPageSize = 500;
+
+async function loadCurrentClassifications(
+  supabase: SupabaseClient,
+  column: "instrument_id" | "stock_id",
+  values: string[],
+  asOf: string,
+) {
+  if (values.length === 0) return { rows: [] as InstrumentClassificationRow[], error: null };
+  const rows: InstrumentClassificationRow[] = [];
+  for (let from = 0; ; from += classificationPageSize) {
+    const { data, error } = await supabase
+      .from("stock_notes_instrument_classifications")
+      .select("id, instrument_id, stock_id, sector_33_code, sector_33_name, cycle_profile, income_profile, market_cap_profile, valid_from, valid_to")
+      .in(column, values)
+      .lte("valid_from", asOf)
+      .or(`valid_to.is.null,valid_to.gt.${asOf}`)
+      .order("valid_from", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, from + classificationPageSize - 1)
+      .returns<InstrumentClassificationRow[]>();
+    if (error) return { rows: [] as InstrumentClassificationRow[], error };
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < classificationPageSize) return { rows, error: null };
+  }
+}
 
 type ReviewRow = {
   id: string;
@@ -564,26 +593,34 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
   let instrumentAnalysisStatus: PortfolioData["instrumentAnalysisStatus"] = "loaded";
   const positionInstrumentIds = [...new Set(positionRows.map((row) => row.instrument_id))];
   if (currentSnapshot && positionInstrumentIds.length > 0) {
-    const { data: classificationData, error: classificationError } = await supabase
-      .from("stock_notes_instrument_classifications")
-      .select("instrument_id, stock_id, sector_33_code, sector_33_name, cycle_profile, income_profile, market_cap_profile, valid_from, valid_to")
-      .in("instrument_id", positionInstrumentIds)
-      .order("valid_from", { ascending: false })
-      .returns<InstrumentClassificationRow[]>();
+    const instrumentsById = new Map(instrumentRows.map((row) => [row.id, row]));
+    const positionStockIds = [...new Set(positionInstrumentIds
+      .map((instrumentId) => instrumentsById.get(instrumentId)?.stock_id)
+      .filter((stockId): stockId is string => Boolean(stockId)))];
+    const [instrumentClassifications, stockClassifications] = await Promise.all([
+      loadCurrentClassifications(supabase, "instrument_id", positionInstrumentIds, currentSnapshot.importedAt),
+      loadCurrentClassifications(supabase, "stock_id", positionStockIds, currentSnapshot.importedAt),
+    ]);
 
-    if (classificationError) {
+    if (instrumentClassifications.error || stockClassifications.error) {
       instrumentAnalysisStatus = "error";
     } else {
-      const snapshotTime = new Date(currentSnapshot.importedAt).getTime();
       const currentByInstrument = new Map<string, InstrumentClassificationRow>();
-      for (const row of classificationData ?? []) {
-        const validFrom = new Date(row.valid_from).getTime();
-        const validTo = row.valid_to ? new Date(row.valid_to).getTime() : null;
-        if (!Number.isFinite(validFrom) || validFrom > snapshotTime || (validTo !== null && validTo <= snapshotTime)) continue;
-        if (!currentByInstrument.has(row.instrument_id)) currentByInstrument.set(row.instrument_id, row);
+      const byInstrumentId = new Map<string, InstrumentClassificationRow>();
+      const byStockId = new Map<string, InstrumentClassificationRow>();
+      for (const row of instrumentClassifications.rows) {
+        if (row.instrument_id && !byInstrumentId.has(row.instrument_id)) byInstrumentId.set(row.instrument_id, row);
       }
-      instrumentAnalysis = [...currentByInstrument.values()].map((row) => ({
-        instrumentId: row.instrument_id,
+      for (const row of stockClassifications.rows) {
+        if (row.stock_id && !byStockId.has(row.stock_id)) byStockId.set(row.stock_id, row);
+      }
+      for (const instrumentId of positionInstrumentIds) {
+        const stockId = instrumentsById.get(instrumentId)?.stock_id;
+        const row = byInstrumentId.get(instrumentId) ?? (stockId ? byStockId.get(stockId) : undefined);
+        if (row) currentByInstrument.set(instrumentId, row);
+      }
+      instrumentAnalysis = [...currentByInstrument.entries()].map(([instrumentId, row]) => ({
+        instrumentId,
         stockId: row.stock_id,
         sector33Code: row.sector_33_code,
         sector33Name: row.sector_33_name,

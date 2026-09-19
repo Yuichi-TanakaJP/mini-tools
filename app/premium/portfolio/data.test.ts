@@ -4,6 +4,7 @@ import { loadPortfolio, portfolioAuthRequired } from "./data";
 
 class QueryStub {
   private predicates: Array<{ column: string; matches: (value: unknown) => boolean }> = [];
+  private rangeBounds: { from: number; to: number } | null = null;
 
   constructor(private readonly result: unknown, private readonly queryLog: string[] = []) {}
 
@@ -29,6 +30,11 @@ class QueryStub {
   in(column?: string, values?: unknown[]) {
     if (column === "status") this.predicates.push({ column, matches: (candidate) => values?.includes(candidate) ?? false });
     if (column === "instrument_id") this.predicates.push({ column, matches: (candidate) => values?.includes(candidate) ?? false });
+    if (column === "stock_id") this.predicates.push({ column, matches: (candidate) => values?.includes(candidate) ?? false });
+    return this;
+  }
+
+  lte() {
     return this;
   }
 
@@ -37,6 +43,12 @@ class QueryStub {
   }
 
   limit() {
+    return this;
+  }
+
+  range(from = 0, to = Number.MAX_SAFE_INTEGER) {
+    this.rangeBounds = { from, to };
+    this.queryLog.push(`range=${from}-${to}`);
     return this;
   }
 
@@ -51,18 +63,17 @@ class QueryStub {
 
   private filteredResult() {
     const result = this.result as { data?: unknown; error?: unknown };
-    if (this.predicates.length === 0 || !Array.isArray(result.data)) return this.result;
-    return {
-      ...result,
-      data: result.data.filter((row) => this.predicates.every(({ column, matches }) => {
+    if (!Array.isArray(result.data)) return this.result;
+    const filtered = this.predicates.length === 0 ? result.data : result.data.filter((row) => this.predicates.every(({ column, matches }) => {
         const record = row as Record<string, unknown>;
         // Older fixtures omit snapshot_id because the old loader did not need it.
         if (column === "snapshot_id" && !Object.prototype.hasOwnProperty.call(record, column)) return true;
         // Before portfolio_scope was added, every stored snapshot was official.
         if (column === "portfolio_scope" && !Object.prototype.hasOwnProperty.call(record, column)) return matches("official");
         return matches(record[column]);
-      })),
-    };
+      }));
+    const data = this.rangeBounds ? filtered.slice(this.rangeBounds.from, this.rangeBounds.to + 1) : filtered;
+    return { ...result, data };
   }
 }
 
@@ -96,6 +107,7 @@ describe("portfolio data loader", () => {
   });
 
   it("最新スナップショットとreview itemを正規化する", async () => {
+    const queryLog: string[] = [];
     const data = await loadPortfolio(
       stubClient({
         stock_notes_portfolios: {
@@ -111,11 +123,11 @@ describe("portfolio data loader", () => {
           error: null,
         },
         stock_notes_portfolio_instruments: {
-          data: [{ id: "instrument-1", asset_type: "domestic_stock", identifier: "9999", name: "テスト銘柄" }],
+          data: [{ id: "instrument-1", asset_type: "domestic_stock", identifier: "9999", name: "テスト銘柄", stock_id: "stock-1" }],
           error: null,
         },
         stock_notes_instrument_classifications: {
-          data: [{ instrument_id: "instrument-1", stock_id: "stock-1", sector_33_code: "electric", sector_33_name: "電気機器", cycle_profile: "cyclical", income_profile: "balanced", market_cap_profile: "large", valid_from: "2026-08-01T00:00:00Z", valid_to: null }],
+          data: Array.from({ length: 501 }, (_, index) => ({ id: `classification-${index}`, instrument_id: "instrument-1", stock_id: null, sector_33_code: "electric", sector_33_name: "電気機器", cycle_profile: "cyclical", income_profile: "balanced", market_cap_profile: "large", valid_from: "2026-08-01T00:00:00Z", valid_to: null })),
           error: null,
         },
         stock_notes_portfolio_positions: {
@@ -153,7 +165,7 @@ describe("portfolio data loader", () => {
           data: [{ id: "action-1", review_id: "review-1", instrument_id: null, action_type: "concentration_check", title: "集中確認", detail: "業種集中を確認", trigger_condition: "分類後", due_date: null, status: "open", created_at: "2026-08-14T00:04:00Z", updated_at: "2026-08-14T00:04:00Z" }],
           error: null,
         },
-      }),
+      }, queryLog),
     );
 
     expect(data.source).toBe("server");
@@ -173,6 +185,7 @@ describe("portfolio data loader", () => {
     expect(data.latestReflection).toMatchObject({ policyChangeRecommended: true, lessons: ["分類の鮮度を確認する"] });
     expect(data.recommendations[0]).toMatchObject({ themeKey: "income_reinforcement", proposedAmount: null, proposedPct: null });
     expect(data.actions[0]).toMatchObject({ actionType: "concentration_check", status: "open" });
+    expect(queryLog).toContain("range=500-999");
   });
 
   it("外部参照snapshotを公式保有と分け、残高方式を読み取る", async () => {
@@ -297,6 +310,39 @@ describe("portfolio data loader", () => {
     expect(data.positions).toHaveLength(1);
     expect(data.instrumentAnalysis).toEqual([]);
     expect(data.instrumentAnalysisStatus).toBe("error");
+  });
+
+  it("instrument分類をstock分類より優先し、stock分類をfallbackに使う", async () => {
+    const data = await loadPortfolio(stubClient({
+      stock_notes_portfolios: { data: { id: "portfolio-1", name: "メイン", base_currency: "JPY" }, error: null },
+      stock_notes_portfolio_snapshots: { data: [{ id: "snapshot-1", as_of: "2026-08-14T00:00:00Z", status: "ready", source_type: "manual", imported_at: "2026-08-14T00:01:00Z", portfolio_scope: "official" }], error: null },
+      stock_notes_portfolio_accounts: { data: [{ id: "account-1", account_name: "NISA", account_type: "nisa_growth", institution_name: "証券会社" }], error: null },
+      stock_notes_portfolio_positions: { data: [
+        { id: "position-1", snapshot_id: "snapshot-1", account_id: "account-1", instrument_id: "instrument-1", quantity: "1", unit_cost: "100", quoted_price: "120", quote_unit: "1", cost_basis: "100", market_value: "120", unrealized_pnl: "20", distribution_method: null },
+        { id: "position-2", snapshot_id: "snapshot-1", account_id: "account-1", instrument_id: "instrument-2", quantity: "1", unit_cost: "100", quoted_price: "120", quote_unit: "1", cost_basis: "100", market_value: "120", unrealized_pnl: "20", distribution_method: null },
+      ], error: null },
+      stock_notes_portfolio_instruments: { data: [
+        { id: "instrument-1", asset_type: "domestic_stock", identifier: "1111", name: "個別分類株", stock_id: "stock-1" },
+        { id: "instrument-2", asset_type: "domestic_stock", identifier: "2222", name: "Stock分類株", stock_id: "stock-2" },
+      ], error: null },
+      stock_notes_instrument_classifications: { data: [
+        { id: "classification-instrument", instrument_id: "instrument-1", stock_id: null, sector_33_code: "electric", sector_33_name: "電気機器", cycle_profile: "cyclical", income_profile: "growth", market_cap_profile: "large", valid_from: "2026-08-01T00:00:00Z", valid_to: null },
+        { id: "classification-stock-1", instrument_id: null, stock_id: "stock-1", sector_33_code: "services", sector_33_name: "サービス業", cycle_profile: "mixed", income_profile: "balanced", market_cap_profile: "mid", valid_from: "2026-08-02T00:00:00Z", valid_to: null },
+        { id: "classification-stock-2", instrument_id: null, stock_id: "stock-2", sector_33_code: "chemicals", sector_33_name: "化学", cycle_profile: "defensive", income_profile: "balanced", market_cap_profile: "mid", valid_from: "2026-08-02T00:00:00Z", valid_to: null },
+      ], error: null },
+      stock_notes_portfolio_reviews: { data: [], error: null },
+      stock_notes_portfolio_policy_versions: { data: [], error: null },
+      stock_notes_portfolio_policy_rules: { data: [], error: null },
+      stock_notes_portfolio_reflections: { data: [], error: null },
+      stock_notes_portfolio_review_items: { data: [], error: null },
+      stock_notes_portfolio_recommendations: { data: [], error: null },
+      stock_notes_portfolio_actions: { data: [], error: null },
+    }));
+
+    expect(data.instrumentAnalysis).toEqual([
+      expect.objectContaining({ instrumentId: "instrument-1", sector33Name: "電気機器" }),
+      expect.objectContaining({ instrumentId: "instrument-2", sector33Name: "化学" }),
+    ]);
   });
 
   it("最新の外部取込が失敗中でも、最後に成功したsnapshotを警告付きで表示する", async () => {

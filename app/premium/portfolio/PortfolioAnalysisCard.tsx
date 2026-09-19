@@ -47,12 +47,11 @@ function compactItems(items: PortfolioAllocationItem[], maxItems = 12): Portfoli
 
 function DonutChart({ items, total }: { items: PortfolioAllocationItem[]; total: number }) {
   const radius = 18;
-  let offset = 0;
-  const segments = items.map((item, index) => {
-    const segment = { item, index, offset };
-    offset += item.percentage;
-    return segment;
-  });
+  const segments = items.reduce<Array<{ item: PortfolioAllocationItem; index: number; offset: number }>>((result, item, index) => {
+    const previous = result.at(-1);
+    const offset = previous ? previous.offset + previous.item.percentage : 0;
+    return [...result, { item, index, offset }];
+  }, []);
   return (
     <svg viewBox="0 0 52 52" width={220} height={220} role="img" aria-label={items.map((item) => `${item.label} ${formatPercent(item.percentage)}`).join("、")} style={{ maxWidth: "100%" }}>
       <circle cx={26} cy={26} r={radius} pathLength={100} fill="transparent" stroke="var(--color-bg-input)" strokeWidth={8} />
