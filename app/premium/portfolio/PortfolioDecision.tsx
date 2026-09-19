@@ -62,6 +62,10 @@ function EmptyMessage({ children }: { children: React.ReactNode }) {
   return <p style={{ margin: 0, color: "var(--color-text-muted)", lineHeight: 1.7 }}>{children}</p>;
 }
 
+function DetailDisclosure({ label, children }: { label: string; children: React.ReactNode }) {
+  return <details><summary style={{ cursor: "pointer", color: "var(--color-accent)", fontSize: 13, padding: "6px 0" }}>{label}</summary><div style={{ display: "grid", gap: 10, paddingTop: 8, overflowWrap: "anywhere" }}>{children}</div></details>;
+}
+
 function Badge({ children, tone = "slate" }: { children: React.ReactNode; tone?: "blue" | "green" | "orange" | "red" | "slate" }) {
   const colors = {
     blue: { background: "var(--color-info-bg)", color: "var(--color-accent)" },
@@ -116,6 +120,7 @@ function RecommendationCard({ recommendation }: { recommendation: PortfolioRecom
         金額: {formatYen(recommendation.proposedAmount)}
         {recommendation.proposedPct !== null ? ` / 比率: ${recommendation.proposedPct}%` : " / 比率: 未指定"}
       </div>
+      <DetailDisclosure label="条件・理由を見る">
       {recommendation.conditions.length > 0 ? (
         <div style={{ display: "grid", gap: 4, color: "var(--color-text-sub)", fontSize: 13 }}>
           <strong style={{ fontSize: 12 }}>確認条件</strong>
@@ -123,6 +128,7 @@ function RecommendationCard({ recommendation }: { recommendation: PortfolioRecom
         </div>
       ) : null}
       {recommendation.rationale ? <div style={{ color: "var(--color-text-sub)", fontSize: 13, lineHeight: 1.65 }}>理由: {recommendation.rationale}</div> : null}
+      </DetailDisclosure>
     </article>
   );
 }
@@ -137,8 +143,10 @@ function ActionCard({ action }: { action: PortfolioAction }) {
         <Badge tone={statusTone}>{action.status === "open" ? "未完了" : action.status === "done" ? "完了" : "見送り"}</Badge>
       </div>
       {action.instrumentIdentifier ? <div style={{ color: "var(--color-text-sub)", fontSize: 13 }}>対象: {action.instrumentIdentifier} {action.instrumentName}</div> : null}
+      <DetailDisclosure label="作業内容・実行条件を見る">
       {action.detail ? <div style={{ color: "var(--color-text-sub)", fontSize: 13, lineHeight: 1.65 }}>{action.detail}</div> : null}
       {action.triggerCondition ? <div style={{ color: "var(--color-text-muted)", fontSize: 12 }}>実行条件: {action.triggerCondition}</div> : null}
+      </DetailDisclosure>
       <div style={{ color: "var(--color-text-muted)", fontSize: 11 }}>期限: {formatDate(action.dueDate)} / 登録: {formatDateTime(action.createdAt)}</div>
     </article>
   );
@@ -162,6 +170,8 @@ function PolicyCard({ data }: { data: PortfolioData }) {
           <Badge tone="green">v{policy.versionNumber} / active</Badge>
           <span style={{ color: "var(--color-text-muted)", fontSize: 12 }}>適用開始 {formatDate(policy.effectiveFrom)}</span>
         </div>
+        {policy.objective ? <p style={{ margin: 0, color: "var(--color-text-sub)", lineHeight: 1.65 }}>{policy.objective.length > 160 ? `${policy.objective.slice(0, 160)}…（冒頭抜粋）` : policy.objective}</p> : null}
+        <DetailDisclosure label="方針の全文・原則・ルールを見る">
         {policy.objective ? <div style={{ color: "var(--color-text-sub)", lineHeight: 1.65 }}>{policy.objective}</div> : null}
         {policy.principles.length > 0 ? (
           <div style={{ display: "grid", gap: 5, color: "var(--color-text-sub)", fontSize: 13 }}>
@@ -176,6 +186,7 @@ function PolicyCard({ data }: { data: PortfolioData }) {
           </div>
         ) : null}
         <div style={{ color: "var(--color-text-muted)", fontSize: 12 }}>この方針はreviewの要約とは別の正本です。変更時は新しい版として履歴に残ります。</div>
+        </DetailDisclosure>
       </div>
     </Card>
   );
@@ -252,13 +263,11 @@ export default function PortfolioDecision({ data }: { data: PortfolioData }) {
 
       <PolicyCard data={data} />
 
-      <ReflectionCard data={data} />
-
       <Card title="今回の全体判断">
         {!data.review ? <EmptyMessage>まだreviewが保存されていません。MiniToolsから手入力せず、ポートフォリオGPTで相談して保存してください。</EmptyMessage> : (
           <div style={{ display: "grid", gap: 12 }}>
             <div><strong>{data.review.title}</strong><div style={{ marginTop: 4, color: "var(--color-text-muted)", fontSize: 12 }}>保存更新: {formatDateTime(data.review.updatedAt)}</div></div>
-            {data.review.summary ? <div style={{ whiteSpace: "pre-wrap", color: "var(--color-text-sub)", lineHeight: 1.75 }}>{data.review.summary}</div> : <EmptyMessage>全体判断の要約は未登録です。</EmptyMessage>}
+            {data.review.summary ? <><p style={{ margin: 0, lineHeight: 1.7 }}>{data.review.summary.length > 180 ? `${data.review.summary.slice(0, 180)}…（冒頭抜粋）` : data.review.summary}</p><DetailDisclosure label="保存済み判断の全文を見る"><div style={{ whiteSpace: "pre-wrap", color: "var(--color-text-sub)", lineHeight: 1.75 }}>{data.review.summary}</div></DetailDisclosure></> : <EmptyMessage>全体判断の要約は未登録です。</EmptyMessage>}
             {data.review.allocationPolicy ? <div style={{ borderLeft: "3px solid var(--color-info-border)", paddingLeft: 12, whiteSpace: "pre-wrap", color: "var(--color-text-sub)", lineHeight: 1.7 }}><strong>運用方針</strong><br />{data.review.allocationPolicy}</div> : null}
             {data.review.newCapitalAmount === null ? <div style={{ color: "var(--color-text-muted)", fontSize: 12 }}>新規資金額は未設定です。この画面は仮の資金額や配分率を作成しません。</div> : <div style={{ fontWeight: 800 }}>想定新規資金: {formatYen(data.review.newCapitalAmount)}</div>}
           </div>
@@ -278,6 +287,7 @@ export default function PortfolioDecision({ data }: { data: PortfolioData }) {
       <Card title="次に確認するAction">
         {openActions.length === 0 ? <EmptyMessage>未完了のActionはありません。</EmptyMessage> : <div style={{ display: "grid", gap: 10 }}>{openActions.map((action) => <ActionCard key={action.id} action={action} />)}</div>}
       </Card>
+      <DetailDisclosure label="最新の振り返りを見る"><ReflectionCard data={data} /></DetailDisclosure>
     </div>
   );
 }
