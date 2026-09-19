@@ -581,7 +581,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
         const externalSnapshot = snapshotFromRow(externalSnapshotRow) as PortfolioExternalAssetSnapshot;
         const loadedAssets = loadedExternalAssets(externalSnapshot, externalPositions, externalSnapshotWarning);
         externalAssets = latestExternalSnapshotRow && latestExternalSnapshotRow.status !== "ready"
-          ? { ...loadedAssets, status: latestExternalSnapshotRow.status === "importing" ? "loading" : "error" }
+          ? { ...loadedAssets, status: latestExternalSnapshotRow.status === "importing" ? "loading" : latestExternalSnapshotRow.status === "superseded" ? "superseded" : "error" }
           : loadedAssets;
       }
     } else if (!externalSnapshotsError && latestExternalSnapshotRow) {
@@ -590,7 +590,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
         ? externalAssetsLoading(latestExternalSnapshot)
         : latestExternalSnapshot.status === "failed"
           ? externalAssetsError("外部資産の最新取込に失敗しています。", latestExternalSnapshot)
-          : externalAssetsError("外部資産の最新snapshotは置換済みです。", latestExternalSnapshot);
+          : { ...emptyExternalAssets(), status: "superseded", snapshot: latestExternalSnapshot };
     }
   } catch {
     // 外部参照データの失敗は、公式snapshot・reviewの表示を壊さない。
@@ -667,7 +667,8 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
   }
 
   const recommendations: PortfolioRecommendation[] = (recommendationData ?? []).map((row) => {
-    const instrument = row.instrument_id ? instruments.get(row.instrument_id) : undefined;
+    const instrument = row.instrument_id ? instruments.get(row.instrument_id) :
+      row.stock_id ? instrumentRows.find((candidate) => candidate.stock_id === row.stock_id) : undefined;
     return {
       id: row.id,
       reviewId: row.review_id,

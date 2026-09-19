@@ -276,29 +276,33 @@ function snapshotHistory(data: PortfolioData) {
   return [...data.snapshots, ...data.externalSnapshots].sort((a, b) => b.asOf.localeCompare(a.asOf) || b.importedAt.localeCompare(a.importedAt) || b.id.localeCompare(a.id));
 }
 
-function externalAssetStatusLabel(status: "loaded" | "empty" | "loading" | "error") {
+function externalAssetStatusLabel(status: "loaded" | "empty" | "loading" | "error" | "superseded") {
+  if (status === "superseded") return "置換済み";
   if (status === "loaded") return "登録済み";
   if (status === "loading") return "取込中";
   if (status === "error") return "取得失敗";
   return "未登録";
 }
 
-function externalAssetSummary(status: "loaded" | "empty" | "loading" | "error") {
+function externalAssetSummary(status: "loaded" | "empty" | "loading" | "error" | "superseded") {
+  if (status === "superseded") return " / 外部参照は置換済み";
   if (status === "loaded") return " / 外部参照あり";
   if (status === "loading") return " / 外部資産取込中";
   if (status === "error") return " / 外部資産取得失敗";
   return "";
 }
 
-function externalAssetEmptyMessage(status: "loaded" | "empty" | "loading" | "error") {
+function externalAssetEmptyMessage(status: "loaded" | "empty" | "loading" | "error" | "superseded") {
+  if (status === "superseded") return "外部参照snapshotは置換済みです。置換先は取込履歴で確認してください。";
   if (status === "loaded") return "外部参照資産は下の「口座・取込」で確認できます。公式保有の評価額・構成比は、公式snapshotが登録されるまで表示しません。";
   if (status === "loading") return "外部資産は現在取込中です。取込が完了してreadyになるまで、公式保有へ合算しません。詳細は下の「口座・取込」で確認できます。";
   if (status === "error") return "外部資産の最新取込に失敗しています。公式保有の表示とは分けて、詳細は下の「口座・取込」で確認できます。";
   return "証券会社CSVをstock-notesの取込APIへ送ると、ここに最新スナップショットが表示されます。既存のmy-stocksデータはこの画面へ自動コピーせず、取込履歴を正本として管理します。";
 }
 
-function ExternalAssetStatus({ status }: { status: "loaded" | "empty" | "loading" | "error" }) {
+function ExternalAssetStatus({ status }: { status: "loaded" | "empty" | "loading" | "error" | "superseded" }) {
   const colors = {
+    superseded: { background: "var(--color-bg-subtle)", color: "var(--color-text-muted)" },
     loaded: { background: "var(--color-success-bg)", color: "var(--color-success)" },
     empty: { background: "var(--color-warning-bg)", color: "var(--color-warning)" },
     loading: { background: "var(--color-info-bg)", color: "var(--color-accent)" },
@@ -368,6 +372,7 @@ function ExternalAssetsView({ data }: { data: PortfolioData }) {
           <span style={{ color: "var(--color-text-muted)", fontSize: 12 }}>iDeCo・企業型DC・海外口座・暗号資産・現金等。ChatGPT/APIで保存した外部参照snapshotを表示しています。</span>
         </div>
         {externalAssets.status === "empty" ? <EmptyState>外部資産はまだ登録されていません。ChatGPTで内容を確認してから、外部資産保存APIで登録するとここに表示されます。</EmptyState> : null}
+        {externalAssets.status === "superseded" && !hasReadySnapshot ? <EmptyState>外部参照snapshotは置換済みです。取得エラーではありません。置換先は取込履歴で確認してください。旧明細は重複集計しません。</EmptyState> : null}
         {externalAssets.status === "loading" && !hasReadySnapshot ? <EmptyState>外部資産の取込処理中です。処理が完了してreadyになるまで、明細は公式保有へ合算しません。</EmptyState> : null}
         {externalAssets.status === "error" && !hasReadySnapshot ? (
           <div style={{ borderRadius: 10, background: "var(--color-error-bg)", color: "var(--color-error)", padding: 12, lineHeight: 1.7 }}>
