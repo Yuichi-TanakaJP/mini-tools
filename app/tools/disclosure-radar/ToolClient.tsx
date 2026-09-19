@@ -303,7 +303,7 @@ export default function ToolClient({
           <p className={styles.eyebrow}>TDNET EVENT RADAR</p>
           <h1>開示イベントレーダー</h1>
           <p>
-            優待変更は全銘柄から、配当・業績修正などは端末内のマイ銘柄から拾います。
+            優待変更は全銘柄から、配当・業績修正などはPortfolioの保有銘柄と銘柄分析のウォッチから拾います。
           </p>
         </div>
         {data ? (

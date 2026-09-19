@@ -540,7 +540,7 @@ export default function HomeNotifications() {
             className="home-notifications__link home-notifications__link--secondary"
             href="/tools/disclosure-radar?view=my-stocks&range=7"
           >
-            マイ銘柄の開示 →
+            保有・ウォッチの開示 →
           </Link>
         ) : null}
         {disclosure?.yutaiUnreadItems.length ? (

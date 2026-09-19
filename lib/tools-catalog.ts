@@ -54,7 +54,7 @@ export const TOOLS: ToolItem[] = [
   },
   {
     title: "開示イベントレーダー",
-    short: "優待変更とマイ銘柄の重要開示",
+    short: "優待変更と保有・ウォッチの重要開示",
     detail: "全銘柄の優待変更と、マイ銘柄の配当・業績修正・自社株買いなどをまとめて確認。",
     href: "/tools/disclosure-radar",
     icon: "📡",
