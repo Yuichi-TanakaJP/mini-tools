@@ -8,6 +8,10 @@
 
 ## 正常系
 
+- [ ] Portfolioと銘柄分析・通知が同じ公式ready snapshotの国内保有を参照する。新しいmanual snapshotを古いCSVより優先する。
+- [ ] 直近20件がfailedでも過去の公式readyが表示され、基準日で古さを確認できる（fixtureで検証。本番に失敗データを作らない）。
+- [ ] 参考資産・外国株はPortfolioには残り、国内株の通知対象には混入しない。
+
 - [ ] `/premium/portfolio` がPremiumログイン後に表示される
 - [ ] 「意思決定」「保有一覧」「口座・取込」「方針」「履歴」「DB確認」の6タブを切り替えられる
 - [ ] 「意思決定」でsnapshot/reviewの基準日と判断状態を確認できる

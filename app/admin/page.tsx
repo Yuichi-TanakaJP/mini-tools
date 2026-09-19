@@ -225,13 +225,12 @@ async function loadRows(): Promise<ToolRow[]> {
     { category: "credit", name: "SBI一般信用在庫", href: "/tools/yutai-candidates", source: "/sbi/credit/latest", rule: SCHED_SUN.description, schedule: SCHED_SUN, latest: sbiCredit.latest, fetchedAt: sbiCredit.fetchedAt },
 
     { category: "reference", name: "JPX 祝日カレンダー", href: "/tools/earnings-calendar", source: "/market-calendar/jpx-closed", rule: SCHED_REF.description, schedule: SCHED_REF, latest: jpxClosed.latest, fetchedAt: jpxClosed.fetchedAt },
-    { category: "reference", name: "銘柄マスタ (my-stocks)", href: "/tools/my-stocks", source: "/stock-master/latest", rule: "銘柄マスタ (決算予定/優待月/配当)。更新運用は要確認。", schedule: SCHED_AD_HOC, latest: stockMaster.latest, fetchedAt: stockMaster.fetchedAt },
+    { category: "reference", name: "銘柄マスタ (銘柄分析)", href: "/tools/stock-notes", source: "/stock-master/latest", rule: "銘柄マスタ (決算予定/優待月/配当)。更新運用は要確認。", schedule: SCHED_AD_HOC, latest: stockMaster.latest, fetchedAt: stockMaster.fetchedAt },
 
     { category: "local", name: "合計計算", href: "/tools/total", source: "ブラウザ localStorage", rule: SCHED_USER.description, schedule: SCHED_USER },
     { category: "local", name: "文字数カウント", href: "/tools/charcount", source: "ブラウザ localStorage", rule: SCHED_USER.description, schedule: SCHED_USER },
     { category: "local", name: "株主優待期限帳", href: "/tools/yutai-expiry", source: "localStorage + scan (premium)", rule: SCHED_USER.description, schedule: SCHED_USER },
     { category: "local", name: "優待銘柄メモ帳", href: "/tools/yutai-memo", source: "ブラウザ localStorage", rule: SCHED_USER.description, schedule: SCHED_USER },
-    { category: "local", name: "マイ株", href: "/tools/my-stocks", source: "localStorage + /stock-master/latest", rule: SCHED_USER.description, schedule: SCHED_USER },
   ];
 }
 
@@ -331,7 +330,6 @@ const TOOL_SOURCE_MAP: { tool: string; href: string; sources: string[] }[] = [
   { tool: "EDINET", href: "/tools/edinet-documents", sources: ["/edinet/document-list/manifest"] },
   { tool: "TDNet", href: "/tools/tdnet-disclosures", sources: ["/tdnet/disclosures/latest"] },
   { tool: "開示レーダー", href: "/tools/disclosure-radar", sources: ["/disclosure-events/manifest"] },
-  { tool: "マイ株", href: "/tools/my-stocks", sources: ["/stock-master/latest", "/yutai/manifest", "/earnings-calendar/domestic/manifest"] },
 ];
 
 // ============== Small UI atoms ==============

@@ -41,6 +41,11 @@ const emptyData: CachedStockNotesData = {
 };
 
 describe("stock-notes cache", () => {
+  it("does not persist Premium holdings", () => {
+    vi.stubGlobal("window", { localStorage: makeMemoryLocalStorage() });
+    writeStockNotesCache("u", { ...emptyData, holdings: [{ code: "7203", name: "Toyota", tab: "holding" }], holdingsState: "ready" });
+    expect(readStockNotesCache("u")?.data).toMatchObject({ holdings: [], holdingsState: "unavailable", holdingsUpdatedAt: null });
+  });
   beforeEach(() => {
     vi.stubGlobal("window", { localStorage: makeMemoryLocalStorage() });
   });

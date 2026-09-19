@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { loadItems } from "@/app/tools/my-stocks/storage";
+import { useAudience } from "@/lib/portfolio/useAudience";
 import { loadReadEventIds, saveReadEventIds } from "./read-state";
 import {
   filterDisclosureEvents,
@@ -142,18 +142,17 @@ export default function ToolClient({
   const responsesRef = useRef(new Map<string, DisclosureEventsResponse>());
   const requestIdRef = useRef(0);
   const deepLinkExpandedRef = useRef(false);
+  const audience = useAudience();
   const myStockCodes = useMemo(
     () => {
-      const codes = new Set(
-        loadItems().map((item) => normalizeSecurityCode(item.code)),
-      );
+      const codes = new Set(audience.codes);
       const target = data?.items.find((item) => item.event_id === initialEventId);
       if (target?.audience === "personal") {
         codes.add(normalizeSecurityCode(target.security_code));
       }
       return codes;
     },
-    [data, initialEventId],
+    [data, initialEventId, audience.codes],
   );
 
   useEffect(() => {
@@ -304,7 +303,7 @@ export default function ToolClient({
           <p className={styles.eyebrow}>TDNET EVENT RADAR</p>
           <h1>開示イベントレーダー</h1>
           <p>
-            優待変更は全銘柄から、配当・業績修正などは端末内のマイ銘柄から拾います。
+            優待変更は全銘柄から、配当・業績修正などはPortfolioの保有銘柄と銘柄分析のウォッチから拾います。
           </p>
         </div>
         {data ? (
@@ -329,7 +328,7 @@ export default function ToolClient({
           className={view === "my-stocks" ? styles.tabActive : styles.tab}
           onClick={() => changeView("my-stocks")}
         >
-          マイ銘柄 <span>{personalCount}</span>
+          保有・ウォッチ <span>{audience.data ? personalCount : "—"}</span>
         </button>
       </div>
 
@@ -397,15 +396,15 @@ export default function ToolClient({
         </section>
       ) : (
         <section className={styles.empty}>
-          <p>該当する開示イベントはありません。</p>
+          <p>{view === "my-stocks" && (!audience.data || audience.data.holdings.state !== "ready" || audience.data.watch.state !== "ready") ? "保有・ウォッチの一部または全部が未取得です。取得できた対象では該当する開示イベントはありません。" : "該当する開示イベントはありません。"}</p>
           {view === "my-stocks" && myStockCodes.size === 0 ? (
-            <Link href="/tools/my-stocks">マイ銘柄を登録する</Link>
+            <Link href="/tools/stock-notes">ウォッチを管理する</Link>
           ) : null}
         </section>
       )}
 
       <p className={styles.note}>
-        確認済み状態とマイ銘柄との照合はブラウザ内で行います。登録内容はサーバーへ送信しません。
+        {audience.status} 保有はPortfolio、ウォッチは銘柄分析から取得します。開示との照合はブラウザ内で行います。
       </p>
     </main>
   );

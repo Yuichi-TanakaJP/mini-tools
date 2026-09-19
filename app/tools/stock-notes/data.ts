@@ -2,10 +2,9 @@
 // Supabase から stock-notes のテーブルを読み取り専用で取得する。
 // 書き込み（insert/update/delete）は行わない。
 // - stock_notes_* は本人の行だけが RLS で見える（auth.uid() = user_id）。
-// - my_stocks_items_v1（保有リスト）は既存の /api/sync（tool_data 経由）で読む。
+// - 保有は認証済み audience API から読み、Portfolioと選択ルールを共有する。
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { normalizeItems } from "@/app/tools/my-stocks/storage";
-import type { MyStockItem } from "@/app/tools/my-stocks/types";
+import { isAudience, type Holding, type HoldingsState } from "@/lib/portfolio/holdings";
 import type { EarningsFoldEntry, StockNotesEarningsInfo } from "./earnings-types";
 import { parseStockNotesDelta, type StockNotesDelta, type StockNotesManifest } from "./delta";
 import type {
@@ -78,13 +77,13 @@ function toStringArray(value: unknown): string[] {
  * Supabase（PostgREST）から返るエラーが「セッション切れ（JWTの有効期限切れ・無効）」を
  * 示しているかどうかを判定する。
  *
- * なぜ必要か: `/api/sync` は自前のルートなので 401 を HTTP ステータスとして返せる
+ * なぜ必要か: `/api/stock-notes/audience` は自前のルートなので 401 を HTTP ステータスとして返せる
  * （`HoldingsFetchError`）が、`stock_notes_*` は supabase-js 経由の直読みで、
  * `.select()` のエラーは `PostgrestError`（`{message, details, hint, code}`）であり、
  * fetch の HTTP ステータスをそのまま持たない。セッションが切れているのに一般的な
  * `status: "error"` に倒すと、このダッシュボードは stale-while-revalidate で
  * キャッシュ表示を維持する設計のため、期限切れセッションの結果に基づく古い表示を
- * 延々と見せ続けてしまう（本来は /api/sync の401と同様にログイン画面へ切り替えるべき）。
+ * 延々と見せ続けてしまう（本来は /api/stock-notes/audience の401と同様にログイン画面へ切り替えるべき）。
  *
  * 判定方法: PostgREST は JWT の検証（RLSより前の段階）に失敗すると、行フィルタで
  * 静かに0件を返すのとは別に、リクエスト自体を拒否してエラーコード `PGRST301`
@@ -203,10 +202,10 @@ export async function fetchOpenActions(supabase: SupabaseClient): Promise<StockN
 }
 
 /**
- * /api/sync の取得失敗を表すエラー。
+ * /api/stock-notes/audience の取得失敗を表すエラー。
  * status を持たせ、呼び出し側で 401（未認証・セッション切れ）とそれ以外を区別できるようにする。
  * これを投げずに空配列へフォールバックすると、「保有0件」と「取得失敗」が区別できなくなり、
- * このツールの主目的（要対応タブ・一括取り込みバナーでの未分析/未登録の可視化）が
+ * このツールの主目的（保有の可視化）が
  * 静かに壊れるため、必ず throw する。
  */
 export class HoldingsFetchError extends Error {
@@ -219,36 +218,25 @@ export class HoldingsFetchError extends Error {
   }
 }
 
-/**
- * 保有リスト（my_stocks_items_v1）と、その最終同期日時。
- * updatedAt は /api/sync（tool_data）の updated_at。
- * これは「保有リストが最後にこの端末からクラウドへ保存された日時」であり、
- * ローカルでの編集が反映されているとは限らない（同期は手動、/account の
- * 「この端末を保存」を押した時だけアップロードされる）。
- * 詳細: docs/decision-log/2026-08-11-stock-notes-dashboard-design.md
- */
+/** Portfolioの保有とsnapshot基準日。stateで未取得・権限不足と空保有を区別する。 */
 export type HoldingsWithSync = {
-  holdings: MyStockItem[];
+  holdings: Holding[];
   updatedAt: string | null;
+  state?: HoldingsState;
+  snapshotId?: string | null;
 };
 
-/**
- * 保有リストは my-stocks の正本（tool_data の my_stocks_items_v1）を
- * 既存の /api/sync 経由で読む。my-stocks の LocalStorage は直接読まない
- * （この端末とは限らないため）。
- * 取得失敗（セッション切れ・サーバー障害など）は空配列にフォールバックせず throw する。
- */
+/** 旧LocalStorageやtool_dataは読まない。認証エラーは呼び出し元で区別する。 */
 export async function fetchHoldings(): Promise<HoldingsWithSync> {
-  const res = await fetch("/api/sync", { method: "GET" });
+  const res = await fetch("/api/stock-notes/audience", { method: "GET", cache: "no-store" });
   if (!res.ok) {
     throw new HoldingsFetchError(res.status, `保有リストの取得に失敗しました（HTTP ${res.status}）`);
   }
-  const data = (await res.json()) as {
-    items?: Array<{ key: string; value: unknown; updatedAt?: string }>;
-  };
-  const item = (data.items ?? []).find((it) => it.key === "my_stocks_items_v1");
-  if (!item) return { holdings: [], updatedAt: null };
-  return { holdings: normalizeItems(item.value), updatedAt: item.updatedAt ?? null };
+  const data: unknown = await res.json();
+  if (!isAudience(data)) {
+    throw new HoldingsFetchError(502, "保有データの形式が不正です");
+  }
+  return data.holdings;
 }
 
 /**

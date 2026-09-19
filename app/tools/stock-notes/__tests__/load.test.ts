@@ -161,14 +161,15 @@ describe("loadDashboardData", () => {
     }
   });
 
-  it("保有リストの取得が401以外で失敗したら status: error", async () => {
+  it("保有取得失敗でも分析は利用でき、保有は未取得とする", async () => {
     const result = await loadDashboardData({
       ...emptyOkFetchers,
       fetchHoldings: async () => {
         throw new HoldingsFetchError(500, "boom");
       },
     });
-    expect(result.status).toBe("error");
+    expect(result.status).toBe("ok");
+    if (result.status === "ok") expect(result.holdingsState).toBe("unavailable");
   });
 
   it("stock_notes 側のテーブル取得が失敗しても status: error（保有0件として握りつぶさない）", async () => {

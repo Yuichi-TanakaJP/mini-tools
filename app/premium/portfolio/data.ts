@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { selectPortfolio, selectReadySnapshot } from "@/lib/portfolio/holdings";
 import { emptyExternalAssets, externalAssetsError, externalAssetsLoading, loadedExternalAssets } from "./external-assets";
 import type {
   PortfolioAccountType,
@@ -16,12 +17,6 @@ import type {
   PortfolioExternalAssetPosition,
   PortfolioExternalAssetSnapshot,
 } from "./types";
-
-type PortfolioRow = {
-  id: string;
-  name: string;
-  base_currency: string;
-};
 
 type SnapshotRow = {
   id: string;
@@ -316,14 +311,7 @@ export function portfolioAuthRequired(): PortfolioData {
 }
 
 export async function loadPortfolio(supabase: SupabaseClient): Promise<PortfolioData> {
-  const { data: portfolio, error: portfolioError } = await supabase
-    .from("stock_notes_portfolios")
-    .select("id, name, base_currency")
-    .order("is_default", { ascending: false })
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle<PortfolioRow>();
-  if (portfolioError) throw portfolioError;
+  const portfolio = await selectPortfolio(supabase);
   if (!portfolio) return emptyPortfolio();
 
   const { data: officialSnapshotRows, error: officialSnapshotsError } = await supabase
@@ -354,7 +342,8 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     .map((row) => snapshotFromRow(row) as PortfolioExternalAssetSnapshot)
     .sort((a, b) => b.asOf.localeCompare(a.asOf) || b.importedAt.localeCompare(a.importedAt) || b.id.localeCompare(a.id));
   const officialSnapshots = snapshots;
-  const currentSnapshot = officialSnapshots.find((snapshot) => snapshot.status === "ready") ?? null;
+  const readySnapshot = await selectReadySnapshot(supabase, portfolio.id);
+  const currentSnapshot = readySnapshot ? snapshotFromRow(readySnapshot as SnapshotRow) : null;
   const dbPositionSnapshot = currentSnapshot ?? officialSnapshots[0] ?? null;
   const latestExternalSnapshotRow = externalSnapshotRows?.[0] ?? null;
   const externalSnapshotRow = (externalSnapshotRows ?? []).find((row) => row.status === "ready") ?? null;

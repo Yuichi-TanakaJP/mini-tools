@@ -194,6 +194,7 @@ async function pushAllInternal(
     const sentKeys = new Set(items.map((it) => it.key));
     let shouldRetry = false;
     for (const it of data.items ?? []) {
+      if (it.key === "my_stocks_items_v1") continue;
       if (legacyYutaiWriteBlocked(it.key)) continue;
       if (isEmptyLocalValue(it.value)) {
         const local = readLocalValue(it.key);
@@ -244,6 +245,7 @@ export async function pullAll(
     const meta = readMeta();
     const changed: string[] = [];
     for (const it of data.items ?? []) {
+      if (it.key === "my_stocks_items_v1") continue;
       if (legacyYutaiWriteBlocked(it.key)) continue;
       if (isEmptyLocalValue(it.value)) continue;
       const localAt = localUpdatedAtForPull(it.key, meta, unknownLocalPolicy);

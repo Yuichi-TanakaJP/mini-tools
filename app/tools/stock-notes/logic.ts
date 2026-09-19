@@ -1,6 +1,6 @@
 // app/tools/stock-notes/logic.ts
 // 画面の外側で独立してテストできる純関数群（window / Supabase 非依存）。
-import type { MyStockItem } from "@/app/tools/my-stocks/types";
+import type { Holding } from "@/lib/portfolio/holdings";
 import type { EarningsFoldEntry, StockNotesEarningsInfo } from "./earnings-types";
 import type {
   StockNoteAction,
@@ -537,12 +537,24 @@ export function stocksForTab(
   actions: StockNoteAction[],
   earnings: StockNotesEarningsInfo | null,
   now: Date = new Date(),
+  heldCodes?: ReadonlySet<string>,
 ): StockNoteStock[] {
   if (tab === "action-required") {
-    const required = computeActionRequiredStocks(stocks, analyses, actions, earnings?.lastEarnings ?? {}, now);
+    const candidates = heldCodes ? stocks.map((s) => heldCodes.has(s.code) ? { ...s, category: "holding" as const } : s.category === "holding" ? { ...s, category: "research" as const } : s) : stocks;
+    const required = computeActionRequiredStocks(candidates, analyses, actions, earnings?.lastEarnings ?? {}, now);
+    const ids = new Set(required.map((s) => s.id));
+    if (heldCodes) {
+      const original = new Map(stocks.map((s) => [s.id, s]));
+      return sortActionRequiredStocks(candidates.filter((s) => ids.has(s.id)), analyses, earnings?.earnings ?? {}).map((s) => original.get(s.id)!);
+    }
     return sortActionRequiredStocks(required, analyses, earnings?.earnings ?? {});
   }
-  const filtered = stocks.filter((s) => s.category === tab);
+  const filtered = stocks.filter((s) => {
+    if (heldCodes && tab === "holding") return heldCodes.has(s.code);
+    // Former holdings remain accessible without pretending they are still owned.
+    if (heldCodes && tab === "research" && s.category === "holding" && !heldCodes.has(s.code)) return true;
+    return s.category === tab;
+  });
   return sortStocksByLastAnalyzedAsc(filtered, analyses);
 }
 
@@ -554,8 +566,9 @@ export function countStocksForTab(
   actions: StockNoteAction[],
   earnings: StockNotesEarningsInfo | null,
   now: Date = new Date(),
+  heldCodes?: ReadonlySet<string>,
 ): number {
-  return stocksForTab(tab, stocks, analyses, actions, earnings, now).length;
+  return stocksForTab(tab, stocks, analyses, actions, earnings, now, heldCodes).length;
 }
 
 export type UnregisteredHolding = { code: string; name: string; quantity: number | null };
@@ -568,7 +581,7 @@ export type UnregisteredHolding = { code: string; name: string; quantity: number
  * 詳細: docs/decision-log/2026-08-11-stock-notes-dashboard-design.md）。
  */
 export function extractUnregisteredHoldings(
-  holdings: MyStockItem[],
+  holdings: (Pick<Holding, "code" | "name" | "quantity"> & { tab?: string })[],
   stocks: StockNoteStock[],
 ): UnregisteredHolding[] {
   const registeredCodes = new Set(stocks.map((s) => s.code));

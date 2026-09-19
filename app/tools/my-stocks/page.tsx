@@ -1,17 +1,22 @@
 import type { Metadata } from "next";
-import ClientOnly from "./ClientOnly";
-import { loadMyStocksReference } from "./data-loader";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "マイ銘柄リスト | mini-tools",
   description:
-    "保有銘柄と気になる銘柄（ウォッチ）を端末内に保存できる無料ツール。決算予定日や優待権利確定月のバッジも表示。データはブラウザ内に保存され、サーバーには送信しません。",
+    "保有情報はPortfolio、ウォッチは銘柄分析ダッシュボードへ集約しました。",
+  robots: { index: false, follow: false },
   alternates: {
     canonical: "/tools/my-stocks",
   },
 };
 
-export default async function Page() {
-  const reference = await loadMyStocksReference();
-  return <ClientOnly reference={reference} />;
+export default function Page() {
+  return <main style={{ maxWidth: 720, margin: "40px auto", padding: 24 }}>
+    <h1>マイ銘柄リストは統合しました</h1>
+    <p>保有の二重入力は不要です。既存のPortfolioを参照し、ウォッチは銘柄分析で管理します。</p>
+    <p><Link href="/premium/portfolio">保有一覧・全体方針を見る（Portfolio） →</Link></p>
+    <p><Link href="/tools/stock-notes">銘柄分析・ウォッチを開く →</Link></p>
+    <p>旧端末データとメモは自動移行しません。PortfolioへのCSV再取込は必要ありません。</p>
+  </main>;
 }
