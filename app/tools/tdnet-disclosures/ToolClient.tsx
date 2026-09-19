@@ -386,8 +386,11 @@ export default function ToolClient({
       const key = item.disclosure_category || "カテゴリ未設定";
       counts.set(key, (counts.get(key) ?? 0) + 1);
     }
+    if (categoryFilter !== "all" && !counts.has(categoryFilter)) {
+      counts.set(categoryFilter, 0);
+    }
     return [...counts.entries()].sort((a, b) => b[1] - a[1]);
-  }, [data?.items]);
+  }, [categoryFilter, data?.items]);
 
   const filteredItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
