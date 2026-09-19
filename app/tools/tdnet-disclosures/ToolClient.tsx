@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouterTransition } from "@/app/tools/_shared/use-router-transition";
+import { loadSearchPresets, saveSearchPresets } from "./search-preset-storage";
 import type { TdnetDisclosureItem, TdnetDisclosureListResponse } from "./types";
 
 type FilterKey = "financialOnly" | "earningsOnly" | "hideCorrections";
@@ -9,6 +10,25 @@ type LinkFilter = "all" | "pdf" | "html" | "xbrl";
 type TimeFilter = "all" | "morning" | "lunch" | "afternoon" | "afterClose";
 type TopicFilter = "all" | "performance" | "dividend";
 type RangeDays = "1" | "7" | "30";
+type SearchPreset = {
+  id: string;
+  name: string;
+  memo: string;
+  params: SearchPresetParams;
+  favorite: boolean;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastUsedAt: string | null;
+};
+type SearchPresetParams = {
+  searchQuery: string;
+  categoryFilter: string;
+  linkFilter: LinkFilter;
+  timeFilter: TimeFilter;
+  topicFilter: TopicFilter;
+  filters: Record<FilterKey, boolean>;
+};
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "financialOnly", label: "財務関連のみ" },
@@ -42,6 +62,71 @@ const RANGE_OPTIONS: { key: RangeDays; label: string }[] = [
   { key: "7", label: "過去7日" },
   { key: "30", label: "過去30日" },
 ];
+
+const DEFAULT_FILTERS: Record<FilterKey, boolean> = {
+  financialOnly: false,
+  earningsOnly: false,
+  hideCorrections: false,
+};
+
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+function createPresetId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `preset_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizePreset(value: unknown): SearchPreset | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Partial<SearchPreset>;
+  const params = raw.params as Partial<SearchPresetParams> | undefined;
+  const name = typeof raw.name === "string" ? raw.name.trim() : "";
+  if (typeof raw.id !== "string" || !raw.id || !name || !params) return null;
+
+  return {
+    id: raw.id,
+    name,
+    memo: typeof raw.memo === "string" ? raw.memo : "",
+    params: {
+      searchQuery: typeof params.searchQuery === "string" ? params.searchQuery : "",
+      categoryFilter: typeof params.categoryFilter === "string" ? params.categoryFilter : "all",
+      linkFilter:
+        params.linkFilter === "pdf" || params.linkFilter === "html" || params.linkFilter === "xbrl"
+          ? params.linkFilter
+          : "all",
+      timeFilter:
+        params.timeFilter === "morning" ||
+        params.timeFilter === "lunch" ||
+        params.timeFilter === "afternoon" ||
+        params.timeFilter === "afterClose"
+          ? params.timeFilter
+          : "all",
+      topicFilter: params.topicFilter === "performance" || params.topicFilter === "dividend" ? params.topicFilter : "all",
+      filters: {
+        financialOnly: Boolean(params.filters?.financialOnly),
+        earningsOnly: Boolean(params.filters?.earningsOnly),
+        hideCorrections: Boolean(params.filters?.hideCorrections),
+      },
+    },
+    favorite: Boolean(raw.favorite),
+    isDefault: Boolean(raw.isDefault),
+    createdAt: typeof raw.createdAt === "string" ? raw.createdAt : nowIso(),
+    updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : nowIso(),
+    lastUsedAt: typeof raw.lastUsedAt === "string" ? raw.lastUsedAt : null,
+  };
+}
+
+function sortPresets(presets: SearchPreset[]): SearchPreset[] {
+  return [...presets].sort((a, b) => {
+    if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
+    if (a.favorite !== b.favorite) return a.favorite ? -1 : 1;
+    return (b.lastUsedAt ?? b.updatedAt).localeCompare(a.lastUsedAt ?? a.updatedAt);
+  });
+}
 
 function formatDate(dateStr: string): string {
   const d = new Date(`${dateStr}T00:00:00`);
@@ -283,11 +368,12 @@ export default function ToolClient({
   const [linkFilter, setLinkFilter] = useState<LinkFilter>("all");
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
   const [topicFilter, setTopicFilter] = useState<TopicFilter>("all");
-  const [filters, setFilters] = useState<Record<FilterKey, boolean>>({
-    financialOnly: false,
-    earningsOnly: false,
-    hideCorrections: false,
-  });
+  const [filters, setFilters] = useState<Record<FilterKey, boolean>>(DEFAULT_FILTERS);
+  const [searchPresets, setSearchPresets] = useState<SearchPreset[]>([]);
+  const [presetName, setPresetName] = useState("");
+  const [presetMemo, setPresetMemo] = useState("");
+  const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
+  const [presetNotice, setPresetNotice] = useState<string | null>(null);
 
   const targetDate = data?.target_date ?? toDateInputValue(requestedDate);
   const totalCount = data?.total_count ?? 0;
@@ -325,6 +411,146 @@ export default function ToolClient({
       );
     });
   }, [categoryFilter, data?.items, filters, linkFilter, searchQuery, timeFilter, topicFilter]);
+
+  const sortedPresets = useMemo(() => sortPresets(searchPresets), [searchPresets]);
+
+  const currentSearchParams = (): SearchPresetParams => ({
+    searchQuery,
+    categoryFilter,
+    linkFilter,
+    timeFilter,
+    topicFilter,
+    filters,
+  });
+
+  const persistPresets = (
+    nextPresets: SearchPreset[],
+    failureMessage = "検索設定を保存できませんでした",
+  ) => {
+    if (!saveSearchPresets(nextPresets)) {
+      setPresetNotice(failureMessage);
+      return false;
+    }
+    setSearchPresets(nextPresets);
+    return true;
+  };
+
+  const applySearchParams = (params: SearchPresetParams) => {
+    setSearchQuery(params.searchQuery);
+    setCategoryFilter(params.categoryFilter);
+    setLinkFilter(params.linkFilter);
+    setTimeFilter(params.timeFilter);
+    setTopicFilter(params.topicFilter);
+    setFilters(params.filters);
+  };
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const loaded = loadSearchPresets()
+        .map(normalizePreset)
+        .filter((preset): preset is SearchPreset => Boolean(preset));
+      setSearchPresets(loaded);
+
+      const defaultPreset = loaded.find((preset) => preset.isDefault);
+      if (!defaultPreset) return;
+      applySearchParams(defaultPreset.params);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!presetNotice) return;
+    const timer = window.setTimeout(() => setPresetNotice(null), 2600);
+    return () => window.clearTimeout(timer);
+  }, [presetNotice]);
+
+  const savePreset = () => {
+    const name = presetName.trim();
+    if (!name) {
+      setPresetNotice("保存名を入力してください");
+      return;
+    }
+
+    const timestamp = nowIso();
+    const nextPreset: SearchPreset = {
+      id: createPresetId(),
+      name,
+      memo: presetMemo.trim(),
+      params: currentSearchParams(),
+      favorite: false,
+      isDefault: searchPresets.length === 0,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      lastUsedAt: null,
+    };
+    if (!persistPresets([...searchPresets, nextPreset])) return;
+    setPresetName("");
+    setPresetMemo("");
+    setPresetNotice("検索設定を保存しました");
+  };
+
+  const applyPreset = (preset: SearchPreset) => {
+    applySearchParams(preset.params);
+    const timestamp = nowIso();
+    const persisted = persistPresets(
+      searchPresets.map((item) =>
+        item.id === preset.id ? { ...item, lastUsedAt: timestamp, updatedAt: timestamp } : item,
+      ),
+      "検索設定は復元しましたが、利用履歴を保存できませんでした",
+    );
+    if (persisted) setPresetNotice("検索設定を復元しました");
+  };
+
+  const updatePresetParams = (preset: SearchPreset) => {
+    const timestamp = nowIso();
+    if (!persistPresets(
+      searchPresets.map((item) =>
+        item.id === preset.id ? { ...item, params: currentSearchParams(), updatedAt: timestamp } : item,
+      ),
+    )) return;
+    setPresetNotice("現在の条件で上書きしました");
+  };
+
+  const updatePresetMeta = (preset: SearchPreset, next: Pick<SearchPreset, "name" | "memo">) => {
+    const timestamp = nowIso();
+    if (!persistPresets(
+      searchPresets.map((item) =>
+        item.id === preset.id
+          ? { ...item, name: next.name.trim() || item.name, memo: next.memo.trim(), updatedAt: timestamp }
+          : item,
+      ),
+    )) return;
+    setEditingPresetId(null);
+    setPresetNotice("検索設定を編集しました");
+  };
+
+  const togglePresetFavorite = (preset: SearchPreset) => {
+    const timestamp = nowIso();
+    persistPresets(
+      searchPresets.map((item) =>
+        item.id === preset.id ? { ...item, favorite: !item.favorite, updatedAt: timestamp } : item,
+      ),
+    );
+  };
+
+  const togglePresetDefault = (preset: SearchPreset) => {
+    const timestamp = nowIso();
+    if (!persistPresets(
+      searchPresets.map((item) => ({
+        ...item,
+        isDefault: item.id === preset.id ? !preset.isDefault : false,
+        updatedAt: item.id === preset.id || item.isDefault ? timestamp : item.updatedAt,
+      })),
+    )) return;
+    setPresetNotice(preset.isDefault ? "既定設定を解除しました" : "起動時の既定設定にしました");
+  };
+
+  const deletePreset = (preset: SearchPreset) => {
+    if (!persistPresets(searchPresets.filter((item) => item.id !== preset.id))) return;
+    if (editingPresetId === preset.id) setEditingPresetId(null);
+    setPresetNotice("検索設定を削除しました");
+  };
 
   const applyDate = () => {
     if (!dateInput) {
@@ -365,11 +591,7 @@ export default function ToolClient({
     setLinkFilter("all");
     setTimeFilter("all");
     setTopicFilter("all");
-    setFilters({
-      financialOnly: false,
-      earningsOnly: false,
-      hideCorrections: false,
-    });
+    setFilters(DEFAULT_FILTERS);
   };
 
   const toggleFilter = (key: FilterKey) => {
@@ -729,6 +951,203 @@ export default function ToolClient({
               </button>
             ))}
           </div>
+        </section>
+      ) : null}
+
+      {data ? (
+        <section
+          style={{
+            background: "var(--color-bg-card)",
+            borderRadius: 12,
+            border: "1px solid var(--color-border)",
+            padding: "12px 16px",
+            marginBottom: 14,
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900 }}>検索設定</h2>
+              <p style={{ margin: "4px 0 0", color: "var(--color-text-muted)", fontSize: 12, lineHeight: 1.6 }}>
+                現在の絞り込み条件をブラウザ内に保存します。Supabaseや他端末とは同期しません。
+              </p>
+            </div>
+            {presetNotice ? (
+              <span style={{ color: "var(--color-accent)", fontSize: 12, fontWeight: 800 }}>{presetNotice}</span>
+            ) : null}
+          </div>
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+            <label style={{ display: "flex", flex: "1 1 180px", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 11, color: "var(--color-text-muted)", fontWeight: 800 }}>保存名</span>
+              <input
+                value={presetName}
+                onChange={(e) => setPresetName(e.target.value)}
+                placeholder="例: 決算短信・PDFあり"
+                style={{
+                  minHeight: 36,
+                  padding: "7px 10px",
+                  borderRadius: 8,
+                  border: "1.5px solid var(--color-border)",
+                  background: "var(--color-bg-input)",
+                  color: "var(--color-text)",
+                  fontSize: 13,
+                }}
+              />
+            </label>
+            <label style={{ display: "flex", flex: "1 1 220px", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 11, color: "var(--color-text-muted)", fontWeight: 800 }}>メモ</span>
+              <input
+                value={presetMemo}
+                onChange={(e) => setPresetMemo(e.target.value)}
+                placeholder="任意"
+                style={{
+                  minHeight: 36,
+                  padding: "7px 10px",
+                  borderRadius: 8,
+                  border: "1.5px solid var(--color-border)",
+                  background: "var(--color-bg-input)",
+                  color: "var(--color-text)",
+                  fontSize: 13,
+                }}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={savePreset}
+              style={{
+                minHeight: 36,
+                padding: "7px 12px",
+                borderRadius: 8,
+                border: "1.5px solid var(--color-accent)",
+                background: "var(--color-accent)",
+                color: "var(--color-text-inverse)",
+                fontSize: 13,
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              保存
+            </button>
+          </div>
+
+          {sortedPresets.length === 0 ? (
+            <div style={{ color: "var(--color-text-muted)", fontSize: 12 }}>保存済みの検索設定はまだありません。</div>
+          ) : (
+            <div style={{ display: "grid", gap: 8 }}>
+              {sortedPresets.map((preset) => {
+                const editing = editingPresetId === preset.id;
+                return (
+                  <div
+                    key={preset.id}
+                    style={{
+                      border: "1px solid var(--color-border)",
+                      borderRadius: 8,
+                      padding: 10,
+                      display: "grid",
+                      gap: 8,
+                    }}
+                  >
+                    {editing ? (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const form = new FormData(e.currentTarget);
+                          updatePresetMeta(preset, {
+                            name: String(form.get("name") ?? ""),
+                            memo: String(form.get("memo") ?? ""),
+                          });
+                        }}
+                        style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}
+                      >
+                        <label style={{ display: "flex", flex: "1 1 180px", flexDirection: "column", gap: 4 }}>
+                          <span style={{ fontSize: 11, color: "var(--color-text-muted)", fontWeight: 800 }}>保存名</span>
+                          <input
+                            name="name"
+                            defaultValue={preset.name}
+                            style={{
+                              minHeight: 34,
+                              padding: "6px 10px",
+                              borderRadius: 8,
+                              border: "1.5px solid var(--color-border)",
+                              background: "var(--color-bg-input)",
+                              color: "var(--color-text)",
+                              fontSize: 13,
+                            }}
+                          />
+                        </label>
+                        <label style={{ display: "flex", flex: "1 1 220px", flexDirection: "column", gap: 4 }}>
+                          <span style={{ fontSize: 11, color: "var(--color-text-muted)", fontWeight: 800 }}>メモ</span>
+                          <input
+                            name="memo"
+                            defaultValue={preset.memo}
+                            style={{
+                              minHeight: 34,
+                              padding: "6px 10px",
+                              borderRadius: 8,
+                              border: "1.5px solid var(--color-border)",
+                              background: "var(--color-bg-input)",
+                              color: "var(--color-text)",
+                              fontSize: 13,
+                            }}
+                          />
+                        </label>
+                        <button type="submit" style={{ minHeight: 34, padding: "6px 10px", borderRadius: 8 }}>
+                          保存
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingPresetId(null)}
+                          style={{ minHeight: 34, padding: "6px 10px", borderRadius: 8 }}
+                        >
+                          戻る
+                        </button>
+                      </form>
+                    ) : (
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                            <strong style={{ fontSize: 13 }}>{preset.name}</strong>
+                            {preset.favorite ? (
+                              <span style={{ color: "var(--color-accent)", fontSize: 11, fontWeight: 800 }}>お気に入り</span>
+                            ) : null}
+                            {preset.isDefault ? (
+                              <span style={{ color: "var(--color-success)", fontSize: 11, fontWeight: 800 }}>既定</span>
+                            ) : null}
+                          </div>
+                          {preset.memo ? (
+                            <div style={{ marginTop: 3, color: "var(--color-text-muted)", fontSize: 12 }}>{preset.memo}</div>
+                          ) : null}
+                        </div>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                          <button type="button" onClick={() => applyPreset(preset)} style={{ minHeight: 32, padding: "5px 9px", borderRadius: 8 }}>
+                            呼び出し
+                          </button>
+                          <button type="button" onClick={() => updatePresetParams(preset)} style={{ minHeight: 32, padding: "5px 9px", borderRadius: 8 }}>
+                            上書き
+                          </button>
+                          <button type="button" onClick={() => setEditingPresetId(preset.id)} style={{ minHeight: 32, padding: "5px 9px", borderRadius: 8 }}>
+                            編集
+                          </button>
+                          <button type="button" onClick={() => togglePresetFavorite(preset)} style={{ minHeight: 32, padding: "5px 9px", borderRadius: 8 }}>
+                            {preset.favorite ? "お気に入り解除" : "お気に入り"}
+                          </button>
+                          <button type="button" onClick={() => togglePresetDefault(preset)} style={{ minHeight: 32, padding: "5px 9px", borderRadius: 8 }}>
+                            {preset.isDefault ? "既定解除" : "既定"}
+                          </button>
+                          <button type="button" onClick={() => deletePreset(preset)} style={{ minHeight: 32, padding: "5px 9px", borderRadius: 8 }}>
+                            削除
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
       ) : null}
 
