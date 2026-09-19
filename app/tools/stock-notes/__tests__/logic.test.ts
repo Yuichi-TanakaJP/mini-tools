@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import type { MyStockItem } from "@/app/tools/my-stocks/types";
 import type { StockNotesEarningsInfo } from "../earnings-types";
 import {
   ACTION_DUE_SOON_DAYS,
@@ -54,21 +53,15 @@ describe("Portfolio-derived holdings", () => {
   });
 });
 
-function makeHolding(overrides: Partial<MyStockItem>): MyStockItem {
+type HoldingFixture = Parameters<typeof extractUnregisteredHoldings>[0][number] & { id: string };
+
+function makeHolding(overrides: Partial<HoldingFixture>): HoldingFixture {
   return {
     id: overrides.id ?? "id",
     code: overrides.code ?? "0000",
     name: overrides.name ?? "テスト銘柄",
-    market: "プライム",
-    sector: null,
     tab: overrides.tab ?? "holding",
-    accountType: overrides.accountType,
-    accountLabel: overrides.accountLabel,
-    quantity: overrides.quantity,
-    acquisitionPrice: overrides.acquisitionPrice,
-    memo: "",
-    addedAt: 0,
-    updatedAt: 0,
+    quantity: overrides.quantity ?? null,
     ...overrides,
   };
 }
