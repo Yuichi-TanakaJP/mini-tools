@@ -42,6 +42,16 @@ export type PortfolioPosition = {
   distributionMethod: string | null;
 };
 
+export type PortfolioInstrumentAnalysis = {
+  instrumentId: string;
+  stockId: string | null;
+  sector33Code: string | null;
+  sector33Name: string | null;
+  cycleProfile: string | null;
+  incomeProfile: string | null;
+  marketCapProfile: string | null;
+};
+
 export type PortfolioReviewItem = {
   id: string;
   identifier: string;
@@ -251,6 +261,8 @@ export type PortfolioData = {
   dbPositionSnapshot: PortfolioSnapshot | null;
   externalAssets: PortfolioExternalAssets;
   positions: PortfolioPosition[];
+  instrumentAnalysis: PortfolioInstrumentAnalysis[];
+  instrumentAnalysisStatus: "loaded" | "error";
   dbPositions: PortfolioDbPosition[];
   review: PortfolioReview | null;
   reviewHistory: PortfolioReviewHistoryItem[];
