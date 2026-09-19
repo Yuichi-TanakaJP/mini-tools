@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { selectPortfolio, selectReadySnapshot } from "@/lib/portfolio/holdings";
 import { emptyExternalAssets, externalAssetsError, externalAssetsLoading, loadedExternalAssets } from "./external-assets";
 import type {
   PortfolioAccountType,
@@ -17,12 +18,6 @@ import type {
   PortfolioExternalAssetSnapshot,
   PortfolioInstrumentAnalysis,
 } from "./types";
-
-type PortfolioRow = {
-  id: string;
-  name: string;
-  base_currency: string;
-};
 
 type SnapshotRow = {
   id: string;
@@ -360,14 +355,7 @@ export function portfolioAuthRequired(): PortfolioData {
 }
 
 export async function loadPortfolio(supabase: SupabaseClient): Promise<PortfolioData> {
-  const { data: portfolio, error: portfolioError } = await supabase
-    .from("stock_notes_portfolios")
-    .select("id, name, base_currency")
-    .order("is_default", { ascending: false })
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle<PortfolioRow>();
-  if (portfolioError) throw portfolioError;
+  const portfolio = await selectPortfolio(supabase);
   if (!portfolio) return emptyPortfolio();
 
   const { data: officialSnapshotRows, error: officialSnapshotsError } = await supabase
@@ -398,7 +386,8 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     .map((row) => snapshotFromRow(row) as PortfolioExternalAssetSnapshot)
     .sort((a, b) => b.asOf.localeCompare(a.asOf) || b.importedAt.localeCompare(a.importedAt) || b.id.localeCompare(a.id));
   const officialSnapshots = snapshots;
-  const currentSnapshot = officialSnapshots.find((snapshot) => snapshot.status === "ready") ?? null;
+  const readySnapshot = await selectReadySnapshot(supabase, portfolio.id);
+  const currentSnapshot = readySnapshot ? snapshotFromRow(readySnapshot as SnapshotRow) : null;
   const dbPositionSnapshot = currentSnapshot ?? officialSnapshots[0] ?? null;
   const latestExternalSnapshotRow = externalSnapshotRows?.[0] ?? null;
   const externalSnapshotRow = (externalSnapshotRows ?? []).find((row) => row.status === "ready") ?? null;
@@ -678,7 +667,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
         const externalSnapshot = snapshotFromRow(externalSnapshotRow) as PortfolioExternalAssetSnapshot;
         const loadedAssets = loadedExternalAssets(externalSnapshot, externalPositions, externalSnapshotWarning);
         externalAssets = latestExternalSnapshotRow && latestExternalSnapshotRow.status !== "ready"
-          ? { ...loadedAssets, status: latestExternalSnapshotRow.status === "importing" ? "loading" : "error" }
+          ? { ...loadedAssets, status: latestExternalSnapshotRow.status === "importing" ? "loading" : latestExternalSnapshotRow.status === "superseded" ? "superseded" : "error" }
           : loadedAssets;
       }
     } else if (!externalSnapshotsError && latestExternalSnapshotRow) {
@@ -687,7 +676,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
         ? externalAssetsLoading(latestExternalSnapshot)
         : latestExternalSnapshot.status === "failed"
           ? externalAssetsError("外部資産の最新取込に失敗しています。", latestExternalSnapshot)
-          : externalAssetsError("外部資産の最新snapshotは置換済みです。", latestExternalSnapshot);
+          : { ...emptyExternalAssets(), status: "superseded", snapshot: latestExternalSnapshot };
     }
   } catch {
     // 外部参照データの失敗は、公式snapshot・reviewの表示を壊さない。
@@ -764,7 +753,8 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
   }
 
   const recommendations: PortfolioRecommendation[] = (recommendationData ?? []).map((row) => {
-    const instrument = row.instrument_id ? instruments.get(row.instrument_id) : undefined;
+    const instrument = row.instrument_id ? instruments.get(row.instrument_id) :
+      row.stock_id ? instrumentRows.find((candidate) => candidate.stock_id === row.stock_id) : undefined;
     return {
       id: row.id,
       reviewId: row.review_id,

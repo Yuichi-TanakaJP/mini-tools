@@ -25,12 +25,13 @@ const COUNTRY_FLAGS: Record<string, string> = {
   BR: "🇧🇷",
 };
 
+// 重要度は分類ではなく順序尺度なので、chart 系列ではなく severity スケールを使う
 const IMPACT_COLOR: Record<number, string> = {
-  5: "#ef4444",
-  4: "#f97316",
-  3: "#f59e0b",
-  2: "#94a3b8",
-  1: "#cbd5e1",
+  5: "var(--color-severity-5)",
+  4: "var(--color-severity-4)",
+  3: "var(--color-severity-3)",
+  2: "var(--color-severity-2)",
+  1: "var(--color-severity-1)",
 };
 
 function parsePrevious(prev: string | null): { main: string; revised: string | null } {
@@ -101,7 +102,7 @@ function ImpactDots({ impact }: { impact: number | null }) {
             width: 7,
             height: 7,
             borderRadius: "50%",
-            background: i <= level ? color : "#e5e7eb",
+            background: i <= level ? color : "var(--color-neutral-bg)",
           }}
         />
       ))}
@@ -621,7 +622,7 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
                         <div style={{ ...styles.monthCol, ...styles.monthColImp }}>
                           <ImpactDots impact={event.impact} />
                         </div>
-                        <div style={{ ...styles.monthCol, flex: "1 1 0", minWidth: 0, fontSize: 12, fontWeight: 600, color: "#1f2937" }}>
+                        <div style={{ ...styles.monthCol, flex: "1 1 0", minWidth: 0, fontSize: 12, fontWeight: 600, color: "var(--color-text)" }}>
                           {event.indicator}
                         </div>
                         <div style={{ ...styles.monthCol, ...styles.monthColVal }}>{prevMain}</div>
@@ -655,7 +656,7 @@ const styles: Record<string, CSSProperties> = {
     minHeight: "100vh",
     padding: "18px 12px 56px",
     background:
-      "radial-gradient(1000px 420px at 20% 0%, rgba(37, 99, 235, 0.08), transparent 58%), #eef2f7",
+      "radial-gradient(1000px 420px at 20% 0%, var(--color-accent-glow), transparent 58%), var(--color-bg)",
   },
   shell: {
     width: "100%",
@@ -670,8 +671,8 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     padding: "4px 8px",
     borderRadius: 999,
-    background: "#eef2ff",
-    color: "#3b5bdb",
+    background: "var(--color-accent-sub)",
+    color: "var(--color-accent)",
     fontSize: 11,
     fontWeight: 800,
     letterSpacing: 0.1,
@@ -682,7 +683,7 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 22,
     lineHeight: 1.2,
     letterSpacing: -0.4,
-    color: "#1f2937",
+    color: "var(--color-text)",
   },
   viewTabs: {
     display: "flex",
@@ -699,15 +700,15 @@ const styles: Record<string, CSSProperties> = {
     borderRight: "none",
     borderBottom: "2px solid transparent",
     background: "transparent",
-    color: "#6b7280",
+    color: "var(--color-text-muted)",
     fontSize: 13,
     fontWeight: 700,
     cursor: "pointer",
     marginBottom: -2,
   },
   viewTabActive: {
-    color: "#2554ff",
-    borderBottom: "2px solid #2554ff",
+    color: "var(--color-accent)",
+    borderBottom: "2px solid var(--color-accent)",
     background: "rgba(37,84,255,0.04)",
   },
   weekNav: {
@@ -717,9 +718,9 @@ const styles: Record<string, CSSProperties> = {
     gap: 8,
     marginBottom: 12,
     padding: "10px 14px",
-    background: "#fff",
+    background: "var(--color-bg-card)",
     borderRadius: 12,
-    boxShadow: "0 1px 4px rgba(15,23,42,0.07)",
+    boxShadow: "var(--shadow-card)",
   },
   weekNavBtn: {
     padding: "5px 12px",
@@ -727,21 +728,21 @@ const styles: Record<string, CSSProperties> = {
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: "rgba(15,23,42,0.1)",
-    background: "#fff",
-    color: "#374151",
+    background: "var(--color-bg-card)",
+    color: "var(--color-text-sub)",
     fontSize: 12,
     fontWeight: 700,
     cursor: "pointer",
   },
   weekNavBtnDisabled: {
-    color: "#d1d5db",
+    color: "var(--color-text-disabled)",
     cursor: "default",
     borderColor: "rgba(15,23,42,0.04)",
   },
   weekNavLabel: {
     fontSize: 13,
     fontWeight: 700,
-    color: "#374151",
+    color: "var(--color-text-sub)",
     textAlign: "center" as const,
     flex: 1,
   },
@@ -754,20 +755,20 @@ const styles: Record<string, CSSProperties> = {
   },
   metaText: {
     fontSize: 12,
-    color: "#6b7280",
+    color: "var(--color-text-muted)",
   },
   diffBadge: {
     display: "inline-flex",
     alignItems: "center",
     padding: "2px 8px",
     borderRadius: 999,
-    background: "#fff7ed",
-    color: "#c2410c",
+    background: "var(--color-warning-bg)",
+    color: "var(--color-warning)",
     fontSize: 11,
     fontWeight: 800,
   },
   upcomingCard: {
-    background: "#fff",
+    background: "var(--color-bg-card)",
     borderRadius: 16,
     padding: "12px 16px",
     marginBottom: 16,
@@ -779,14 +780,14 @@ const styles: Record<string, CSSProperties> = {
     borderTopColor: "rgba(37, 84, 255, 0.15)",
     borderRightColor: "rgba(37, 84, 255, 0.15)",
     borderBottomColor: "rgba(37, 84, 255, 0.15)",
-    borderLeftColor: "#2554ff",
+    borderLeftColor: "var(--color-accent)",
     boxShadow: "0 2px 8px rgba(37, 84, 255, 0.08)",
   },
   upcomingLabel: {
     fontSize: 10,
     fontWeight: 800,
     letterSpacing: 0.5,
-    color: "#2554ff",
+    color: "var(--color-accent)",
     marginBottom: 6,
     textTransform: "uppercase",
   },
@@ -800,17 +801,17 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 18,
     fontWeight: 900,
     letterSpacing: -0.5,
-    color: "#1f2937",
+    color: "var(--color-text)",
   },
   upcomingFlag: {
     fontSize: 16,
-    color: "#374151",
+    color: "var(--color-text-sub)",
   },
   upcomingIndicator: {
     fontSize: 14,
     fontWeight: 800,
     lineHeight: 1.3,
-    color: "#1f2937",
+    color: "var(--color-text)",
     marginBottom: 6,
   },
   upcomingValues: {
@@ -820,7 +821,7 @@ const styles: Record<string, CSSProperties> = {
   },
   upcomingValueItem: {
     fontSize: 12,
-    color: "#6b7280",
+    color: "var(--color-text-muted)",
   },
   filterSection: {
     marginBottom: 16,
@@ -837,7 +838,7 @@ const styles: Record<string, CSSProperties> = {
   filterLabel: {
     fontSize: 11,
     fontWeight: 800,
-    color: "#94a3b8",
+    color: "var(--color-text-muted)",
     paddingTop: 6,
     minWidth: 28,
     letterSpacing: 0.2,
@@ -851,21 +852,21 @@ const styles: Record<string, CSSProperties> = {
     padding: "4px 10px",
     borderRadius: 999,
     border: "1px solid rgba(15, 23, 42, 0.1)",
-    background: "#fff",
-    color: "#374151",
+    background: "var(--color-bg-card)",
+    color: "var(--color-text-sub)",
     fontSize: 12,
     fontWeight: 700,
     cursor: "pointer",
   },
   chipActive: {
-    background: "#eef2ff",
+    background: "var(--color-accent-sub)",
     border: "1px solid rgba(37, 84, 255, 0.22)",
-    color: "#2554ff",
+    color: "var(--color-accent)",
   },
   chipToday: {
-    background: "#f0fdf4",
+    background: "var(--color-success-bg)",
     border: "1px solid rgba(22, 163, 74, 0.22)",
-    color: "#16a34a",
+    color: "var(--color-success)",
   },
   daySection: {
     marginBottom: 20,
@@ -879,10 +880,10 @@ const styles: Record<string, CSSProperties> = {
     borderBottom: "2px solid rgba(15, 23, 42, 0.07)",
     fontSize: 14,
     fontWeight: 800,
-    color: "#374151",
+    color: "var(--color-text-sub)",
   },
   dayHeaderToday: {
-    color: "#2554ff",
+    color: "var(--color-accent)",
     borderBottomColor: "rgba(37, 84, 255, 0.18)",
   },
   todayBadge: {
@@ -890,8 +891,8 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     padding: "2px 7px",
     borderRadius: 999,
-    background: "#eef2ff",
-    color: "#2554ff",
+    background: "var(--color-accent-sub)",
+    color: "var(--color-accent)",
     fontSize: 10,
     fontWeight: 800,
   },
@@ -900,14 +901,14 @@ const styles: Record<string, CSSProperties> = {
     gap: 8,
   },
   eventCard: {
-    background: "#fff",
+    background: "var(--color-bg-card)",
     borderRadius: 16,
     padding: "11px 14px",
-    boxShadow: "0 2px 8px rgba(15, 23, 42, 0.05)",
+    boxShadow: "var(--shadow-card)",
     border: "1px solid rgba(15, 23, 42, 0.04)",
   },
   eventCardDone: {
-    background: "#fafbff",
+    background: "var(--color-bg-subtle)",
     opacity: 0.85,
   },
   eventMeta: {
@@ -924,14 +925,14 @@ const styles: Record<string, CSSProperties> = {
   eventTime: {
     fontSize: 13,
     fontWeight: 800,
-    color: "#374151",
+    color: "var(--color-text-sub)",
     width: 60,
     flexShrink: 0,
     fontVariantNumeric: "tabular-nums",
   },
   eventFlag: {
     fontSize: 12,
-    color: "#6b7280",
+    color: "var(--color-text-muted)",
     fontWeight: 700,
     width: 28,
     flexShrink: 0,
@@ -941,7 +942,7 @@ const styles: Record<string, CSSProperties> = {
     minWidth: 0,
     fontSize: 13,
     fontWeight: 700,
-    color: "#1f2937",
+    color: "var(--color-text)",
     lineHeight: 1.4,
   },
   valueRow: {
@@ -959,51 +960,51 @@ const styles: Record<string, CSSProperties> = {
   valueLabel: {
     fontSize: 9,
     fontWeight: 800,
-    color: "#9ca3af",
+    color: "var(--color-text-muted)",
     letterSpacing: 0.3,
     textTransform: "uppercase" as const,
   },
   valueNumber: {
     fontSize: 13,
     fontWeight: 700,
-    color: "#374151",
+    color: "var(--color-text-sub)",
     fontVariantNumeric: "tabular-nums",
   },
   valuePrevSub: {
     fontSize: 10,
-    color: "#9ca3af",
+    color: "var(--color-text-muted)",
     fontVariantNumeric: "tabular-nums",
   },
   resultNumber: {
     fontWeight: 800,
-    color: "#1f2937",
+    color: "var(--color-text)",
   },
   resultPending: {
-    color: "#d1d5db",
+    color: "var(--color-text-disabled)",
   },
   emptyCard: {
-    background: "#fff",
+    background: "var(--color-bg-card)",
     borderRadius: 18,
     padding: 20,
-    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.05)",
+    boxShadow: "var(--shadow-card)",
     border: "1px solid rgba(15, 23, 42, 0.04)",
   },
   emptyTitle: {
     fontSize: 15,
     fontWeight: 800,
-    color: "#374151",
+    color: "var(--color-text-sub)",
     marginBottom: 6,
   },
   emptyNote: {
     fontSize: 13,
     lineHeight: 1.6,
-    color: "#667085",
+    color: "var(--color-text-muted)",
   },
   footerNote: {
     marginTop: 28,
     textAlign: "center",
     fontSize: 11,
-    color: "#9ca3af",
+    color: "var(--color-text-muted)",
   },
 
   // 月表示
@@ -1017,40 +1018,40 @@ const styles: Record<string, CSSProperties> = {
     padding: "5px 12px",
     borderRadius: 999,
     border: "1px solid rgba(15,23,42,0.1)",
-    background: "#fff",
-    color: "#374151",
+    background: "var(--color-bg-card)",
+    color: "var(--color-text-sub)",
     fontSize: 12,
     fontWeight: 700,
     cursor: "pointer",
   },
   monthTabActive: {
-    background: "#eef2ff",
+    background: "var(--color-accent-sub)",
     border: "1px solid rgba(37,84,255,0.22)",
-    color: "#2554ff",
+    color: "var(--color-accent)",
   },
   loadingText: {
     textAlign: "center",
     padding: "40px 0",
     fontSize: 13,
-    color: "#9ca3af",
+    color: "var(--color-text-muted)",
   },
   monthTable: {
-    background: "#fff",
+    background: "var(--color-bg-card)",
     borderRadius: 16,
     overflow: "hidden",
-    boxShadow: "0 2px 8px rgba(15,23,42,0.05)",
+    boxShadow: "var(--shadow-card)",
     border: "1px solid rgba(15,23,42,0.06)",
   },
   monthTableHeader: {
     display: "flex",
     alignItems: "center",
     padding: "8px 12px",
-    background: "#f8fafc",
+    background: "var(--color-bg-subtle)",
     borderBottom: "1px solid rgba(15,23,42,0.08)",
     gap: 8,
     fontSize: 10,
     fontWeight: 800,
-    color: "#9ca3af",
+    color: "var(--color-text-muted)",
     letterSpacing: 0.3,
     textTransform: "uppercase" as const,
   },
@@ -1061,7 +1062,7 @@ const styles: Record<string, CSSProperties> = {
     gap: 8,
     borderBottom: "1px solid rgba(15,23,42,0.04)",
     fontSize: 12,
-    color: "#374151",
+    color: "var(--color-text-sub)",
   },
   monthTableRowToday: {
     background: "rgba(37,84,255,0.03)",
@@ -1091,16 +1092,16 @@ const styles: Record<string, CSSProperties> = {
     width: 52,
     textAlign: "right" as const,
     fontWeight: 600,
-    color: "#374151",
+    color: "var(--color-text-sub)",
   },
   monthDate: {
     fontSize: 11,
     fontWeight: 700,
-    color: "#6b7280",
+    color: "var(--color-text-muted)",
   },
   monthDateToday: {
     fontSize: 11,
     fontWeight: 800,
-    color: "#2554ff",
+    color: "var(--color-accent)",
   },
 };

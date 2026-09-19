@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 import { track } from "@/lib/analytics";
+import DatabaseTransfer from "./DatabaseTransfer";
+import { yutaiDatabaseCanonical } from "@/lib/yutai/cutover";
 import {
   applyBackup,
   buildBackup,
@@ -15,7 +17,7 @@ const cardStyle: React.CSSProperties = {
   background: "var(--color-bg-card)",
   borderRadius: 18,
   border: "1px solid var(--color-border)",
-  boxShadow: "0 8px 24px rgba(15,23,42,0.05)",
+  boxShadow: "var(--shadow-card)",
   padding: "18px 18px 16px",
 };
 
@@ -24,7 +26,7 @@ const primaryButton: React.CSSProperties = {
   border: "none",
   borderRadius: 12,
   background: "var(--color-accent)",
-  color: "#fff",
+  color: "var(--color-text-inverse)",
   fontSize: 14,
   fontWeight: 700,
   cursor: "pointer",
@@ -118,6 +120,8 @@ export default function ToolClient() {
 
   return (
     <main style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 48px" }}>
+      {process.env.NEXT_PUBLIC_YUTAI_TRANSFER_DB_PREVIEW === "true" && <DatabaseTransfer />}
+      {yutaiDatabaseCanonical() && <p role="note">優待の正本はDBです。下の端末バックアップは旧データの保管用で、優待の最新データではありません。端末への取込でも旧優待データは上書き・削除しません。優待の出力・取込は上のDB専用欄を使ってください。</p>}
       <div style={{ marginBottom: 24 }}>
         <div
           style={{

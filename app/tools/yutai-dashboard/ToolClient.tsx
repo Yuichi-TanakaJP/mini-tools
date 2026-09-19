@@ -2,6 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
+import { isSyncConfigured } from "@/lib/supabase/config";
+import { useYutaiWorkspace } from "@/lib/yutai/browser";
+import { useCalendarConnection, YutaiConnectionStatus, type CalendarConnection } from "@/lib/yutai/calendar-connection";
+import { dashboardProjection, dashboardCalendarCells, dashboardSelection, dashboardSelectionCommand, dashboardInlineEdit, dashboardEditMemo } from "@/lib/yutai/dashboard";
+import { ensureCalendarMonth, cardMemoPatch, removeCalendarMonth, type CommandStep } from "@/lib/yutai/calendar";
+import type { Workspace } from "@/lib/yutai/contracts";
+import type { ViewState } from "@/lib/yutai/repository";
 import { addMemoItemFromCandidate, isImportedMonthlyYutaiCandidate } from "@/app/tools/yutai-memo/candidate-import";
 import { loadArchivedItems, loadItems, saveItems } from "@/app/tools/yutai-memo/storage";
 import { CROSS_TYPES, type ArchivedMemoItem, type CrossType, type MemoItem } from "@/app/tools/yutai-memo/types";
@@ -83,6 +90,18 @@ type LaunchDisplayLoadState =
 
 // data-loader の ALL_MONTHS_ID と同じ値。data-loader は node:fs を使うため client からは import しない。
 const ALL_MONTHS_ID = "all";
+
+function DatabaseEfficiencyInput({ value, label, shares, onFocus, onSave }: {
+  value: number | undefined; label: string; shares?: boolean; onFocus: () => void; onSave: (value: string) => void;
+}) {
+  const [draft, setDraft] = useState("");
+  const [editing, setEditing] = useState(false);
+  return <input type="number" min={shares ? 1 : 0} step={shares ? 1 : "any"} aria-label={label} style={styles.efficiencyInput}
+    value={editing ? draft : value ?? ""}
+    onFocus={() => { onFocus(); setDraft(value === undefined ? "" : String(value)); setEditing(true); }}
+    onChange={event => setDraft(event.target.value)}
+    onBlur={() => { if (editing && draft !== (value === undefined ? "" : String(value))) onSave(draft); setEditing(false); }} />;
+}
 
 // 表のセルからその場で編集できる項目
 type InlineField = "crossType" | "preparationMonthsBefore" | "oneShareStartedAt";
@@ -328,14 +347,35 @@ const creditChipStyleByKind: Record<NikkoCreditBadgeKind, string> = {
   institutional: "chipInstitutional",
 };
 
-export default function ToolClient({
+type DashboardProps = { data: MonthlyYutaiPageData; kenriInfoByMonth: Record<number, UpcomingKenriInfo>; buyInterestDays: number };
+export default function ToolClient(props: DashboardProps) {
+  const enabled = process.env.NEXT_PUBLIC_YUTAI_DASHBOARD_DB_PREVIEW === "true";
+  const valid = props.data.selectedMonthId === "all" || /^\d{4}-(0[1-9]|1[0-2])$/.test(props.data.selectedMonthId);
+  const month = props.data.selectedMonthId === "all" ? 1 : Number(props.data.selectedMonthId.slice(5, 7));
+  const configured = isSyncConfigured();
+  const view = useYutaiWorkspace(valid ? month : 1, enabled && valid && configured);
+  if (!enabled) return <DashboardView {...props} />;
+  if (!valid || !configured || !view.data) return <main style={styles.page}><h1>優待ダッシュボード — DB接続検証</h1>
+    <p>{!configured || !valid ? "Supabase設定と有効な月が必要です。従来保存へは戻しません。" : view.status === "signed_out" ? "Supabaseへのログインが必要です。" : "優待データを取得しています。"}</p>
+    {view.error && <p role="alert">取得に失敗しました。通信・ログイン状態を確認してください。</p>}
+    <a href="/account">ログイン画面へ</a> <button onClick={() => window.location.reload()}>再読み込み</button></main>;
+  return <ConnectedDashboard key={`${view.sessionRevision}:${props.data.selectedMonthId}`} {...props} view={view} month={month} />;
+}
+function ConnectedDashboard({ view, month, ...props }: DashboardProps & { view: ViewState; month: number }) {
+  const year = props.data.selectedMonthId === "all" ? toJstYearMonth(new Date()).year : Number(props.data.selectedMonthId.slice(0, 4));
+  const db = useCalendarConnection(view, year, month);
+  return <DashboardView {...props} connection={db} />;
+}
+function DashboardView({
   data,
   kenriInfoByMonth,
   buyInterestDays,
+  connection: db,
 }: {
   data: MonthlyYutaiPageData;
   kenriInfoByMonth: Record<number, UpcomingKenriInfo>;
   buyInterestDays: number;
+  connection?: CalendarConnection;
 }) {
   const { navigate, isPendingFor } = useRouterTransition();
   const searchParams = useSearchParams();
@@ -356,13 +396,28 @@ export default function ToolClient({
   const [sortKey, setSortKey] = useState<SortKey>("code");
   const [pickedCodes, setPickedCodes] = useState<Set<string>>(new Set());
   const [passedCodes, setPassedCodes] = useState<Set<string>>(new Set());
-  const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
-  const [memoItems, setMemoItems] = useState<MemoItem[]>([]);
-  const [archivedItems, setArchivedItems] = useState<ArchivedMemoItem[]>([]);
-  const [cardMemos, setCardMemos] = useState<Record<string, CalendarCardMemo>>({});
+  const [localAddedKeys, setAddedKeys] = useState<Set<string>>(new Set());
+  const [localMemoItems, setMemoItems] = useState<MemoItem[]>([]);
+  const [localArchivedItems, setArchivedItems] = useState<ArchivedMemoItem[]>([]);
+  const [localCardMemos, setCardMemos] = useState<Record<string, CalendarCardMemo>>({});
+  const workspace = db?.view.data;
+  const projected = useMemo(() => workspace ? dashboardProjection(workspace, data.selectedMonthId === "all" ? calendarYear : Number(data.selectedMonthId.slice(0, 4))) : null, [workspace, calendarYear, data.selectedMonthId]);
+  const projectionByYear = useMemo(() => {
+    const years = new Set([calendarYear, ...data.manifest?.months.map(m => m.year) ?? [], Number(data.selectedMonthId.slice(0, 4))]);
+    return new Map([...years].filter(Number.isInteger).map(year => [year, workspace ? dashboardProjection(workspace, year) : null]));
+  }, [workspace, calendarYear, data.manifest, data.selectedMonthId]);
+  const addedKeys = projected?.addedKeys ?? localAddedKeys;
+  const memoItems = projected?.memoItems ?? localMemoItems;
+  const archivedItems = projected?.archivedItems ?? localArchivedItems;
+  const cardMemos = projected?.cardMemos ?? localCardMemos;
+  const editingWorkspace = useRef<Workspace | null>(null);
+  const editingContext = useRef<{ year: number; month: number } | null>(null);
+  const inlineWorkspace = useRef<Workspace | null>(null);
+  const efficiencyWorkspace = useRef<Workspace | null>(null);
   const [stockPriceState, setStockPriceState] = useState<StockPriceLoadState>({ status: "loading" });
   const [launchDisplayState, setLaunchDisplayState] = useState<LaunchDisplayLoadState>({ status: "idle" });
-  const [hydrated, setHydrated] = useState(false);
+  const [localHydrated, setHydrated] = useState(false);
+  const hydrated = Boolean(db) || localHydrated;
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedRowKey, setSelectedRowKey] = useState<string | null>(null);
   const [editingMemoId, setEditingMemoId] = useState<string | null>(null);
@@ -379,6 +434,13 @@ export default function ToolClient({
   const stockPriceScopeMonth = `${jstNow.year}-${`${jstNow.month}`.padStart(2, "0")}`;
 
   useEffect(() => {
+    if (db?.action.status !== "saved" && db?.action.status !== "idle") return;
+    // Explicit command completion/review ends captured drafts.
+    setEditingMemoId(null); setMemoDraft(null); setEditingCell(null); setMonthPicker(null);
+  }, [db?.action.status]);
+
+  useEffect(() => {
+    if (db) return;
     // localStorage はサーバーで読めないため、マウント後に初期化する（hydration mismatch 回避）
     setPickedCodes(loadCodeSet(PICKED_KEY));
     setPassedCodes(loadCodeSet(PASSED_KEY));
@@ -388,7 +450,7 @@ export default function ToolClient({
     setMemoItems(items);
     setArchivedItems(loadArchivedItems());
     setHydrated(true);
-  }, []);
+  }, [db]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -423,16 +485,16 @@ export default function ToolClient({
 
   useEffect(() => {
     // hydrated 前は空 Set を保存しない
-    if (!hydrated) return;
+    if (db || !hydrated) return;
     saveCodeSet(PICKED_KEY, pickedCodes, { markChanged: didPersistPicked.current });
     didPersistPicked.current = true;
-  }, [hydrated, pickedCodes]);
+  }, [db, hydrated, pickedCodes]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (db || !hydrated) return;
     saveCodeSet(PASSED_KEY, passedCodes, { markChanged: didPersistPassed.current });
     didPersistPassed.current = true;
-  }, [hydrated, passedCodes]);
+  }, [db, hydrated, passedCodes]);
 
   useEffect(() => {
     if (!monthPicker) return;
@@ -517,7 +579,7 @@ export default function ToolClient({
         const holdYear = start && calendarYear >= start.year ? calendarYear - start.year + 1 : null;
         return {
           memo,
-          cells: buildCalendarCells(memo, acquired?.entries ?? [], calendarYear, calendarNowIso),
+          cells: workspace ? dashboardCalendarCells(workspace, memo, calendarYear, calendarNowIso) : buildCalendarCells(memo, acquired?.entries ?? [], calendarYear, calendarNowIso),
           holdYear,
         };
       })
@@ -527,7 +589,7 @@ export default function ToolClient({
         if (firstA !== firstB) return firstA - firstB;
         return collator.compare(a.memo.name, b.memo.name);
       });
-  }, [acquiredByCode, calendarNowIso, calendarYear, memoItems, query, strategyFilter]);
+  }, [acquiredByCode, calendarNowIso, calendarYear, memoItems, query, strategyFilter, workspace]);
 
   // 年度セレクタの選択肢。取得実績の最古年〜今年+1 を降順で並べる。
   const availableCalendarYears = useMemo(() => {
@@ -547,7 +609,7 @@ export default function ToolClient({
       // 仕込み月軸はメモ登録済み＋仕込み時期設定済みに限定する（2026-07-03 決定）
       // 全月表示では「仕込み時期を設定した銘柄すべて」を対象にする
       const candidateByCode = new Map(data.items.map((item) => [item.code, item]));
-      return memoItems
+      return (projected?.monthlyItems ?? memoItems)
         .filter((item) => (
           selectedMonth === null
             ? item.preparationMonthsBefore !== undefined
@@ -555,23 +617,27 @@ export default function ToolClient({
         ))
         .map((item) => {
           const code = item.code ?? "";
+          const rowYear = isAllMonths ? Number(getLatestMonthIdForEntitlementMonth(data.manifest, item.months[0])?.slice(0, 4)) : Number(data.selectedMonthId.slice(0, 4));
+          const rowMemo = projectionByYear.get(rowYear)?.monthlyItems.find(m => m.id === item.id && m.months[0] === item.months[0]) ?? item;
           return {
-            key: `memo:${item.id}`,
+            key: `memo:${item.id}${db ? `:${item.months[0]}` : ""}`,
             code,
             name: item.name,
             months: item.months ?? [],
-            candidate: code ? candidateByCode.get(code) ?? null : null,
-            memo: item,
+            candidate: code ? (db ? data.items.find(c => c.code === code && c.month === item.months[0]) : candidateByCode.get(code)) ?? null : null,
+            memo: rowMemo,
             added: true,
-            picked: code ? pickedCodes.has(code) : false,
-            passed: code ? passedCodes.has(code) : false,
+            picked: workspace ? dashboardSelection(workspace, code, item.months[0]) === "picked" : code ? pickedCodes.has(code) : false,
+            passed: workspace ? dashboardSelection(workspace, code, item.months[0]) === "passed" : code ? passedCodes.has(code) : false,
           };
         });
     }
 
     return data.items.map((item) => {
       const memoList = memoListByCode.get(item.code) ?? [];
-      const memoForMonth = memoList.find((memo) => Array.isArray(memo.months) && memo.months.includes(item.month));
+      const rowYear = isAllMonths ? Number(getLatestMonthIdForEntitlementMonth(data.manifest, item.month)?.slice(0, 4)) : Number(data.selectedMonthId.slice(0, 4));
+      const monthlyMemos = projectionByYear.get(rowYear)?.monthlyItems ?? projected?.monthlyItems;
+      const memoForMonth = (monthlyMemos ?? memoList).find((memo) => memo.code === item.code && Array.isArray(memo.months) && memo.months.includes(item.month));
       // 同一銘柄が別権利月でメモ登録済みでも戦略・1株開始は銘柄単位の情報として表示する
       const memo = memoForMonth ?? memoList[0] ?? null;
       return {
@@ -584,11 +650,11 @@ export default function ToolClient({
         candidate: item,
         memo,
         added: addedKeys.has(`${item.code}:${item.month}`),
-        picked: pickedCodes.has(item.code),
-        passed: passedCodes.has(item.code),
+        picked: workspace ? dashboardSelection(workspace, item.code, item.month) === "picked" : pickedCodes.has(item.code),
+        passed: workspace ? dashboardSelection(workspace, item.code, item.month) === "passed" : passedCodes.has(item.code),
       };
     });
-  }, [addedKeys, axis, data.items, memoItems, memoListByCode, passedCodes, pickedCodes, selectedMonth]);
+  }, [addedKeys, axis, data.items, data.manifest, data.selectedMonthId, isAllMonths, memoItems, memoListByCode, passedCodes, pickedCodes, selectedMonth, db, projected, workspace, projectionByYear]);
 
   const filteredRows = useMemo(() => {
     const normalizedQuery = normalizeText(query.trim());
@@ -708,6 +774,7 @@ export default function ToolClient({
 
   function applyLaunchDisplayHint(hint: YutaiLaunchDisplayHint) {
     if (!selectedEfficiencyMemoKey) return;
+    if (db) { saveEfficiency({ requiredShares: hint.requiredShares, benefitValueYen: hint.benefitValueYen }); return; }
     setCardMemos((prev) => {
       const current = prev[selectedEfficiencyMemoKey] ?? {
         longTermRequired: false,
@@ -734,6 +801,13 @@ export default function ToolClient({
     rawValue: string,
   ) {
     if (!selectedEfficiencyMemoKey) return;
+    if (db) {
+      const value = rawValue.trim() === "" ? undefined : Number(rawValue);
+      if (value !== undefined && (!Number.isFinite(value) || value < 0 || (field === "requiredShares" && (!Number.isSafeInteger(value) || value === 0)))) {
+        setNotice("株数は正の整数、優待価値は0以上の数値で入力してください。"); return;
+      }
+      saveEfficiency({ [field]: value }, efficiencyWorkspace.current ?? workspace); return;
+    }
     const parsed = Number(rawValue);
     const value = rawValue !== "" && Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
     setCardMemos((prev) => {
@@ -755,7 +829,23 @@ export default function ToolClient({
     });
   }
 
-  function togglePick(code: string) {
+  function rowContext(row: DashboardRow) {
+    const month = row.months[0];
+    const year = isAllMonths ? Number(getLatestMonthIdForEntitlementMonth(data.manifest, month)?.slice(0, 4)) : Number(data.selectedMonthId.slice(0, 4));
+    if (!Number.isInteger(year) || year < 1900 || year > 9999) throw new Error("対象年を確認できません。月別表示で操作してください。");
+    return { year, month };
+  }
+  function saveDb(build: () => CommandStep[]) {
+    if (!db || db.blocked) return;
+    try { void db.save(build()); } catch (error) { setNotice(error instanceof Error ? error.message : "保存内容を確認してください。"); }
+  }
+  function saveEfficiency(patch: Partial<Omit<CalendarCardMemo, "updatedAt">>, source = workspace) {
+    if (!source || !selectedRow?.candidate) return;
+    const item = selectedRow.candidate;
+    saveDb(() => ensureCalendarMonth(source, item.code, item.company_name, item.month, cardMemoPatch(patch)));
+  }
+  function togglePick(code: string, row: DashboardRow) {
+    if (db && workspace) { saveDb(() => [() => dashboardSelectionCommand(workspace, code, row.months[0], row.picked ? "unreviewed" : "picked")]); return; }
     setPickedCodes((prev) => {
       const next = new Set(prev);
       if (next.has(code)) next.delete(code);
@@ -771,7 +861,8 @@ export default function ToolClient({
     });
   }
 
-  function togglePass(code: string) {
+  function togglePass(code: string, row: DashboardRow) {
+    if (db && workspace) { saveDb(() => [() => dashboardSelectionCommand(workspace, code, row.months[0], row.passed ? "unreviewed" : "passed")]); return; }
     setPassedCodes((prev) => {
       const next = new Set(prev);
       if (next.has(code)) next.delete(code);
@@ -787,6 +878,7 @@ export default function ToolClient({
   }
 
   function handleAdd(item: MonthlyYutaiCandidate) {
+    if (db && workspace) { saveDb(() => ensureCalendarMonth(workspace, item.code, item.company_name, item.month)); return; }
     const existing = loadItems();
     if (isImportedMonthlyYutaiCandidate(existing, { code: item.code, month: item.month })) {
       setAddedKeys((prev) => new Set(prev).add(`${item.code}:${item.month}`));
@@ -821,6 +913,17 @@ export default function ToolClient({
   }
 
   function openMemoEdit(memo: MemoItem) {
+    if (db && workspace && selectedRow) {
+      if (db.blocked) return;
+      try {
+        const context = rowContext(selectedRow);
+        const target = dashboardProjection(workspace, context.year).monthlyItems.find(p => p.id === memo.id && p.months[0] === context.month);
+        if (!target) { setNotice("先にこの権利月をメモへ追加してください。"); return; }
+        editingWorkspace.current = workspace; editingContext.current = context;
+        setEditingMemoId(target.id); setMemoDraft(buildMemoEditDraft(target)); setNotice(null);
+      } catch (error) { setNotice(error instanceof Error ? error.message : "対象年月を確認してください。"); }
+      return;
+    }
     // 保存直前に最新を読み直すため id だけ保持し、draft は現在値から作る
     const items = loadItems();
     const target = items.find((item) => item.id === memo.id);
@@ -848,6 +951,11 @@ export default function ToolClient({
 
   function saveMemoEdit() {
     if (!editingMemoId || !memoDraft) return;
+    if (db) {
+      const source = editingWorkspace.current, context = editingContext.current;
+      if (source && context) saveDb(() => dashboardEditMemo(source, editingMemoId, context.year, context.month, memoDraft, new Date().toISOString()));
+      return;
+    }
     const items = loadItems();
     const { items: next, updated } = applyMemoEdit(items, editingMemoId, memoDraft, new Date().toISOString());
     if (!updated) {
@@ -921,6 +1029,10 @@ export default function ToolClient({
 
   // 表のセルを直接編集して 1 項目だけ保存する。共有の applyMemoEdit を再利用する。
   function commitRowInlineEdit(row: DashboardRow, patch: Partial<MemoEditDraft>) {
+    if (db && workspace) {
+      saveDb(() => dashboardInlineEdit(inlineWorkspace.current ?? workspace, row.code, row.name, row.months[0], patch));
+      setEditingCell(null); return;
+    }
     const resolved = resolveEditableMemo(row);
     if (!resolved) {
       setNotice("優待メモの更新に失敗しました。");
@@ -939,12 +1051,18 @@ export default function ToolClient({
   }
 
   function beginCellEdit(row: DashboardRow, field: InlineField) {
+    if (db?.blocked) return;
+    inlineWorkspace.current = workspace ?? null;
     setEditingCell({ rowKey: row.key, field });
   }
 
   // 誤って優待メモへ追加した行を戻す。対象月だけを外し、権利月が無くなればメモごと削除する。
   function removeMemoForRow(row: DashboardRow) {
     if (!row.memo) return;
+    if (db && workspace) {
+      if (db.blocked || !window.confirm(`${row.name} の ${row.months[0]}月の登録だけを解除します。銘柄メモ・別の月・仕込み履歴・優待残高は残ります。よろしいですか？`)) return;
+      saveDb(() => [() => removeCalendarMonth(workspace, row.memo!.id, row.months[0])]); return;
+    }
     const items = loadItems();
     const target = items.find((item) => item.id === row.memo!.id);
     if (!target) {
@@ -988,6 +1106,8 @@ export default function ToolClient({
   }
 
   function openMonthPicker(row: DashboardRow, event: React.MouseEvent<HTMLElement>) {
+    if (db?.blocked) return;
+    inlineWorkspace.current = workspace ?? null;
     const rect = event.currentTarget.getBoundingClientRect();
     const current = row.memo?.oneShareStartedAt ?? "";
     const matched = /^(\d{4})-\d{2}$/.exec(current);
@@ -1150,7 +1270,7 @@ export default function ToolClient({
           onChange={(event) => commitRowInlineEdit(row, { crossType: event.target.value as CrossType })}
           onBlur={() => setEditingCell(null)}
         >
-          {CROSS_TYPES.map((type) => (
+          {(db ? ["未設定" as const, ...CROSS_TYPES] : CROSS_TYPES).map((type) => (
             <option key={type} value={type}>{type}</option>
           ))}
         </select>
@@ -1173,7 +1293,7 @@ export default function ToolClient({
           type="button"
           onClick={(event) => {
             event.stopPropagation();
-            togglePick(row.code);
+            togglePick(row.code, row);
           }}
           aria-pressed={row.picked}
           style={row.picked ? styles.actionPickActive : styles.actionButton}
@@ -1184,7 +1304,7 @@ export default function ToolClient({
           type="button"
           onClick={(event) => {
             event.stopPropagation();
-            togglePass(row.code);
+            togglePass(row.code, row);
           }}
           aria-pressed={row.passed}
           aria-label={row.passed ? "パスを解除" : "パスする"}
@@ -1222,6 +1342,8 @@ export default function ToolClient({
 
   return (
     <main style={styles.page}>
+      {db && <YutaiConnectionStatus connection={db} scope="優待ダッシュボード" />}
+      <fieldset disabled={db?.blocked} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
       <div style={styles.shell}>
         <section style={styles.hero}>
           <div style={styles.heroEyebrow}>
@@ -1327,7 +1449,7 @@ export default function ToolClient({
               <span style={styles.filterLabel}>クロス戦略</span>
               <select value={strategyFilter} onChange={(event) => setStrategyFilter(event.target.value as StrategyFilter)} style={styles.select}>
                 <option value="all">指定なし</option>
-                {CROSS_TYPES.map((type) => (
+                {(db ? ["未設定" as const, ...CROSS_TYPES] : CROSS_TYPES).map((type) => (
                   <option key={type} value={type}>{type}</option>
                 ))}
               </select>
@@ -1788,7 +1910,8 @@ export default function ToolClient({
                       <div style={styles.efficiencyInputGrid}>
                         <label style={styles.efficiencyInputLabel}>
                           <span>必要株数</span>
-                          <input
+                          {db ? <DatabaseEfficiencyInput key={`${selectedEfficiencyMemoKey}:shares`} shares label="優待の必要株数" value={selectedCardMemo?.requiredShares}
+                            onFocus={() => { efficiencyWorkspace.current = workspace ?? null; }} onSave={value => updateSelectedEfficiencyInput("requiredShares", value)} /> : <input
                             type="number"
                             inputMode="numeric"
                             min={1}
@@ -1798,11 +1921,12 @@ export default function ToolClient({
                             placeholder="例: 100"
                             aria-label="優待の必要株数"
                             style={styles.efficiencyInput}
-                          />
+                          />}
                         </label>
                         <label style={styles.efficiencyInputLabel}>
                           <span>優待価値（円）</span>
-                          <input
+                          {db ? <DatabaseEfficiencyInput key={`${selectedEfficiencyMemoKey}:value`} label="優待価値（円）" value={selectedCardMemo?.benefitValueYen}
+                            onFocus={() => { efficiencyWorkspace.current = workspace ?? null; }} onSave={value => updateSelectedEfficiencyInput("benefitValueYen", value)} /> : <input
                             type="number"
                             inputMode="numeric"
                             min={1}
@@ -1812,7 +1936,7 @@ export default function ToolClient({
                             placeholder="例: 3000"
                             aria-label="優待価値（円）"
                             style={styles.efficiencyInput}
-                          />
+                          />}
                         </label>
                       </div>
                       {selectedEfficiency ? null : (
@@ -1899,7 +2023,7 @@ export default function ToolClient({
                             onChange={(event) => updateDraft("crossType", event.target.value as CrossType)}
                             style={styles.editInput}
                           >
-                            {CROSS_TYPES.map((type) => (
+                            {(db ? ["未設定" as const, ...CROSS_TYPES] : CROSS_TYPES).map((type) => (
                               <option key={type} value={type}>{type}</option>
                             ))}
                           </select>
@@ -1982,7 +2106,7 @@ export default function ToolClient({
                                 ...prev,
                                 acquired,
                                 acquiredEntitlementMonthKey: acquired
-                                  ? (prev.acquiredEntitlementMonthKey || resolveNextEntitlementMonthKey(selectedRow.memo!.months, calendarNowIso) || "")
+                                  ? (db && editingContext.current ? `${editingContext.current.year}-${String(editingContext.current.month).padStart(2, "0")}` : prev.acquiredEntitlementMonthKey || resolveNextEntitlementMonthKey(selectedRow.memo!.months, calendarNowIso) || "")
                                   : "",
                               } : prev);
                             }}
@@ -1994,6 +2118,7 @@ export default function ToolClient({
                             <span style={styles.editLabel}>対象権利</span>
                             <select
                               value={memoDraft.acquiredEntitlementMonthKey}
+                              disabled={Boolean(db)}
                               onChange={(event) => updateDraft("acquiredEntitlementMonthKey", event.target.value)}
                               style={styles.editInput}
                             >
@@ -2146,6 +2271,7 @@ export default function ToolClient({
           </div>
         );
       })() : null}
+      </fieldset>
     </main>
   );
 }
@@ -2183,7 +2309,7 @@ const styles: Record<string, React.CSSProperties> = {
     background:
       "radial-gradient(ellipse 1200px 500px at 0% -10%, rgba(99,102,241,0.10) 0%, transparent 60%), " +
       "radial-gradient(ellipse 800px 600px at 100% 80%, rgba(79,70,229,0.06) 0%, transparent 55%), " +
-      "#f1f5f9",
+      "var(--color-bg)",
   },
   shell: {
     width: "100%",
@@ -2217,14 +2343,14 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 900,
     lineHeight: 1.1,
     letterSpacing: -1,
-    color: "#0f172a",
+    color: "var(--color-text)",
   },
   heroNote: {
     margin: 0,
     maxWidth: 720,
     fontSize: 14,
     lineHeight: 1.75,
-    color: "#475569",
+    color: "var(--color-text-sub)",
   },
   heroMeta: {
     display: "flex",
@@ -2238,10 +2364,10 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 6,
     padding: "4px 10px",
     borderRadius: 999,
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
     border: "1px solid rgba(15,23,42,0.08)",
     fontSize: 12,
-    color: "#475569",
+    color: "var(--color-text-sub)",
     fontWeight: 600,
   },
   metaOnlineDot: {
@@ -2257,9 +2383,9 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 14,
     padding: "10px 14px",
     borderRadius: 12,
-    background: "#eef2ff",
+    background: "var(--color-accent-sub)",
     border: "1px solid rgba(79,70,229,0.20)",
-    color: "#3730a3",
+    color: "var(--color-accent)",
     fontSize: 13,
     fontWeight: 600,
   },
@@ -2267,16 +2393,16 @@ const styles: Record<string, React.CSSProperties> = {
     marginLeft: "auto",
     border: "none",
     background: "transparent",
-    color: "#6366f1",
+    color: "var(--color-accent)",
     cursor: "pointer",
     fontSize: 13,
     padding: 4,
   },
   panel: {
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
     borderRadius: 24,
     padding: "20px 20px 24px",
-    boxShadow: "0 1px 3px rgba(15,23,42,0.04), 0 8px 24px rgba(15,23,42,0.06)",
+    boxShadow: "var(--shadow-card)",
     border: "1px solid rgba(15,23,42,0.06)",
   },
   filterBar: {
@@ -2297,27 +2423,27 @@ const styles: Record<string, React.CSSProperties> = {
   filterLabel: {
     fontSize: 11,
     fontWeight: 700,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
   },
   select: {
     borderRadius: 10,
     border: "1px solid rgba(15,23,42,0.10)",
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
     padding: "8px 10px",
     fontSize: 13,
-    color: "#374151",
+    color: "var(--color-text-sub)",
     cursor: "pointer",
-    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+    boxShadow: "var(--shadow-card)",
   },
   search: {
     borderRadius: 10,
     border: "1px solid rgba(15,23,42,0.10)",
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
     padding: "8px 12px",
     fontSize: 13,
-    color: "#0f172a",
+    color: "var(--color-text)",
     boxSizing: "border-box",
-    boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+    boxShadow: "var(--shadow-card)",
   },
   resultsMeta: {
     display: "flex",
@@ -2329,18 +2455,18 @@ const styles: Record<string, React.CSSProperties> = {
   resultsCount: {
     fontSize: 22,
     fontWeight: 900,
-    color: "#0f172a",
+    color: "var(--color-text)",
     lineHeight: 1,
   },
   resultsLabel: {
     fontSize: 13,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontWeight: 600,
   },
   resultsNote: {
     marginLeft: 10,
     fontSize: 12,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
   },
   viewToggleRow: {
     display: "flex",
@@ -2351,13 +2477,13 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 4,
     padding: 4,
     borderRadius: 12,
-    background: "#f1f5f9",
+    background: "var(--color-bg-subtle)",
     border: "1px solid rgba(15,23,42,0.06)",
   },
   viewToggleButton: {
     border: "none",
     background: "transparent",
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     borderRadius: 9,
     padding: "6px 16px",
     fontSize: 13,
@@ -2366,14 +2492,14 @@ const styles: Record<string, React.CSSProperties> = {
   },
   viewToggleActive: {
     border: "none",
-    background: "#ffffff",
-    color: "#4338ca",
+    background: "var(--color-bg-card)",
+    color: "var(--color-accent)",
     borderRadius: 9,
     padding: "6px 16px",
     fontSize: 13,
     fontWeight: 800,
     cursor: "pointer",
-    boxShadow: "0 1px 2px rgba(15,23,42,0.10)",
+    boxShadow: "var(--shadow-card-hover)",
   },
   calendarScroll: {
     width: "100%",
@@ -2388,7 +2514,7 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 16,
     padding: "10px 12px",
     borderBottom: "1px solid rgba(15,23,42,0.06)",
-    background: "#f8fafc",
+    background: "var(--color-bg-subtle)",
   },
   calYearField: {
     display: "flex",
@@ -2412,7 +2538,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     gap: 6,
     fontSize: 12,
-    color: "#475569",
+    color: "var(--color-text-sub)",
     fontWeight: 600,
   },
   legendSwatch: {
@@ -2433,8 +2559,8 @@ const styles: Record<string, React.CSSProperties> = {
   calTh: {
     position: "sticky",
     top: 0,
-    background: "#f8fafc",
-    color: "#475569",
+    background: "var(--color-bg-subtle)",
+    color: "var(--color-text-sub)",
     fontSize: 12,
     fontWeight: 800,
     textAlign: "center",
@@ -2444,8 +2570,8 @@ const styles: Record<string, React.CSSProperties> = {
     whiteSpace: "nowrap",
   },
   calThCurrent: {
-    background: "#eef2ff",
-    color: "#4338ca",
+    background: "var(--color-accent-sub)",
+    color: "var(--color-accent)",
     boxShadow: "inset 0 -2px 0 #6366f1",
   },
   calNameTh: {
@@ -2460,7 +2586,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "6px 10px",
     borderBottom: "1px solid rgba(15,23,42,0.06)",
     borderRight: "1px solid rgba(15,23,42,0.06)",
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
     position: "sticky",
     left: 0,
     zIndex: 1,
@@ -2469,7 +2595,7 @@ const styles: Record<string, React.CSSProperties> = {
   calName: {
     display: "block",
     fontWeight: 700,
-    color: "#0f172a",
+    color: "var(--color-text)",
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
@@ -2482,7 +2608,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   calCode: {
     fontSize: 11,
-    color: "#94a3b8",
+    color: "var(--color-text-muted)",
     fontWeight: 700,
   },
   calHoldNote: {
@@ -2506,8 +2632,8 @@ const styles: Record<string, React.CSSProperties> = {
     width: 8,
     height: 8,
     borderRadius: 999,
-    background: "#c026d3",
-    border: "1px solid #ffffff",
+    background: "var(--color-chart-6)",
+    border: "1px solid var(--color-bg-card)",
   },
   calCellStack: {
     display: "flex",
@@ -2537,7 +2663,7 @@ const styles: Record<string, React.CSSProperties> = {
     height: 22,
     borderRadius: 5,
     background: "rgba(79,70,229,0.28)",
-    color: "#3730a3",
+    color: "var(--color-accent)",
     fontSize: 11,
     fontWeight: 800,
   },
@@ -2548,8 +2674,8 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "center",
     height: 22,
     borderRadius: 5,
-    background: "#4f46e5",
-    color: "#ffffff",
+    background: "var(--color-accent)",
+    color: "var(--color-accent-text)",
     fontSize: 11,
     fontWeight: 800,
   },
@@ -2563,11 +2689,11 @@ const styles: Record<string, React.CSSProperties> = {
     width: 12,
     height: 12,
     borderRadius: 999,
-    background: "#16a34a",
-    color: "#ffffff",
+    background: "var(--color-success-solid)",
+    color: "var(--color-text-inverse)",
     fontSize: 9,
     fontWeight: 900,
-    border: "1px solid #ffffff",
+    border: "1px solid var(--color-bg-card)",
   },
   calAcquiredPastMark: {
     position: "absolute",
@@ -2579,11 +2705,11 @@ const styles: Record<string, React.CSSProperties> = {
     width: 12,
     height: 12,
     borderRadius: 999,
-    background: "#cbd5e1",
-    color: "#475569",
+    background: "var(--color-neutral-bg)",
+    color: "var(--color-text-sub)",
     fontSize: 9,
     fontWeight: 900,
-    border: "1px solid #ffffff",
+    border: "1px solid var(--color-bg-card)",
   },
   calOverlapDot: {
     position: "absolute",
@@ -2592,8 +2718,8 @@ const styles: Record<string, React.CSSProperties> = {
     width: 7,
     height: 7,
     borderRadius: 999,
-    background: "#f59e0b",
-    border: "1px solid #ffffff",
+    background: "var(--color-warning-solid)",
+    border: "1px solid var(--color-bg-card)",
   },
   calHoldEmpty: {
     display: "block",
@@ -2604,7 +2730,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "block",
     height: 5,
     borderRadius: 3,
-    background: "#5eead4",
+    background: "var(--color-chart-2)",
   },
   calHoldStart: {
     display: "block",
@@ -2618,7 +2744,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: 22,
     height: 22,
     borderRadius: 6,
-    background: "#eef2ff",
+    background: "var(--color-accent-sub)",
   },
   legendStrip: {
     display: "inline-block",
@@ -2647,8 +2773,8 @@ const styles: Record<string, React.CSSProperties> = {
   th: {
     position: "sticky",
     top: 0,
-    background: "#f8fafc",
-    color: "#475569",
+    background: "var(--color-bg-subtle)",
+    color: "var(--color-text-sub)",
     fontSize: 12,
     fontWeight: 800,
     textAlign: "left",
@@ -2658,41 +2784,41 @@ const styles: Record<string, React.CSSProperties> = {
   },
   tr: {
     cursor: "pointer",
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
     borderLeft: "3px solid transparent",
   },
   trPicked: {
     cursor: "pointer",
-    background: "#fffbeb",
+    background: "var(--color-warning-bg)",
     borderLeft: "3px solid #f59e0b",
   },
   trAdded: {
     cursor: "pointer",
-    background: "#f0fdf4",
+    background: "var(--color-success-bg)",
     borderLeft: "3px solid #22c55e",
   },
   trPassed: {
     cursor: "pointer",
-    background: "#f8fafc",
-    borderLeft: "3px solid #cbd5e1",
+    background: "var(--color-bg-subtle)",
+    borderLeft: "3px solid var(--color-border-strong)",
     opacity: 0.55,
   },
   trSelected: {
     cursor: "pointer",
-    background: "#eef2ff",
+    background: "var(--color-accent-sub)",
     borderLeft: "3px solid #4f46e5",
   },
   td: {
     padding: "8px 10px",
     borderBottom: "1px solid rgba(15,23,42,0.06)",
-    color: "#334155",
+    color: "var(--color-text-sub)",
     whiteSpace: "nowrap",
     verticalAlign: "middle",
   },
   tdCode: {
     padding: "8px 10px",
     borderBottom: "1px solid rgba(15,23,42,0.06)",
-    color: "#475569",
+    color: "var(--color-text-sub)",
     fontWeight: 800,
     fontSize: 12,
     letterSpacing: 0.3,
@@ -2702,7 +2828,7 @@ const styles: Record<string, React.CSSProperties> = {
   tdName: {
     padding: "8px 10px",
     borderBottom: "1px solid rgba(15,23,42,0.06)",
-    color: "#0f172a",
+    color: "var(--color-text)",
     fontWeight: 700,
     maxWidth: 200,
     overflow: "hidden",
@@ -2713,11 +2839,11 @@ const styles: Record<string, React.CSSProperties> = {
   emptyCell: {
     padding: "36px 16px",
     textAlign: "center",
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontSize: 13,
   },
   cellMuted: {
-    color: "#cbd5e1",
+    color: "var(--color-text-disabled)",
   },
   cellEditTrigger: {
     // border はロングハンドで指定する。active 時に borderStyle/borderColor を
@@ -2742,25 +2868,25 @@ const styles: Record<string, React.CSSProperties> = {
     minWidth: 88,
     borderRadius: 6,
     border: "1px solid rgba(79,70,229,0.35)",
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
     padding: "4px 6px",
     fontSize: 12,
-    color: "#0f172a",
+    color: "var(--color-text)",
     cursor: "pointer",
   },
   cellEditTriggerActive: {
     borderStyle: "solid",
     borderColor: "rgba(79,70,229,0.6)",
-    background: "#eef2ff",
+    background: "var(--color-accent-sub)",
   },
   monthPopover: {
     position: "fixed",
     zIndex: 50,
     width: 220,
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
     borderRadius: 12,
     border: "1px solid rgba(15,23,42,0.12)",
-    boxShadow: "0 8px 28px rgba(15,23,42,0.18)",
+    boxShadow: "var(--shadow-panel)",
     padding: 10,
   },
   monthPopoverHead: {
@@ -2772,15 +2898,15 @@ const styles: Record<string, React.CSSProperties> = {
   monthPopoverYear: {
     fontSize: 13,
     fontWeight: 800,
-    color: "#0f172a",
+    color: "var(--color-text)",
   },
   monthNavButton: {
     width: 28,
     height: 28,
     borderRadius: 8,
     border: "1px solid rgba(15,23,42,0.12)",
-    background: "#ffffff",
-    color: "#475569",
+    background: "var(--color-bg-card)",
+    color: "var(--color-text-sub)",
     fontSize: 15,
     lineHeight: 1,
     cursor: "pointer",
@@ -2794,8 +2920,8 @@ const styles: Record<string, React.CSSProperties> = {
   monthCell: {
     borderRadius: 8,
     border: "1px solid rgba(15,23,42,0.10)",
-    background: "#ffffff",
-    color: "#334155",
+    background: "var(--color-bg-card)",
+    color: "var(--color-text-sub)",
     fontSize: 12,
     fontWeight: 700,
     padding: "7px 0",
@@ -2804,8 +2930,8 @@ const styles: Record<string, React.CSSProperties> = {
   monthCellActive: {
     borderRadius: 8,
     border: "1px solid rgba(79,70,229,0.5)",
-    background: "#4f46e5",
-    color: "#ffffff",
+    background: "var(--color-accent)",
+    color: "var(--color-accent-text)",
     fontSize: 12,
     fontWeight: 800,
     padding: "7px 0",
@@ -2816,8 +2942,8 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 8,
     borderRadius: 8,
     border: "1px solid rgba(15,23,42,0.10)",
-    background: "#f8fafc",
-    color: "#64748b",
+    background: "var(--color-bg-subtle)",
+    color: "var(--color-text-muted)",
     fontSize: 12,
     fontWeight: 700,
     padding: "7px 0",
@@ -2830,80 +2956,80 @@ const styles: Record<string, React.CSSProperties> = {
   },
   chipGeneralOk: {
     ...baseChip,
-    background: "#dcfce7",
-    color: "#15803d",
+    background: "var(--color-success-bg)",
+    color: "var(--color-success)",
     fontWeight: 800,
     border: "1px solid rgba(34,197,94,0.25)",
   },
   chipGeneralCaution: {
     ...baseChip,
-    background: "#fef3c7",
-    color: "#92400e",
+    background: "var(--color-warning-bg)",
+    color: "var(--color-warning)",
     fontWeight: 800,
     border: "1px solid rgba(245,158,11,0.25)",
   },
   chipGeneralStop: {
     ...baseChip,
-    background: "#fee2e2",
-    color: "#b91c1c",
+    background: "var(--color-error-bg)",
+    color: "var(--color-error)",
     fontWeight: 800,
     border: "1px solid rgba(239,68,68,0.25)",
   },
   chipGeneralOutOfStock: {
     ...baseChip,
-    background: "#f1f5f9",
-    color: "#94a3b8",
+    background: "var(--color-bg-subtle)",
+    color: "var(--color-text-muted)",
     fontWeight: 700,
     border: "1px solid rgba(15,23,42,0.06)",
   },
   chipInstitutional: {
     ...baseChip,
-    background: "#dbeafe",
-    color: "#1d4ed8",
+    background: "var(--color-info-bg)",
+    color: "var(--color-accent)",
     fontWeight: 800,
     border: "1px solid rgba(59,130,246,0.25)",
   },
   chipSbi: {
     ...baseChip,
-    background: "#f0fdf4",
-    color: "#166534",
+    background: "var(--color-success-bg)",
+    color: "var(--color-success)",
     fontWeight: 800,
     border: "1px solid rgba(34,197,94,0.2)",
   },
   chipStrategy: {
     ...baseChip,
-    background: "#eef2ff",
-    color: "#4338ca",
+    background: "var(--color-accent-sub)",
+    color: "var(--color-accent)",
     fontWeight: 700,
     border: "1px solid rgba(79,70,229,0.15)",
   },
   chipAcquired: {
     ...baseChip,
-    background: "#ecfdf5",
-    color: "#047857",
+    background: "var(--color-success-bg)",
+    color: "var(--color-success)",
     fontWeight: 800,
     border: "1px solid rgba(16,185,129,0.2)",
   },
   chipEfficiency: {
     ...baseChip,
-    background: "#fff7ed",
-    color: "#c2410c",
+    background: "var(--color-warning-bg)",
+    color: "var(--color-warning)",
     fontWeight: 800,
     border: "1px solid rgba(249,115,22,0.22)",
   },
   // 優待価値 − 手数料 がプラス: 青系
   chipEfficiencyPositive: {
     ...baseChip,
-    background: "#eff6ff",
-    color: "#1d4ed8",
+    background: "var(--color-info-bg)",
+    color: "var(--color-accent)",
     fontWeight: 800,
     border: "1px solid rgba(37,84,255,0.22)",
   },
   // 優待価値 − 手数料 が 0 以下: 赤系
   chipEfficiencyNegative: {
     ...baseChip,
-    background: "#fef2f2",
-    color: "#dc2626",
+    background: "var(--color-error-bg)",
+    color: "var(--color-error)",
     fontWeight: 800,
     border: "1px solid rgba(220,38,38,0.22)",
   },
@@ -2924,8 +3050,8 @@ const styles: Record<string, React.CSSProperties> = {
   chipLongRequired: {
     ...baseChip,
     padding: "1px 5px",
-    background: "#fef2f2",
-    color: "#b91c1c",
+    background: "var(--color-error-bg)",
+    color: "var(--color-error)",
     fontWeight: 800,
     border: "1px solid rgba(220,38,38,0.22)",
     flex: "0 0 auto",
@@ -2933,22 +3059,22 @@ const styles: Record<string, React.CSSProperties> = {
   chipLongBenefit: {
     ...baseChip,
     padding: "1px 5px",
-    background: "#eff6ff",
-    color: "#1d4ed8",
+    background: "var(--color-info-bg)",
+    color: "var(--color-accent)",
     fontWeight: 800,
     border: "1px solid rgba(37,84,255,0.22)",
     flex: "0 0 auto",
   },
   crossFeeLine: {
     fontSize: 11,
-    color: "#475569",
+    color: "var(--color-text-sub)",
     whiteSpace: "nowrap",
     cursor: "help",
   },
   addedChip: {
     ...baseChip,
-    background: "#f0fdf4",
-    color: "#15803d",
+    background: "var(--color-success-bg)",
+    color: "var(--color-success)",
     fontWeight: 700,
     border: "1px solid rgba(34,197,94,0.2)",
   },
@@ -2960,28 +3086,28 @@ const styles: Record<string, React.CSSProperties> = {
   actionButton: {
     ...baseActionButton,
     border: "1px solid rgba(15,23,42,0.10)",
-    background: "#ffffff",
-    color: "#64748b",
+    background: "var(--color-bg-card)",
+    color: "var(--color-text-muted)",
   },
   actionPickActive: {
     ...baseActionButton,
     border: "1px solid rgba(245,158,11,0.35)",
-    background: "#fef3c7",
-    color: "#92400e",
+    background: "var(--color-warning-bg)",
+    color: "var(--color-warning)",
     fontWeight: 800,
   },
   actionPassActive: {
     ...baseActionButton,
     border: "1px solid rgba(100,116,139,0.35)",
-    background: "#e2e8f0",
-    color: "#475569",
+    background: "var(--color-neutral-bg)",
+    color: "var(--color-text-sub)",
     fontWeight: 800,
   },
   actionAdd: {
     ...baseActionButton,
     border: "1px solid rgba(79,70,229,0.25)",
-    background: "#eef2ff",
-    color: "#4338ca",
+    background: "var(--color-accent-sub)",
+    color: "var(--color-accent)",
     fontWeight: 700,
     whiteSpace: "nowrap",
   },
@@ -2990,7 +3116,7 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: 340,
     borderRadius: 14,
     border: "1px solid rgba(15,23,42,0.08)",
-    background: "#fdfdfe",
+    background: "var(--color-bg-card)",
     padding: "16px 16px 20px",
     position: "sticky",
     // サイトヘッダー（sticky, 高さ54px）の下に収める。上端が裏に潜らないように。
@@ -3026,13 +3152,13 @@ const styles: Record<string, React.CSSProperties> = {
     zIndex: 41,
     borderRadius: 14,
     border: "1px solid rgba(15,23,42,0.08)",
-    background: "#fdfdfe",
+    background: "var(--color-bg-card)",
     padding: "16px 16px 20px",
     overflowY: "auto",
     // 内部スクロールが端に達しても背後ページへスクロールを伝播させない。
     overscrollBehavior: "contain",
     WebkitOverflowScrolling: "touch",
-    boxShadow: "0 12px 40px rgba(15,23,42,0.18)",
+    boxShadow: "var(--shadow-panel)",
   },
   detailHeader: {
     // タイトル行とアクション行をまとめて上端に固定する。
@@ -3045,7 +3171,7 @@ const styles: Record<string, React.CSSProperties> = {
     zIndex: 3,
     margin: "-16px -16px 12px",
     padding: "14px 16px 10px",
-    background: "#fdfdfe",
+    background: "var(--color-bg-card)",
     borderBottom: "1px solid rgba(15,23,42,0.06)",
   },
   detailHeaderTop: {
@@ -3058,8 +3184,8 @@ const styles: Record<string, React.CSSProperties> = {
     display: "inline-flex",
     padding: "2px 7px",
     borderRadius: 6,
-    background: "#f1f5f9",
-    color: "#475569",
+    background: "var(--color-bg-subtle)",
+    color: "var(--color-text-sub)",
     fontSize: 11,
     fontWeight: 800,
     letterSpacing: 0.3,
@@ -3069,17 +3195,17 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 18,
     fontWeight: 800,
     lineHeight: 1.3,
-    color: "#0f172a",
+    color: "var(--color-text)",
   },
   detailMonths: {
     fontSize: 12,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontWeight: 600,
   },
   detailClose: {
     border: "1px solid rgba(15,23,42,0.10)",
-    background: "#ffffff",
-    color: "#94a3b8",
+    background: "var(--color-bg-card)",
+    color: "var(--color-text-muted)",
     borderRadius: 999,
     width: 26,
     height: 26,
@@ -3101,20 +3227,20 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "0 0 8px",
     fontSize: 12,
     fontWeight: 800,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     letterSpacing: 0.4,
   },
   detailText: {
     margin: "0 0 6px",
     fontSize: 13,
     lineHeight: 1.7,
-    color: "#334155",
+    color: "var(--color-text-sub)",
     whiteSpace: "pre-wrap",
   },
   detailSub: {
     margin: "4px 0",
     fontSize: 12,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
   },
   efficiencyInputGrid: {
     display: "grid",
@@ -3124,7 +3250,7 @@ const styles: Record<string, React.CSSProperties> = {
   efficiencyInputLabel: {
     display: "grid",
     gap: 4,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
     fontSize: 11,
     fontWeight: 700,
   },
@@ -3133,9 +3259,9 @@ const styles: Record<string, React.CSSProperties> = {
     minWidth: 0,
     borderRadius: 8,
     border: "1px solid rgba(15,23,42,0.14)",
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
     padding: "7px 8px",
-    color: "#0f172a",
+    color: "var(--color-text)",
     fontSize: 13,
   },
   efficiencyResult: {
@@ -3146,18 +3272,18 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 10,
     padding: "10px 12px",
     borderRadius: 10,
-    background: "#fff7ed",
-    color: "#9a3412",
+    background: "var(--color-warning-bg)",
+    color: "var(--color-warning)",
     fontSize: 11,
   },
   efficiencyResultValue: {
     gridRow: "1 / span 2",
     fontSize: 20,
-    color: "#c2410c",
+    color: "var(--color-warning)",
   },
   efficiencyNote: {
     margin: "8px 0 0",
-    color: "#94a3b8",
+    color: "var(--color-text-muted)",
     fontSize: 10,
     lineHeight: 1.5,
   },
@@ -3169,9 +3295,9 @@ const styles: Record<string, React.CSSProperties> = {
   },
   launchStatusChip: {
     ...baseChip,
-    background: "#ecfdf5",
+    background: "var(--color-success-bg)",
     border: "1px solid rgba(16,185,129,0.24)",
-    color: "#047857",
+    color: "var(--color-success)",
     fontWeight: 800,
   },
   launchHintBox: {
@@ -3182,16 +3308,16 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 8,
     padding: "10px 12px",
     borderRadius: 10,
-    background: "#f0fdf4",
+    background: "var(--color-success-bg)",
     border: "1px solid rgba(22,163,74,0.16)",
-    color: "#166534",
+    color: "var(--color-success)",
     fontSize: 12,
   },
   launchApplyButton: {
     flexShrink: 0,
     border: "1px solid rgba(22,163,74,0.25)",
-    background: "#ffffff",
-    color: "#15803d",
+    background: "var(--color-bg-card)",
+    color: "var(--color-success)",
     borderRadius: 8,
     padding: "5px 9px",
     fontSize: 11,
@@ -3206,19 +3332,19 @@ const styles: Record<string, React.CSSProperties> = {
   launchProgramItem: {
     padding: "9px 10px",
     borderRadius: 10,
-    background: "#f8fafc",
+    background: "var(--color-bg-subtle)",
     border: "1px solid rgba(15,23,42,0.06)",
   },
   launchProgramTitle: {
     fontSize: 12,
     fontWeight: 800,
-    color: "#334155",
+    color: "var(--color-text-sub)",
     marginBottom: 4,
   },
   launchTierText: {
     fontSize: 11,
     lineHeight: 1.55,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
   },
   detailLinks: {
     display: "flex",
@@ -3238,7 +3364,7 @@ const styles: Record<string, React.CSSProperties> = {
   detailListItem: {
     fontSize: 12,
     lineHeight: 1.7,
-    color: "#475569",
+    color: "var(--color-text-sub)",
     wordBreak: "break-all",
   },
   detailDl: {
@@ -3250,24 +3376,24 @@ const styles: Record<string, React.CSSProperties> = {
   },
   detailDt: {
     fontSize: 12,
-    color: "#94a3b8",
+    color: "var(--color-text-muted)",
     fontWeight: 700,
   },
   detailDd: {
     margin: 0,
     fontSize: 12,
-    color: "#334155",
+    color: "var(--color-text-sub)",
     fontWeight: 600,
   },
   detailMemoText: {
     margin: "10px 0 8px",
     padding: "10px 12px",
     borderRadius: 10,
-    background: "#f8fafc",
+    background: "var(--color-bg-subtle)",
     border: "1px solid rgba(15,23,42,0.05)",
     fontSize: 12,
     lineHeight: 1.7,
-    color: "#334155",
+    color: "var(--color-text-sub)",
     whiteSpace: "pre-wrap",
   },
   detailSectionHead: {
@@ -3282,8 +3408,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
   detailEditButton: {
     border: "1px solid rgba(79,70,229,0.25)",
-    background: "#eef2ff",
-    color: "#4338ca",
+    background: "var(--color-accent-sub)",
+    color: "var(--color-accent)",
     borderRadius: 8,
     padding: "3px 12px",
     fontSize: 12,
@@ -3292,8 +3418,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
   detailRemoveButton: {
     border: "1px solid rgba(220,38,38,0.25)",
-    background: "#fef2f2",
-    color: "#b91c1c",
+    background: "var(--color-error-bg)",
+    color: "var(--color-error)",
     borderRadius: 8,
     padding: "3px 12px",
     fontSize: 12,
@@ -3313,16 +3439,16 @@ const styles: Record<string, React.CSSProperties> = {
   editLabel: {
     fontSize: 11,
     fontWeight: 700,
-    color: "#64748b",
+    color: "var(--color-text-muted)",
   },
   editInput: {
     width: "100%",
     borderRadius: 8,
     border: "1px solid rgba(15,23,42,0.12)",
-    background: "#ffffff",
+    background: "var(--color-bg-card)",
     padding: "7px 9px",
     fontSize: 13,
-    color: "#0f172a",
+    color: "var(--color-text)",
     boxSizing: "border-box",
   },
   editCheckboxRow: {
@@ -3339,7 +3465,7 @@ const styles: Record<string, React.CSSProperties> = {
     flex: 1,
     border: "1px solid rgba(79,70,229,0.30)",
     background: INDIGO,
-    color: "#ffffff",
+    color: "var(--color-text-inverse)",
     borderRadius: 8,
     padding: "9px 12px",
     fontSize: 13,
@@ -3349,8 +3475,8 @@ const styles: Record<string, React.CSSProperties> = {
   editCancel: {
     flex: 1,
     border: "1px solid rgba(15,23,42,0.12)",
-    background: "#ffffff",
-    color: "#475569",
+    background: "var(--color-bg-card)",
+    color: "var(--color-text-sub)",
     borderRadius: 8,
     padding: "9px 12px",
     fontSize: 13,

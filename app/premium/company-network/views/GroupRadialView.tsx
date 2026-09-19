@@ -139,8 +139,8 @@ export default function GroupRadialView({
                     }
                   }}
                 >
-                  {selected ? <circle className={styles.pulse} r="35" fill="none" stroke="#2554ff" strokeWidth={2} /> : null}
-                  <circle r="25" fill="var(--color-bg-card)" stroke="#2554ff" strokeWidth={selected || focusCompanyId === company.id ? 3 : 2} />
+                  {selected ? <circle className={styles.pulse} r="35" fill="none" stroke="var(--color-accent)" strokeWidth={2} /> : null}
+                  <circle r="25" fill="var(--color-bg-card)" stroke="var(--color-accent)" strokeWidth={selected || focusCompanyId === company.id ? 3 : 2} />
                   <text textAnchor="middle" y="-2" className={styles.radialNodeLabel}>{truncate(company.name)}</text>
                   <text textAnchor="middle" y="13" className={styles.radialNodeMeta}>{listingLabel(company.listingStatus)}</text>
                 </g>
@@ -160,7 +160,7 @@ export default function GroupRadialView({
               }}
             >
               {selectedNodeId === groupNodeId ? <circle className={styles.pulse} r="78" fill="none" stroke="#d97706" strokeWidth={2} /> : null}
-              <circle r="64" fill="#fff7ed" stroke="#d97706" strokeWidth={selectedNodeId === groupNodeId ? 4 : 3} />
+              <circle r="64" fill="var(--color-warning-bg)" stroke="var(--color-warning)" strokeWidth={selectedNodeId === groupNodeId ? 4 : 3} />
               <text textAnchor="middle" y="-4" className={styles.radialGroupLabel}>{truncate(group.name, 14)}</text>
               <text textAnchor="middle" y="14" className={styles.radialGroupMeta}>{groupTypeLabel(group.groupType)}</text>
             </g>

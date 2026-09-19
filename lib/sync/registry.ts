@@ -15,8 +15,6 @@ export const SYNCED_KEYS = [
   // 株主優待期限帳
   "mini-tools:benefits:v2",
 
-  // マイ銘柄
-  "my_stocks_items_v1",
 ] as const;
 
 export type SyncedKey = (typeof SYNCED_KEYS)[number];

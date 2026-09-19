@@ -27,9 +27,10 @@
 
 ## 端末内フィルタ
 
-- マイ銘柄は `my_stocks_items_v1` から読み込む。
+- 保有・ウォッチは認証済み `/api/stock-notes/audience` から取得する。保有はPremium認証も必要なPortfolio国内株式、ウォッチは銘柄分析のwatch分類。旧localStorageは読まない。
+- audience APIはprivate/no-storeで、Service WorkerもNetworkOnly。片方だけ取得できた場合はその対象を利用し、未取得状態を表示する。
 - APIからは公開イベントを広めに取得し、銘柄コードとの照合はClient Component内で行う。
-- マイ銘柄の登録内容はAPIへ送信しない。
+- 対象コードは公開開示APIへ送信しない。旧`view=my-stocks`クエリは互換維持し、画面ラベルは「保有・ウォッチ」とする。
 - TDNETの英数字5桁コードが末尾`0`の場合は、4桁コードへ正規化して照合する。
 
 ## 表示

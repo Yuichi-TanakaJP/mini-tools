@@ -30,6 +30,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
           backdropFilter: "blur(14px)",
           background: "var(--color-header-bg)",
           borderBottom: "1px solid var(--color-header-border)",
+          paddingTop: "env(safe-area-inset-top)",
         }}
       >
         <div

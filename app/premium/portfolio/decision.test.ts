@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import PortfolioDecision from "./PortfolioDecision";
+import PortfolioWorkspace from "./PortfolioWorkspace";
 import { getPortfolioDecisionState, reviewPolicyReferenceLabel } from "./PortfolioDecision";
 import { emptyExternalAssets } from "./external-assets";
 import type { PortfolioData } from "./types";
@@ -28,6 +32,24 @@ const baseData: PortfolioData = {
 };
 
 describe("portfolio decision view state", () => {
+  it("長い判断と条件を削除せず閉じた詳細に保持する", () => {
+    const summary = "保存された判断".repeat(80);
+    const data = { ...baseData, review: { ...baseData.review!, summary } };
+    const html = renderToStaticMarkup(createElement(PortfolioDecision, { data }));
+    expect(html).toContain(summary);
+    expect(html).toContain("冒頭抜粋");
+    expect(html).toContain("保存済み判断の全文を見る");
+    expect(html).toContain("条件・理由を見る");
+    expect(html).not.toMatch(/<details[^>]*\bopen/);
+  });
+
+  it("初期表示は意思決定が主で企業グループ情報を割り込ませない", () => {
+    const html = renderToStaticMarkup(createElement(PortfolioWorkspace, { data: baseData, groupExposure: "GROUP_DETAIL_FIXTURE" }));
+    expect(html).toContain("詳細メニュー");
+    expect(html).toContain("口座・取込");
+    expect(html).toContain("DB確認");
+    expect(html).not.toContain("GROUP_DETAIL_FIXTURE");
+  });
   it("金額なし推薦と未完了Actionを判断状態として数える", () => {
     expect(getPortfolioDecisionState(baseData)).toMatchObject({
       label: "下書きあり",

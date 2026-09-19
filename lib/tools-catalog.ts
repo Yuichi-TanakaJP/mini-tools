@@ -29,14 +29,6 @@ export const CATEGORY_ORDER: ToolCategory[] = ["input", "yutai", "market", "fun"
 
 export const TOOLS: ToolItem[] = [
   {
-    title: "マイ銘柄リスト",
-    short: "保有・ウォッチを端末内に保存",
-    detail: "保有銘柄と気になる銘柄を端末内に保存。決算予定日・優待権利月のバッジ付き。サーバー送信なし。",
-    href: "/tools/my-stocks",
-    icon: "⭐",
-    category: "yutai",
-  },
-  {
     title: "株主優待期限帳",
     short: "優待の期限を管理",
     detail: "受け取った優待の使用期限を管理。期限切れを防ぐ、使い忘れゼロへ。",
@@ -54,15 +46,15 @@ export const TOOLS: ToolItem[] = [
   },
   {
     title: "銘柄分析ダッシュボード",
-    short: "stock-notesの分析を一覧で確認",
-    detail: "カスタムGPT（stock-notes）に記録した銘柄分析・見立て・アクションを一覧化。保有しているのに分析が無い銘柄をトップに表示。要ログイン、読み取り専用。",
+    short: "銘柄分析・ウォッチをまとめて確認",
+    detail: "分析・見立て・ウォッチを管理。保有判定はPortfolioを参照します。要ログイン。保有情報の取得にはPremiumログインも必要です。",
     href: "/tools/stock-notes",
     icon: "🧠",
     category: "yutai",
   },
   {
     title: "開示イベントレーダー",
-    short: "優待変更とマイ銘柄の重要開示",
+    short: "優待変更と保有・ウォッチの重要開示",
     detail: "全銘柄の優待変更と、マイ銘柄の配当・業績修正・自社株買いなどをまとめて確認。",
     href: "/tools/disclosure-radar",
     icon: "📡",

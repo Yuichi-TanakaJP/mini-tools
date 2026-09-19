@@ -13,7 +13,7 @@ export const CROSS_TYPES = [
   "1株放置",
 ] as const;
 
-export type CrossType = (typeof CROSS_TYPES)[number];
+export type CrossType = (typeof CROSS_TYPES)[number] | "未設定";
 
 export type MemoItem = {
   id: string;

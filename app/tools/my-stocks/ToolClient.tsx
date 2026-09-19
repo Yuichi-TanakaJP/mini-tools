@@ -50,24 +50,24 @@ const ACCOUNT_OPTIONS: Array<{ type: StockAccountType | ""; label: string }> = [
 ];
 
 const ACCOUNT_GROUPS: Array<{ key: AccountGroupKey; label: string; color: string }> = [
-  { key: "specific", label: "特定", color: "#2563eb" },
-  { key: "nisa", label: "NISA", color: "#16a34a" },
-  { key: "other", label: "その他・未設定", color: "#d97706" },
+  { key: "specific", label: "特定", color: "var(--color-accent)" },
+  { key: "nisa", label: "NISA", color: "var(--color-success)" },
+  { key: "other", label: "その他・未設定", color: "var(--color-warning)" },
 ];
 
 const STOCK_CHART_COLORS = [
-  "#2563eb",
-  "#16a34a",
-  "#dc2626",
-  "#d97706",
-  "#7c3aed",
-  "#0891b2",
-  "#db2777",
-  "#65a30d",
-  "#ea580c",
-  "#4f46e5",
-  "#0d9488",
-  "#9333ea",
+  "var(--color-chart-1)",
+  "var(--color-chart-3)",
+  "var(--color-chart-5)",
+  "var(--color-chart-4)",
+  "var(--color-chart-6)",
+  "var(--color-chart-2)",
+  "var(--color-chart-11)",
+  "var(--color-chart-9)",
+  "var(--color-chart-10)",
+  "var(--color-chart-12)",
+  "var(--color-chart-8)",
+  "var(--color-chart-7)",
   "#ca8a04",
   "#0284c7",
   "#e11d48",
@@ -1514,7 +1514,7 @@ function TreemapChart({
               <>
                 <span
                   style={{
-                    color: "#fff",
+                    color: "var(--color-text-inverse)",
                     fontSize: 11,
                     fontWeight: 800,
                     lineHeight: 1.25,
@@ -1528,7 +1528,7 @@ function TreemapChart({
                 </span>
                 <span
                   style={{
-                    color: "#fff",
+                    color: "var(--color-text-inverse)",
                     fontSize: 11,
                     fontWeight: 800,
                     textShadow: "0 1px 2px rgba(0,0,0,0.35)",

@@ -86,6 +86,25 @@ function stubClient(results: Record<string, unknown>, queryLog: string[] = []) {
 }
 
 describe("portfolio data loader", () => {
+  it("置換済み外部snapshotを取得失敗や未登録と混同せず、旧明細を集計しない", async () => {
+    const data = await loadPortfolio(stubClient({
+      stock_notes_portfolios: { data: { id: "p", name: "test", base_currency: "JPY" }, error: null },
+      stock_notes_portfolio_snapshots: { data: [{ id: "old", portfolio_scope: "external_reference", status: "superseded", as_of: "2026-09-01", imported_at: "2026-09-01", source_type: "manual" }], error: null },
+    }));
+    expect(data.externalAssets).toMatchObject({ status: "superseded", positions: [], totalMarketValue: null, errorMessage: null });
+    expect(data.externalAssets.snapshot?.id).toBe("old");
+  });
+
+  it("instrument_idを持たない推薦候補もstock_idから銘柄名を解決する", async () => {
+    const data = await loadPortfolio(stubClient({
+      stock_notes_portfolios: { data: { id: "p", name: "test", base_currency: "JPY" }, error: null },
+      stock_notes_portfolio_reviews: { data: [{ id: "r", status: "draft", as_of: "2026-09-01", updated_at: "2026-09-01" }], error: null },
+      stock_notes_portfolio_instruments: { data: [{ id: "i", stock_id: "s", identifier: "9999", name: "テスト銘柄", asset_type: "domestic_stock" }], error: null },
+      stock_notes_portfolio_recommendations: { data: [{ id: "rec", review_id: "r", target_type: "candidate_stock", instrument_id: null, stock_id: "s", conditions: [] }], error: null },
+    }));
+    expect(data.recommendations[0]).toMatchObject({ instrumentId: null, stockId: "s", instrumentIdentifier: "9999", instrumentName: "テスト銘柄" });
+  });
+
   it("認証必須状態をサンプルデータなしで返す", () => {
     const data = portfolioAuthRequired();
 

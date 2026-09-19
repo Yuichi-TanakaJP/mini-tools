@@ -13,7 +13,7 @@ const card: React.CSSProperties = {
   background: "var(--color-bg-card)",
   borderRadius: 18,
   border: "1px solid var(--color-border)",
-  boxShadow: "0 8px 24px rgba(15,23,42,0.05)",
+  boxShadow: "var(--shadow-card)",
   padding: "18px 18px 16px",
 };
 const primaryBtn: React.CSSProperties = {
@@ -21,7 +21,7 @@ const primaryBtn: React.CSSProperties = {
   border: "none",
   borderRadius: 12,
   background: "var(--color-accent)",
-  color: "#fff",
+  color: "var(--color-text-inverse)",
   fontSize: 14,
   fontWeight: 700,
   cursor: "pointer",

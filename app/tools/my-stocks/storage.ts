@@ -1,5 +1,4 @@
 // app/tools/my-stocks/storage.ts
-import { markChanged } from "@/lib/sync/client";
 import type { MyStockItem, StockAccountType, StockListTab } from "./types";
 
 const ITEMS_KEY = "my_stocks_items_v1";
@@ -82,7 +81,6 @@ export function saveItems(items: MyStockItem[]): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(ITEMS_KEY, JSON.stringify(items));
-    markChanged(ITEMS_KEY);
   } catch {
     // 容量超過などは握りつぶす（UI 側で state は保持される）
   }

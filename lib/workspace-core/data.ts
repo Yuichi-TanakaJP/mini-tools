@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { dependencyFacingProductRelations } from "./product-relation-policy";
 import type {
   WorkspaceCoreOverview,
   WorkspaceCoreProductDetail,
@@ -159,7 +160,7 @@ export async function loadWorkspaceCoreOverview(supabase: SupabaseClient): Promi
     technologies: ((technologiesResult.data ?? []) as Row[]).map(technologyLink),
     providerLinks: ((providersResult.data ?? []) as Row[]).map(providerLink),
     serviceInstances: ((instancesResult.data ?? []) as Row[]).map(serviceInstanceLink),
-    relations: ((relationsResult.data ?? []) as Row[]).map(productRelation),
+    relations: dependencyFacingProductRelations(((relationsResult.data ?? []) as Row[]).map(productRelation)),
     services: ((servicesResult.data ?? []) as Row[]).map(serviceSummary),
     serviceProducts: ((serviceProductsResult.data ?? []) as Row[]).map(serviceProductLink),
     serviceDeliveryModes: ((serviceDeliveryResult.data ?? []) as Row[]).map(serviceDeliveryMode),
@@ -193,8 +194,8 @@ export async function loadWorkspaceCoreProductDetail(supabase: SupabaseClient, s
     technologies: ((technologiesResult.data ?? []) as Row[]).map(technologyLink),
     providers: ((providersResult.data ?? []) as Row[]).map(providerLink),
     serviceInstances: ((instancesResult.data ?? []) as Row[]).map(serviceInstanceLink),
-    outgoingRelations: ((outgoingResult.data ?? []) as Row[]).map(productRelation),
-    incomingRelations: ((incomingResult.data ?? []) as Row[]).map(productRelation),
+    outgoingRelations: dependencyFacingProductRelations(((outgoingResult.data ?? []) as Row[]).map(productRelation)),
+    incomingRelations: dependencyFacingProductRelations(((incomingResult.data ?? []) as Row[]).map(productRelation)),
   };
 }
 

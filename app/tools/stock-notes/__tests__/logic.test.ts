@@ -43,6 +43,17 @@ import {
 } from "../logic";
 import type { StockNoteAction, StockNoteAnalysis, StockNoteStock, StockNoteThesis } from "../types";
 
+describe("Portfolio-derived holdings", () => {
+  it("ignores legacy holding category and includes held archived stocks without overwriting their category", () => {
+    const stocks = [makeStock({ id: "old", code: "7203", category: "holding" }), makeStock({ id: "actual", code: "6758", category: "archived" })];
+    const codes = new Set(["6758"]);
+    expect(stocksForTab("holding", stocks, [], [], null, new Date(), codes)).toEqual([stocks[1]]);
+    expect(stocksForTab("research", stocks, [], [], null, new Date(), codes)).toEqual([stocks[0]]);
+    expect(stocksForTab("action-required", stocks, [], [], null, new Date(), codes)[0]).toEqual(stocks[1]);
+    expect(stocks[1].category).toBe("archived");
+  });
+});
+
 function makeHolding(overrides: Partial<MyStockItem>): MyStockItem {
   return {
     id: overrides.id ?? "id",

@@ -4,6 +4,8 @@
 // 各ツールが個別のキー（*_v1 など）を使うため、特定キーの一覧を持たず localStorage 全体を対象にする。
 // これにより、ツールが増えてもこのファイルを更新せずに取りこぼしなくバックアップできる。
 
+import { legacyYutaiWriteBlocked } from "./yutai/cutover";
+
 export const BACKUP_SCHEMA = "mini-tools-localstorage-backup";
 export const BACKUP_VERSION = 1;
 
@@ -122,6 +124,7 @@ export function applyBackup(backup: BackupFile, mode: ApplyMode = "merge"): Appl
         if (key != null) existing.push(key);
       }
       for (const key of existing) {
+        if (legacyYutaiWriteBlocked(key)) continue;
         if (!keep.has(key)) {
           window.localStorage.removeItem(key);
           removed++;
@@ -129,6 +132,7 @@ export function applyBackup(backup: BackupFile, mode: ApplyMode = "merge"): Appl
       }
     }
     for (const [key, value] of Object.entries(backup.data)) {
+      if (legacyYutaiWriteBlocked(key)) continue;
       window.localStorage.setItem(key, value);
       applied++;
     }

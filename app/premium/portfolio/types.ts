@@ -229,7 +229,7 @@ export type PortfolioExternalAssetPosition = {
 };
 
 export type PortfolioExternalAssets = {
-  status: "loaded" | "empty" | "loading" | "error";
+  status: "loaded" | "empty" | "loading" | "error" | "superseded";
   snapshot: PortfolioExternalAssetSnapshot | null;
   positions: PortfolioExternalAssetPosition[];
   totalMarketValue: number | null;

@@ -38,7 +38,14 @@ type PremiumPreviewData = {
   nextMonth: string | null;
 };
 
-const CHART_COLORS = ["#2563eb", "#dc2626", "#16a34a", "#d97706", "#7c3aed", "#0891b2"];
+const CHART_COLORS = [
+  "var(--color-chart-1)",
+  "var(--color-chart-5)",
+  "var(--color-chart-3)",
+  "var(--color-chart-4)",
+  "var(--color-chart-6)",
+  "var(--color-chart-2)",
+];
 
 const FALLBACK_DAYS = [
   "2026-04-10",
@@ -84,26 +91,27 @@ function fmtPct(value: number) {
 }
 
 function getHeatColor(value: number | null) {
-  if (value === null) return "#e2e8f0";
+  if (value === null) return "var(--color-neutral-bg)";
 
   const clamped = Math.max(-2.5, Math.min(2.5, value));
   const alpha = 0.14 + (Math.abs(clamped) / 2.5) * 0.72;
   if (clamped > 0) {
-    return `rgba(22, 163, 74, ${alpha.toFixed(3)})`;
+    return `color-mix(in srgb, var(--color-rise) ${(alpha * 100).toFixed(1)}%, transparent)`;
   }
   if (clamped < 0) {
-    return `rgba(220, 38, 38, ${alpha.toFixed(3)})`;
+    return `color-mix(in srgb, var(--color-fall) ${(alpha * 100).toFixed(1)}%, transparent)`;
   }
-  return "#cbd5e1";
+  return "var(--color-neutral-border)";
 }
 
 function getTextColor(value: number | null) {
-  if (value === null) return "#64748b";
-  if (value > 0.6) return "#14532d";
-  if (value < -0.6) return "#7f1d1d";
-  if (value > 0) return "#166534";
-  if (value < 0) return "#991b1b";
-  return "#475569";
+  if (value === null) return "var(--color-text-muted)";
+  // Strong cells use the theme-aware inverse foreground so the label does not
+  // collapse into the same rise/fall color as its dense background.
+  if (Math.abs(value) >= 1.6) return "var(--color-text-inverse)";
+  if (value > 0) return "var(--color-rise)";
+  if (value < 0) return "var(--color-fall)";
+  return "var(--color-text-muted)";
 }
 
 function buildFallbackPreviewData(): PremiumPreviewData {
@@ -311,10 +319,10 @@ function MomentumCard({
   tone: "green" | "red" | "blue" | "slate";
 }) {
   const toneMap = {
-    green: { bg: "#f0fdf4", border: "#bbf7d0", text: "#166534" },
-    red: { bg: "#fef2f2", border: "#fecaca", text: "#991b1b" },
-    blue: { bg: "#eff6ff", border: "#bfdbfe", text: "#1d4ed8" },
-    slate: { bg: "#f8fafc", border: "#cbd5e1", text: "#334155" },
+    green: { bg: "var(--color-success-bg)", border: "var(--color-success-border)", text: "var(--color-success-text)" },
+    red: { bg: "var(--color-error-bg)", border: "var(--color-error-border)", text: "var(--color-error-text)" },
+    blue: { bg: "var(--color-info-bg)", border: "var(--color-info-border)", text: "var(--color-info-text)" },
+    slate: { bg: "var(--color-bg-subtle)", border: "var(--color-border-strong)", text: "var(--color-text-sub)" },
   } as const;
 
   return (
@@ -364,9 +372,9 @@ const eyebrowStyle: CSSProperties = {
   gap: 8,
   padding: "6px 10px",
   borderRadius: 999,
-  background: "#fff7ed",
-  border: "1px solid #fdba74",
-  color: "#c2410c",
+  background: "var(--color-warning-bg)",
+  border: "1px solid var(--color-warning-border)",
+  color: "var(--color-warning)",
   fontSize: 12,
   fontWeight: 800,
 };
@@ -384,8 +392,8 @@ const monthNavLinkStyle: CSSProperties = {
   padding: "8px 14px",
   borderRadius: 999,
   border: "1px solid var(--color-border)",
-  background: "#fff",
-  color: "#1d4ed8",
+  background: "var(--color-bg-card)",
+  color: "var(--color-accent)",
   textDecoration: "none",
   fontSize: 13,
   fontWeight: 800,
@@ -442,11 +450,12 @@ export default async function PremiumMarketPage({
         <div
           style={{
             background:
-              "radial-gradient(circle at top left, rgba(250, 204, 21, 0.30), transparent 30%), radial-gradient(circle at bottom right, rgba(96, 165, 250, 0.22), transparent 34%), linear-gradient(135deg, #0f172a 0%, #172554 48%, #1d4ed8 100%)",
-            color: "#fff",
+              "radial-gradient(circle at top left, color-mix(in srgb, var(--color-warning-solid) 18%, transparent), transparent 32%), radial-gradient(circle at bottom right, color-mix(in srgb, var(--color-accent) 34%, transparent), transparent 42%), var(--color-bg-emphasis)",
+            color: "var(--color-text-on-emphasis)",
+            border: "1px solid var(--color-border-strong)",
             borderRadius: 30,
             padding: "30px 24px",
-            boxShadow: "0 24px 60px rgba(15, 23, 42, 0.18)",
+            boxShadow: "var(--shadow-panel)",
           }}
         >
           <div
@@ -469,7 +478,7 @@ export default async function PremiumMarketPage({
                   letterSpacing: 0.6,
                   padding: "8px 12px",
                   borderRadius: 999,
-                  background: "rgba(255,255,255,0.12)",
+                  background: "color-mix(in srgb, var(--color-text-on-emphasis) 12%, transparent)",
                   marginBottom: 14,
                 }}
               >
@@ -478,14 +487,14 @@ export default async function PremiumMarketPage({
               <h1 style={{ margin: "0 0 12px", fontSize: 32, lineHeight: 1.1, letterSpacing: -1 }}>
                 TOPIX33 業種モメンタム
               </h1>
-              <p style={{ margin: 0, fontSize: 15, lineHeight: 1.9, color: "rgba(255,255,255,0.82)" }}>
+              <p style={{ margin: 0, fontSize: 15, lineHeight: 1.9, color: "color-mix(in srgb, var(--color-text-on-emphasis) 82%, transparent)" }}>
                 {preview.targetMonthLabel}の月初を100にした業種比較チャートと、月内ヒートマップで、
                 業種の強さの継続・反転・偏りを短時間で確認できます。
               </p>
 
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 18 }}>
                 {preview.nextMonth ? (
-                  <Link href={`/premium/market?month=${preview.nextMonth}`} style={{ ...monthNavLinkStyle, background: "#fff" }}>
+                  <Link href={`/premium/market?month=${preview.nextMonth}`} style={{ ...monthNavLinkStyle, background: "var(--color-bg-card)" }}>
                     翌月へ: {formatMonthLabel(`${preview.nextMonth}-01`)}
                   </Link>
                 ) : null}
@@ -495,7 +504,7 @@ export default async function PremiumMarketPage({
                     alignItems: "center",
                     padding: "8px 14px",
                     borderRadius: 999,
-                    background: "rgba(255,255,255,0.12)",
+                    background: "color-mix(in srgb, var(--color-text-on-emphasis) 12%, transparent)",
                     fontSize: 13,
                     fontWeight: 800,
                   }}
@@ -503,7 +512,7 @@ export default async function PremiumMarketPage({
                   表示中: {preview.targetMonthLabel}
                 </div>
                 {preview.previousMonth ? (
-                  <Link href={`/premium/market?month=${preview.previousMonth}`} style={{ ...monthNavLinkStyle, background: "#fff" }}>
+                  <Link href={`/premium/market?month=${preview.previousMonth}`} style={{ ...monthNavLinkStyle, background: "var(--color-bg-card)" }}>
                     前月へ: {formatMonthLabel(`${preview.previousMonth}-01`)}
                   </Link>
                 ) : null}
@@ -615,7 +624,7 @@ export default async function PremiumMarketPage({
                       style={{
                         padding: "10px 12px",
                         borderRadius: 14,
-                        background: "#f8fafc",
+                        background: "var(--color-bg-subtle)",
                         border: "1px solid var(--color-border)",
                         fontWeight: 800,
                         fontSize: 13,
@@ -670,11 +679,11 @@ export default async function PremiumMarketPage({
               style={{
                 padding: "18px 16px",
                 borderRadius: 18,
-                background: "#f8fafc",
+                background: "var(--color-bg-subtle)",
                 border: "1px solid var(--color-border)",
               }}
             >
-              <div style={{ fontSize: 12, color: "#1d4ed8", fontWeight: 800, marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: "var(--color-accent)", fontWeight: 800, marginBottom: 8 }}>
                 継続して強い業種
               </div>
               <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 8 }}>
@@ -689,17 +698,17 @@ export default async function PremiumMarketPage({
               style={{
                 padding: "18px 16px",
                 borderRadius: 18,
-                background: "#fff7ed",
-                border: "1px solid #fdba74",
+                background: "var(--color-warning-bg)",
+                border: "1px solid var(--color-warning-border)",
               }}
             >
-              <div style={{ fontSize: 12, color: "#c2410c", fontWeight: 800, marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: "var(--color-warning)", fontWeight: 800, marginBottom: 8 }}>
                 反転候補
               </div>
               <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 8 }}>
                 {weakest?.sector_name ?? "輸送用機器"} は押し込み後の戻り待ち
               </div>
-              <p style={{ ...mutedStyle, color: "#9a3412" }}>
+              <p style={{ ...mutedStyle, color: "var(--color-warning)" }}>
                 下位定着なのか、急落後に戻り始めているのかを見分ける補助コメントを置きます。
               </p>
             </section>

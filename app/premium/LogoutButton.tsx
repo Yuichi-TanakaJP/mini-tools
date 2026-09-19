@@ -27,9 +27,11 @@ export default function LogoutButton() {
       style={{
         height: 40,
         borderRadius: 999,
-        border: "1px solid rgba(15, 23, 42, 0.08)",
-        background: "#fff",
-        color: "var(--color-text-sub)",
+        border:
+          "1px solid color-mix(in srgb, var(--color-text-on-emphasis) 20%, transparent)",
+        background:
+          "color-mix(in srgb, var(--color-text-on-emphasis) 10%, transparent)",
+        color: "var(--color-text-on-emphasis)",
         padding: "0 16px",
         fontWeight: 700,
         cursor: isSubmitting ? "default" : "pointer",

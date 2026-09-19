@@ -2,27 +2,50 @@
 
 This directory contains the reproducible schema, evidence-backed seed set, and read model for the dedicated **Workspace Core** Supabase project.
 
+## Current scope and handoff (2026-09-16)
+
+Workspace Core has progressed beyond the original Product Map V1. The V1 API/security contract and historical audit below are retained for reference; their counts and advisor results are **not a current full-system health check**.
+
+| Layer | SQL / role |
+|---|---|
+| V1 registry and Product Map | `sql/001` through `sql/010` |
+| Description and provisional Service layer | `sql/011` through `sql/013` |
+| V3 Function / Capability / Knowledge / Evolution / Value Flow foundation | `sql/014` through `sql/020` |
+| V3 evidence-backed inventory expansion | `sql/021` through `sql/028` |
+| Controlled origin follow-up for #583 / #588 | `operations/apply_origin_followup.sql`, with private replay input |
+
+The numeric SQL files should be reviewed/applied in order through **028** to reproduce the V3 baseline. The old 001-010 procedure below reproduces only the original V1 baseline. A clean-database replay of the entire sequence was not re-tested in this follow-up.
+
+The current origin follow-up adds data, not schema. The loader and [read-only checks](operations/verify_origin_followup.sql) are separate from unconditional bootstrap SQL because personal evidence must not be published in this public repository. The replay unit is the public loader plus the immutable private audit snapshot held by the canonical Workstream. Missing input or conflicting definitions abort rather than overwrite data.
+
+See the [origin follow-up handoff and verification record](../../docs/devlog/2026-09-16-workspace-origin-followup-handoff.md) for input retrieval, application boundaries, tests, and remaining review/merge gates.
+
+The canonical existing program is `product-system-inventory-evolution-design-data-strategy` in the **mini-tools** database's `public.stock_notes_workstreams`, not a new Workstream in this project's `coordination` schema. Its broader scope includes map/UIUX, market-data sourcing, thought/chat capture, and issue inventory. Completing the V3 foundation or #583/#588 does not complete that whole program. Preserve the other milestones and existing decisions.
+
 Current project:
 
 - Supabase project: `workspace-core`
 - project ref: `vtqceobocbetkkatycxw`
 - region: `ap-northeast-1`
-- private schemas: `platform`, `registry`, `ops`
+- V1 private schemas: `platform`, `registry`, `ops`
+- V3 semantic schemas: `knowledge`, `flow` (plus V3 additions to `registry`)
 - Product Map read views: narrow `public.workspace_core_*_v` views with browser-role access revoked
 
-Do **not** apply these files to the existing `mini-tools` Supabase project.
+Do **not** apply this directory's Workspace Core SQL to the existing `mini-tools` Supabase project. The private Workstream replay-input lookup is a separate, explicitly labelled mini-tools read in the handoff document.
 
 ## Boundary
 
 ```text
-Workspace Core Supabase project
+Workspace Core Supabase project (inventory scope)
 ├─ platform   # source systems, domains, shared metadata/governance primitives
-├─ registry   # products, repos, technologies, services, resources, relations
+├─ registry   # products, repos, technologies, services, resources, relations, capabilities
+├─ knowledge  # V3 goals, principles, hypotheses, provenance, evolution
+├─ flow       # V3 value flows, versions, steps, edges
 ├─ ops        # sync/import state
-└─ public     # only narrow server-read views required by Product Map
+└─ public     # narrow server-read views required by Product Map
 ```
 
-Workspace Core is a **catalog and relationship graph**, not a content warehouse.
+Workspace Core is a **catalog and relationship graph**, not a content warehouse. Other Workspace Core domains are outside this inventory-focused bootstrap/handoff.
 
 ## Source-of-truth policy
 
@@ -53,9 +76,9 @@ Provider and concrete instance are deliberately separate.
 
 Do not invent placeholder instances merely to represent provider usage.
 
-Relationship meaning also matters. `monitors_service` is a monitoring target and must not be treated as a runtime dependency such as `deployment_target` or `uses_database_platform`.
+Relationship meaning also matters. `monitors_service` is a monitoring target and must not be treated as a runtime dependency such as `deployment_target` or `uses_database_platform`. Likewise, `predecessor_of` is historical lineage, not an operational dependency.
 
-## Security model
+## Product Map V1 security model
 
 `platform`, `registry`, and `ops` remain private custom schemas.
 
@@ -81,11 +104,11 @@ public.workspace_core_*_v
 private registry
 ```
 
-Never store secrets, API keys, passwords, access tokens, service-role keys, or private credentials in registry metadata.
+Never store secrets, API keys, passwords, access tokens, service-role keys, or private credentials in registry metadata. The origin follow-up changes no grants, RLS policies, API exposure, or application authorization.
 
-## SQL files
+## Original V1 SQL files
 
-Apply in numeric order.
+This detailed list describes the original V1 baseline. For the V3 ranges, see the current-scope section above.
 
 - `001_registry_schema.sql`
   - creates `platform`, `registry`, and `ops`
@@ -120,9 +143,9 @@ Apply in numeric order.
 
 `008` and `009` exist because discovery initially happened interactively against the live registry. They preserve reproducibility without pretending those earlier rows were part of the original bootstrap.
 
-## Reproducible bootstrap order
+## Historical V1 bootstrap order (001-010 only)
 
-For a fresh Workspace Core database:
+For reproducing the original Product Map V1 baseline, not the complete current V3:
 
 1. Apply `001_registry_schema.sql`.
 2. Apply `002_seed_sources_and_repositories.sql`.
@@ -136,9 +159,9 @@ For a fresh Workspace Core database:
 10. Apply `010_product_map_read_model.sql`.
 11. Run acceptance queries and Supabase security/performance advisors.
 
-Discovery seeds use upserts and are intended to be idempotent.
+Discovery seeds use upserts and are intended to be idempotent. The controlled origin operation instead uses create-only conflict handling to avoid overwriting newer knowledge.
 
-## Current live snapshot
+## Historical Product Map V1 snapshot
 
 Verified during Product Map V1 implementation:
 
@@ -161,7 +184,7 @@ The Product Map read views independently returned:
 - `workspace_core_product_instance_v`: 1
 - `workspace_core_product_relation_v`: 6
 
-Counts are audit snapshots, not permanent schema invariants.
+Counts are historical audit snapshots, not permanent schema invariants or current expected totals after later additions.
 
 Evidence audit from V1:
 
@@ -202,9 +225,9 @@ UI route:
 
 V1 UI includes Product search/filtering, Product detail, Repository/Technology/Provider evidence, provider impact, and a selected-Product 1-hop relation view. `monitors_service` is shown in a separate monitoring section rather than dependency impact.
 
-## Advisor state
+## Historical V1 advisor state
 
-After the Product Map read model migration:
+These results were recorded after the Product Map read model migration. They are not a fresh advisor run for the origin follow-up.
 
 Security advisor:
 
@@ -218,25 +241,27 @@ Performance advisor:
 - INFO: unused reverse indexes on the new database; retained for intended graph traversal
 - remediation reference: https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index
 
-## Acceptance checks
+## Historical V1 acceptance queries
+
+The comments below are the original snapshot counts, not immutable acceptance conditions for the current database. Use the scoped operation checks for the new follow-up.
 
 ```sql
-select count(*) from registry.repositories;          -- 20
-select count(*) from registry.products;              -- 18
-select count(*) from registry.product_repositories;  -- 20
-select count(*) from registry.technologies;          -- 26
-select count(*) from registry.product_technologies;  -- 55
-select count(*) from registry.service_providers;     -- 15
-select count(*) from registry.product_service_provider_links; -- 23
-select count(*) from registry.product_service_links; -- 1
-select count(*) from registry.product_relations;     -- 6
+select count(*) from registry.repositories;          -- V1: 20
+select count(*) from registry.products;              -- V1: 18
+select count(*) from registry.product_repositories;  -- V1: 20
+select count(*) from registry.technologies;          -- V1: 26
+select count(*) from registry.product_technologies;  -- V1: 55
+select count(*) from registry.service_providers;     -- V1: 15
+select count(*) from registry.product_service_provider_links; -- V1: 23
+select count(*) from registry.product_service_links; -- V1: 1
+select count(*) from registry.product_relations;     -- V1: 6
 
-select count(*) from public.workspace_core_product_summary_v;    -- 18
-select count(*) from public.workspace_core_product_repository_v; -- 20
-select count(*) from public.workspace_core_product_technology_v; -- 55
-select count(*) from public.workspace_core_product_provider_v;   -- 23
-select count(*) from public.workspace_core_product_instance_v;   -- 1
-select count(*) from public.workspace_core_product_relation_v;   -- 6
+select count(*) from public.workspace_core_product_summary_v;    -- V1: 18
+select count(*) from public.workspace_core_product_repository_v; -- V1: 20
+select count(*) from public.workspace_core_product_technology_v; -- V1: 55
+select count(*) from public.workspace_core_product_provider_v;   -- V1: 23
+select count(*) from public.workspace_core_product_instance_v;   -- V1: 1
+select count(*) from public.workspace_core_product_relation_v;   -- V1: 6
 ```
 
 ## Non-goals for Product Map V1

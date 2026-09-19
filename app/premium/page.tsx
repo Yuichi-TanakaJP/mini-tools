@@ -18,103 +18,94 @@ type FeatureCard = {
   href: string;
   icon: string;
   title: string;
-  description: string;
-  tone: "blue" | "amber" | "violet" | "slate";
+  short: string;
+  group: "investment" | "workspace";
 };
 
 const FEATURE_CARDS: FeatureCard[] = [
   {
     href: "/premium/portfolio",
     icon: "📊",
-    title: "保有銘柄ダッシュボード",
-    description: "保有・損益・配当・優待・直近の予定をまとめて確認します。",
-    tone: "blue",
+    title: "保有銘柄分析",
+    short: "保有・損益・方針を横断確認",
+    group: "investment",
   },
   {
     href: "/premium/market",
     icon: "📈",
-    title: "業種トレンド（TOPIX33）",
-    description: "月内の業種モメンタムを、ヒートマップと業種比較チャートで読みます。",
-    tone: "amber",
+    title: "業種モメンタム",
+    short: "月内の業種トレンドを比較",
+    group: "investment",
   },
   {
     href: "/premium/themes",
     icon: "🧭",
     title: "テーマViewer",
-    description: "ChatGPT + Supabaseで整備したテーマの概要・根拠・履歴を読み取り専用で確認します。",
-    tone: "violet",
+    short: "投資テーマの概要・根拠・履歴",
+    group: "investment",
   },
   {
     href: "/premium/industry-map",
     icon: "🗺",
     title: "業界マップ",
-    description:
-      "Supabaseに保存した産業構造・企業経済圏を、階層・放射・ネットワーク・マトリクス・表に切り替えて俯瞰します。",
-    tone: "violet",
+    short: "産業構造と企業経済圏を俯瞰",
+    group: "investment",
   },
   {
     href: "/premium/company-network",
     icon: "🕸",
     title: "企業関係マップ",
-    description:
-      "出資・親子・歴史的関係と財閥・企業グループ所属を、根拠付きのネットワークとして確認します。",
-    tone: "violet",
+    short: "出資・親子・企業グループを確認",
+    group: "investment",
   },
   {
     href: "/premium/theme-company-network",
     icon: "🔗",
     title: "テーマ × 企業関係",
-    description:
-      "テーマへの直接企業と、出資・支配などの企業関係で見つかる企業を分けて横断探索します。",
-    tone: "violet",
+    short: "テーマと企業関係を横断探索",
+    group: "investment",
   },
   {
     href: "/premium/product-map/dashboard",
     icon: "▦",
     title: "Workspace Dashboard",
-    description:
-      "複数の個人開発Productを、状態・重要度・運用先・接続の観点から俯瞰し、次に見るべき対象を判断します。",
-    tone: "slate",
+    short: "個人開発Productの状態を俯瞰",
+    group: "workspace",
   },
   {
     href: "/premium/product-map",
     icon: "🧩",
     title: "Product Map",
-    description:
-      "Workspace Coreに登録したProduct・Repository・Technology・Service・依存関係を、Product単位で根拠付き確認します。",
-    tone: "slate",
+    short: "ProductとRepositoryの関係を確認",
+    group: "workspace",
   },
   {
     href: "/premium/routines",
     icon: "🗓",
     title: "ルーティン一覧",
-    description: "自動・半自動・手動で回している定期作業を、週間タイムテーブルで棚卸しします。",
-    tone: "violet",
+    short: "定期作業を週間で棚卸し",
+    group: "workspace",
   },
   {
     href: "/admin",
     icon: "⚙",
     title: "管理コンソール",
-    description: "各データソースの最終更新日・スケジュール・SLA を一望します。",
-    tone: "slate",
+    short: "更新状況・スケジュール・SLA",
+    group: "workspace",
   },
 ];
 
-const TONE_MAP: Record<FeatureCard["tone"], { bg: string; border: string; fg: string }> = {
-  blue: { bg: "#eff6ff", border: "#bfdbfe", fg: "#1d4ed8" },
-  amber: { bg: "#fff7ed", border: "#fdba74", fg: "#c2410c" },
-  violet: { bg: "#eef2ff", border: "#c7d2fe", fg: "#4338ca" },
-  slate: { bg: "#f8fafc", border: "#cbd5e1", fg: "#334155" },
-};
-
 const cardBaseStyle: CSSProperties = {
-  display: "grid",
-  gap: 10,
-  alignContent: "start",
-  padding: "22px 20px",
-  borderRadius: 20,
+  display: "flex",
+  alignItems: "center",
+  gap: 14,
+  padding: "16px 14px",
+  borderRadius: 18,
   textDecoration: "none",
-  minHeight: 150,
+  background: "var(--color-bg-card)",
+  border: "1px solid var(--color-border)",
+  color: "var(--color-text)",
+  boxShadow: "var(--shadow-card)",
 };
 
 export default async function PremiumHomePage() {
@@ -138,11 +129,12 @@ export default async function PremiumHomePage() {
         <div
           style={{
             background:
-              "radial-gradient(circle at top left, rgba(250, 204, 21, 0.30), transparent 30%), radial-gradient(circle at bottom right, rgba(96, 165, 250, 0.22), transparent 34%), linear-gradient(135deg, #0f172a 0%, #172554 48%, #1d4ed8 100%)",
-            color: "#fff",
+              "radial-gradient(circle at top left, color-mix(in srgb, var(--color-warning-solid) 18%, transparent), transparent 32%), radial-gradient(circle at bottom right, color-mix(in srgb, var(--color-accent) 34%, transparent), transparent 42%), var(--color-bg-emphasis)",
+            color: "var(--color-text-on-emphasis)",
+            border: "1px solid var(--color-border-strong)",
             borderRadius: 30,
             padding: "30px 24px",
-            boxShadow: "0 24px 60px rgba(15, 23, 42, 0.18)",
+            boxShadow: "var(--shadow-panel)",
           }}
         >
           <div
@@ -165,17 +157,28 @@ export default async function PremiumHomePage() {
                   letterSpacing: 0.6,
                   padding: "8px 12px",
                   borderRadius: 999,
-                  background: "rgba(255,255,255,0.12)",
+                  background:
+                    "color-mix(in srgb, var(--color-text-on-emphasis) 12%, transparent)",
+                  border:
+                    "1px solid color-mix(in srgb, var(--color-text-on-emphasis) 16%, transparent)",
                   marginBottom: 14,
                 }}
               >
-                Premium ホーム
+                PREMIUM
               </div>
               <h1 style={{ margin: "0 0 12px", fontSize: 34, lineHeight: 1.1, letterSpacing: -1 }}>
-                おかえりなさい
+                分析と管理を、ひとつに。
               </h1>
-              <p style={{ margin: 0, fontSize: 15, lineHeight: 1.9, color: "rgba(255,255,255,0.82)" }}>
-                premium 機能の入口です。使いたい機能をカードから選んでください。
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 15,
+                  lineHeight: 1.9,
+                  color:
+                    "color-mix(in srgb, var(--color-text-on-emphasis) 82%, transparent)",
+                }}
+              >
+                保有銘柄から開発環境まで、必要な視点を選べます。
               </p>
             </div>
 
@@ -183,36 +186,74 @@ export default async function PremiumHomePage() {
           </div>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-            gap: 16,
-          }}
-        >
-          {FEATURE_CARDS.map((card) => {
-            const tone = TONE_MAP[card.tone];
-            return (
-              <Link
+        {([
+          { key: "investment", label: "投資分析" },
+          { key: "workspace", label: "Workspace" },
+        ] as const).map((section) => (
+          <section key={section.key} aria-labelledby={`premium-${section.key}`}>
+            <h2
+              id={`premium-${section.key}`}
+              style={{
+                margin: "8px 0 12px",
+                fontSize: 12,
+                fontWeight: 900,
+                letterSpacing: 0.8,
+                color: "var(--color-text-muted)",
+                textTransform: section.key === "workspace" ? "uppercase" : undefined,
+              }}
+            >
+              {section.label}
+            </h2>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                gap: 16,
+              }}
+            >
+              {FEATURE_CARDS.filter((card) => card.group === section.key).map((card) => {
+                return (
+                  <Link
                 key={card.href}
                 href={card.href}
                 style={{
                   ...cardBaseStyle,
-                  background: tone.bg,
-                  border: `1px solid ${tone.border}`,
-                  color: tone.fg,
                 }}
               >
-                <span style={{ fontSize: 28, lineHeight: 1 }}>{card.icon}</span>
-                <span style={{ fontSize: 18, fontWeight: 900 }}>{card.title}</span>
-                <span style={{ fontSize: 13, lineHeight: 1.7, color: "var(--color-text-sub)" }}>
-                  {card.description}
+                <span
+                  aria-hidden="true"
+                  style={{
+                    display: "grid",
+                    placeItems: "center",
+                    flexShrink: 0,
+                    width: 44,
+                    height: 44,
+                    borderRadius: 14,
+                    fontSize: 22,
+                    lineHeight: 1,
+                    background: "var(--color-accent-sub)",
+                    border: "1px solid var(--color-border-accent)",
+                  }}
+                >
+                  {card.icon}
                 </span>
-                <span style={{ marginTop: "auto", fontSize: 13, fontWeight: 800 }}>開く →</span>
-              </Link>
-            );
-          })}
-        </div>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "block", fontSize: 15, fontWeight: 800, color: "var(--color-text)", marginBottom: 4 }}>
+                    {card.title}
+                  </span>
+                  <span style={{ display: "block", fontSize: 12, lineHeight: 1.55, color: "var(--color-text-muted)" }}>
+                    {card.short}
+                  </span>
+                </span>
+                <span aria-hidden="true" style={{ flexShrink: 0, fontSize: 16, color: "var(--color-text-muted)", opacity: 0.45 }}>
+                  →
+                </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        ))}
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <Link
@@ -224,7 +265,7 @@ export default async function PremiumHomePage() {
               height: 46,
               padding: "0 18px",
               borderRadius: 14,
-              background: "#fff",
+              background: "var(--color-bg-card)",
               color: "var(--color-text-sub)",
               border: "1px solid var(--color-border)",
               textDecoration: "none",

@@ -1,0 +1,157 @@
+# Yutai Reward Model v2 UAT
+
+## Scope
+
+`/tools/yutai-expiry` のDB previewで、既存v1期限帳を維持したままv2 Account / Grant Lot / Entitlement / Deadlineを併設する。
+
+関連: mini-tools#634 / stock-notes#200 / stock-notes#202 / stock-notes#204
+
+## 前提
+
+- `NEXT_PUBLIC_YUTAI_EXPIRY_DB_PREVIEW=true`
+- Supabaseへログイン済み
+- v2 DB migration / read / command RPCが適用済み
+- 旧Rewardの自動Account紐付けはしない
+
+## UAT-01 初期表示 / legacy保全
+
+1. 期限帳を開く。
+2. 既存v1カードとv2パネルが両方表示されることを確認する。
+3. v2 Account未作成の場合、未割当Reward件数が表示されることを確認する。
+
+期待:
+- v1カードの残高/履歴/編集は従来どおり。
+- v2未作成を理由にlegacyへfallback保存しない。
+- 未割当Rewardは残高を変更せず表示される。
+
+## UAT-02 Account作成 / legacy link
+
+1. QUO等のAccountを作成する。
+2. 未割当RewardからAccountを選び「残高を変えず紐付け」を押す。
+
+期待:
+- link前後でReward残高・event履歴が変わらない。
+- v2 Account側へLotとして現れる。
+- coverageは履歴不完全であることが分かる。
+
+## UAT-03 QUO型表示 / 未分類増減
+
+期待:
+- 現在残高と追跡開始時残高を別表示する。
+- `opening_balance_native` を生涯累計取得と表現しない。
+- 旧 `adjusted` は「未分類増減」としてnet/増加/減少を表示し、追跡後取得・利用へ推測分類しない。
+- 実データQUOでは開始43,500円、未分類純増10,500円（増加13,000円 / 減少2,500円）、現在54,000円を説明できる。
+- 追跡後にnative_completeで付与したLotだけが「追跡後の取得」に加算される。
+
+## UAT-04 EDION型
+
+1. 同一Accountへ期限の違う2つのGrant Lotを追加する。
+2. FEFO Accountから一部使用する。
+
+期待:
+- Account残高は合計表示。
+- Lotは期限別に残る。
+- 期限の近いLotから消費される。
+- 次回期限が最も近い未使用Lotになる。
+- legacyの旧 `adjusted -3000` は未分類減少として残し、追跡後利用へ自動再分類しない。
+
+## UAT-05 U-NEXT型
+
+1. point Accountを `fixed_per_grant + fefo` で作る。
+2. 月ごとに1,800ptと各期限をGrantとして追加する。
+3. 2,000pt使用する。
+
+期待:
+- 古い期限Lotを全消費し、次Lotを必要分だけ消費する。
+- Account合計とLot残量が一致する。
+- legacyの「1,800pt相当×個数」count行はpoint Accountへ推測換算しない。将来付与から正しいpoint Lotを使う。
+
+## UAT-06 Manual Lot
+
+1. `allocation_policy=manual` のAccountを作る。
+2. Lotごとの「使用」から量を指定する。
+
+期待:
+- 指定Lotだけ減る。
+- 他Lotは変化しない。
+- stale revisionは保存されない。
+
+## UAT-07 Rolling inactivity
+
+1. `rolling_inactivity` 12か月のAccountを作る。
+2. transfer/利用等で活動日を更新する。
+3. 期限後に開く。
+
+期待:
+- 12か月を365日に丸めず表示する。
+- UIは「最終活動から12か月」と表示する。
+- transfer先Accountでも活動日が更新される。
+- 期限後は利用可能=0、期限切れ未処理へ移る。
+- 「失効を確定」でLot残高0＋expired eventになる。
+
+## UAT-08 Rolling on grant / majica型
+
+1. `rolling_on_grant` 12か月のpoint Accountを作る。
+2. 2026-03-23にGrantを追加する。
+3. 2026-06-01に一部利用する。
+4. 2026-07-10に別Grantを追加する。
+5. 2027-07-11 00:00 JSTで利用を試す。
+
+期待:
+- 初回期限は2027-03-23。
+- 6月の利用では期限が延長されない。
+- 7/10の新規付与で期限が2027-07-10へ延長される。
+- UIは「最後の付与から12か月」と表示する。
+- `extend_account` 相当の手動延長は提供しない/DBが拒否する。
+- 2027-07-11 00:00 JSTでは利用が拒否され、UTC日付へのずれで猶予されない。
+- 期限後は「失効を確定」で残高0＋expired eventになる。
+
+## UAT-09 Entitlement / Deadline
+
+1. choice Entitlementの選択肢を保存する。
+2. claim/activate/fulfillを更新する。
+3. Deadlineの完了ボタンを押す。
+
+期待:
+- selected_optionが保存される。
+- status timestampがDBに残る。
+- Deadline完了はcompleted_atを持つ。
+
+## UAT-10 owner switch / uncertain retry
+
+1. Aでv2を表示する。
+2. Bへ切り替える。
+3. 書込中にネットワークを切断するケースを確認する。
+
+期待:
+- Aのv2 dataをBへ見せない。
+- owner changeでv2 cacheを即破棄する。
+- transport failure後も通常readでuncertain状態を消さない。
+- uncertain writeは同じrequest_id＋occurred_atの再確認だけを提供し、別writeを送らない。
+- DBが明示エラーを返した要求は結果不明と表示しない。
+
+## UAT-11 mobile / 日付境界
+
+390px幅と日付跨ぎを確認する。
+
+期待:
+- Account metricsが1列化する。
+- form/buttonが横にはみ出さない。
+- 長いAccount名/Lot名が折り返される。
+- 画面を開いたまま日付が変わった場合、1分以内またはfocus時に基準日が更新され、期限判定も更新される。
+- 日本の期限判定はAsia/Tokyoの暦日で行われる。
+
+## UAT-12 固定額でない優待の利用実績
+
+合成認証・RPCによる画面テスト: `node node_modules/@playwright/test/cli.js test --config=playwright.yutai.config.ts yutai-entitlement-usage.spec.ts`。実DBは変更しない。
+
+1. PreviewでAccountなしの割引・サービスEntitlementを用意し、履歴タブの「利用実績を記録」で円換算価値、数量・単位、利用先、用途、利用日時を入力して保存する。
+2. 保存後、履歴と集計が更新されることを確認する。
+3. 送信後に応答だけ失う状況を作り、「同じ要求で再確認」を押す。
+4. DBの明示的なrevision競合も確認する。
+
+期待:
+- 保存後にページ全体は再読み込みされず、v2台帳と履歴一覧・件数が再取得される。
+- 応答不明時は新規保存を止め、同じrequest_idとoccurred_atの再送で二重記録しない。
+- revision競合は結果不明と区別して表示し、最新台帳を再取得した後に入力を見直して保存できる。
+- ログアウト後に前ユーザーの台帳・利用実績を表示しない。

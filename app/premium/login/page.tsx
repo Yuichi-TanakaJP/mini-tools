@@ -36,10 +36,10 @@ export default async function PremiumLoginPage({ searchParams }: PageProps) {
         style={{
           maxWidth: 540,
           margin: "0 auto",
-          background: "linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)",
+          background: "linear-gradient(180deg, var(--color-bg-card) 0%, var(--color-bg-subtle) 100%)",
           borderRadius: 28,
-          border: "1px solid rgba(15, 23, 42, 0.08)",
-          boxShadow: "0 24px 60px rgba(15, 23, 42, 0.08)",
+          border: "1px solid var(--color-border)",
+          boxShadow: "var(--shadow-card-hover)",
           padding: "28px 22px",
         }}
         >
@@ -50,9 +50,9 @@ export default async function PremiumLoginPage({ searchParams }: PageProps) {
             gap: 8,
             padding: "7px 12px",
             borderRadius: 999,
-            background: "#fff7ed",
-            color: "#c2410c",
-            border: "1px solid #fdba74",
+            background: "var(--color-warning-bg)",
+            color: "var(--color-warning)",
+            border: "1px solid var(--color-warning-border)",
             fontSize: 12,
             fontWeight: 800,
             letterSpacing: 0.3,
@@ -69,9 +69,9 @@ export default async function PremiumLoginPage({ searchParams }: PageProps) {
             borderRadius: 16,
             display: "grid",
             placeItems: "center",
-            background: "linear-gradient(135deg, #f59e0b 0%, #facc15 100%)",
-            color: "#fff",
-            boxShadow: "0 16px 32px rgba(245, 158, 11, 0.28)",
+            background: "linear-gradient(135deg, var(--color-warning-solid), color-mix(in srgb, var(--color-warning-solid) 58%, var(--color-accent)))",
+            color: "var(--color-text-on-emphasis)",
+            boxShadow: "var(--shadow-card)",
             marginBottom: 18,
             fontSize: 22,
           }}
@@ -88,7 +88,7 @@ export default async function PremiumLoginPage({ searchParams }: PageProps) {
           }}
         >
           Premium Login
-          <span style={{ display: "block", fontSize: 15, color: "#c2410c", marginTop: 8 }}>
+          <span style={{ display: "block", fontSize: 15, color: "var(--color-warning)", marginTop: 8 }}>
             開発中の仮ログイン画面
           </span>
         </h1>

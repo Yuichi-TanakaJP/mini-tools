@@ -1,5 +1,5 @@
 // app/layout.tsx
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import Header from "@/components/Header";
 import MobileBottomNav from "@/components/MobileBottomNav";
@@ -37,6 +37,17 @@ export const metadata: Metadata = {
       "文字数カウント、合計計算、株主優待期限管理、優待銘柄メモをブラウザで使える無料ミニツール集。",
   },
   manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "mini-tools",
+    statusBarStyle: "black",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -47,16 +58,7 @@ export default function RootLayout({
   return (
     <html lang="ja" suppressHydrationWarning>
       <head>
-        <meta
-          name="theme-color"
-          media="(prefers-color-scheme: light)"
-          content="#eef2f7"
-        />
-        <meta
-          name="theme-color"
-          media="(prefers-color-scheme: dark)"
-          content="#0d1117"
-        />
+        <meta name="theme-color" content="#0d131c" />
         <script dangerouslySetInnerHTML={{ __html: createColorThemeInitScript() }} />
         {GA_ID ? (
           <>

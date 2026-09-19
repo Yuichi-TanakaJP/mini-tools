@@ -6,9 +6,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import TabBar from "@/app/tools/_shared/TabBar";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSyncConfigured } from "@/lib/supabase/config";
-import type { MyStockItem } from "@/app/tools/my-stocks/types";
+import { holdingsLabel, type Holding, type HoldingsState } from "@/lib/portfolio/holdings";
+import { AUDIENCE_CHANGED } from "@/lib/portfolio/useAudience";
 import {
-  bulkInsertHoldingsAsStocks,
   deleteStockById,
   fetchAnalysisBody,
   fetchAnalyses,
@@ -22,7 +22,6 @@ import {
   isDuplicateStockError,
   isForeignKeyViolationError,
   updateStockCategory,
-  type BulkImportResult,
 } from "./data";
 import type { StockNotesEarningsInfo } from "./earnings-types";
 import { invalidateStockNotesCache, readStockNotesCache, writeStockNotesCache } from "./cache";
@@ -38,7 +37,6 @@ import {
   canDeleteStock,
   countStocksForTab,
   createLoadGuard,
-  daysSinceSync,
   deleteBlockedReason,
   earningsDisplay,
   extractUnregisteredHoldings,
@@ -51,19 +49,14 @@ import {
   latestAnalyzedAt,
   openActionCountForStock,
   selectLatestThesis,
-  shouldRefetchAfterBulkImport,
   sortOpenActions,
   stocksForTab,
   STOCK_NOTES_TABS,
-  SYNC_STALE_DAYS,
-  syncStaleness,
   validateNewStockInput,
   withFallback,
   type ActionRequiredReason,
   type FreshnessLevelV2,
   type StockNotesTab,
-  type SyncStaleness,
-  type UnregisteredHolding,
 } from "./logic";
 import type {
   StockNoteAction,
@@ -76,12 +69,12 @@ import type {
 type LoadState = "idle" | "loading" | "loaded" | "unauthorized" | "error";
 
 const CATEGORY_LABELS: Record<StockNoteCategory, string> = {
-  holding: "保有",
+  holding: "旧分類: 保有",
   watch: "ウォッチ",
   research: "新規調査",
   archived: "アーカイブ",
 };
-const CATEGORY_SELECT_OPTIONS: StockNoteCategory[] = ["holding", "watch", "research", "archived"];
+const CATEGORY_SELECT_OPTIONS: StockNoteCategory[] = ["watch", "research", "archived"];
 
 /** 5タブ（要対応/保有/ウォッチ/新規調査/アーカイブ）のベースラベル。件数は都度付与する。 */
 const TAB_BASE_LABELS: Record<StockNotesTab, string> = {
@@ -98,9 +91,9 @@ const VIEW_LABELS: Record<StockNoteThesis["view"], string> = {
   bearish: "弱気",
 };
 const VIEW_COLORS: Record<StockNoteThesis["view"], { bg: string; fg: string }> = {
-  bullish: { bg: "rgba(22,163,74,0.14)", fg: "#16a34a" },
+  bullish: { bg: "var(--color-success-bg)", fg: "var(--color-success-text)" },
   neutral: { bg: "var(--color-bg-input)", fg: "var(--color-text-sub)" },
-  bearish: { bg: "rgba(220,38,38,0.14)", fg: "#dc2626" },
+  bearish: { bg: "var(--color-error-bg)", fg: "var(--color-error-text)" },
 };
 const CONFIDENCE_LABELS: Record<StockNoteThesis["confidence"], string> = {
   high: "確信度高",
@@ -117,12 +110,12 @@ const ANALYSIS_TYPE_LABELS: Record<StockNoteAnalysis["analysisType"], string> = 
 const FRESHNESS_COLORS: Record<FreshnessLevelV2, { bg: string; fg: string; label: string } | null> = {
   fresh: null,
   unknown: null,
-  warn: { bg: "rgba(217,119,6,0.14)", fg: "#d97706", label: "そろそろ確認" },
-  danger: { bg: "rgba(220,38,38,0.14)", fg: "#dc2626", label: "要更新" },
+  warn: { bg: "var(--color-warning-bg)", fg: "var(--color-warning-text)", label: "そろそろ確認" },
+  danger: { bg: "var(--color-error-bg)", fg: "var(--color-error-text)", label: "要更新" },
   // label はフォールバック（lastEarningsDate が取れないケース用）。通常は FreshnessBadge が
   // 「8/4の決算後、未分析」のように日付入りの文言を動的に組み立てる（decision-log参照:
   // 日付が入ることで、利用者が何を確認すべきか即座に分かるようにするため）。
-  "post-earnings": { bg: "rgba(220,38,38,0.14)", fg: "#dc2626", label: "要更新（決算後未分析）" },
+  "post-earnings": { bg: "var(--color-error-bg)", fg: "var(--color-error-text)", label: "要更新（決算後未分析）" },
 };
 
 const dangerText: React.CSSProperties = {
@@ -146,7 +139,7 @@ const primaryBtn: React.CSSProperties = {
   border: "none",
   borderRadius: 10,
   background: "var(--color-accent)",
-  color: "#fff",
+  color: "var(--color-text-inverse)",
   fontSize: 13,
   fontWeight: 700,
   cursor: "pointer",
@@ -217,7 +210,8 @@ export default function ToolClient() {
   const [analyses, setAnalyses] = useState<StockNoteAnalysis[]>([]);
   const [theses, setTheses] = useState<StockNoteThesis[]>([]);
   const [actions, setActions] = useState<StockNoteAction[]>([]);
-  const [holdings, setHoldings] = useState<MyStockItem[]>([]);
+  const [holdings, setHoldings] = useState<Holding[]>([]);
+  const [holdingsState, setHoldingsState] = useState<HoldingsState>("unavailable");
   const [holdingsUpdatedAt, setHoldingsUpdatedAt] = useState<string | null>(null);
   const [earnings, setEarnings] = useState<StockNotesEarningsInfo | null>(null);
 
@@ -247,14 +241,6 @@ export default function ToolClient() {
   const [registerError, setRegisterError] = useState<string | null>(null);
   // 分類変更・アーカイブ・削除の書き込み中は対象銘柄のIDを保持し、行のボタンを無効化する。
   const [rowBusyStockId, setRowBusyStockId] = useState<string | null>(null);
-  const [showBulkImport, setShowBulkImport] = useState(false);
-  const [bulkImportSubmitting, setBulkImportSubmitting] = useState(false);
-  const [bulkImportResult, setBulkImportResult] = useState<BulkImportResult | null>(null);
-  // 確認画面を開いた時点の対象一覧のスナップショット。unregisteredHoldings（最新の state）を
-  // そのまま確認・実行対象に使うと、確認を出した後に裏で再取得や保有リスト更新が起きて
-  // 一覧が変わった場合、ユーザーが確認した銘柄と違う銘柄を登録しうる。開いた時点で固定し、
-  // 閉じるまで unregisteredHoldings の変化を反映しない（詳細は decision-log 参照）。
-  const [bulkImportSnapshot, setBulkImportSnapshot] = useState<UnregisteredHolding[]>([]);
 
   // 取得の「世代」を管理するガード。ユーザー切替・ログアウトが連続したときに、
   // 古いリクエストの結果が新しい画面を上書きしないようにする（詳細: logic.ts の createLoadGuard）。
@@ -287,6 +273,7 @@ export default function ToolClient() {
     setActions([]);
     setHoldings([]);
     setHoldingsUpdatedAt(null);
+    setHoldingsState("unavailable");
     setEarnings(null);
     setBodies({});
     setExpandedStockId(null);
@@ -307,6 +294,7 @@ export default function ToolClient() {
     setActions(data.actions);
     setHoldings(data.holdings);
     setHoldingsUpdatedAt(data.holdingsUpdatedAt);
+    setHoldingsState(data.holdingsState ?? "unavailable");
     setEarnings(data.earnings);
     setDataUpdatedAt(fetchedAt);
     },
@@ -372,6 +360,7 @@ export default function ToolClient() {
           actions: result.actions,
           holdings: result.holdings,
           holdingsUpdatedAt: result.holdingsUpdatedAt,
+          holdingsState: result.holdingsState,
           earnings: result.earnings,
         };
         applyDashboardData(data, fetchedAtIso, result.stockNotesManifest ?? null);
@@ -416,6 +405,9 @@ export default function ToolClient() {
       if (!supabase) return;
       const token = loadGuardRef.current.next();
       setIsRevalidating(true);
+      setHoldings([]);
+      setHoldingsState("unavailable");
+      setHoldingsUpdatedAt(null);
       setRevalidateError(null);
       const result = await loadDashboard(dashboardDataRef.current, knownManifest ?? null);
       if (!loadGuardRef.current.isCurrent(token)) return;
@@ -437,6 +429,7 @@ export default function ToolClient() {
           actions: result.actions,
           holdings: result.holdings,
           holdingsUpdatedAt: result.holdingsUpdatedAt,
+          holdingsState: result.holdingsState,
           earnings: result.earnings,
         };
         applyDashboardData(data, fetchedAtIso, result.stockNotesManifest ?? null);
@@ -541,24 +534,32 @@ export default function ToolClient() {
     };
   }, [supabase, loadData, revalidateData, resetData, applyDashboardData]);
 
-  const syncDaysAgo = useMemo(() => daysSinceSync(holdingsUpdatedAt), [holdingsUpdatedAt]);
-  const syncState: SyncStaleness = useMemo(() => syncStaleness(holdingsUpdatedAt), [holdingsUpdatedAt]);
+  useEffect(() => {
+    const refresh = () => {
+      const uid = userIdRef.current;
+      if (uid) void revalidateData(uid, null, undefined, stockNotesManifestRef.current);
+    };
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+  }, [revalidateData]);
+
+  const heldCodes = useMemo(() => new Set(holdings.map((h) => h.code)), [holdings]);
   const openActions = useMemo(() => sortOpenActions(actions), [actions]);
   const stockById = useMemo(() => new Map(stocks.map((s) => [s.id, s])), [stocks]);
   const filteredStocks = useMemo(
-    () => stocksForTab(categoryTab, stocks, analyses, actions, earnings),
-    [categoryTab, stocks, analyses, actions, earnings],
+    () => stocksForTab(categoryTab, stocks, analyses, actions, earnings, new Date(), heldCodes),
+    [categoryTab, stocks, analyses, actions, earnings, heldCodes],
   );
   const tabCounts = useMemo(() => {
     const map = {} as Record<StockNotesTab, number>;
     for (const tab of STOCK_NOTES_TABS) {
-      map[tab] = countStocksForTab(tab, stocks, analyses, actions, earnings);
+      map[tab] = countStocksForTab(tab, stocks, analyses, actions, earnings, new Date(), heldCodes);
     }
     return map;
-  }, [stocks, analyses, actions, earnings]);
-  const tabLabel = useCallback((tab: StockNotesTab) => `${TAB_BASE_LABELS[tab]} ${tabCounts[tab]}`, [tabCounts]);
+  }, [stocks, analyses, actions, earnings, heldCodes]);
+  const tabLabel = useCallback((tab: StockNotesTab) => `${tab === "holding" ? "保有" : TAB_BASE_LABELS[tab]} ${tab === "holding" && holdingsState !== "ready" ? "—" : tabCounts[tab]}`, [tabCounts, holdingsState]);
   const tabOptions = useMemo(() => STOCK_NOTES_TABS.map(tabLabel), [tabLabel]);
-  // マイ銘柄リストの保有銘柄のうち stock_notes_stocks に未登録のもの（一括取り込みバナー対象）。
+  // Portfolioの国内保有のうち分析登録がない銘柄。自動的な分類書き込みはしない。
   const unregisteredHoldings = useMemo(
     () => extractUnregisteredHoldings(holdings, stocks),
     [holdings, stocks],
@@ -596,6 +597,7 @@ export default function ToolClient() {
     async (uid: string, authToken: number) => {
       if (!authGuardRef.current.isCurrent(authToken)) return;
       invalidateStockNotesCache(uid);
+      window.dispatchEvent(new Event(AUDIENCE_CHANGED));
       await revalidateData(uid, dataUpdatedAt, authToken, stockNotesManifestRef.current);
     },
     [revalidateData, dataUpdatedAt],
@@ -696,46 +698,6 @@ export default function ToolClient() {
     }
   }
 
-  /**
-   * 一括取り込みの確認画面を開く。この時点の unregisteredHoldings をスナップショットとして
-   * 固定する（開いた後に一覧が変わっても、ユーザーが確認した対象のまま登録するため）。
-   */
-  function openBulkImport() {
-    setBulkImportSnapshot(unregisteredHoldings);
-    setBulkImportResult(null);
-    setShowBulkImport(true);
-  }
-
-  /** 確認画面を閉じる。次回開いたときに古い結果・スナップショットが残らないようクリアする。 */
-  function closeBulkImport() {
-    setShowBulkImport(false);
-    setBulkImportSnapshot([]);
-    setBulkImportResult(null);
-  }
-
-  async function runBulkImport() {
-    if (!supabase || !userId || bulkImportSnapshot.length === 0) return;
-    const authToken = authGuardRef.current.current();
-    setBulkImportSubmitting(true);
-    setBulkImportResult(null);
-    try {
-      const result = await bulkInsertHoldingsAsStocks(
-        supabase,
-        userId,
-        bulkImportSnapshot.map((h) => ({ code: h.code, name: h.name })),
-      );
-      setBulkImportResult(result);
-      // 成功が1件以上のときはもちろん、成功0件でも重複（23505、別タブ等で先に登録済み）だけで
-      // 終わった場合も再取得する。DBには既に反映されているのに古いキャッシュの「未登録」表示が
-      // 残ってしまうため（shouldRefetchAfterBulkImport、logic.ts）。
-      if (shouldRefetchAfterBulkImport(result)) {
-        await refetchAfterWrite(userId, authToken);
-      }
-    } finally {
-      setBulkImportSubmitting(false);
-    }
-  }
-
   return (
     <main style={{ padding: "24px 16px 96px" }}>
       <section style={{ maxWidth: 760, margin: "0 auto", display: "grid", gap: 16, minWidth: 0 }}>
@@ -744,7 +706,7 @@ export default function ToolClient() {
             銘柄分析ダッシュボード
           </h1>
           <p style={{ fontSize: 13, color: "var(--color-text-sub)", margin: 0, lineHeight: 1.6 }}>
-            stock-notes（カスタムGPT）に記録した銘柄分析と、マイ銘柄リストの保有銘柄を突き合わせて表示します。銘柄の登録・分類変更・アーカイブはこの画面から行えます。分析・見立ての追加はこの画面からはできません（分析はGPTの領域です）。
+            stock-notes（カスタムGPT）に記録した銘柄分析と、Portfolioの保有判定を表示します。ウォッチはこの画面で管理します。銘柄の登録・分類変更・アーカイブはこの画面から行えます。分析・見立ての追加はこの画面からはできません（分析はGPTの領域です）。
           </p>
         </header>
 
@@ -824,113 +786,11 @@ export default function ToolClient() {
               </p>
             )}
 
-            {/* 保有リストの同期状態。my-stocks はローカルが正本で、/account の「この端末を保存」を
-                押した時だけクラウドへアップロードされる（自動同期ではない）。ここで表示している
-                「未分析◯件」等の数字が古い保有リストに基づく可能性があることを伝える。 */}
-            <div
-              style={{
-                ...card,
-                borderColor: syncState === "fresh" ? "var(--color-border)" : "rgba(220,38,38,0.4)",
-              }}
-            >
-              <p style={{ margin: 0, fontSize: 12, color: "var(--color-text-sub)" }}>
-                保有リストの同期:{" "}
-                {holdingsUpdatedAt && syncState !== "unknown" ? (
-                  <>
-                    {formatDate(holdingsUpdatedAt)}
-                    {syncDaysAgo != null && `（${syncDaysAgo}日前）`}
-                  </>
-                ) : (
-                  "未同期"
-                )}
-              </p>
-              {syncState === "stale" && (
-                <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--color-danger, #dc2626)", lineHeight: 1.6 }}>
-                  同期が{SYNC_STALE_DAYS}日以上前です。保有リストが更新されている場合、この画面の「未分析◯件」などの数字は古い可能性があります。マイ銘柄リストを更新した場合は、
-                  <Link href="/account" style={{ color: "var(--color-danger, #dc2626)", fontWeight: 700 }}>
-                    /account
-                  </Link>
-                  の「この端末を保存」を押してください。
-                </p>
-              )}
-              {syncState === "unknown" && (
-                <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--color-danger, #dc2626)", lineHeight: 1.6 }}>
-                  保有リストの同期日時を確認できません。マイ銘柄リストを更新した場合は、
-                  <Link href="/account" style={{ color: "var(--color-danger, #dc2626)", fontWeight: 700 }}>
-                    /account
-                  </Link>
-                  の「この端末を保存」を押してください。
-                </p>
-              )}
+            <div style={card}>
+              <p>{holdingsLabel({ holdings, updatedAt: holdingsUpdatedAt, state: holdingsState, snapshotId: null })}</p>
+              <Link href="/premium/portfolio">保有明細・全体方針はPortfolioへ →</Link>
+              {unregisteredHoldings.length > 0 && <p>分析未登録の保有が{unregisteredHoldings.length}件あります。必要な銘柄を下のフォームから登録してください。</p>}
             </div>
-
-            {/* マイ銘柄リストからの一括取り込みバナー（タブの外）。
-                いきなり書き込まず、対象一覧を確認してから「まとめて登録」する2段階にする。
-                対象一覧は openBulkImport で開いた時点の unregisteredHoldings をスナップショット
-                固定したもの（bulkImportSnapshot）を表示・登録に使う。開いた後に裏の再取得等で
-                unregisteredHoldings が変わっても、ユーザーが確認した対象のまま登録するため。
-                表示条件は unregisteredHoldings.length>0 だけでなく bulkImportResult の有無も見る:
-                全件成功すると unregisteredHoldings は即座に0件になるが、そこでバナーごと消すと
-                「実行したのに何も起きなかった」ように見えてしまうため、結果が残っている間は
-                バナー自体を表示し続け、閉じるまで成功件数を確認できるようにする。 */}
-            {(unregisteredHoldings.length > 0 || bulkImportResult !== null) && (
-              <div style={{ ...card, borderColor: "var(--color-accent)" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                  <p style={{ margin: 0, fontSize: 13, color: "var(--color-text)", lineHeight: 1.6 }}>
-                    {unregisteredHoldings.length > 0
-                      ? `マイ銘柄リストに未登録の保有が${unregisteredHoldings.length}件あります。`
-                      : "一括登録が完了しました。"}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => (showBulkImport ? closeBulkImport() : openBulkImport())}
-                    style={subBtn}
-                  >
-                    {showBulkImport ? "閉じる" : "まとめて登録"}
-                  </button>
-                </div>
-                {showBulkImport && (
-                  <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-                    <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 4 }}>
-                      {bulkImportSnapshot.map((h) => (
-                        <li key={h.code} style={{ fontSize: 12, color: "var(--color-text-sub)" }}>
-                          {h.code} {h.name}
-                          {h.quantity != null && `（${h.quantity.toLocaleString("ja-JP")}株）`}
-                        </li>
-                      ))}
-                    </ul>
-                    <button
-                      type="button"
-                      onClick={runBulkImport}
-                      disabled={bulkImportSubmitting || bulkImportResult !== null}
-                      style={{
-                        ...primaryBtn,
-                        opacity: bulkImportSubmitting || bulkImportResult !== null ? 0.6 : 1,
-                        width: "fit-content",
-                      }}
-                    >
-                      {bulkImportSubmitting
-                        ? "登録中…"
-                        : `${bulkImportSnapshot.length}件を「保有」としてまとめて登録`}
-                    </button>
-                    {bulkImportResult && (
-                      <div style={{ display: "grid", gap: 2 }}>
-                        {bulkImportResult.succeeded.length > 0 && (
-                          <p style={{ margin: 0, fontSize: 12, color: "var(--color-text-sub)" }}>
-                            {bulkImportResult.succeeded.length}件登録しました。
-                          </p>
-                        )}
-                        {bulkImportResult.failed.map((f) => (
-                          <p key={f.code} style={{ margin: 0, fontSize: 12, color: "var(--color-danger, #dc2626)" }}>
-                            {f.code} {f.name}: {f.message}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* 1. 銘柄一覧（5タブ: 要対応/保有/ウォッチ/新規調査/アーカイブ） */}
             <section style={{ display: "grid", gap: 10 }}>
@@ -1025,13 +885,14 @@ export default function ToolClient() {
                 }}
               />
               {filteredStocks.length === 0 ? (
-                <p style={emptyText}>この分類の銘柄はまだありません。</p>
+                <p style={emptyText}>{categoryTab === "holding" && holdingsState !== "ready" ? "保有情報を確認できていないため、保有銘柄を表示できません。" : "この分類の銘柄はまだありません。"}</p>
               ) : (
                 <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
                   {filteredStocks.map((stock) => (
                     <StockRow
                       key={stock.id}
                       stock={stock}
+                      held={holdingsState === "ready" ? heldCodes.has(stock.code) : null}
                       analyses={analyses}
                       theses={theses}
                       actions={actions}
@@ -1176,6 +1037,7 @@ function ActionRequiredReasonBadges({ reasons }: { reasons: ActionRequiredReason
 
 function StockRow({
   stock,
+  held,
   analyses,
   theses,
   actions,
@@ -1192,6 +1054,7 @@ function StockRow({
   copied,
 }: {
   stock: StockNoteStock;
+  held: boolean | null;
   analyses: StockNoteAnalysis[];
   theses: StockNoteThesis[];
   actions: StockNoteAction[];
@@ -1216,7 +1079,7 @@ function StockRow({
   const lastEarningsDate = earnings?.lastEarnings[stock.code]?.date ?? null;
   const level = freshnessLevelWithEarnings(lastAnalyzed, lastEarningsDate);
   const reasons = showActionRequiredReasons
-    ? actionRequiredReasons(stock, analyses, actions, earnings?.lastEarnings ?? {})
+    ? actionRequiredReasons(held ? { ...stock, category: "holding" } : stock.category === "holding" ? { ...stock, category: "research" } : stock, analyses, actions, earnings?.lastEarnings ?? {})
     : [];
   const analysisCount = analysisCountForStock(analyses, stock.id);
   const openActions = openActionCountForStock(actions, stock.id);
@@ -1247,6 +1110,7 @@ function StockRow({
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontWeight: 900, color: "var(--color-text)", fontSize: 14 }}>{stock.code}</span>
           <span style={{ color: "var(--color-text)", fontSize: 13 }}>{stock.name}</span>
+          {held && <span>Portfolio保有{stock.category === "archived" ? "・分析はアーカイブ" : ""}</span>}
           {thesis && (
             <span
               style={badgeStyle(
@@ -1442,6 +1306,7 @@ function StockRow({
                   fontSize: 12,
                 }}
               >
+                {stock.category === "holding" && <option value="holding" disabled>旧分類: 保有（実保有はPortfolio判定）</option>}
                 {CATEGORY_SELECT_OPTIONS.map((c) => (
                   <option key={c} value={c}>
                     {CATEGORY_LABELS[c]}

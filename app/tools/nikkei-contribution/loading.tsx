@@ -14,10 +14,10 @@ export default function Loading() {
 
       {/* Control card: date nav + summary 2×2 */}
       <div style={{
-        background: "#fff",
+        background: "var(--color-bg-card)",
         border: "1px solid rgba(15,23,42,0.04)",
         borderRadius: 22,
-        boxShadow: "0 10px 30px rgba(15,23,42,0.06)",
+        boxShadow: "var(--shadow-card)",
         padding: 16,
         marginBottom: 16,
       }}>

@@ -1,8 +1,8 @@
 // app/tools/stock-notes/load.ts
 // ダッシュボードのデータ取得をまとめて orchestrate する。
 // React に依存しない純粋な非同期関数として切り出し、ToolClient から呼ぶ。
-// これにより「/api/sync の 401 だけ専用文言にする」ような分岐をユニットテストできる。
-import type { MyStockItem } from "@/app/tools/my-stocks/types";
+// これにより「/api/stock-notes/audience の 401 だけ専用文言にする」ような分岐をユニットテストできる。
+import type { Holding, HoldingsState } from "@/lib/portfolio/holdings";
 import {
   HoldingsFetchError,
   isSessionExpiredSupabaseError,
@@ -42,8 +42,9 @@ export type DashboardData = {
   analyses: StockNoteAnalysis[];
   theses: StockNoteThesis[];
   actions: StockNoteAction[];
-  holdings: MyStockItem[];
-  /** 保有リスト（/api/sync）の最終同期日時。無ければ null。 */
+  holdings: Holding[];
+  holdingsState?: HoldingsState;
+  /** 保有リスト（/api/stock-notes/audience）のsnapshot基準日。無ければ null。 */
   holdingsUpdatedAt: string | null;
   /**
    * 次回決算日の情報。取得に失敗した場合、または対象銘柄コードが0件で取得しなかった場合は null。
@@ -68,7 +69,7 @@ export type LoadResult =
  * 対象コードは stocks（分析済み銘柄）と holdings（保有銘柄）から決まるので、
  * それらの取得が終わるまでは何を渡せばよいか分からない。
  *
- * `/api/sync`（保有リスト）が 401 を返した場合（セッション切れ）、および
+ * `/api/stock-notes/audience`（保有リスト）が 401 を返した場合（セッション切れ）、および
  * `stock_notes_*`（Supabase直読み）がセッション切れ相当のエラー（`isSessionExpiredSupabaseError`、
  * PostgRESTの `PGRST301` 等）を返した場合は、一般的な取得失敗と区別できるよう
  * `status: "unauthorized"` を返す。両方を同じ扱いにするのは、呼び出し側
@@ -81,12 +82,20 @@ export type LoadResult =
  * 決算日が無くても表示できるため、失敗してもページ全体を `status: "error"` にはせず、
  * `earnings: null` としてページは表示し、決算日の表示箇所だけ「取得できませんでした」とする。
  */
+async function fetchHoldingsSafely(fetchers: DashboardFetchers): Promise<HoldingsWithSync> {
+  try { return await fetchers.fetchHoldings(); }
+  catch (error) {
+    if ((error instanceof HoldingsFetchError && error.status === 401) || isSessionExpiredSupabaseError(error)) throw error;
+    return { holdings: [], updatedAt: null, state: "unavailable" };
+  }
+}
+
 export async function loadDashboardData(fetchers: DashboardFetchers): Promise<LoadResult> {
   try {
     if (fetchers.fetchStockNotesDelta) {
       const [delta, holdingsResult] = await Promise.all([
         fetchers.fetchStockNotesDelta(fetchers.knownManifest ?? null),
-        fetchers.fetchHoldings(),
+        fetchHoldingsSafely(fetchers),
       ]);
       const baseData =
         fetchers.baseData ??
@@ -110,6 +119,7 @@ export async function loadDashboardData(fetchers: DashboardFetchers): Promise<Lo
         ...stockNotesData,
         holdings: holdingsResult.holdings,
         holdingsUpdatedAt: holdingsResult.updatedAt,
+        holdingsState: holdingsResult.state ?? "ready",
         earnings,
         stockNotesManifest: delta.currentManifest,
       };
@@ -120,7 +130,7 @@ export async function loadDashboardData(fetchers: DashboardFetchers): Promise<Lo
       fetchers.fetchAnalyses(),
       fetchers.fetchTheses(),
       fetchers.fetchOpenActions(),
-      fetchers.fetchHoldings(),
+      fetchHoldingsSafely(fetchers),
     ]);
 
     const codes = Array.from(
@@ -136,6 +146,7 @@ export async function loadDashboardData(fetchers: DashboardFetchers): Promise<Lo
       actions,
       holdings: holdingsResult.holdings,
       holdingsUpdatedAt: holdingsResult.updatedAt,
+      holdingsState: holdingsResult.state ?? "ready",
       earnings,
     };
   } catch (e) {

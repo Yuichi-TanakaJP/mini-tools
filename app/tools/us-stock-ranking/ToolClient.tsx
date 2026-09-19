@@ -173,9 +173,9 @@ function RankingTable({ records }: RankingTableProps) {
                       padding: "2px 7px",
                       borderRadius: 6,
                       background: up
-                        ? "#fee2e2"
+                        ? "var(--color-rise-bg)"
                         : down
-                        ? "#dbeafe"
+                        ? "var(--color-fall-bg)"
                         : "var(--color-bg-input)",
                       color: rateColor,
                       fontWeight: 700,
@@ -275,10 +275,10 @@ export default function ToolClient({ data }: { data: UsRankingPageData }) {
       {/* コントロール */}
       <div
         style={{
-          background: "#fff",
+          background: "var(--color-bg-card)",
           borderRadius: 22,
           border: "1px solid rgba(15, 23, 42, 0.04)",
-          boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+          boxShadow: "var(--shadow-card)",
           padding: 16,
           marginBottom: 20,
           display: "flex",
@@ -307,8 +307,8 @@ export default function ToolClient({ data }: { data: UsRankingPageData }) {
               padding: 0,
               borderRadius: 999,
               border: "1px solid rgba(37, 84, 255, 0.12)",
-              background: "#f5f8ff",
-              color: prevDate ? "#2554ff" : "#b9c2d0",
+              background: "var(--color-accent-sub)",
+              color: prevDate ? "var(--color-accent)" : "var(--color-text-disabled)",
               display: "grid",
               placeItems: "center",
               cursor: prevDate ? "pointer" : "default",
@@ -326,10 +326,10 @@ export default function ToolClient({ data }: { data: UsRankingPageData }) {
               padding: "8px 12px",
               borderRadius: 10,
               border: "1.5px solid rgba(148, 163, 184, 0.35)",
-              background: "#fff",
+              background: "var(--color-bg-card)",
               fontSize: 13,
               fontWeight: 700,
-              color: "#0f172a",
+              color: "var(--color-text)",
               textAlignLast: "center",
               cursor: "pointer",
             }}
@@ -351,8 +351,8 @@ export default function ToolClient({ data }: { data: UsRankingPageData }) {
               padding: 0,
               borderRadius: 999,
               border: "1px solid rgba(37, 84, 255, 0.12)",
-              background: "#f5f8ff",
-              color: nextDate ? "#2554ff" : "#b9c2d0",
+              background: "var(--color-accent-sub)",
+              color: nextDate ? "var(--color-accent)" : "var(--color-text-disabled)",
               display: "grid",
               placeItems: "center",
               cursor: nextDate ? "pointer" : "default",

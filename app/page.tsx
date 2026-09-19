@@ -28,7 +28,7 @@ export default async function HomePage() {
       <main style={{ maxWidth: 1040, margin: "0 auto", padding: "0 16px 64px" }}>
 
         {/* ヒーロー */}
-        <section style={{ padding: "40px 0 32px", position: "relative" }}>
+        <section style={{ padding: "34px 0 28px", position: "relative" }}>
           {/* 背景の装飾 */}
           <div style={{
             position: "absolute",
@@ -41,26 +41,6 @@ export default async function HomePage() {
           }} />
 
           <div style={{ position: "relative" }}>
-            {/* バッジ群 */}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
-              {["無料", "要ログイン不要", "データは端末内に保存"].map((label) => (
-                <span key={label} style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  padding: "4px 10px",
-                  borderRadius: 999,
-                  border: "1px solid var(--color-border-strong)",
-                  background: "var(--color-bg-card)",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: "var(--color-text-muted)",
-                  letterSpacing: 0.2,
-                }}>
-                  {label}
-                </span>
-              ))}
-            </div>
-
             {/* タイトル */}
             <h1 style={{
               margin: "0 0 12px",
@@ -70,13 +50,13 @@ export default async function HomePage() {
               lineHeight: 1.1,
               color: "var(--color-text)",
             }}>
-              個人投資家向けの<br />
+              投資と日常の、<br />
               <span style={{
                 background: "linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-highlight) 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
               }}>
-                ミニツール集
+                小さな道具。
               </span>
             </h1>
 
@@ -87,8 +67,7 @@ export default async function HomePage() {
               color: "var(--color-text-sub)",
               maxWidth: 480,
             }}>
-              文字数カウント・合計計算・株主優待管理など、<br />
-              ちょっと便利なツールをブラウザだけで使えます。
+              必要なものを、すぐ使えます。
             </p>
           </div>
         </section>
@@ -157,16 +136,6 @@ export default async function HomePage() {
                 <span style={{ color: "var(--color-text)" }}>mini-</span>
                 <span style={{ color: "var(--color-accent)" }}>tools</span>
               </div>
-              <p style={{
-                margin: 0,
-                fontSize: 12,
-                color: "var(--color-text-muted)",
-                lineHeight: 1.6,
-                maxWidth: 240,
-              }}>
-                個人投資家向けの小さなツール集。<br />
-                ブラウザだけで動き、データはあなたの端末に保存されます。
-              </p>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-end" }}>
@@ -220,17 +189,8 @@ export default async function HomePage() {
           `}</style>
 
           {/* コピーライト */}
-          <div style={{
-            fontSize: 11,
-            color: "var(--color-text-muted)",
-            lineHeight: 1.7,
-          }}>
-            <p style={{ margin: "0 0 4px" }}>
-              ※ 入力データはこの端末（ブラウザ）にのみ保存されます（localStorage）。サーバーへの送信はありません。
-            </p>
-            <p style={{ margin: 0 }}>
-              © {new Date().getFullYear()} mini-tools
-            </p>
+          <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
+            © {new Date().getFullYear()} mini-tools
           </div>
         </footer>
       </main>

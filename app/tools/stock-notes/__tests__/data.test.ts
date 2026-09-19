@@ -97,25 +97,11 @@ describe("fetchHoldings", () => {
     await expect(fetchHoldings()).rejects.toMatchObject({ status: 500 });
   });
 
-  it("正常時は my_stocks_items_v1 を normalize して返し、同期日時(updatedAt)も返す", async () => {
+  it("正常時はPortfolioの保有と基準日を返す", async () => {
     vi.mocked(fetch).mockResolvedValue(
       makeFetchResponse(true, 200, {
-        items: [
-          {
-            key: "my_stocks_items_v1",
-            updatedAt: "2026-06-21T00:00:00.000Z",
-            value: [
-              {
-                id: "a",
-                code: "7203",
-                name: "トヨタ自動車",
-                tab: "holding",
-                addedAt: 1,
-                updatedAt: 1,
-              },
-            ],
-          },
-        ],
+        holdings: { state: "ready", snapshotId: "s1", updatedAt: "2026-06-21T00:00:00.000Z", holdings: [{ code: "7203", name: "トヨタ自動車", tab: "holding" }] },
+        watch: { state: "ready", codes: [] },
       }),
     );
 
@@ -125,10 +111,10 @@ describe("fetchHoldings", () => {
     expect(result.updatedAt).toBe("2026-06-21T00:00:00.000Z");
   });
 
-  it("my_stocks_items_v1 が無ければ空配列とnullのupdatedAtを返す（本当に0件の場合はエラーにしない）", async () => {
+  it("旧同期レスポンスを保有0件と解釈しない", async () => {
     vi.mocked(fetch).mockResolvedValue(makeFetchResponse(true, 200, { items: [] }));
 
-    await expect(fetchHoldings()).resolves.toEqual({ holdings: [], updatedAt: null });
+    await expect(fetchHoldings()).rejects.toMatchObject({ status: 502 });
   });
 });
 

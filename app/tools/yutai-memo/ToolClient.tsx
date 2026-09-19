@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import DatabaseMemo from "./DatabaseMemo";
 import styles from "./ToolClient.module.css";
 import type {
   ArchivedMemoItem,
@@ -149,7 +150,7 @@ function formatOneShareStartedLabel(value?: string): string {
 }
 
 function getNextCrossType(current?: CrossType): CrossType {
-  const index = CROSS_TYPES.indexOf(current ?? "長期優遇なし");
+  const index = CROSS_TYPES.findIndex(value => value === (current ?? "長期優遇なし"));
   if (index < 0) return "長期優遇なし";
   return CROSS_TYPES[(index + 1) % CROSS_TYPES.length];
 }
@@ -186,6 +187,7 @@ const SORT_KEY_LABELS: Record<SortKey, string> = {
 };
 
 const CROSS_TYPE_DESCRIPTIONS: Record<CrossType, string> = {
+  未設定: "クロス方針は未設定です。",
   長期優遇なし:
     "長期条件を特に気にせず、その都度判断する通常運用です。",
   単発クロス:
@@ -200,7 +202,12 @@ const CROSS_TYPE_DESCRIPTIONS: Record<CrossType, string> = {
 
 type ShortBalanceRequestState = "idle" | "loading" | "done" | "error";
 
-export default function ToolClient({
+export default function ToolClient(props: { shortBalance: NikkoShortBalanceData }) {
+  if (process.env.NEXT_PUBLIC_YUTAI_MEMO_DB_PREVIEW === "true") return <DatabaseMemo shortBalance={props.shortBalance} />;
+  return <LegacyToolClient {...props} />;
+}
+
+function LegacyToolClient({
   shortBalance,
 }: {
   shortBalance: NikkoShortBalanceData;
@@ -532,7 +539,7 @@ export default function ToolClient({
     if (!d.name.trim()) return "銘柄名は必須です";
     if (d.months.length === 0) return "権利月は1つ以上選んでください";
     if (d.months.length > 4) return "権利月は最大4つまで選択できます";
-    if (!CROSS_TYPES.includes(d.crossType)) return "戦略タイプを選択してください";
+    if (!CROSS_TYPES.some(value => value === d.crossType)) return "戦略タイプを選択してください";
     return null;
   }
 

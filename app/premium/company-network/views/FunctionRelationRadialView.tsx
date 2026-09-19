@@ -23,7 +23,11 @@ type Props = {
 
 // 色は階層ではなくクラスター（大分類）のまとまりに使う。
 // 階層は塗り/白抜き・ノードサイズ・ラベル強度で表現する。
-const CLUSTER_TONES = ["#2554ff", "#0d9488", "#7c3aed"] as const;
+const CLUSTER_TONES = [
+  "var(--color-accent)",
+  "var(--color-chart-2)",
+  "var(--color-chart-6)",
+] as const;
 const HIERARCHY_LINK = "#94a3b8";
 const LABEL_MUTED = "var(--color-text-sub)";
 

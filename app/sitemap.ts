@@ -14,7 +14,6 @@ const ROUTES = [
   "/tools/stock-ranking",
   "/tools/tdnet-disclosures",
   "/tools/disclosure-radar",
-  "/tools/my-stocks",
   "/tools/yutai-expiry",
   "/tools/yutai-memo",
   "/tools/yutai-candidates",

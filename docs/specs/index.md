@@ -1,5 +1,7 @@
 # 仕様書インデックス
 
+- [データ入出力（優待DB全件出力・照合 / 端末バックアップ）](./tools/data-transfer.md)
+
 このディレクトリは、`mini-tools` の「現在仕様」をツール別に整理する場所です。
 
 ## 仕様書の位置づけ
@@ -20,6 +22,8 @@
 | 日経225寄与度 | `/tools/nikkei-contribution` | [nikkei-contribution.md](./tools/nikkei-contribution.md) |
 | TOPIX33業種 | `/tools/topix33` | [topix33.md](./tools/topix33.md) |
 | 優待銘柄メモ帳 | `/tools/yutai-memo` | [yutai-memo.md](./tools/yutai-memo.md) |
+| 株主優待期限帳 | `/tools/yutai-expiry` | [yutai-expiry.md](./tools/yutai-expiry.md) / [Reward Model v2拡張](./tools/yutai-expiry-v2.md) |
+| 優待カレンダー | `/tools/yutai-candidates` | [yutai-candidates.md](./tools/yutai-candidates.md) |
 | 優待ダッシュボード | `/tools/yutai-dashboard` | [yutai-dashboard.md](./tools/yutai-dashboard.md) |
 | 銘柄分析ダッシュボード | `/tools/stock-notes` | [stock-notes.md](./tools/stock-notes.md) |
 | 決算カレンダー | `/tools/earnings-calendar` | [earnings-calendar.md](./tools/earnings-calendar.md) |

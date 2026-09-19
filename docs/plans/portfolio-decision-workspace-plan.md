@@ -2,13 +2,21 @@
 
 最終更新: 2026-09-07
 
+正本参照更新: 2026-09-14
+
+2026-09-18追記: UI-4 / V2 Phase 6の保有統合基盤として、Portfolioと通知・銘柄分析の保有選択を共通化する。利用者指示により未同期端末メモの確認は撤去条件としない。受入条件は正本一致、Premium/RLS維持、失敗と0件の区別、旧UI通常導線の終了。詳細は[統合判断](../decision-log/2026-09-18-portfolio-holdings-authority.md)。本追記はUI-4全体やV2完成条件の変更ではない。
+
 状態: **UI-1〜UI-2の初回実装済み。UI-3の初回範囲として、review履歴、外部資産の読み取り、公式保有と外部参照資産の総資産評価額を実装済み。`/premium/portfolio` は保存済み判断を読む意思決定ワークスペースへ移行中であり、共有読み取り契約・外部資産の商品別構成/意思決定統合・差分表示は未完成である。**
 
 ## 1. 正本と対象範囲
 
 クロスリポジトリ全体の目的、ChatGPT運用、API、完成条件は、stock-notesの
-[ポートフォリオ意思決定プラットフォーム正本計画](https://github.com/Yuichi-TanakaJP/stock-notes/blob/main/docs/portfolio-platform-plan.md)
+[ポートフォリオ方針・振り返りプラットフォーム V2 正本設計](https://github.com/Yuichi-TanakaJP/stock-notes/blob/main/docs/portfolio-platform-v2.md)
 を正とする。
+
+旧 [`portfolio-platform-plan.md`](https://github.com/Yuichi-TanakaJP/stock-notes/blob/main/docs/portfolio-platform-plan.md) はV1の履歴文書であり、現在の完成条件には使用しない。実装順と受入確認は
+[`portfolio-platform-v2-implementation-plan.md`](https://github.com/Yuichi-TanakaJP/stock-notes/blob/main/docs/portfolio-platform-v2-implementation-plan.md) と
+[`portfolio-platform-v2-checklist.md`](https://github.com/Yuichi-TanakaJP/stock-notes/blob/main/docs/portfolio-platform-v2-checklist.md) を参照する。
 
 この文書は、正本をMiniToolsの画面、データ取得、銘柄ダッシュボード連携、UATへ落とす実行計画である。
 
@@ -24,7 +32,7 @@ MiniToolsはポートフォリオ方針の主入力画面ではない。主入�
 ユーザーが画面を開いたとき、最初に答えられるべき質問は次のとおり。
 
 - 今のポートフォリオの強みと弱みは何か
-- 追加資金をどこへ、いくら、どの条件で入れるのか
+- どの領域を補強し、どの条件で待つのか。金額配分を求めた場合は、いくら入れるのか
 - 今すぐ買わない銘柄は、なぜ待つのか
 - どの銘柄の分析が古く、何を再確認すべきか
 - 前回の方針から何が変わったか
@@ -53,9 +61,9 @@ MiniToolsはポートフォリオ方針の主入力画面ではない。主入�
 ### 未実装
 
 - ChatGPT相談開始・継続導線
-- stock-notesのdecision context APIをMiniTools専用の共有契約として利用すること
+- stock-notesの`GET /portfolio/decision-context`をMiniTools用の共有読み取り契約として利用すること
 - 全体診断、弱み、不足する役割
-- 新規資金配分、待機資金、見送り理由
+- 金額配分を依頼した場合の新規資金配分・待機資金と、通常の見送り理由
 - 分析鮮度、決算後未分析、取得失敗の表示
 - portfolio action
 - reviewとsnapshotの鮮度差
@@ -136,7 +144,10 @@ MiniToolsはポートフォリオ方針の主入力画面ではない。主入�
 
 文章を一段落で埋めず、「結論」「理由」「リスク」「次回確認」に分ける。
 
-### 6.3 新規資金の投入計画
+### 6.3 補強候補と、依頼時の新規資金投入計画
+
+通常は金額を仮定せず、補強する領域・既存銘柄・新規候補・テーマ・待機の理由を比較する。
+ユーザーが金額配分を明示的に求めた場合は、次の項目を表示する。
 
 優先順位順に次を表示する。
 
@@ -225,11 +236,11 @@ MiniToolsはポートフォリオ方針の主入力画面ではない。主入�
 ## 10. データ取得方針
 
 MiniToolsはSupabase Auth/RLSを使って本人データを読む。表示用の単純な読み取りは直接取得できるが、
-判断文脈の定義はstock-notes `GET /portfolio/context` と一致させる。
+判断文脈の定義はstock-notes `GET /portfolio/decision-context` と一致させる。
 
 同じ集計・鮮度判定をMiniToolsとstock-notesで別実装して不一致にしない。次のいずれかで共有する。
 
-1. stock-notes contextをMiniToolsサーバー経由で取得する
+1. stock-notes decision contextをMiniToolsサーバー経由で取得する
 2. DB view/RPC等で正規化した共通読み取り契約を作る
 
 採用方式はcontext API PRで、認証、応答時間、キャッシュ、障害分離を比較して決定する。
@@ -252,7 +263,7 @@ MiniToolsはSupabase Auth/RLSを使って本人データを読む。表示用の
 
 ### UI-2: 意思決定画面（初回実装）
 
-- ヘッダー、全体判断、投入計画、診断、アクション
+- ヘッダー、全体判断、補強候補、依頼時の投入計画、診断、アクション
 - reviewなし・要再レビュー状態
 - 保存済みテーマ推薦と未完了Action
 - 新規資金額未設定時の明示
@@ -275,7 +286,7 @@ UI-3の初回受入範囲は、stock-notes側のreview lifecycle（`draft` / `fi
 - 銘柄詳細のportfolio context
 - 分析鮮度・再分析導線
 
-各PRはstock-notesの`docs/portfolio-plan-checklist.md`に対応するPhaseと受入条件をPR本文へ記載する。
+各PRはstock-notesの`docs/portfolio-platform-v2-checklist.md`に対応するPhaseと受入条件をPR本文へ記載する。
 
 ## 12. UAT計画
 
@@ -284,7 +295,7 @@ UI-3の初回受入範囲は、stock-notes側のreview lifecycle（`draft` / `fi
 - 49position、39instrument、5口座が欠落なく表示される
 - INPEX 1605が96株、取得単価1,927円として表示される
 - ChatGPTで保存したreviewが手入力なしで反映される
-- 100万円の提案配分合計と待機資金が一致する
+- 100万円の配分を依頼した場合、提案配分合計と待機資金が一致する
 - INPEXの個別評価と追加優先度が別表示される
 - reviewより新しいsnapshotで要再レビューになる
 - 未分析、決算後未分析、API失敗を空状態と誤認しない

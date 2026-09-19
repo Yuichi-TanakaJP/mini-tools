@@ -476,7 +476,7 @@ export default function ToolClient({
             borderRadius: 8,
             border: "1.5px solid var(--color-accent)",
             background: "var(--color-accent)",
-            color: "#fff",
+            color: "var(--color-text-inverse)",
             fontSize: 13,
             fontWeight: 800,
             cursor: isPendingFor("apply") ? "wait" : "pointer",

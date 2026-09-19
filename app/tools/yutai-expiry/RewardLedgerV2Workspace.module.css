@@ -1,0 +1,104 @@
+.overview {
+  display: grid;
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.overviewHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.overviewHeader h3,
+.overviewHeader p {
+  margin: 0;
+}
+
+.overviewHeader p {
+  margin-top: 4px;
+  color: var(--color-text-sub);
+}
+
+.compactList {
+  display: grid;
+  gap: 8px;
+}
+
+.compactRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 14px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-bg-card);
+}
+
+.compactTitle {
+  min-width: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.compactMeta {
+  grid-column: 1 / -1;
+  color: var(--color-text-sub);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.compactValue {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.warningRow {
+  border-color: var(--color-warning-border, var(--color-border-strong));
+}
+
+.advanced {
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-bg-card);
+  overflow: hidden;
+}
+
+.advanced > summary {
+  cursor: pointer;
+  padding: 13px 14px;
+  font-weight: 700;
+  list-style-position: inside;
+}
+
+.advancedBody {
+  padding: 0 10px 10px;
+}
+
+.sectionTitle {
+  margin: 8px 0 6px;
+  font-size: 15px;
+}
+
+@media (max-width: 600px) {
+  .overview {
+    margin: 12px 0;
+  }
+
+  .compactRow {
+    padding: 11px 12px;
+    border-radius: 12px;
+  }
+
+  .compactValue {
+    font-size: 16px;
+  }
+
+  .compactMeta {
+    font-size: 12px;
+  }
+}

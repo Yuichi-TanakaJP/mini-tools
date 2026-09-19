@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   selectUpcomingBenefitExpiries,
+  selectUpcomingRewardExpiries,
   type UpcomingBenefitExpiry,
 } from "@/app/home-notifications/yutai-expiry";
 import { loadReadEventIds } from "@/app/tools/disclosure-radar/read-state";
@@ -18,7 +19,9 @@ import type {
 } from "@/app/tools/disclosure-radar/types";
 import type { EarningsCalendarItem } from "@/app/tools/earnings-calendar/types";
 import type { EconCalendarEvent } from "@/app/tools/econ-calendar/types";
-import { loadItems } from "@/app/tools/my-stocks/storage";
+import { useAudience } from "@/lib/portfolio/useAudience";
+import { isSyncConfigured } from "@/lib/supabase/config";
+import { getYutaiRepository, useYutaiWorkspace } from "@/lib/yutai/browser";
 import {
   getBenefitsServerSnapshot,
   getBenefitsSnapshot,
@@ -27,6 +30,7 @@ import {
 
 const DISCLOSURE_NOTIFICATION_RANGE_DAYS = 7;
 const PREVIEW_ITEM_COUNT = 3;
+const noLegacySubscription = () => () => {};
 
 type DisclosureNotificationData = {
   latestDate: string;
@@ -369,16 +373,24 @@ async function loadEconNotifications(): Promise<EconNotificationData | null> {
 }
 
 export default function HomeNotifications() {
+  const audience = useAudience();
+  const [notificationAudience, setNotificationAudience] = useState<ReadonlySet<string> | null>(null);
   const [state, setState] = useState<NotificationState>({ status: "loading" });
   const [today, setToday] = useState(todayLocalDateKey);
+  const database = process.env.NEXT_PUBLIC_YUTAI_EXPIRY_DB_PREVIEW === "true";
+  const configured = isSyncConfigured();
+  const view = useYutaiWorkspace(1, database && configured);
+  const confirmed = configured && view.status === "ready" && !view.stale && view.data !== null;
   const benefitItems = useSyncExternalStore(
-    subscribeBenefitsStore,
-    getBenefitsSnapshot,
+    database ? noLegacySubscription : subscribeBenefitsStore,
+    database ? getBenefitsServerSnapshot : getBenefitsSnapshot,
     getBenefitsServerSnapshot,
   );
   const upcomingBenefitExpiries = useMemo(
-    () => selectUpcomingBenefitExpiries(benefitItems, today),
-    [benefitItems, today],
+    () => database
+      ? selectUpcomingRewardExpiries(confirmed ? view.data!.rewards : [], today)
+      : selectUpcomingBenefitExpiries(benefitItems, today),
+    [database, confirmed, view.data, benefitItems, today],
   );
 
   useEffect(() => {
@@ -395,16 +407,21 @@ export default function HomeNotifications() {
       () => setToday(todayLocalDateKey()),
       nextDay.getTime() - now.getTime(),
     );
-    return () => window.clearTimeout(timeoutId);
+    const refreshDate = () => setToday(todayLocalDateKey());
+    window.addEventListener("focus", refreshDate);
+    document.addEventListener("visibilitychange", refreshDate);
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.removeEventListener("focus", refreshDate);
+      document.removeEventListener("visibilitychange", refreshDate);
+    };
   }, [today]);
 
   useEffect(() => {
     let active = true;
 
     async function loadNotifications() {
-      const myStockCodes = new Set(
-        loadItems().map((item) => normalizeSecurityCode(item.code)),
-      );
+      const myStockCodes = audience.codes;
       const [disclosure, earnings, econ] = await Promise.all([
         loadDisclosureNotifications(myStockCodes),
         loadEarningsNotifications(myStockCodes),
@@ -412,6 +429,7 @@ export default function HomeNotifications() {
       ]);
 
       if (!active) return;
+      setNotificationAudience(myStockCodes);
       setState(
         hasDisclosureNotifications(disclosure) ||
           hasEarningsNotifications(earnings) ||
@@ -426,54 +444,48 @@ export default function HomeNotifications() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [audience.codes, today]);
 
-  const notificationCount = useMemo(() => {
-    if (state.status !== "ready") return 0;
-    const disclosureCount = state.disclosure
-      ? state.disclosure.myStockUnreadItems.length + state.disclosure.yutaiUnreadItems.length
-      : 0;
-    const earningsEventCount = state.earnings
-      ? state.earnings.days.reduce(
-          (sum, day) => sum + day.domestic.count + day.overseas.count,
-          0,
-        )
-      : 0;
-    const econEventCount = state.econ?.events.length ?? 0;
-    return disclosureCount + earningsEventCount + econEventCount;
-  }, [state]);
-
-  if (state.status !== "ready" && upcomingBenefitExpiries.length === 0) {
-    return null;
-  }
 
   const disclosure = state.status === "ready" ? state.disclosure : null;
   const earnings = state.status === "ready" ? state.earnings : null;
   const econ = state.status === "ready" ? state.econ : null;
-  const totalNotificationCount = notificationCount + upcomingBenefitExpiries.length;
+  const benefitStatus = !configured
+    ? "優待期限: 接続設定なし"
+    : view.status === "signed_out"
+      ? "優待期限: ログインが必要"
+      : view.status === "loading" || view.status === "idle"
+        ? "優待期限を確認中"
+        : !confirmed
+          ? "優待期限: 取得できませんでした"
+          : `優待期限: 7日以内 ${upcomingBenefitExpiries.length}件`;
 
   return (
     <section className="home-notifications" aria-label="通知" aria-live="polite">
       <div className="home-notifications__header">
         <div>
-          <p className="home-notifications__eyebrow">NOTIFICATIONS</p>
-          <h2>期限・市場の注目イベント</h2>
+          <p className="home-notifications__eyebrow">TODAY</p>
+          <h2>今日のチェック</h2>
         </div>
-        <span className="home-notifications__count">注目 {totalNotificationCount}件</span>
       </div>
 
-      <p className="home-notifications__summary">
-        7日以内の優待期限、開示イベントの未確認、保有/ウォッチ・日経225を含む今日・明日の決算予定、重要経済指標をホームでまとめて確認できます。
-        {disclosure ? ` 開示データ: ${disclosure.latestDate}` : ""}
-      </p>
-
       <div className="home-notifications__groups">
+        <p>{audience.status} <Link href="/tools/stock-notes">ウォッチ管理</Link> / <Link href="/premium/portfolio">Portfolio</Link></p>
+        {database && (
+          <div className="home-notifications__group" aria-label="優待期限の取得状態">
+            <span className="home-notifications__status">{benefitStatus}</span>
+            {configured && view.status !== "signed_out" && <button type="button"
+              className="home-notifications__refresh"
+              disabled={view.status === "loading" || view.status === "idle"}
+              onClick={() => { void getYutaiRepository().load(1, true).catch(() => {}); }}>更新</button>}
+          </div>
+        )}
         <BenefitExpiryPreviewList items={upcomingBenefitExpiries} />
         {earnings && hasEarningsNotifications(earnings) ? (
           <div className="home-notifications__group home-notifications__group--earnings">
             <div className="home-notifications__group-title">
-              <span>今日・明日の決算予定</span>
-              <strong>2日分</strong>
+              <span>決算予定</span>
+              <strong>{earnings.days.reduce((sum, day) => sum + day.domestic.count + day.overseas.count, 0)}件</strong>
             </div>
             <div className="home-notifications__day-list">
               {earnings.days.map((day) => (
@@ -484,14 +496,14 @@ export default function HomeNotifications() {
         ) : null}
         {earnings ? (
           <>
-            <EarningsPreviewList items={earnings.personalItems} label="決算: 保有/ウォッチ" />
+            <EarningsPreviewList items={notificationAudience === audience.codes ? earnings.personalItems : []} label="決算: 保有/ウォッチ" />
             <EarningsPreviewList items={earnings.nikkei225Items} label="決算: 日経225" />
           </>
         ) : null}
         {econ ? <EconPreviewList events={econ.events} /> : null}
         {disclosure ? (
           <>
-            <DisclosurePreviewList items={disclosure.myStockUnreadItems} label="開示: マイ銘柄" />
+            <DisclosurePreviewList items={notificationAudience === audience.codes ? disclosure.myStockUnreadItems : []} label="開示: 保有/ウォッチ" />
             <DisclosurePreviewList items={disclosure.yutaiUnreadItems} label="開示: 優待変更" />
           </>
         ) : null}
@@ -500,7 +512,7 @@ export default function HomeNotifications() {
       <div className="home-notifications__links">
         {upcomingBenefitExpiries.length ? (
           <Link className="home-notifications__link" href="/tools/yutai-expiry">
-            優待期限帳で確認する
+            優待期限帳 →
           </Link>
         ) : null}
         {earnings && hasEarningsNotifications(earnings) ? (
@@ -512,7 +524,7 @@ export default function HomeNotifications() {
             }`}
             href="/tools/earnings-calendar"
           >
-            決算カレンダーで確認する
+            決算カレンダー →
           </Link>
         ) : null}
         {econ && hasEconNotifications(econ) ? (
@@ -520,7 +532,7 @@ export default function HomeNotifications() {
             className="home-notifications__link home-notifications__link--secondary"
             href="/tools/econ-calendar"
           >
-            経済指標を見る
+            経済指標 →
           </Link>
         ) : null}
         {disclosure?.myStockUnreadItems.length ? (
@@ -528,7 +540,7 @@ export default function HomeNotifications() {
             className="home-notifications__link home-notifications__link--secondary"
             href="/tools/disclosure-radar?view=my-stocks&range=7"
           >
-            マイ銘柄の開示を見る
+            保有・ウォッチの開示 →
           </Link>
         ) : null}
         {disclosure?.yutaiUnreadItems.length ? (
@@ -536,7 +548,7 @@ export default function HomeNotifications() {
             className="home-notifications__link home-notifications__link--secondary"
             href="/tools/disclosure-radar?view=yutai&range=7"
           >
-            優待変更を見る
+            優待変更 →
           </Link>
         ) : null}
       </div>
@@ -575,25 +587,6 @@ export default function HomeNotifications() {
           letter-spacing: 0;
         }
 
-        .home-notifications__count {
-          flex-shrink: 0;
-          display: inline-flex;
-          align-items: center;
-          border-radius: 999px;
-          background: var(--color-accent);
-          color: var(--color-accent-text);
-          font-size: 12px;
-          font-weight: 900;
-          padding: 5px 10px;
-        }
-
-        .home-notifications__summary {
-          margin: 0 0 14px;
-          color: var(--color-text-sub);
-          font-size: 13px;
-          line-height: 1.65;
-        }
-
         .home-notifications__groups {
           display: grid;
           gap: 12px;
@@ -602,6 +595,31 @@ export default function HomeNotifications() {
 
         .home-notifications__group {
           min-width: 0;
+        }
+
+        .home-notifications__group[aria-label="優待期限の取得状態"] {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .home-notifications__status {
+          color: var(--color-text-sub);
+          font-size: 12px;
+          font-weight: 800;
+        }
+
+        .home-notifications__refresh {
+          flex-shrink: 0;
+          border: 1px solid var(--color-border-strong);
+          border-radius: 8px;
+          background: var(--color-bg-card);
+          color: var(--color-accent);
+          font-size: 12px;
+          font-weight: 800;
+          padding: 6px 10px;
+          cursor: pointer;
         }
 
         .home-notifications__group--earnings {
@@ -671,6 +689,7 @@ export default function HomeNotifications() {
         }
 
         .home-notifications__link {
+          flex: 1 1 150px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -706,10 +725,6 @@ export default function HomeNotifications() {
             text-align: left;
           }
 
-          .home-notifications__count,
-          .home-notifications__link {
-            width: 100%;
-          }
         }
       `}</style>
     </section>

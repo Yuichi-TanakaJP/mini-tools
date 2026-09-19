@@ -110,9 +110,9 @@ export default function PremiumPreviewChart({
               gap: 8,
               padding: "6px 10px",
               borderRadius: 999,
-              background: "#fff7ed",
-              border: "1px solid #fdba74",
-              color: "#c2410c",
+              background: "var(--color-warning-bg)",
+              border: "1px solid var(--color-warning-border)",
+              color: "var(--color-warning)",
               fontSize: 12,
               fontWeight: 800,
             }}
@@ -138,8 +138,8 @@ export default function PremiumPreviewChart({
         <div
           style={{
             minWidth: 160,
-            background: "#0f172a",
-            color: "#fff",
+            background: "var(--color-bg-emphasis)",
+            color: "var(--color-text-on-emphasis)",
             borderRadius: 18,
             padding: "14px 16px",
           }}
@@ -165,14 +165,14 @@ export default function PremiumPreviewChart({
               padding: "9px 12px",
               borderRadius: 999,
               border: isShowingAll
-                ? "1px solid #1d4ed8"
+                ? "1px solid var(--color-border-accent)"
                 : "1px solid var(--color-border)",
-              background: isShowingAll ? "#dbeafe" : "#fff",
-              color: isShowingAll ? "#1e3a8a" : "var(--color-text-sub)",
+              background: isShowingAll ? "var(--color-accent-sub)" : "var(--color-bg-card)",
+              color: isShowingAll ? "var(--color-accent)" : "var(--color-text-sub)",
               fontSize: 13,
               fontWeight: 800,
               cursor: "pointer",
-              boxShadow: isShowingAll ? "inset 0 0 0 1px rgba(37, 99, 235, 0.08)" : "none",
+              boxShadow: isShowingAll ? "inset 0 0 0 1px var(--color-accent-glow)" : "none",
               transition: "all 120ms ease",
             }}
           >
@@ -195,12 +195,12 @@ export default function PremiumPreviewChart({
                   border: active
                     ? `1px solid ${item.color}`
                     : "1px solid var(--color-border)",
-                  background: active ? "#dbeafe" : "#fff",
-                  color: active ? "#1e3a8a" : "var(--color-text-sub)",
+                  background: active ? "var(--color-accent-sub)" : "var(--color-bg-card)",
+                  color: active ? "var(--color-accent)" : "var(--color-text-sub)",
                   fontSize: 13,
                   fontWeight: 800,
                   cursor: "pointer",
-                  boxShadow: active ? "inset 0 0 0 1px rgba(37, 99, 235, 0.08)" : "none",
+                  boxShadow: active ? "inset 0 0 0 1px var(--color-accent-glow)" : "none",
                   transition: "all 120ms ease",
                 }}
               >
@@ -238,7 +238,7 @@ export default function PremiumPreviewChart({
 
       <div
         style={{
-          background: "linear-gradient(180deg, #f8fbff 0%, #ffffff 100%)",
+          background: "linear-gradient(180deg, var(--color-bg-subtle) 0%, var(--color-bg-card) 100%)",
           borderRadius: 22,
           border: "1px solid rgba(37, 84, 255, 0.10)",
           padding: "18px 14px 14px",
@@ -263,7 +263,7 @@ export default function PremiumPreviewChart({
               }}
             >
               <span>{axisMax.toFixed(1)}</span>
-              <span style={{ color: "#1d4ed8", fontWeight: 800 }}>
+              <span style={{ color: "var(--color-accent)", fontWeight: 800 }}>
                 {(axisMin + axisRange / 2).toFixed(1)}
               </span>
               <span>{axisMin.toFixed(1)}</span>
@@ -363,7 +363,7 @@ export default function PremiumPreviewChart({
             style={{
               borderRadius: 16,
               border: "1px solid var(--color-border)",
-              background: "#fff",
+              background: "var(--color-bg-card)",
               padding: "12px 14px",
             }}
           >
@@ -394,7 +394,7 @@ export default function PremiumPreviewChart({
             <div
               style={{
                 fontSize: 12,
-                color: item.latestChange >= 0 ? "#166534" : "#991b1b",
+                color: item.latestChange >= 0 ? "var(--color-rise)" : "var(--color-fall)",
                 fontWeight: 800,
               }}
             >

@@ -1,0 +1,12 @@
+.page button[aria-pressed="true"] { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+.tableWrap { max-width: 100%; overflow-x: auto; }
+.table { width: 100%; min-width: 720px; border-collapse: collapse; text-align: left; }
+.table th, .table td { padding: 12px; border-bottom: 1px solid var(--color-border-strong); vertical-align: top; }
+.table summary { cursor: pointer; min-width: 150px; padding: 8px; }
+.table th[scope="row"] { overflow-wrap: anywhere; min-width: 120px; }
+.table details[open] { min-width: 280px; }
+.primaryActions { margin-bottom: 8px; }
+.page .primaryAction { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-accent-text); font-weight: 700; }
+.secondaryActions { margin: 4px 0 12px; }
+.secondaryActions > summary { width: fit-content; cursor: pointer; color: var(--color-text-sub); font-weight: 700; padding: 6px 0; }
+.secondaryActions[open] > summary { color: var(--color-accent); }

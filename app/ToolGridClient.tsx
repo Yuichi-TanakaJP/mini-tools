@@ -8,6 +8,7 @@ import { track } from "@/lib/analytics";
 
 type ToolItem = {
   title: string;
+  short: string;
   detail: string;
   href: string;
   icon: string;
@@ -197,7 +198,7 @@ export default function ToolGridClient({ tools }: Props) {
               <div className="tool-card__icon">{t.icon}</div>
               <div className="tool-card__body">
                 <div className="tool-card__title">{t.title}</div>
-                <div className="tool-card__desc">{t.detail}</div>
+                <div className="tool-card__desc">{t.short}</div>
               </div>
               {isEditing ? (
                 <MoveControls
@@ -216,7 +217,7 @@ export default function ToolGridClient({ tools }: Props) {
               <div className="tool-card__icon">{t.icon}</div>
               <div className="tool-card__body">
                 <div className="tool-card__title">{t.title}</div>
-                <div className="tool-card__desc">{t.detail}</div>
+                <div className="tool-card__desc">{t.short}</div>
               </div>
               <MoveControls
                 title={t.title}
@@ -245,7 +246,7 @@ export default function ToolGridClient({ tools }: Props) {
                   <div className="tool-card__icon">{t.icon}</div>
                   <div className="tool-card__body">
                     <div className="tool-card__title">{t.title}</div>
-                    <div className="tool-card__desc">{t.detail}</div>
+                    <div className="tool-card__desc">{t.short}</div>
                   </div>
                   <div className="tool-card__arrow" aria-hidden>
                     {t.external ? "↗" : "→"}
@@ -263,7 +264,12 @@ export default function ToolGridClient({ tools }: Props) {
                   {inner}
                 </a>
               ) : (
-                <Link key={t.href} href={t.href} {...sharedProps}>
+                <Link
+                  key={t.href}
+                  href={t.href}
+                  prefetch={t.href === "/tools/yutai-dashboard" ? false : undefined}
+                  {...sharedProps}
+                >
                   {inner}
                 </Link>
               );

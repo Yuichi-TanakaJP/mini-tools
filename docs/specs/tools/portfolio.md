@@ -3,8 +3,12 @@
 > **実装状態:** 2026-08-23時点の画面は、最新snapshot、active policy・policy履歴、保存済みreview/recommendation/action、latest reflectionを読むUI-1〜UI-2初回版に、UI-3のreview履歴分離表示と外部口座・参考資産の読み取り表示を加えたものである。reviewが参照したpolicy versionも表示する。
 > ポートフォリオ意思決定プラットフォームの完成品ではない。目標運用とUIの実装順序は
 > [ポートフォリオ意思決定ワークスペース実装計画](../../plans/portfolio-decision-workspace-plan.md) を参照する。
+> クロスリポジトリの現行正本はstock-notesの
+> [V2正本設計](https://github.com/Yuichi-TanakaJP/stock-notes/blob/main/docs/portfolio-platform-v2.md) であり、旧V1計画より優先する。
 
 ## 概要
+
+- 2026-09-18: 国内株式の保有判定を銘柄分析・ホーム通知・開示レーダーと共有する。対象Portfolio・公式ready snapshotの選択は共通selector。CSV再取込は不要。詳細は[統合判断](../../decision-log/2026-09-18-portfolio-holdings-authority.md)。全資産の表示範囲は従来どおり。
 
 - URL: `/premium/portfolio`
 - 分類: Premium / 投資管理
@@ -17,6 +21,8 @@
 ## 画面仕様
 
 ### 主な画面要素
+
+2026-09-19表示整理: 主タブは意思決定・保有一覧・履歴。口座・取込、方針、DB確認は詳細メニューに保持する。企業グループ集中は保有一覧内の展開詳細とし、方針・reviewの長文は明示した冒頭抜粋と全文展開で表示する。推薦条件・Action詳細・振り返りも展開可能で、保存済み情報は削除しない。
 
 - **意思決定**: 判断状態、snapshot/reviewの基準日、全体要約、金額なしの補強・調査recommendation、未完了portfolio action
 - **保有一覧**: 公式保有と外部参照資産を合算した総資産評価額、scope別内訳、公式保有の取得額・含み損益・商品別配分、分析軸を切り替えられる構成分析
@@ -64,7 +70,7 @@
 - MiniToolsからChatGPTの相談・保存を開始する
 - MiniToolsからrecommendation/actionを作成・更新・完了する
 - stock-notesのdecision-context全体をMiniTools専用の共通読み取り契約として集約する（現時点はSupabaseの本人行を読み取る暫定実装）
-- 金額指定を含む新規資金の順位・配分を表示する（現在は金額なし候補の表示のみ）
+- ユーザーが金額配分を依頼した場合の新規資金の順位・配分を表示する（現在は金額なし候補の表示のみ）
 - 前回reviewとの差分を表示する
 - 銘柄ダッシュボードとportfolio方針を往復する
 - 外部資産を商品別構成・意思決定context・配分分析へ統合する。通貨換算、重複排除、分析対象外ルールは後続で定義する
@@ -141,3 +147,5 @@
 - Decision Log: [公式保有と外部参照資産の総資産評価額](../../decision-log/2026-08-28-portfolio-total-assets-valuation.md)
 - Decision Log: [ポートフォリオ構成分析とExposureの分離](../../decision-log/2026-09-07-portfolio-allocation-analysis.md)
 - Plan: [ポートフォリオ意思決定ワークスペース実装計画](../../plans/portfolio-decision-workspace-plan.md)
+- Cross-repository source: [stock-notes Portfolio V2](https://github.com/Yuichi-TanakaJP/stock-notes/blob/main/docs/portfolio-platform-v2.md)
+- Acceptance checklist: [stock-notes Portfolio V2 checklist](https://github.com/Yuichi-TanakaJP/stock-notes/blob/main/docs/portfolio-platform-v2-checklist.md)

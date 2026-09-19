@@ -69,11 +69,11 @@ function badgeStyle(background: string, color: string) {
 }
 
 function lifecycleTone(status: string) {
-  if (status === "active") return { bg: "#dcfce7", fg: "#166534" };
-  if (status === "experimental") return { bg: "#fef3c7", fg: "#92400e" };
-  if (status === "archived") return { bg: "#e2e8f0", fg: "#475569" };
-  if (status === "paused") return { bg: "#fee2e2", fg: "#991b1b" };
-  return { bg: "#e0e7ff", fg: "#3730a3" };
+  if (status === "active") return { bg: "var(--color-success-bg)", fg: "var(--color-success-text)" };
+  if (status === "experimental") return { bg: "var(--color-warning-bg)", fg: "var(--color-warning-text)" };
+  if (status === "archived") return { bg: "var(--color-neutral-bg)", fg: "var(--color-neutral-text)" };
+  if (status === "paused") return { bg: "var(--color-error-bg)", fg: "var(--color-error-text)" };
+  return { bg: "var(--color-accent-sub)", fg: "var(--color-accent)" };
 }
 
 function RelationCard({ relation, direction }: { relation: WorkspaceCoreProductRelation; direction: "incoming" | "outgoing" }) {
@@ -82,7 +82,7 @@ function RelationCard({ relation, direction }: { relation: WorkspaceCoreProductR
     <div
       style={{
         border: "1px solid var(--color-border)",
-        background: "#fff",
+        background: "var(--color-bg-card)",
         borderRadius: 14,
         padding: "11px 12px",
         display: "grid",
@@ -91,7 +91,7 @@ function RelationCard({ relation, direction }: { relation: WorkspaceCoreProductR
       }}
     >
       <div style={{ fontWeight: 850, fontSize: 13, overflowWrap: "anywhere" }}>{otherName}</div>
-      <div style={{ color: "#4f46e5", fontSize: 11, fontWeight: 800 }}>
+      <div style={{ color: "var(--color-accent)", fontSize: 11, fontWeight: 800 }}>
         {RELATION_LABELS[relation.relationType] ?? relation.relationType}
       </div>
       <div style={{ color: "var(--color-text-sub)", fontSize: 10 }}>
@@ -105,7 +105,7 @@ function StatCard({ label, value, note }: { label: string; value: number; note: 
   return (
     <div
       style={{
-        background: "#fff",
+        background: "var(--color-bg-card)",
         border: "1px solid var(--color-border)",
         borderRadius: 18,
         padding: "16px 17px",
@@ -231,7 +231,7 @@ export default function ProductMapClient() {
               borderRadius: 26,
               padding: "30px 24px",
               background: "linear-gradient(135deg, #0f172a, #312e81)",
-              color: "#fff",
+              color: "var(--color-text-inverse)",
             }}
           >
             <div style={{ fontSize: 12, fontWeight: 850, opacity: 0.72, marginBottom: 10 }}>WORKSPACE CORE</div>
@@ -241,7 +241,7 @@ export default function ProductMapClient() {
             </p>
           </div>
           {loadState === "unconfigured" ? (
-            <div style={{ padding: 18, borderRadius: 18, background: "#fff7ed", border: "1px solid #fed7aa", lineHeight: 1.8 }}>
+            <div style={{ padding: 18, borderRadius: 18, background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", lineHeight: 1.8 }}>
               Vercel / ローカル環境に server-only の Workspace Core 接続情報を設定すると、この画面が有効になります。
               ブラウザ用の <code>NEXT_PUBLIC_*</code> には設定しません。
             </div>
@@ -252,16 +252,16 @@ export default function ProductMapClient() {
   }
 
   return (
-    <main style={{ padding: "28px 14px 72px", background: "linear-gradient(#f8fafc, #fff 420px)" }}>
+    <main style={{ padding: "28px 14px 72px", background: "linear-gradient(var(--color-bg-subtle), var(--color-bg-card) 420px)" }}>
       <section style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gap: 18 }}>
         <div
           style={{
             borderRadius: 28,
             padding: "26px 24px",
-            color: "#fff",
+            color: "var(--color-text-inverse)",
             background:
               "radial-gradient(circle at 90% 10%, rgba(56,189,248,.28), transparent 30%), radial-gradient(circle at 5% 100%, rgba(168,85,247,.28), transparent 35%), linear-gradient(135deg,#0f172a 0%,#1e1b4b 52%,#312e81 100%)",
-            boxShadow: "0 22px 55px rgba(15,23,42,.15)",
+            boxShadow: "var(--shadow-panel)",
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", gap: 18, flexWrap: "wrap", alignItems: "flex-start" }}>
@@ -293,7 +293,7 @@ export default function ProductMapClient() {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-start" }}>
           <aside
             style={{
-              background: "#fff",
+              background: "var(--color-bg-card)",
               border: "1px solid var(--color-border)",
               borderRadius: 22,
               padding: 14,
@@ -315,7 +315,7 @@ export default function ProductMapClient() {
                   borderRadius: 12,
                   border: "1px solid var(--color-border)",
                   padding: "0 12px",
-                  background: "#f8fafc",
+                  background: "var(--color-bg-subtle)",
                   color: "var(--color-text)",
                 }}
               />
@@ -323,7 +323,7 @@ export default function ProductMapClient() {
                 <select
                   value={typeFilter}
                   onChange={(event) => setTypeFilter(event.target.value)}
-                  style={{ height: 38, borderRadius: 11, border: "1px solid var(--color-border)", padding: "0 8px", background: "#fff" }}
+                  style={{ height: 38, borderRadius: 11, border: "1px solid var(--color-border)", padding: "0 8px", background: "var(--color-bg-card)" }}
                 >
                   <option value="all">全Type</option>
                   {[...new Set(overview.products.map((product) => product.productType))].sort().map((type) => (
@@ -333,7 +333,7 @@ export default function ProductMapClient() {
                 <select
                   value={providerFilter}
                   onChange={(event) => setProviderFilter(event.target.value)}
-                  style={{ height: 38, borderRadius: 11, border: "1px solid var(--color-border)", padding: "0 8px", background: "#fff" }}
+                  style={{ height: 38, borderRadius: 11, border: "1px solid var(--color-border)", padding: "0 8px", background: "var(--color-bg-card)" }}
                 >
                   <option value="all">全Provider</option>
                   {providerOptions.map(([slug, name]) => <option key={slug} value={slug}>{name}</option>)}
@@ -342,7 +342,7 @@ export default function ProductMapClient() {
             </div>
 
             {selectedProviderImpact ? (
-              <div style={{ borderRadius: 13, background: "#eef2ff", padding: 11, fontSize: 11, lineHeight: 1.6 }}>
+              <div style={{ borderRadius: 13, background: "var(--color-accent-sub)", padding: 11, fontSize: 11, lineHeight: 1.6 }}>
                 <strong>{providerOptions.find(([slug]) => slug === providerFilter)?.[1] ?? providerFilter}</strong>
                 <div>runtime: {selectedProviderImpact.runtimeProducts.length} Product</div>
                 <div>monitoring only: {selectedProviderImpact.monitoringProducts.length} Product</div>
@@ -361,7 +361,7 @@ export default function ProductMapClient() {
                     style={{
                       textAlign: "left",
                       border: active ? "1px solid #818cf8" : "1px solid transparent",
-                      background: active ? "#eef2ff" : "#fff",
+                      background: active ? "var(--color-info-bg)" : "var(--color-bg-card)",
                       borderRadius: 14,
                       padding: "11px 12px",
                       cursor: "pointer",
@@ -369,9 +369,9 @@ export default function ProductMapClient() {
                       gap: 6,
                     }}
                   >
-                    <div style={{ fontWeight: 900, color: active ? "#312e81" : "var(--color-text)", overflowWrap: "anywhere" }}>{product.name}</div>
+                    <div style={{ fontWeight: 900, color: active ? "var(--color-info-text)" : "var(--color-text)", overflowWrap: "anywhere" }}>{product.name}</div>
                     <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                      <span style={badgeStyle("#f1f5f9", "#475569")}>{PRODUCT_TYPE_LABELS[product.productType] ?? product.productType}</span>
+                      <span style={badgeStyle("var(--color-neutral-bg)", "var(--color-neutral-text)")}>{PRODUCT_TYPE_LABELS[product.productType] ?? product.productType}</span>
                       <span style={badgeStyle(tone.bg, tone.fg)}>{product.lifecycleStatus}</span>
                     </div>
                     <div style={{ fontSize: 10, color: "var(--color-text-sub)" }}>
@@ -385,11 +385,11 @@ export default function ProductMapClient() {
 
           <section style={{ minWidth: 0, display: "grid", gap: 14, flex: "1 1 560px" }}>
             {detailLoading && !detail ? (
-              <div style={{ padding: 24, borderRadius: 20, background: "#fff", border: "1px solid var(--color-border)" }}>読み込み中…</div>
+              <div style={{ padding: 24, borderRadius: 20, background: "var(--color-bg-card)", border: "1px solid var(--color-border)" }}>読み込み中…</div>
             ) : detail ? (
               <ProductDetail detail={detail} productBySlug={productBySlug} onSelectProduct={setSelectedSlug} />
             ) : (
-              <div style={{ padding: 24, borderRadius: 20, background: "#fff", border: "1px solid var(--color-border)" }}>Product詳細を取得できませんでした。</div>
+              <div style={{ padding: 24, borderRadius: 20, background: "var(--color-bg-card)", border: "1px solid var(--color-border)" }}>Product詳細を取得できませんでした。</div>
             )}
           </section>
         </div>
@@ -412,24 +412,24 @@ function ProductDetail({
 
   return (
     <>
-      <div style={{ background: "#fff", border: "1px solid var(--color-border)", borderRadius: 22, padding: "20px 20px 18px", display: "grid", gap: 12 }}>
+      <div style={{ background: "var(--color-bg-card)", border: "1px solid var(--color-border)", borderRadius: 22, padding: "20px 20px 18px", display: "grid", gap: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
           <div>
-            <div style={{ color: "#6366f1", fontSize: 11, fontWeight: 900 }}>{detail.product.slug}</div>
+            <div style={{ color: "var(--color-accent)", fontSize: 11, fontWeight: 900 }}>{detail.product.slug}</div>
             <h2 style={{ margin: "4px 0 6px", fontSize: 27, letterSpacing: -.6 }}>{detail.product.name}</h2>
             <p style={{ margin: 0, color: "var(--color-text-sub)", fontSize: 13, lineHeight: 1.7, maxWidth: 760 }}>
               {detail.product.description || "説明はまだ登録されていません。"}
             </p>
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <span style={badgeStyle("#eef2ff", "#3730a3")}>{PRODUCT_TYPE_LABELS[detail.product.productType] ?? detail.product.productType}</span>
+            <span style={badgeStyle("var(--color-accent-sub)", "var(--color-accent)")}>{PRODUCT_TYPE_LABELS[detail.product.productType] ?? detail.product.productType}</span>
             <span style={badgeStyle(lifecycle.bg, lifecycle.fg)}>{detail.product.lifecycleStatus}</span>
-            <span style={badgeStyle("#f8fafc", "#475569")}>importance {detail.product.importance}</span>
+            <span style={badgeStyle("var(--color-neutral-bg)", "var(--color-neutral-text)")}>importance {detail.product.importance}</span>
           </div>
         </div>
       </div>
 
-      <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 22, padding: 16, display: "grid", gap: 12 }}>
+      <div style={{ background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", borderRadius: 22, padding: 16, display: "grid", gap: 12 }}>
         <div>
           <div style={{ fontWeight: 950, fontSize: 15 }}>1-hop Product Map</div>
           <div style={{ color: "var(--color-text-sub)", fontSize: 11, marginTop: 3 }}>Product間の確認済みrelationのみ。Provider監視はここには混ぜません。</div>
@@ -444,7 +444,7 @@ function ProductDetail({
             )) : <div style={{ color: "var(--color-text-sub)", fontSize: 11 }}>なし</div>}
           </div>
 
-          <div style={{ borderRadius: 18, padding: "18px 12px", textAlign: "center", background: "linear-gradient(135deg,#312e81,#4f46e5)", color: "#fff", boxShadow: "0 12px 30px rgba(79,70,229,.18)" }}>
+          <div style={{ borderRadius: 18, padding: "18px 12px", textAlign: "center", background: "linear-gradient(135deg,#312e81,#4f46e5)", color: "var(--color-text-inverse)", boxShadow: "0 12px 30px rgba(79,70,229,.18)" }}>
             <div style={{ fontSize: 10, opacity: .7 }}>SELECTED</div>
             <div style={{ marginTop: 5, fontWeight: 950, overflowWrap: "anywhere" }}>{detail.product.name}</div>
           </div>
@@ -463,10 +463,10 @@ function ProductDetail({
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 12 }}>
         <AssetPanel title={`Repositories · ${detail.repositories.length}`}>
           {detail.repositories.length ? detail.repositories.map((repo) => (
-            <div key={repo.repositoryId} style={{ padding: "10px 0", borderBottom: "1px solid #eef2f7" }}>
+            <div key={repo.repositoryId} style={{ padding: "10px 0", borderBottom: "1px solid var(--color-border)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                {repo.htmlUrl ? <a href={repo.htmlUrl} target="_blank" rel="noreferrer" style={{ color: "#4338ca", fontWeight: 850, textDecoration: "none", overflowWrap: "anywhere" }}>{repo.fullName}</a> : <strong>{repo.fullName}</strong>}
-                {repo.isPrimary ? <span style={badgeStyle("#dcfce7", "#166534")}>primary</span> : null}
+                {repo.htmlUrl ? <a href={repo.htmlUrl} target="_blank" rel="noreferrer" style={{ color: "var(--color-accent)", fontWeight: 850, textDecoration: "none", overflowWrap: "anywhere" }}>{repo.fullName}</a> : <strong>{repo.fullName}</strong>}
+                {repo.isPrimary ? <span style={badgeStyle("var(--color-success-bg)", "var(--color-success-text)")}>primary</span> : null}
               </div>
               <div style={{ color: "var(--color-text-sub)", fontSize: 10, marginTop: 5 }}>{repo.visibility} · {repo.defaultBranch ?? "branch ?"} · {repo.role}</div>
             </div>
@@ -475,24 +475,24 @@ function ProductDetail({
 
         <AssetPanel title={`Technologies · ${detail.technologies.length}`}>
           {detail.technologies.length ? detail.technologies.map((tech) => (
-            <div key={tech.technologyId} style={{ padding: "10px 0", borderBottom: "1px solid #eef2f7", display: "grid", gap: 5 }}>
+            <div key={tech.technologyId} style={{ padding: "10px 0", borderBottom: "1px solid var(--color-border)", display: "grid", gap: 5 }}>
               <div style={{ display: "flex", gap: 7, alignItems: "center", flexWrap: "wrap" }}>
                 <strong>{tech.technologyName}</strong>
-                <span style={badgeStyle("#f1f5f9", "#475569")}>{tech.category}</span>
+                <span style={badgeStyle("var(--color-neutral-bg)", "var(--color-neutral-text)")}>{tech.category}</span>
                 {tech.version ? <span style={{ fontSize: 10, color: "var(--color-text-sub)" }}>{tech.version}</span> : null}
               </div>
               <div style={{ fontSize: 10, color: "var(--color-text-sub)" }}>{tech.role ?? "role未設定"} · confidence {confidencePercent(tech.confidence)}</div>
-              {tech.evidenceUri ? <a href={tech.evidenceUri} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: "#4f46e5", textDecoration: "none" }}>Evidence ↗</a> : null}
+              {tech.evidenceUri ? <a href={tech.evidenceUri} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: "var(--color-accent)", textDecoration: "none" }}>Evidence ↗</a> : null}
             </div>
           )) : <Empty />}
         </AssetPanel>
 
         <AssetPanel title={`Runtime services · ${runtime.length + detail.serviceInstances.length}`}>
           {detail.serviceInstances.map((instance) => (
-            <div key={instance.serviceInstanceId} style={{ padding: "10px 0", borderBottom: "1px solid #eef2f7", display: "grid", gap: 4 }}>
+            <div key={instance.serviceInstanceId} style={{ padding: "10px 0", borderBottom: "1px solid var(--color-border)", display: "grid", gap: 4 }}>
               <div style={{ display: "flex", gap: 7, flexWrap: "wrap", alignItems: "center" }}>
                 <strong>{instance.providerName}</strong>
-                <span style={badgeStyle("#dbeafe", "#1d4ed8")}>concrete instance</span>
+                <span style={badgeStyle("var(--color-info-bg)", "var(--color-info-text)")}>concrete instance</span>
               </div>
               <div style={{ fontSize: 11 }}>{instance.instanceName}</div>
               <div style={{ fontSize: 10, color: "var(--color-text-sub)" }}>{instance.relationType} · {instance.environment} · {instance.region ?? "region ?"}</div>
@@ -508,13 +508,13 @@ function ProductDetail({
       </div>
 
       {detail.incomingRelations.length || detail.outgoingRelations.length ? (
-        <div style={{ background: "#fff", border: "1px solid var(--color-border)", borderRadius: 20, padding: 16 }}>
+        <div style={{ background: "var(--color-bg-card)", border: "1px solid var(--color-border)", borderRadius: 20, padding: 16 }}>
           <div style={{ fontWeight: 900, marginBottom: 10 }}>Relation provenance</div>
           {[...detail.outgoingRelations, ...detail.incomingRelations].map((relation, index) => {
             const otherSlug = relation.sourceProductSlug === detail.product.slug ? relation.targetProductSlug : relation.sourceProductSlug;
             return (
-              <div key={`${otherSlug}-${relation.relationType}-${index}`} style={{ padding: "9px 0", borderTop: index ? "1px solid #eef2f7" : 0, fontSize: 11, lineHeight: 1.6 }}>
-                <button type="button" onClick={() => onSelectProduct(otherSlug)} style={{ border: 0, padding: 0, background: "transparent", color: "#4338ca", fontWeight: 850, cursor: "pointer" }}>
+              <div key={`${otherSlug}-${relation.relationType}-${index}`} style={{ padding: "9px 0", borderTop: index ? "1px solid var(--color-border)" : 0, fontSize: 11, lineHeight: 1.6 }}>
+                <button type="button" onClick={() => onSelectProduct(otherSlug)} style={{ border: 0, padding: 0, background: "transparent", color: "var(--color-accent)", fontWeight: 850, cursor: "pointer" }}>
                   {productBySlug.get(otherSlug)?.name ?? otherSlug}
                 </button>
                 <span style={{ color: "var(--color-text-sub)" }}> · {RELATION_LABELS[relation.relationType] ?? relation.relationType} · {relation.source} · confidence {confidencePercent(relation.confidence)}</span>
@@ -530,23 +530,23 @@ function ProductDetail({
 
 function ProviderRow({ link, monitoring = false }: { link: WorkspaceCoreProviderLink; monitoring?: boolean }) {
   return (
-    <div style={{ padding: "10px 0", borderBottom: "1px solid #eef2f7", display: "grid", gap: 4 }}>
+    <div style={{ padding: "10px 0", borderBottom: "1px solid var(--color-border)", display: "grid", gap: 4 }}>
       <div style={{ display: "flex", gap: 7, flexWrap: "wrap", alignItems: "center" }}>
         <strong>{link.providerName}</strong>
-        <span style={badgeStyle(monitoring ? "#fef3c7" : "#e0e7ff", monitoring ? "#92400e" : "#3730a3")}>
+        <span style={badgeStyle(monitoring ? "var(--color-warning-bg)" : "var(--color-accent-sub)", monitoring ? "var(--color-warning-text)" : "var(--color-accent)")}>
           {PROVIDER_RELATION_LABELS[link.relationType] ?? link.relationType}
         </span>
       </div>
       <div style={{ fontSize: 10, color: "var(--color-text-sub)" }}>{link.providerCategory} · confidence {confidencePercent(link.confidence)}</div>
-      {link.evidenceUri ? <a href={link.evidenceUri} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: "#4f46e5", textDecoration: "none" }}>Evidence ↗</a> : null}
-      {monitoring ? <div style={{ fontSize: 10, color: "#92400e" }}>監視対象であり、このProductのruntime dependencyとは扱いません。</div> : null}
+      {link.evidenceUri ? <a href={link.evidenceUri} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: "var(--color-accent)", textDecoration: "none" }}>Evidence ↗</a> : null}
+      {monitoring ? <div style={{ fontSize: 10, color: "var(--color-warning)" }}>監視対象であり、このProductのruntime dependencyとは扱いません。</div> : null}
     </div>
   );
 }
 
 function AssetPanel({ children, title, tone = "default" }: { children: ReactNode; title: string; tone?: "default" | "monitoring" }) {
   return (
-    <div style={{ background: tone === "monitoring" ? "#fffbeb" : "#fff", border: `1px solid ${tone === "monitoring" ? "#fde68a" : "var(--color-border)"}`, borderRadius: 20, padding: 15, minWidth: 0 }}>
+    <div style={{ background: tone === "monitoring" ? "var(--color-warning-bg)" : "var(--color-bg-card)", border: `1px solid ${tone === "monitoring" ? "var(--color-warning-border)" : "var(--color-border)"}`, borderRadius: 20, padding: 15, minWidth: 0 }}>
       <div style={{ fontWeight: 950, fontSize: 14, marginBottom: 5 }}>{title}</div>
       <div>{children}</div>
     </div>
