@@ -1,0 +1,362 @@
+.main {
+  padding: 28px 16px 80px;
+}
+
+.shell {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: grid;
+  gap: 18px;
+}
+
+.topNav {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.topNav a {
+  color: var(--color-text-sub);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+  padding: 24px;
+  border-radius: 24px;
+  background: var(--color-bg-emphasis);
+  color: var(--color-text-on-emphasis);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-panel);
+}
+
+.hero h1 {
+  margin: 4px 0 10px;
+  font-size: clamp(26px, 4vw, 38px);
+  line-height: 1.1;
+}
+
+.hero p {
+  margin: 0;
+  max-width: 760px;
+  line-height: 1.8;
+  color: color-mix(in srgb, var(--color-text-on-emphasis) 80%, transparent);
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+}
+
+.readOnlyPill {
+  flex-shrink: 0;
+  padding: 8px 11px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-text-on-emphasis) 22%, transparent);
+  background: color-mix(in srgb, var(--color-text-on-emphasis) 10%, transparent);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.controls,
+.eventCard,
+.stateCard,
+.boundaryNote,
+.summaryGrid > div {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+}
+
+.controls {
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.filterForm {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.filterForm label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--color-text-sub);
+}
+
+.filterForm select {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  padding: 0 12px;
+  font: inherit;
+}
+
+.filterActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.filterActions button,
+.filterActions a {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.filterActions button {
+  border: 1px solid var(--color-border-accent);
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  cursor: pointer;
+}
+
+.filterActions a {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-sub);
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.summaryGrid > div {
+  border-radius: 16px;
+  padding: 16px;
+  display: grid;
+  gap: 5px;
+}
+
+.summaryGrid span {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.summaryGrid strong {
+  color: var(--color-text);
+  font-size: 24px;
+}
+
+.eventGrid {
+  display: grid;
+  gap: 12px;
+}
+
+.eventCard {
+  border-radius: 18px;
+  padding: 18px;
+  display: grid;
+  gap: 13px;
+}
+
+.eventHeader,
+.companyRow,
+.cardFooter,
+.badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.eventHeader,
+.cardFooter {
+  justify-content: space-between;
+}
+
+.badges {
+  flex-wrap: wrap;
+}
+
+.statusBadge,
+.eventBadge,
+.readOnlyNote {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.statusBadge {
+  padding: 7px 9px;
+  background: var(--color-warning-sub);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.eventBadge {
+  padding: 7px 9px;
+  background: var(--color-accent-sub);
+  color: var(--color-text);
+  border: 1px solid var(--color-border-accent);
+}
+
+.time {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.companyRow {
+  flex-wrap: wrap;
+  color: var(--color-text);
+}
+
+.code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--color-text-sub);
+  font-weight: 800;
+}
+
+.title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.7;
+  color: var(--color-text);
+}
+
+.metaGrid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metaGrid div {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--color-bg-subtle);
+}
+
+.metaGrid dt {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.metaGrid dd {
+  margin: 4px 0 0;
+  color: var(--color-text-sub);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.readOnlyNote {
+  padding: 6px 8px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.pdfLink {
+  color: var(--color-link);
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.stateCard {
+  border-radius: 18px;
+  padding: 22px;
+}
+
+.stateCard h2 {
+  margin: 0 0 8px;
+  color: var(--color-text);
+  font-size: 18px;
+}
+
+.stateCard p {
+  margin: 0;
+  color: var(--color-text-sub);
+  line-height: 1.7;
+}
+
+.stateCard a {
+  display: inline-block;
+  margin-top: 12px;
+  color: var(--color-link);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.boundaryNote {
+  border-radius: 16px;
+  padding: 14px 16px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+@media (max-width: 820px) {
+  .filterForm {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .filterActions {
+    grid-column: 1 / -1;
+  }
+
+  .metaGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .main {
+    padding-inline: 12px;
+  }
+
+  .hero {
+    padding: 20px;
+    flex-direction: column;
+  }
+
+  .filterForm,
+  .summaryGrid,
+  .metaGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .eventHeader,
+  .cardFooter {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .time {
+    align-self: flex-start;
+  }
+}
