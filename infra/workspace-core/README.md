@@ -12,9 +12,10 @@ Workspace Core has progressed beyond the original Product Map V1. The V1 API/sec
 | Description and provisional Service layer | `sql/011` through `sql/013` |
 | V3 Function / Capability / Knowledge / Evolution / Value Flow foundation | `sql/014` through `sql/020` |
 | V3 evidence-backed inventory expansion | `sql/021` through `sql/028` |
+| Product Evolution Evidence reader | `sql/029_product_evolution_evidence_reader.sql` |
 | Controlled origin follow-up for #583 / #588 | `operations/apply_origin_followup.sql`, with private replay input |
 
-The numeric SQL files should be reviewed/applied in order through **028** to reproduce the V3 baseline. The old 001-010 procedure below reproduces only the original V1 baseline. A clean-database replay of the entire sequence was not re-tested in this follow-up.
+The numeric SQL files should be reviewed/applied in order through **029** to reproduce the current V3 baseline. The old 001-010 procedure below reproduces only the original V1 baseline. A clean-database replay of the entire sequence was not re-tested in this follow-up.
 
 The current origin follow-up adds data, not schema. The loader and [read-only checks](operations/verify_origin_followup.sql) are separate from unconditional bootstrap SQL because personal evidence must not be published in this public repository. The replay unit is the public loader plus the immutable private audit snapshot held by the canonical Workstream. Missing input or conflicting definitions abort rather than overwrite data.
 
@@ -46,6 +47,10 @@ Workspace Core Supabase project (inventory scope)
 ```
 
 Workspace Core is a **catalog and relationship graph**, not a content warehouse. Other Workspace Core domains are outside this inventory-focused bootstrap/handoff.
+
+### Product Evolution Evidence reader
+
+`sql/029_product_evolution_evidence_reader.sql` adds a dedicated, NO-BYPASSRLS database principal for pc-saas-health-monitor. It can read only the key/status/timestamps of active `product-evolution-review-*` rows from `knowledge.items`; it cannot read Review statements/metadata, write Workspace Core, or access other schemas. The login password is configured out-of-band and stored only in the Health Monitor OS Credential Store. Verification queries live in `operations/verify_product_evolution_evidence_reader.sql`.
 
 ## Source-of-truth policy
 
