@@ -130,7 +130,7 @@
 .filterActions button {
   border: 1px solid var(--color-border-accent);
   background: var(--color-accent);
-  color: var(--color-text-on-accent);
+  color: var(--color-accent-text);
   cursor: pointer;
 }
 
@@ -207,7 +207,7 @@
 
 .statusBadge {
   padding: 7px 9px;
-  background: var(--color-warning-sub);
+  background: var(--color-warning-bg);
   color: var(--color-text);
   border: 1px solid var(--color-border);
 }
@@ -281,7 +281,7 @@
 }
 
 .pdfLink {
-  color: var(--color-link);
+  color: var(--color-accent);
   font-size: 13px;
   font-weight: 800;
   text-decoration: none;
@@ -307,7 +307,7 @@
 .stateCard a {
   display: inline-block;
   margin-top: 12px;
-  color: var(--color-link);
+  color: var(--color-accent);
   font-weight: 800;
   text-decoration: none;
 }
