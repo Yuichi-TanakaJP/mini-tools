@@ -38,6 +38,13 @@ const FEATURE_CARDS: FeatureCard[] = [
     group: "investment",
   },
   {
+    href: "/premium/tdnet-router",
+    icon: "🚦",
+    title: "TDNET確認キュー",
+    short: "未処理・要確認の重要開示を確認",
+    group: "investment",
+  },
+  {
     href: "/premium/themes",
     icon: "🧭",
     title: "テーマViewer",
