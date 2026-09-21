@@ -155,8 +155,20 @@ begin
   from pg_auth_members m
   join pg_roles granted_role on granted_role.oid = m.roleid
   join pg_roles member_role on member_role.oid = m.member
-  where m.member in (capability_oid, principal_oid)
-     or m.roleid in (capability_oid, principal_oid);
+  where (
+      m.member in (capability_oid, principal_oid)
+      or m.roleid in (capability_oid, principal_oid)
+    )
+    and not (
+      -- PostgreSQL 17 automatically grants a newly-created role back to the
+      -- non-superuser CREATEROLE creator as ADMIN TRUE / INHERIT FALSE /
+      -- SET FALSE. It is management authority, not inherited data access.
+      m.member = current_user::regrole
+      and m.roleid in (capability_oid, principal_oid)
+      and m.admin_option
+      and not m.inherit_option
+      and not m.set_option
+    );
 
   if detail is not null then
     raise exception 'unexpected role membership on dedicated reader roles: %', detail;
@@ -297,7 +309,43 @@ begin
      or membership.set_option then
     raise exception 'reader membership options do not match ADMIN FALSE / INHERIT TRUE / SET FALSE';
   end if;
+
+  if exists (
+    select 1
+    from pg_auth_members m
+    where (
+        m.member in (
+          'product_evolution_evidence_reader'::regrole,
+          'health_monitor_workspace_reader'::regrole
+        )
+        or m.roleid in (
+          'product_evolution_evidence_reader'::regrole,
+          'health_monitor_workspace_reader'::regrole
+        )
+      )
+      and not (
+        (
+          m.roleid = 'product_evolution_evidence_reader'::regrole
+          and m.member = 'health_monitor_workspace_reader'::regrole
+          and not m.admin_option
+          and m.inherit_option
+          and not m.set_option
+        )
+        or (
+          m.member = current_user::regrole
+          and m.roleid in (
+            'product_evolution_evidence_reader'::regrole,
+            'health_monitor_workspace_reader'::regrole
+          )
+          and m.admin_option
+          and not m.inherit_option
+          and not m.set_option
+        )
+      )
+  ) then
+    raise exception 'unexpected role membership remains after reader setup';
+  end if;
 end
-$$;
+$;
 
 commit;
