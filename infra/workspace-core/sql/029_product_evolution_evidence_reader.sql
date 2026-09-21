@@ -17,27 +17,63 @@ begin
   if not exists (
     select 1 from pg_roles where rolname = 'product_evolution_evidence_reader'
   ) then
-    create role product_evolution_evidence_reader;
+    create role product_evolution_evidence_reader
+      nologin inherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls
+      connection limit -1;
   end if;
 
   if not exists (
     select 1 from pg_roles where rolname = 'health_monitor_workspace_reader'
   ) then
-    create role health_monitor_workspace_reader;
+    create role health_monitor_workspace_reader
+      login inherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls
+      connection limit 2;
   end if;
 end
 $$;
 
--- Converge all role attributes we own. Password is deliberately not touched:
--- it is initialized/rotated out-of-band after the migration has been reviewed.
-alter role product_evolution_evidence_reader
-  nologin inherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls
-  connection limit -1;
-alter role product_evolution_evidence_reader reset all;
+-- Supabase's migration role may create these roles but is not a superuser,
+-- so protected role attributes cannot be repaired with ALTER ROLE. Existing
+-- roles must already match the exact contract or the migration aborts.
+do $
+declare
+  capability record;
+  principal record;
+begin
+  select * into strict capability
+  from pg_roles
+  where rolname = 'product_evolution_evidence_reader';
 
-alter role health_monitor_workspace_reader
-  login inherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls
-  connection limit 2;
+  if capability.rolcanlogin
+     or not capability.rolinherit
+     or capability.rolsuper
+     or capability.rolcreatedb
+     or capability.rolcreaterole
+     or capability.rolreplication
+     or capability.rolbypassrls
+     or capability.rolconnlimit <> -1 then
+    raise exception 'existing capability role attributes do not match the security contract';
+  end if;
+
+  select * into strict principal
+  from pg_roles
+  where rolname = 'health_monitor_workspace_reader';
+
+  if not principal.rolcanlogin
+     or not principal.rolinherit
+     or principal.rolsuper
+     or principal.rolcreatedb
+     or principal.rolcreaterole
+     or principal.rolreplication
+     or principal.rolbypassrls
+     or principal.rolconnlimit <> 2 then
+    raise exception 'existing principal role attributes do not match the security contract';
+  end if;
+end
+$;
+
+-- Role GUCs are owned by this migration and can be converged safely.
+alter role product_evolution_evidence_reader reset all;
 alter role health_monitor_workspace_reader reset all;
 alter role health_monitor_workspace_reader set search_path = knowledge, pg_catalog;
 alter role health_monitor_workspace_reader set default_transaction_read_only = on;
