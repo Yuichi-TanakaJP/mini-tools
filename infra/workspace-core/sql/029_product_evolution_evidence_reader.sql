@@ -35,7 +35,7 @@ $$;
 -- Supabase's migration role may create these roles but is not a superuser,
 -- so protected role attributes cannot be repaired with ALTER ROLE. Existing
 -- roles must already match the exact contract or the migration aborts.
-do $
+do $$
 declare
   capability record;
   principal record;
@@ -70,7 +70,7 @@ begin
     raise exception 'existing principal role attributes do not match the security contract';
   end if;
 end
-$;
+$$;
 
 -- Role GUCs are owned by this migration and can be converged safely.
 alter role product_evolution_evidence_reader reset all;
