@@ -79,14 +79,10 @@ begin
   end;
 
   begin
-    perform canonical_key from knowledge.evolution_events limit 1;
+    perform id from knowledge.evolution_events limit 1;
     raise exception 'another knowledge table unexpectedly readable';
   exception
     when insufficient_privilege then null;
-    when undefined_column then
-      -- Column shape is not part of this test. Re-run against a guaranteed
-      -- existing column if the schema changes rather than treating this as pass.
-      raise;
   end;
 
   begin
