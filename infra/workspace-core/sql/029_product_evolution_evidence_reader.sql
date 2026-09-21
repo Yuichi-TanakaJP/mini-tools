@@ -346,6 +346,6 @@ begin
     raise exception 'unexpected role membership remains after reader setup';
   end if;
 end
-$;
+$$;
 
 commit;
