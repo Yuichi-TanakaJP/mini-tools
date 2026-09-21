@@ -197,16 +197,17 @@ begin
     and c.relkind in ('r', 'p', 'v', 'm', 'f')
     and c.oid <> 'knowledge.items'::regclass
     and (
-      has_table_privilege(
-        'health_monitor_workspace_reader',
-        c.oid,
-        'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'
-      )
-      or has_any_column_privilege(
-        'health_monitor_workspace_reader',
-        c.oid,
-        'SELECT,INSERT,UPDATE,REFERENCES'
-      )
+      has_table_privilege('health_monitor_workspace_reader', c.oid, 'SELECT')
+      or has_table_privilege('health_monitor_workspace_reader', c.oid, 'INSERT')
+      or has_table_privilege('health_monitor_workspace_reader', c.oid, 'UPDATE')
+      or has_table_privilege('health_monitor_workspace_reader', c.oid, 'DELETE')
+      or has_table_privilege('health_monitor_workspace_reader', c.oid, 'TRUNCATE')
+      or has_table_privilege('health_monitor_workspace_reader', c.oid, 'REFERENCES')
+      or has_table_privilege('health_monitor_workspace_reader', c.oid, 'TRIGGER')
+      or has_any_column_privilege('health_monitor_workspace_reader', c.oid, 'SELECT')
+      or has_any_column_privilege('health_monitor_workspace_reader', c.oid, 'INSERT')
+      or has_any_column_privilege('health_monitor_workspace_reader', c.oid, 'UPDATE')
+      or has_any_column_privilege('health_monitor_workspace_reader', c.oid, 'REFERENCES')
     );
 
   if extra_relation_access_count <> 0 then
