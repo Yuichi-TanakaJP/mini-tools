@@ -60,20 +60,35 @@ begin
 
   select count(*)::int
     into bad_membership_count
-  from pg_auth_members
+  from pg_auth_members m
   where (
-      member in (
+      m.member in (
         'product_evolution_evidence_reader'::regrole,
         'health_monitor_workspace_reader'::regrole
       )
-      or roleid in (
+      or m.roleid in (
         'product_evolution_evidence_reader'::regrole,
         'health_monitor_workspace_reader'::regrole
       )
     )
     and not (
-      roleid = 'product_evolution_evidence_reader'::regrole
-      and member = 'health_monitor_workspace_reader'::regrole
+      (
+        m.roleid = 'product_evolution_evidence_reader'::regrole
+        and m.member = 'health_monitor_workspace_reader'::regrole
+        and not m.admin_option
+        and m.inherit_option
+        and not m.set_option
+      )
+      or (
+        m.member = current_user::regrole
+        and m.roleid in (
+          'product_evolution_evidence_reader'::regrole,
+          'health_monitor_workspace_reader'::regrole
+        )
+        and m.admin_option
+        and not m.inherit_option
+        and not m.set_option
+      )
     );
 
   if bad_membership_count <> 0 then
