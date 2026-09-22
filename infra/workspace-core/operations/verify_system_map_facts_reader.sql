@@ -195,10 +195,22 @@ begin
     raise exception 'System Map column-level SELECT boundary does not match the contract';
   end if;
 
-  if has_table_privilege('health_monitor_system_map_reader', 'registry.products', 'INSERT,UPDATE,DELETE,TRUNCATE')
-     or has_table_privilege('health_monitor_system_map_reader', 'registry.product_relations', 'INSERT,UPDATE,DELETE,TRUNCATE')
-     or has_table_privilege('health_monitor_system_map_reader', 'flow.value_flows', 'INSERT,UPDATE,DELETE,TRUNCATE')
-     or has_table_privilege('health_monitor_system_map_reader', 'flow.flow_versions', 'INSERT,UPDATE,DELETE,TRUNCATE') then
+  if has_table_privilege('health_monitor_system_map_reader', 'registry.products', 'INSERT')
+     or has_table_privilege('health_monitor_system_map_reader', 'registry.products', 'UPDATE')
+     or has_table_privilege('health_monitor_system_map_reader', 'registry.products', 'DELETE')
+     or has_table_privilege('health_monitor_system_map_reader', 'registry.products', 'TRUNCATE')
+     or has_table_privilege('health_monitor_system_map_reader', 'registry.product_relations', 'INSERT')
+     or has_table_privilege('health_monitor_system_map_reader', 'registry.product_relations', 'UPDATE')
+     or has_table_privilege('health_monitor_system_map_reader', 'registry.product_relations', 'DELETE')
+     or has_table_privilege('health_monitor_system_map_reader', 'registry.product_relations', 'TRUNCATE')
+     or has_table_privilege('health_monitor_system_map_reader', 'flow.value_flows', 'INSERT')
+     or has_table_privilege('health_monitor_system_map_reader', 'flow.value_flows', 'UPDATE')
+     or has_table_privilege('health_monitor_system_map_reader', 'flow.value_flows', 'DELETE')
+     or has_table_privilege('health_monitor_system_map_reader', 'flow.value_flows', 'TRUNCATE')
+     or has_table_privilege('health_monitor_system_map_reader', 'flow.flow_versions', 'INSERT')
+     or has_table_privilege('health_monitor_system_map_reader', 'flow.flow_versions', 'UPDATE')
+     or has_table_privilege('health_monitor_system_map_reader', 'flow.flow_versions', 'DELETE')
+     or has_table_privilege('health_monitor_system_map_reader', 'flow.flow_versions', 'TRUNCATE') then
     raise exception 'System Map principal has write privilege on the reviewed-facts tables';
   end if;
 
