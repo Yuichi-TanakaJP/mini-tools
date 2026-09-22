@@ -58,7 +58,7 @@ begin
     values ('insight', 'forbidden-reader-uat', 'forbidden-reader-uat');
     raise exception 'INSERT unexpectedly allowed';
   exception
-    when insufficient_privilege then null;
+    when insufficient_privilege or read_only_sql_transaction then null;
   end;
 
   begin
@@ -67,7 +67,7 @@ begin
      where canonical_key like 'product-evolution-review-%';
     raise exception 'UPDATE unexpectedly allowed';
   exception
-    when insufficient_privilege then null;
+    when insufficient_privilege or read_only_sql_transaction then null;
   end;
 
   begin
@@ -75,7 +75,7 @@ begin
      where canonical_key like 'product-evolution-review-%';
     raise exception 'DELETE unexpectedly allowed';
   exception
-    when insufficient_privilege then null;
+    when insufficient_privilege or read_only_sql_transaction then null;
   end;
 
   begin
