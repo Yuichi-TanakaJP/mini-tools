@@ -17,6 +17,8 @@ declare
   extra_relation_access_count integer;
   definer_escape_count integer;
   bad_column_count integer;
+  expected_policy_expression constant text :=
+    '((canonical_key IS NOT NULL) AND (canonical_key ~~ ''product-evolution-review-%''::text) AND (lifecycle_status = ''active''::text))';
 begin
   select * into strict capability
   from pg_roles
@@ -250,6 +252,14 @@ begin
     raise exception 'principal can execute a SECURITY DEFINER function in an accessible schema';
   end if;
 
+  if not (
+    select relrowsecurity
+    from pg_class
+    where oid = 'knowledge.items'::regclass
+  ) then
+    raise exception 'RLS is not enabled on knowledge.items';
+  end if;
+
   select count(*)::int
     into unexpected_policy_count
   from pg_policy p
@@ -275,8 +285,9 @@ begin
       and p.polcmd = 'r'
       and p.polpermissive
       and 'product_evolution_evidence_reader'::regrole = any(p.polroles)
+      and pg_get_expr(p.polqual, p.polrelid) = expected_policy_expression
   ) then
-    raise exception 'required permissive SELECT policy is missing';
+    raise exception 'required permissive SELECT policy is missing or has the wrong predicate';
   end if;
 
   if not exists (
@@ -287,8 +298,9 @@ begin
       and p.polcmd = 'r'
       and not p.polpermissive
       and 'product_evolution_evidence_reader'::regrole = any(p.polroles)
+      and pg_get_expr(p.polqual, p.polrelid) = expected_policy_expression
   ) then
-    raise exception 'required restrictive SELECT policy is missing';
+    raise exception 'required restrictive SELECT policy is missing or has the wrong predicate';
   end if;
 end
 $$;
