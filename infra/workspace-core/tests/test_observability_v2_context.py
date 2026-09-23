@@ -1,12 +1,14 @@
 """Observability V2 schema contract against a disposable local PostgreSQL DB.
 
 Run with:
+  OBSERVABILITY_TEST_DISPOSABLE_CLUSTER=1 \
   PGHOST=127.0.0.1 PGDATABASE=observability_v2_test \
     python infra/workspace-core/tests/test_observability_v2_context.py
 
-The test refuses non-loopback hosts and any other database name. It builds a
-minimal synthetic V1 fixture, applies only the forward V2 migration, and never
-connects to Workspace Core production.
+The test refuses non-loopback hosts, any other database name, and clusters not
+explicitly marked disposable. Applying the real V1.1 schema creates and alters
+cluster-wide roles, so run this only as a superuser in a throwaway PostgreSQL
+cluster. It never connects to Workspace Core production.
 """
 
 from __future__ import annotations
@@ -18,20 +20,39 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
+BASE_MIGRATION = (ROOT / "sql" / "014_observability_schema.sql").read_text()
 MIGRATION = (ROOT / "sql" / "030_observability_v2_context.sql").read_text()
 
 
-def psql(sql: str, *, expect_success: bool = True) -> str:
+def psql(
+    sql: str, *, expect_success: bool = True, expected_error: str | None = None
+) -> str:
     env = os.environ.copy()
     if env.get("PGHOST") not in ("127.0.0.1", "localhost"):
         raise RuntimeError("Tests require a loopback PGHOST")
     if env.get("PGDATABASE") != "observability_v2_test":
         raise RuntimeError("Tests require PGDATABASE=observability_v2_test")
+    if env.get("OBSERVABILITY_TEST_DISPOSABLE_CLUSTER") != "1":
+        raise RuntimeError(
+            "Tests require OBSERVABILITY_TEST_DISPOSABLE_CLUSTER=1 because the "
+            "V1.1 migration changes cluster-wide roles"
+        )
+    env["PGCLIENTENCODING"] = "UTF8"
 
     result = subprocess.run(
-        ["psql", "-X", "-w", "-At", "-v", "ON_ERROR_STOP=1"],
+        [
+            "psql",
+            "-X",
+            "-w",
+            "-At",
+            "-v",
+            "ON_ERROR_STOP=1",
+            "-v",
+            "VERBOSITY=verbose",
+        ],
         input=sql,
         text=True,
+        encoding="utf-8",
         capture_output=True,
         timeout=60,
         env=env,
@@ -40,44 +61,37 @@ def psql(sql: str, *, expect_success: bool = True) -> str:
         raise AssertionError(result.stderr)
     if not expect_success and not result.returncode:
         raise AssertionError("statement unexpectedly succeeded")
+    if expected_error is not None and expected_error not in result.stderr:
+        raise AssertionError(
+            f"expected error containing {expected_error!r}, got {result.stderr!r}"
+        )
     return result.stdout
 
 
-def v1_fixture() -> str:
+def role_and_schema_fixture() -> str:
     return r"""
 drop schema if exists observability cascade;
-create schema observability;
+do $$
+begin
+  if not exists (select 1 from pg_roles where rolname = 'anon') then
+    create role anon nologin;
+  end if;
+  if not exists (select 1 from pg_roles where rolname = 'authenticated') then
+    create role authenticated nologin;
+  end if;
+  if not exists (select 1 from pg_roles where rolname = 'service_role') then
+    create role service_role nologin;
+  end if;
+end
+$$;
+create schema if not exists registry;
+create schema if not exists platform;
+create schema if not exists ops;
+"""
 
-create table observability.current_states (
-  source_key text not null,
-  subject_key text null,
-  metric_key text not null,
-  value double precision null,
-  unit text null,
-  status text not null check (status in ('ok','warning','critical','unknown')),
-  message text null,
-  observed_at timestamptz not null,
-  producer text not null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique nulls not distinct (source_key, subject_key, metric_key)
-);
 
-create table observability.status_events (
-  event_id text primary key,
-  source_key text not null,
-  subject_key text null,
-  metric_key text not null,
-  previous_status text null,
-  new_status text not null,
-  value double precision null,
-  unit text null,
-  message text null,
-  observed_at timestamptz not null,
-  producer text not null,
-  created_at timestamptz not null default now(),
-  check (previous_status is null or previous_status <> new_status)
-);
+def v1_rows() -> str:
+    return r"""
 
 insert into observability.current_states (
   source_key, subject_key, metric_key, value, unit, status, observed_at, producer
@@ -99,7 +113,13 @@ insert into observability.status_events (
 class ObservabilityV2MigrationTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        psql(v1_fixture())
+        if psql("select rolsuper from pg_roles where rolname=current_user;").strip() != "t":
+            raise RuntimeError(
+                "Tests require a PostgreSQL superuser in a disposable cluster"
+            )
+        psql(role_and_schema_fixture())
+        psql(BASE_MIGRATION)
+        psql(v1_rows())
         psql(MIGRATION)
 
     def test_existing_rows_stay_v1_legacy(self) -> None:
@@ -231,6 +251,67 @@ class ObservabilityV2MigrationTest(unittest.TestCase):
         self.assertNotIn(" grant ", f" {lower} ")
         self.assertNotIn(" revoke ", f" {lower} ")
         self.assertNotIn("security definer", lower)
+
+    def test_strict_newer_guard_rejects_equal_and_older_updates(self) -> None:
+        out = psql(
+            "set role observability_writer; "
+            "insert into observability.current_states "
+            "(source_key,subject_key,metric_key,value,unit,status,observed_at,producer) values "
+            "('supabase','mini-tools','database_bytes',999,'bytes','critical',"
+            "'2026-09-23T00:00:00+00','pc-saas-health-monitor') "
+            "on conflict(source_key,subject_key,metric_key) do update set "
+            "value=excluded.value,status=excluded.status,observed_at=excluded.observed_at; "
+            "insert into observability.current_states "
+            "(source_key,subject_key,metric_key,value,unit,status,observed_at,producer) values "
+            "('supabase','mini-tools','database_bytes',888,'bytes','warning',"
+            "'2026-09-22T23:59:59+00','pc-saas-health-monitor') "
+            "on conflict(source_key,subject_key,metric_key) do update set "
+            "value=excluded.value,status=excluded.status,observed_at=excluded.observed_at; "
+            "select value,status from observability.current_states "
+            "where source_key='supabase' and subject_key='mini-tools' "
+            "and metric_key='database_bytes';"
+        )
+        self.assertEqual(out.strip().splitlines()[-1], "100|ok")
+
+    def test_writer_effective_privileges_remain_least_privilege(self) -> None:
+        out = psql(
+            "select "
+            "has_table_privilege('observability_writer',"
+            "'observability.current_states','SELECT,INSERT,UPDATE'),"
+            "has_table_privilege('observability_writer',"
+            "'observability.current_states','DELETE,TRUNCATE'),"
+            "has_table_privilege('observability_writer',"
+            "'observability.status_events','SELECT,INSERT'),"
+            "has_table_privilege('observability_writer',"
+            "'observability.status_events','UPDATE,DELETE,TRUNCATE'),"
+            "has_schema_privilege('observability_writer','registry','USAGE'),"
+            "has_schema_privilege('observability_writer','platform','USAGE'),"
+            "has_schema_privilege('observability_writer','ops','USAGE');"
+        )
+        self.assertEqual(out.strip(), "t|f|t|f|f|f|f")
+
+    def test_status_events_remain_append_only_for_writer(self) -> None:
+        psql(
+            "set role observability_writer; "
+            "update observability.status_events set message='mutated' "
+            "where event_id='v1-event';",
+            expect_success=False,
+            expected_error="42501",
+        )
+
+    def test_rls_and_invoker_functions_remain_in_force(self) -> None:
+        tables = psql(
+            "select bool_and(c.relrowsecurity) "
+            "from pg_class c join pg_namespace n on n.oid=c.relnamespace "
+            "where n.nspname='observability' and c.relkind='r';"
+        )
+        functions = psql(
+            "select bool_and(not p.prosecdef) "
+            "from pg_proc p join pg_namespace n on n.oid=p.pronamespace "
+            "where n.nspname='observability';"
+        )
+        self.assertEqual(tables.strip(), "t")
+        self.assertEqual(functions.strip(), "t")
 
 
 if __name__ == "__main__":

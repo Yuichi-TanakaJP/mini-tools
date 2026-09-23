@@ -407,17 +407,20 @@ The producer masks first. Workspace Core adds payload-size/type guards as a seco
 ## V2 local migration verification
 
 Before any live Workspace Core migration, run the V2 schema contract against a
-disposable local PostgreSQL database only:
+disposable local PostgreSQL cluster only. The V1.1 migration manages
+cluster-wide roles, so a disposable database inside a shared cluster is not
+sufficient:
 
 ```bash
 createdb observability_v2_test
+OBSERVABILITY_TEST_DISPOSABLE_CLUSTER=1 \
 PGHOST=127.0.0.1 PGDATABASE=observability_v2_test \
   python infra/workspace-core/tests/test_observability_v2_context.py
-dropdb observability_v2_test
 ```
 
-The test refuses a non-loopback host or a database name other than
-`observability_v2_test`. It verifies that:
+Destroy the entire test cluster after the run. The test refuses a non-loopback
+host, a database name other than `observability_v2_test`, a non-superuser, or a
+run without the explicit disposable-cluster marker. It verifies that:
 
 - existing V1 rows remain contract version 1;
 - the V1 insert shape still works;
