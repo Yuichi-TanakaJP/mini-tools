@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { edinetIdentityUatUrl, inspectEdinetIdentityUatPacket } from "../edinet-identity-uat";
+import { createHash } from "node:crypto";
+import {
+  canRunEdinetIdentityUat,
+  edinetIdentityUatUrl,
+  inspectEdinetIdentityUatPacket,
+  readEdinetIdentityUatResponse,
+} from "../edinet-identity-uat";
 
 const owner = "owner-1";
 const packet = {
@@ -42,5 +48,36 @@ describe("EDINET identity UAT boundary", () => {
     expect(inspectEdinetIdentityUatPacket({ ...packet, execution_context: { ...packet.execution_context, rolbypassrls: true } }, owner)).toBe(false);
     expect(inspectEdinetIdentityUatPacket({ ...packet, link_count: 1 }, owner)).toBe(false);
     expect(inspectEdinetIdentityUatPacket({ ...packet, source_sec_code: "99990" }, owner)).toBe(false);
+  });
+
+  it("rejects preview and alternate hosts before any authenticated request", () => {
+    const supabase = "https://uqnkjitvuebwhjvmaddb.supabase.co";
+    expect(canRunEdinetIdentityUat("https://mini-tools-rho.vercel.app", "production", supabase)).toBe(true);
+    expect(canRunEdinetIdentityUat("https://mini-tools-rho.vercel.app", "blocked", supabase)).toBe(false);
+    expect(canRunEdinetIdentityUat("https://mini-tools-git-branch.vercel.app", "production", supabase)).toBe(false);
+    expect(canRunEdinetIdentityUat("http://localhost:3000", "production", supabase)).toBe(false);
+    expect(canRunEdinetIdentityUat("https://mini-tools-rho.vercel.app", "production", "https://other.supabase.co")).toBe(false);
+  });
+
+  it("hashes and retains exact response bytes only for HTTP 200", async () => {
+    const raw = new TextEncoder().encode(JSON.stringify(packet));
+    const expectedDigest = createHash("sha256").update(raw).digest("hex");
+    const good = await readEdinetIdentityUatResponse(new Response(raw, { status: 200 }), owner);
+    expect(good.responseSha256).toBe(expectedDigest);
+    expect(good.packetPrecheck).toBe(true);
+    expect(new Uint8Array(good.rawResponse!)).toEqual(raw);
+
+    const failed = await readEdinetIdentityUatResponse(new Response(raw, { status: 403 }), owner);
+    expect(failed.responseSha256).toBe(expectedDigest);
+    expect(failed.packetPrecheck).toBe(false);
+    expect(failed.rawResponse).toBeNull();
+  });
+
+  it("does not pass malformed 200 response, but retains its exact bytes", async () => {
+    const raw = new Uint8Array([0xff, 0xfe]);
+    const result = await readEdinetIdentityUatResponse(new Response(raw, { status: 200 }), owner);
+    expect(result.packetPrecheck).toBe(false);
+    expect(new Uint8Array(result.rawResponse!)).toEqual(raw);
+    expect(result.responseSha256).toBe(createHash("sha256").update(raw).digest("hex"));
   });
 });

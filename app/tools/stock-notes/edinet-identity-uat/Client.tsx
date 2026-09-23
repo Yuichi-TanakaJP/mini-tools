@@ -5,8 +5,9 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getSupabaseEnv } from "@/lib/supabase/config";
 import {
   EDINET_IDENTITY_UAT,
+  canRunEdinetIdentityUat,
   edinetIdentityUatUrl,
-  inspectEdinetIdentityUatPacket,
+  readEdinetIdentityUatResponse,
 } from "@/lib/edinet-identity-uat";
 
 type Result = {
@@ -16,15 +17,9 @@ type Result = {
   packetPrecheck: boolean;
 };
 
-async function sha256Hex(value: string): Promise<string> {
-  const bytes = new TextEncoder().encode(value);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
 export default function Client() {
   const attempted = useRef(false);
-  const rawResponse = useRef<string | null>(null);
+  const rawResponse = useRef<ArrayBuffer | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +30,10 @@ export default function Client() {
     setBusy(true);
     setError(null);
     try {
+      const { url, anonKey } = getSupabaseEnv();
+      if (!canRunEdinetIdentityUat(window.location.origin, process.env.EDINET_IDENTITY_UAT_DEPLOY_ENV, url)) {
+        throw new Error("UATは指定した本番URLでのみ実行できます。");
+      }
       const supabase = createSupabaseBrowserClient();
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError || !userData.user) throw new Error("本人ログインを確認できません。アカウント画面でログインしてください。");
@@ -43,7 +42,6 @@ export default function Client() {
       if (sessionError || !session?.access_token || session.user.id !== userData.user.id) {
         throw new Error("本人セッションを確認できません。再ログインしてください。");
       }
-      const { url, anonKey } = getSupabaseEnv();
       const requestedAt = new Date().toISOString();
       const response = await fetch(edinetIdentityUatUrl(url), {
         method: "GET",
@@ -55,20 +53,12 @@ export default function Client() {
           Accept: "application/json",
         },
       });
-      const raw = await response.text();
-      const responseSha256 = await sha256Hex(raw);
-      let packetPrecheck = false;
-      if (response.status === 200) {
-        try {
-          packetPrecheck = inspectEdinetIdentityUatPacket(JSON.parse(raw), userData.user.id);
-        } catch {
-          // Keep the exact raw response for the independent validator.
-        }
-        rawResponse.current = raw;
-      }
-      setResult({ requestedAt, httpStatus: response.status, responseSha256, packetPrecheck });
+      const observed = await readEdinetIdentityUatResponse(response, userData.user.id);
+      rawResponse.current = observed.rawResponse;
+      setResult({ requestedAt, httpStatus: observed.httpStatus,
+        responseSha256: observed.responseSha256, packetPrecheck: observed.packetPrecheck });
     } catch (caught) {
-      setError(caught instanceof Error && caught.message.startsWith("本人")
+      setError(caught instanceof Error && (caught.message.startsWith("本人") || caught.message.startsWith("UATは"))
         ? caught.message
         : "GETを完了できませんでした。通信・認証状態を確認してください。");
     } finally {

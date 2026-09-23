@@ -7,6 +7,14 @@ export const EDINET_IDENTITY_UAT = {
 } as const;
 
 export const EDINET_IDENTITY_RPC = "stock_notes_edinet_financial_identity_rpc_snapshot_v1";
+export const EDINET_IDENTITY_UAT_ORIGIN = "https://mini-tools-rho.vercel.app";
+export const EDINET_IDENTITY_UAT_SUPABASE_ORIGIN = "https://uqnkjitvuebwhjvmaddb.supabase.co";
+
+export function canRunEdinetIdentityUat(origin: string, deployEnv: string | undefined, supabaseUrl: string): boolean {
+  return deployEnv === "production"
+    && origin === EDINET_IDENTITY_UAT_ORIGIN
+    && supabaseUrl === EDINET_IDENTITY_UAT_SUPABASE_ORIGIN;
+}
 
 export function edinetIdentityUatUrl(baseUrl: string): string {
   const url = new URL(`/rest/v1/rpc/${EDINET_IDENTITY_RPC}`, baseUrl);
@@ -46,4 +54,26 @@ export function inspectEdinetIdentityUatPacket(value: unknown, expectedUserId: s
     && context.row_security === "on"
     && context.rolsuper === false
     && context.rolbypassrls === false;
+}
+
+/** Hash and retain the same bytes that will be downloaded for the full validator. */
+export async function readEdinetIdentityUatResponse(response: Response, expectedUserId: string) {
+  const raw = await response.arrayBuffer();
+  const digest = await crypto.subtle.digest("SHA-256", raw);
+  const responseSha256 = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  let packetPrecheck = false;
+  if (response.status === 200) {
+    try {
+      const json = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(raw));
+      packetPrecheck = inspectEdinetIdentityUatPacket(json, expectedUserId);
+    } catch {
+      // A malformed 200 response remains downloadable for the full validator.
+    }
+  }
+  return {
+    httpStatus: response.status,
+    responseSha256,
+    packetPrecheck,
+    rawResponse: response.status === 200 ? raw : null,
+  };
 }
