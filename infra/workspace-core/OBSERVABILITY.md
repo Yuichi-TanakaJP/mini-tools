@@ -220,7 +220,7 @@ parse prose to understand why a state is warning/critical/unknown.
 
 - `lifecycle_status`: `active`, `retired`, or `unknown`
 - `retired_at`
-- `superseded_by`
+- `superseded_by_source_key` / `superseded_by_subject_key` / `superseded_by_metric_key`
 
 V2 Current State therefore means “latest known fact for this identity” plus an
 explicit answer to “is this still a current monitored fact?”.
@@ -241,8 +241,10 @@ Status events remain append-only. V2 adds:
 
 - `status_change`
 - `recovery`
-- `retired`
-- `superseded`
+
+Lifecycle retirement/supersession is **not** forced into `status_events`.
+`status_events` remains a health-status-transition table; retirement is represented
+by `current_states.lifecycle_status / retired_at / superseded_by_*`.
 
 The existing `value` / `unit` columns can be populated by the V2 producer.
 
