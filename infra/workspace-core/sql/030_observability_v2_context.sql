@@ -29,7 +29,9 @@ alter table observability.current_states
   add column reason_code text null,
   add column lifecycle_status text null,
   add column retired_at timestamptz null,
-  add column superseded_by text null;
+  add column superseded_by_source_key text null,
+  add column superseded_by_subject_key text null,
+  add column superseded_by_metric_key text null;
 
 alter table observability.current_states
   add constraint current_states_contract_version_check
@@ -112,7 +114,21 @@ alter table observability.current_states
       or (lifecycle_status is distinct from 'retired' and retired_at is null)
     ),
   add constraint current_states_superseded_by_check
-    check (superseded_by is null or length(superseded_by) <= 255),
+    check (
+      (
+        superseded_by_source_key is null
+        and superseded_by_subject_key is null
+        and superseded_by_metric_key is null
+      )
+      or (
+        superseded_by_source_key is not null
+        and superseded_by_subject_key is not null
+        and superseded_by_metric_key is not null
+        and length(btrim(superseded_by_source_key)) between 1 and 255
+        and length(btrim(superseded_by_subject_key)) between 1 and 255
+        and length(btrim(superseded_by_metric_key)) between 1 and 255
+      )
+    ),
   add constraint current_states_v2_required_context_check
     check (
       contract_version < 2
@@ -184,7 +200,7 @@ alter table observability.status_events
   add constraint status_events_event_kind_check
     check (
       event_kind is null
-      or event_kind in ('status_change', 'recovery', 'retired', 'superseded')
+      or event_kind in ('status_change', 'recovery')
     ),
   add constraint status_events_v2_required_context_check
     check (
@@ -201,7 +217,7 @@ comment on column observability.status_events.contract_version is
 comment on column observability.status_events.product_slug is
   'Optional stable Workspace Core product slug for consumer-side semantic joins; not a FK.';
 comment on column observability.status_events.event_kind is
-  'Machine-readable V2 transition kind; status_events remains append-only.';
+  'Machine-readable V2 health-transition kind; lifecycle retirement stays on current_states.';
 
 -- Read-oriented indexes only. No new writer privileges are required because
 -- existing table grants cover newly-added columns.
