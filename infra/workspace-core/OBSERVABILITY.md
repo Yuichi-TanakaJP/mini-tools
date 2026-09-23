@@ -2,6 +2,17 @@
 
 This document is the server-side contract for the **PC/SaaS Health Monitor Cloud Mirror** introduced by `014_observability_schema.sql`.
 
+> **V2 direction (2026-09-23):** Observability is now defined as a
+> **Purpose-first Remote Operational Read Model**, not a reduced copy of Local SQLite.
+> V1.1 remains the compatibility base. The forward extension is
+> `030_observability_v2_context.sql`; the design rationale is recorded in
+> `docs/decision-log/2026-09-23-workspace-core-observability-v2-context.md`.
+>
+> The first consumer is an off-device / AI query such as:
+> **「今、私のシステムで対応が必要なものはある？」**
+> Data fields are selected from that use case, not from a goal of reducing or
+> maximizing the number of mirrored metrics.
+
 The boundary is intentionally local-first:
 
 - `pc-saas-health-monitor` local SQLite (`health_center.db`) is the **Operational Source of Truth**.
@@ -135,6 +146,127 @@ Governance history is an observation. Workspace Core does not become the SoT for
 Primary key: `(run_id, check_key)`.
 
 Foreign key: `run_id -> observability.governance_runs(run_id)` with `ON DELETE RESTRICT`.
+
+## V2 identity / context / lifecycle extension
+
+V2 extends `current_states` and `status_events` without replacing the V1.1
+tables, keys, writer, RLS policies, or stale-update guards.
+
+### Migration and compatibility
+
+- Existing rows remain `contract_version = 1`.
+- Existing V1 producers remain valid because every V2 column is nullable or has
+  a V1-safe default.
+- Existing V1 rows are **not** backfilled as active V2 facts.
+- A V2 producer explicitly writes `contract_version = 2`.
+- Primary V2 consumers read `contract_version = 2 AND lifecycle_status = 'active'`.
+- An obsolete V2 fact is retired explicitly rather than silently deleted.
+- Existing V1/legacy rows are retained until a separate retention/deletion
+  decision is made.
+
+This avoids a real failure mode observed in the live data: an older source can
+leave an `unknown` Current State behind after the same conceptual job has moved
+to a new source and recovered. Treating every legacy row as active would make a
+remote AI report an obsolete problem as current.
+
+### V2 Current State context
+
+`030_observability_v2_context.sql` adds the following logical groups.
+
+#### Stable operational identity
+
+- `contract_version`
+- `subject_kind`
+- `subject_label`
+- `product_slug` (optional semantic reference; never a mandatory registry FK)
+- existing `subject_key` remains the stable external subject key
+- `metric_label`
+- `metric_role`
+
+For `contract_version >= 2`, `subject_key`, `subject_kind`,
+`metric_role`, and `lifecycle_status` are required by a DB constraint.
+
+`subject_kind` is one of:
+
+- `service`
+- `product`
+- `repository`
+- `job`
+- `data_asset`
+- `pc_resource`
+- `monitor`
+- `other`
+
+The producer must not use an absolute local path, a credential-derived value,
+or an unreviewed display label as the stable subject key.
+
+#### Decision context
+
+V2 can carry structured context already known by Health Monitor locally:
+
+- `limit_value`
+- `usage_ratio`
+- `billing_period_start` / `billing_period_end`
+- `limit_verified_at`
+- `limit_needs_review`
+- effective warning operator/value/unit
+- effective critical operator/value/unit
+- `reason_code`
+
+The human-readable `message` remains useful, but a consumer must not need to
+parse prose to understand why a state is warning/critical/unknown.
+
+#### Lifecycle
+
+- `lifecycle_status`: `active`, `retired`, or `unknown`
+- `retired_at`
+- `superseded_by`
+
+V2 Current State therefore means “latest known fact for this identity” plus an
+explicit answer to “is this still a current monitored fact?”.
+
+### V2 Status Event context
+
+Status events remain append-only. V2 adds:
+
+- `contract_version`
+- `subject_kind`
+- `subject_label`
+- `product_slug`
+- `metric_label`
+- `reason_code`
+- `event_kind`
+
+`event_kind` is one of:
+
+- `status_change`
+- `recovery`
+- `retired`
+- `superseded`
+
+The existing `value` / `unit` columns can be populated by the V2 producer.
+
+### Semantic join boundary
+
+`product_slug` is an optional stable reference to `registry.products.slug`.
+It is intentionally **not** an FK:
+
+- the Observability writer keeps no `registry` schema privilege;
+- Health Monitor does not need Workspace Core internal UUIDs to produce facts;
+- a consumer/read model may enrich operational state by joining the registry;
+- Product/System Map metadata is not copied into Observability.
+
+### Not changed by V2 context migration
+
+- Local SQLite remains Operational SoT.
+- Raw observations are not mirrored.
+- V1.1 natural keys and strict-newer stale guards remain.
+- Status Event remains append-only.
+- Writer role / RLS / no-delete/no-DDL boundaries remain.
+- Daily Rollup V2 identity is deferred until the producer identity model is
+  stable.
+- Backup/Recovery gets a separate assurance contract later.
+- Governance continues to use the existing Governance Run/Result tables.
 
 ## Producer mapping for Health Monitor Phase 3
 
