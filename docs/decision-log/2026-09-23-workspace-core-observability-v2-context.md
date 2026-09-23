@@ -11,9 +11,11 @@
 
 - V1.1の5-table基盤、dedicated writer、RLS、stale guard、idempotencyは維持する。
 - `014_observability_schema.sql` は履歴として書き換えず、後続SQLでV2をforward migrationする。
-- V2は `current_states` と `status_events` にidentity/context/lifecycle列を追加する。
+- V2は `current_states` にidentity/context/lifecycle、`status_events` にhealth-transition contextを追加する。
 - existing V1 rowをV2 activeへ一括backfillしない。
 - `contract_version=2` をproducerが明示して初めてV2 factとして扱う。
+- retirement / supersessionはhealth status transitionへ偽装せず、Current Stateのlifecycleとして表す。
+- superseding identityは自由text1本ではなく source / subject / metric の3要素をall-or-noneで保持する。
 - V2 Current Stateは `lifecycle_status=active` をPrimary Currentとして読む。
 - Workspace Core registry UUIDをproducerのmandatory FKにしない。`product_slug` はoptional stable refとして扱う。
 - Daily Rollup / Backup / Governanceはこのmigrationへ混ぜない。
