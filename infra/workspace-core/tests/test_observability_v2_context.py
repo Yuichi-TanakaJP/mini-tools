@@ -1,9 +1,10 @@
 """Observability V2 schema contract against a disposable local PostgreSQL DB.
 
 Run with:
-  PGHOST=127.0.0.1 PGDATABASE=observability_v2_test python -m unittest     infra.workspace-core.tests.test_observability_v2_context
+  PGHOST=127.0.0.1 PGDATABASE=observability_v2_test \
+    python infra/workspace-core/tests/test_observability_v2_context.py
 
-The test refuses non-loopback hosts and any other database name.  It builds a
+The test refuses non-loopback hosts and any other database name. It builds a
 minimal synthetic V1 fixture, applies only the forward V2 migration, and never
 connects to Workspace Core production.
 """
@@ -171,6 +172,34 @@ class ObservabilityV2MigrationTest(unittest.TestCase):
             "'2026-09-23T00:06:00+00','jobs');",
             expect_success=False,
         )
+
+    def test_active_row_cannot_claim_a_superseding_identity(self) -> None:
+        psql(
+            "insert into observability.current_states "
+            "(source_key,subject_key,metric_key,status,observed_at,producer,"
+            " contract_version,subject_kind,metric_role,lifecycle_status,"
+            " superseded_by_source_key,superseded_by_subject_key,superseded_by_metric_key) values "
+            "('jobs','still-active','state','ok','2026-09-23T00:06:30+00',"
+            "'pc-saas-health-monitor',2,'job','headline','active',"
+            "'jobs','replacement','state');",
+            expect_success=False,
+        )
+
+    def test_retired_row_accepts_complete_superseding_identity(self) -> None:
+        psql(
+            "insert into observability.current_states "
+            "(source_key,subject_key,metric_key,status,observed_at,producer,"
+            " contract_version,subject_kind,metric_role,lifecycle_status,retired_at,"
+            " superseded_by_source_key,superseded_by_subject_key,superseded_by_metric_key) values "
+            "('jobs','old-complete','state','unknown','2026-09-23T00:06:45+00',"
+            "'pc-saas-health-monitor',2,'job','headline','retired',"
+            "'2026-09-23T00:06:45+00','jobs','replacement','state');"
+        )
+        out = psql(
+            "select lifecycle_status,superseded_by_subject_key "
+            "from observability.current_states where subject_key='old-complete';"
+        )
+        self.assertEqual(out.strip(), "retired|replacement")
 
     def test_v2_status_event_requires_identity_and_event_kind(self) -> None:
         psql(
