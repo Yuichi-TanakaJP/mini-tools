@@ -404,6 +404,35 @@ The producer masks first. Workspace Core adds payload-size/type guards as a seco
 - evidence: 32768 bytes;
 - evidence must be a JSON object.
 
+## V2 local migration verification
+
+Before any live Workspace Core migration, run the V2 schema contract against a
+disposable local PostgreSQL database only:
+
+```bash
+createdb observability_v2_test
+PGHOST=127.0.0.1 PGDATABASE=observability_v2_test \
+  python infra/workspace-core/tests/test_observability_v2_context.py
+dropdb observability_v2_test
+```
+
+The test refuses a non-loopback host or a database name other than
+`observability_v2_test`. It verifies that:
+
+- existing V1 rows remain contract version 1;
+- the V1 insert shape still works;
+- incomplete V2 identity/context is rejected;
+- a valid V2 Current State is accepted;
+- retired rows require `retired_at`;
+- superseding source/subject/metric identity is all-or-none;
+- V2 Status Events require stable identity and a health-transition kind;
+- lifecycle retirement is not accepted as a fake health Status Event;
+- this migration does not add GRANT/REVOKE or SECURITY DEFINER behavior.
+
+This synthetic test is necessary but not sufficient for Tier 3 release.
+Live application still requires contract review, RLS/privilege verification,
+stale-update regression checks, rollback confirmation, and Supabase advisors.
+
 ## Verification state
 
 Live Workspace Core was verified after applying the Observability migrations:
