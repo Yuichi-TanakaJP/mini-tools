@@ -129,6 +129,11 @@ alter table observability.current_states
         and length(btrim(superseded_by_metric_key)) between 1 and 255
       )
     ),
+  add constraint current_states_superseded_lifecycle_check
+    check (
+      superseded_by_source_key is null
+      or lifecycle_status = 'retired'
+    ),
   add constraint current_states_v2_required_context_check
     check (
       contract_version < 2
