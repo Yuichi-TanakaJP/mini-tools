@@ -1,0 +1,7 @@
+# 2026-09-24 EDINET identity本人GET UAT導線
+
+Stock Notes Productionには読み取り専用RPCが存在するが、本人JWTによるHTTP GET証拠は未取得。ブラウザセッション内で固定候補1件を1回呼ぶ、ナビゲーション非掲載の専用画面を用意する。サービスロールキーを使わず、access tokenを画面・ログ・成果物に出さない。出力はHTTP status、応答digest、事前チェック、および明示ダウンロードの生packetに限定する。
+
+この導線はUAT用であり、EDINET/JPXの一般的なidentity resolverではない。完全なpacket判定はStock Notes validatorで行う。画面はProductionに自動反映しない。レビュー、マージ、デプロイ、実GETは別gateとする。本人GETが確認できてもFinancial Canonicalへの投入許可にはならない。
+
+独立レビューでPWAの既定cross-origin cacheとPreviewからProduction RPCへの到達可能性が指摘された。認証/API-key付きGETはService WorkerでNetworkOnlyに固定し、UATの呼び出しはVercel Productionビルドかつ指定本番originに限定する。環境が不明なら拒否する。レスポンス証拠はデコード後文字列ではなく受信バイト列をhash・保存する。これらは実GETの安全性を高めるが、実ユーザーでの通信・完全validator合格を代替しない。
