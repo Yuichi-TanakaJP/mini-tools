@@ -18,6 +18,7 @@
 | [ポートフォリオ意思決定ワークスペース実装計画](./portfolio-decision-workspace-plan.md) | ChatGPT起点の相談・保存・表示・銘柄連携を完成させるクロスリポジトリ計画 |
 | [Workspace Core V1 実装計画](./workspace-core-v1.md) | 完了済みV1 DB基盤の境界・inventory・監査結果と、Product Mapへ進む次工程 |
 | [Workspace Core V3 Semantic Foundation](./workspace-core-v3-semantic-foundation.md) | Knowledge / Evolution / Capability / Value Flowの境界、Golden Dataset、Replay/Advisor検証結果 |
+| [Workspace Core 改善計画 2026-09-28](./workspace-core-improvement-plan-2026-09-28.md) | live DB監査とCodexレビューを反映したBaseline recovery / Coordination改善の実装順 |
 
 ## 更新ルール
 
