@@ -10,12 +10,28 @@ Workspace Core has progressed beyond the original Product Map V1. The V1 API/sec
 |---|---|
 | V1 registry and Product Map | `sql/001` through `sql/010` |
 | Description and provisional Service layer | `sql/011` through `sql/013` |
-| V3 Function / Capability / Knowledge / Evolution / Value Flow foundation | `sql/014` through `sql/020` |
+| Observability V1.1 | `sql/014_observability_schema.sql` |
+| V3 Function / Capability / Knowledge / Evolution / Value Flow foundation | `sql/014_v3_registry_functions_capabilities.sql` through `sql/020_v3_fk_index_hardening.sql` |
 | V3 evidence-backed inventory expansion | `sql/021` through `sql/028` |
 | Product Evolution Evidence reader | `sql/029_product_evolution_evidence_reader.sql` |
+| Observability V2 context | `sql/030_observability_v2_context.sql` |
+| Coordination / Resume / Chat Orchestration current-state reconciliation | `sql/031_coordination_current_state_reconciliation.sql` |
 | Controlled origin follow-up for #583 / #588 | `operations/apply_origin_followup.sql`, with private replay input |
 
-The numeric SQL files should be reviewed/applied in order through **029** to reproduce the current V3 baseline. The old 001-010 procedure below reproduces only the original V1 baseline. A clean-database replay of the entire sequence was not re-tested in this follow-up.
+### Fresh-bootstrap SQL order
+
+The two `014_*.sql` files are historical parallel additions, so do **not** rely on lexical/numeric glob ordering alone. For a fresh disposable Workspace Core bootstrap use this explicit order:
+
+1. `001` through `013`
+2. `014_observability_schema.sql`
+3. `014_v3_registry_functions_capabilities.sql`
+4. `015_v3_knowledge_evolution.sql` through `029_product_evolution_evidence_reader.sql`
+5. `030_observability_v2_context.sql`
+6. `031_coordination_current_state_reconciliation.sql`
+
+`031` is intentionally a **current-state reconciliation**, not a fabricated transcript of historical migrations. It folds the live-only Coordination/read-model changes that were applied on 2026-09-06 through 2026-09-27 back into the existing repository lineage for future fresh replay.
+
+The old 001-010 procedure below reproduces only the original V1 baseline. The full 001-031 clean-database replay remains a required gate before any future Workspace Core schema/read-model migration is merged. The live production schema has been checked with `operations/verify_coordination_reconciliation.sql`; that verification does not substitute for a clean replay.
 
 The current origin follow-up adds data, not schema. The loader and [read-only checks](operations/verify_origin_followup.sql) are separate from unconditional bootstrap SQL because personal evidence must not be published in this public repository. The replay unit is the public loader plus the immutable private audit snapshot held by the canonical Workstream. Missing input or conflicting definitions abort rather than overwrite data.
 
@@ -30,7 +46,9 @@ Current project:
 - region: `ap-northeast-1`
 - V1 private schemas: `platform`, `registry`, `ops`
 - V3 semantic schemas: `knowledge`, `flow` (plus V3 additions to `registry`)
-- Product Map read views: narrow `public.workspace_core_*_v` views with browser-role access revoked
+- Coordination schema: `coordination` for Workstreams, append-only updates/links, and Chat Checkpoints
+- Observability schema: `observability` for Health Monitor cloud mirror and governance evidence
+- public read views: narrow `public.workspace_core_*_v` views with browser-role access revoked
 
 Do **not** apply this directory's Workspace Core SQL to the existing `mini-tools` Supabase project. The private Workstream replay-input lookup is a separate, explicitly labelled mini-tools read in the handoff document.
 
@@ -42,8 +60,10 @@ Workspace Core Supabase project (inventory scope)
 ├─ registry   # products, repos, technologies, services, resources, relations, capabilities
 ├─ knowledge  # V3 goals, principles, hypotheses, provenance, evolution
 ├─ flow       # V3 value flows, versions, steps, edges
-├─ ops        # sync/import state
-└─ public     # narrow server-read views required by Product Map
+├─ ops          # sync/import state
+├─ coordination # Workstreams, updates/links, Chat Checkpoints
+├─ observability# operational state/history mirror and governance evidence
+└─ public       # narrow server-read views
 ```
 
 Workspace Core is a **catalog and relationship graph**, not a content warehouse. Other Workspace Core domains are outside this inventory-focused bootstrap/handoff.
