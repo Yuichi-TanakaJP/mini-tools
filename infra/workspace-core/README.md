@@ -2,7 +2,7 @@
 
 This directory contains the reproducible schema, evidence-backed seed set, and read model for the dedicated **Workspace Core** Supabase project.
 
-## Current scope and handoff (2026-09-16)
+## Current scope and handoff (2026-09-28)
 
 Workspace Core has progressed beyond the original Product Map V1. The V1 API/security contract and historical audit below are retained for reference; their counts and advisor results are **not a current full-system health check**.
 
@@ -29,7 +29,7 @@ The two `014_*.sql` files are historical parallel additions, so do **not** rely 
 5. `030_observability_v2_context.sql`
 6. `031_coordination_current_state_reconciliation.sql`
 
-`031` is intentionally a **current-state reconciliation**, not a fabricated transcript of historical migrations. It folds the live-only Coordination/read-model changes that were applied on 2026-09-06 through 2026-09-27 back into the existing repository lineage for future fresh replay.
+`031` is intentionally a **current-state reconciliation**, not a fabricated transcript of historical migrations. It folds the live-only Coordination/read-model changes that were applied on 2026-09-06 through 2026-09-27 back into the existing repository lineage for future fresh replay. The exact live-migration mapping, verification result, and replay limitation are recorded in [the Coordination reconciliation manifest](operations/coordination_reconciliation_manifest.md).
 
 The old 001-010 procedure below reproduces only the original V1 baseline. The full 001-031 clean-database replay remains a required gate before any future Workspace Core schema/read-model migration is merged. The live production schema has been checked with `operations/verify_coordination_reconciliation.sql`; that verification does not substitute for a clean replay.
 
@@ -60,13 +60,13 @@ Workspace Core Supabase project (inventory scope)
 ├─ registry   # products, repos, technologies, services, resources, relations, capabilities
 ├─ knowledge  # V3 goals, principles, hypotheses, provenance, evolution
 ├─ flow       # V3 value flows, versions, steps, edges
-├─ ops          # sync/import state
-├─ coordination # Workstreams, updates/links, Chat Checkpoints
-├─ observability# operational state/history mirror and governance evidence
-└─ public       # narrow server-read views
+├─ ops           # sync/import state
+├─ coordination  # Workstreams, updates/links, Chat Checkpoints
+├─ observability # operational state/history mirror and governance evidence
+└─ public        # narrow server-read views
 ```
 
-Workspace Core is a **catalog and relationship graph**, not a content warehouse. Other Workspace Core domains are outside this inventory-focused bootstrap/handoff.
+Workspace Core is a **cross-system catalog, semantic graph, coordination/control-plane store, and selected observability mirror**, not a content warehouse. Domain/raw data SoTs remain outside Workspace Core unless a narrow cross-system contract explicitly belongs here.
 
 ### Product Evolution Evidence reader
 
