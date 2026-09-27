@@ -8,7 +8,7 @@ Workspace Core の根本設計は維持する。Registry / Flow / Knowledge / Ev
 
 この計画の実装順は次で固定する。
 
-1. Phase 0: Workspace Core Schema Baseline を version 管理する
+1. Phase 0: 既存 `infra/workspace-core/sql` lineage と live schema をreconcileする
 2. Phase 1: Thought Lineage Selection Contract を定義する
 3. Phase 2: Local / External Workstream Reference Contract を定義する
 4. Phase 3: Resume Read Model V1.1
@@ -75,103 +75,123 @@ P2:
 
 この計画は上記を反映済み。
 
+### 第2回Codexレビューでの補正
+
+revised head `4e67637` の再レビューでP1が3件追加された。
+
+1. Workspace Core SQLは消失しておらず、既存 `infra/workspace-core/sql/001〜030` lineageが正本。新しい baseline/migrations 系統を作るとSoTが二重化する。
+2. schema差分はtablesだけでなく functions / triggers / custom roles / memberships / default privileges / policies / grants / extensions まで含める。
+3. local Workstream referenceはtarget_idとtarget_keyが同じrowを指すことまでDBで保証する。
+
+本計画はこれらを反映し、Phase 0を「Baseline新設」から「Existing SQL Lineage Reconciliation」へ変更した。
+
 ---
 
-# Phase 0 — Workspace Core Schema Baseline Recovery
+# Phase 0 — Existing SQL Lineage Reconciliation
 
-## 問題
+## 訂正された前提
 
-既存の `workspace-core-v1.md` / `workspace-core-v3-semantic-foundation.md` は ordered SQL 001〜020 の存在を前提としているが、現在の mini-tools repository およびユーザー配下 GitHub repository を検索しても該当SQLを確認できなかった。
+Workspace Core の schema SQL 全体が失われていたわけではない。
 
-さらに、liveに存在する次の定義も repository SQL から再現できない。
+既存の schema SoT はすでに `infra/workspace-core/sql/` にあり、V1/V3/Observabilityを 001〜030 の ordered SQL で管理している。
 
-- coordination.workstreams
-- coordination.workstream_updates
-- coordination.workstream_links
-- coordination.chat_checkpoints
-- coordination.workstream_overview
-- public.workspace_core_workstream_resume_v
-- public.workspace_core_chat_orchestration_v
-- public.workspace_core_architecture_alignment_v
+現在確認済みの末尾:
 
-したがって、live-only schema drift が存在する。
+- 029_product_evolution_evidence_reader.sql
+- 030_observability_v2_context.sql
+
+問題は、2026-09-06以降に live Supabaseへ適用した次の Coordination / read-model 系変更がこの既存lineageへ戻されていないこと。
+
+live migration history上の欠落候補:
+
+- coordination_workstreams_v0_1
+- workspace_core_workstream_resume_read_model_v1
+- chat_orchestration_v0_2_checkpoints
+- chat_orchestration_v0_2_attention_class_fix
+- architecture_alignment_review_v0_read_model
+
+したがって、新しい competing baseline/migration hierarchy は作らない。
 
 ## 方針
 
-Workspace Core は mini-tools の operational Supabase DB とは別Projectなので、**Workspace Core schema SQLを `mini-tools/supabase/migrations` に混ぜない。**
+`infra/workspace-core/sql/` を唯一のWorkspace Core schema lineageとして維持する。
 
-versioned schema SoT は専用pathへ置く。
+Phase 0では、live-only変更を既存lineageの次の番号へ**reconciliation SQL**として復元する。
 
-候補構造:
+重要:
+- 過去に実行したmigration本文を正確に復元できない場合、過去のmigration transcriptであるかのように偽装しない
+- current live stateを再現する reconciliation/bootstrap SQL と明記する
+- live migration history name/versionとの対応をREADME/manifestへ残す
+- mini-tools本体の `supabase/migrations/` にはWorkspace Core SQLを混ぜない
 
-```text
-infra/workspace-core/
-├─ README.md
-├─ baseline/
-│  ├─ 2026-09-28-schema.sql
-│  └─ 2026-09-28-manifest.md
-├─ migrations/
-└─ checks/
-```
+## Candidate files
 
-### Baselineに含めるもの
+最終番号は既存lineageと依存関係を確認して決めるが、概念上は次を復元する。
 
-最低限、Workspace Core custom schemas と public read models の:
+- Coordination V0.1 tables / constraints / indexes / trigger / workstream_overview
+- Workstream Resume V1 read model
+- Chat Orchestration V0.2 checkpoint table + read model
+- Chat Orchestration attention-class fix
+- Architecture Alignment Review V0 read model
 
-- CREATE SCHEMA
-- CREATE TABLE
-- column type / default / nullability
+複数のlive migrationを1 reconciliation SQLへ畳む場合は、どのlive migrationを包含するかmanifestに列挙する。
+
+## Definition-level inventory
+
+table/viewだけでは再現性が足りない。liveとの差分検証対象に以下を含める。
+
+- schemas
+- tables / columns / defaults / nullability
 - PK / UNIQUE / CHECK / FK
 - indexes
-- RLS enable state
+- RLS enabled/forced state
 - RLS policies
 - grants / revokes
-- views
-- view security_invoker option
-- comments（再現に必要なもののみ）
+- default privileges
+- views + security_invoker
+- functions
+- triggers
+- custom roles
+- role memberships
+- extensions / other executable dependencies
+- comments that are contract-relevant
 
-data rows / Personal Log / domain operational dataはbaselineに含めない。
+既存例:
+- platform.touch_updated_at() と各 touch_updated_at trigger
+- observability.guard_* functions/triggers
+- observability_writer role + membership
+- product_evolution_evidence_reader role + membership
 
-### Baseline manifest
+## Existing-lineage preservation
 
-manifestには少なくとも:
+Phase 0は001〜030を置き換えない。
 
-- captured_at
-- Supabase project ref
-- migration history list
-- schema/object counts
-- live advisor summary
-- baseline SQL SHA256
-- known non-schema dependencies
-- replay status
-- live-schema diff status
+Done condition:
+- [ ] 001〜030のordered lineageを正本として維持
+- [ ] READMEの適用順を030および新しいreconciliation fileまで更新
+- [ ] live migration historyとrepo SQL lineageの対応表がある
+- [ ] Coordination/read-model live-only objectがrepo SQLで再現可能
+- [ ] executable/security objectsまでdefinition-level diff対象に含む
+- [ ] live catalogとの差分が0または説明済み
+- [ ] future schema changeはreconciled lineageの末尾にだけ追加される
 
-を残す。
-
-## Gate
-
-**Phase 0が終わるまで Workspace Core schemaの新規DDLを禁止する。**
-
-Phase 0 Done:
-
-- [ ] live schema baseline がGit version管理される
-- [ ] live catalogとbaselineの構造差分が0または説明済み
-- [ ] grants / RLS / views がsnapshotに含まれる
-- [ ] baseline pathと将来migration pathが明文化される
-- [ ] clean/staging replay方法が決まる
-- [ ] replay未実施なら、その理由とblocking範囲が明記される
-
-### Replay環境
+## Replay gate
 
 追加課金を避けるため、有料Supabase branchを自動作成しない。
 
 優先順位:
-
-1. 利用可能な local/disposable PostgreSQL
+1. local/disposable PostgreSQL
 2. 既存の無償な検証環境
-3. Supabase branch が必要な場合は cost確認 + user明示承認
+3. Supabase branchが必要なら cost確認 + user明示承認
 
-clean replayができるまでは、read model/schema変更をmergeしない。
+完全clean replayがまだ利用できない場合でも、Phase 0の**repo lineage recoveryそのもの**はdocs/SQL reconciliationとして進められる。
+
+ただし、Phase 1以降のlive DDL / read-model変更をmergeする前には:
+- clean/staging replay
+- live schema diff
+- grants/RLS/role verification
+
+を必須Gateとする。
 
 ---
 
@@ -274,7 +294,13 @@ local / external を排他的にする。
 - target_system = workspace-core
 - target_id = valid coordination.workstreams.id
 - target_key = local workstream code
+- target_id と target_key が**同じ coordination.workstreams row**を指す
 - external namespace fields = null
+
+実装候補:
+- coordination.workstreams に UNIQUE(id, code)
+- local reference は composite FK (target_id, target_key) -> workstreams(id, code)
+- IDだけ正しい / codeだけ正しい / IDとcodeが別row、の全てをreject
 
 ### external
 
@@ -303,6 +329,7 @@ dual-read compatibility viewを rollout中は維持する。
 - valid external
 - local without FK
 - local with external namespace
+- local with mismatched target_id / target_key
 - external with local target_id
 - external blank key/system/namespace
 - legacy row compatibility
@@ -490,12 +517,13 @@ live audit時点:
 
 # 実装PR分割
 
-## PR A — baseline recovery
+## PR A — existing lineage reconciliation
 
-- infra/workspace-core path
-- live schema snapshot
-- manifest
-- schema diff/check方法
+- `infra/workspace-core/sql/001〜030` を正本として維持
+- live migration historyとrepo SQLの対応表
+- Coordination/read-model欠落分を次番号のreconciliation SQLとして追加
+- functions / triggers / roles / memberships / default privileges / policies / grants / views を含むdefinition diff/check
+- `infra/workspace-core/README.md` のordered application handoff更新
 - no live schema mutation
 
 ## PR B — selection/reference contracts
