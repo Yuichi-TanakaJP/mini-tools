@@ -4,6 +4,8 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - 'infra/workspace-core/sql/**'
+      - 'infra/workspace-core/sql/**'
       - 'infra/workspace-core/operations/**'
       - 'infra/workspace-core/tests/**'
       - '.github/workflows/workspace-origin-sql.yml'
@@ -44,7 +46,14 @@ jobs:
       PGPASSWORD: fixture-only
     steps:
       - uses: actions/checkout@v4
-      - name: SQL replay and conflict regression tests
+      - name: Origin follow-up regression tests
         run: |
           psql --version
           python3 infra/workspace-core/tests/test_origin_followup.py
+
+      - name: Workspace Core 001-031 clean replay
+        run: |
+          createdb workspace_core_replay_test
+          PGDATABASE=workspace_core_replay_test \
+          WORKSPACE_CORE_TEST_DISPOSABLE_CLUSTER=1 \
+            python3 infra/workspace-core/tests/test_coordination_reconciliation.py
