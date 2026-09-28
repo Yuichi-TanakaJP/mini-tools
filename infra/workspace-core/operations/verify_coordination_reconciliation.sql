@@ -245,7 +245,10 @@ $$;
 
 do $$
 begin
-  if not has_table_privilege('service_role', 'coordination.chat_checkpoints', 'SELECT,INSERT,UPDATE,DELETE') then
+  if not has_table_privilege('service_role', 'coordination.chat_checkpoints', 'SELECT')
+     or not has_table_privilege('service_role', 'coordination.chat_checkpoints', 'INSERT')
+     or not has_table_privilege('service_role', 'coordination.chat_checkpoints', 'UPDATE')
+     or not has_table_privilege('service_role', 'coordination.chat_checkpoints', 'DELETE') then
     raise exception 'service_role chat_checkpoints CRUD grant drift';
   end if;
 
@@ -260,9 +263,106 @@ begin
 end
 $$;
 
+do $$
+declare
+  mismatch_count integer;
+begin
+  with expected(table_name,ordinal_position,column_name,udt_name,is_nullable,column_default) as (
+    values
+      ('chat_checkpoints', 1, 'id', 'uuid', 'NO', 'gen_random_uuid()'),
+      ('chat_checkpoints', 2, 'session_key', 'text', 'NO', null),
+      ('chat_checkpoints', 3, 'workstream_id', 'uuid', 'NO', null),
+      ('chat_checkpoints', 4, 'chat_label', 'text', 'YES', null),
+      ('chat_checkpoints', 5, 'purpose', 'text', 'NO', null),
+      ('chat_checkpoints', 6, 'current_state', 'text', 'NO', null),
+      ('chat_checkpoints', 7, 'done', 'jsonb', 'NO', '''[]''::jsonb'),
+      ('chat_checkpoints', 8, 'owner', 'text', 'NO', null),
+      ('chat_checkpoints', 9, 'state', 'text', 'NO', null),
+      ('chat_checkpoints', 10, 'waiting_for', 'text', 'NO', null),
+      ('chat_checkpoints', 11, 'next_action', 'text', 'NO', null),
+      ('chat_checkpoints', 12, 'evidence_refs', 'jsonb', 'NO', '''[]''::jsonb'),
+      ('chat_checkpoints', 13, 'thought_changed', 'bool', 'NO', 'false'),
+      ('chat_checkpoints', 14, 'thought_lineage_key', 'text', 'YES', null),
+      ('chat_checkpoints', 15, 'source_ref', 'text', 'YES', null),
+      ('chat_checkpoints', 16, 'checkpoint_version', 'text', 'NO', '''0.2''::text'),
+      ('chat_checkpoints', 17, 'metadata', 'jsonb', 'NO', '''{}''::jsonb'),
+      ('chat_checkpoints', 18, 'checkpoint_at', 'timestamptz', 'NO', 'now()'),
+      ('chat_checkpoints', 19, 'created_at', 'timestamptz', 'NO', 'now()'),
+      ('chat_checkpoints', 20, 'updated_at', 'timestamptz', 'NO', 'now()'),
+      ('workstream_links', 1, 'id', 'uuid', 'NO', 'gen_random_uuid()'),
+      ('workstream_links', 2, 'workstream_id', 'uuid', 'NO', null),
+      ('workstream_links', 3, 'relation_type', 'text', 'NO', '''related_to''::text'),
+      ('workstream_links', 4, 'target_type', 'text', 'NO', null),
+      ('workstream_links', 5, 'target_id', 'uuid', 'YES', null),
+      ('workstream_links', 6, 'target_key', 'text', 'YES', null),
+      ('workstream_links', 7, 'label', 'text', 'YES', null),
+      ('workstream_links', 8, 'url', 'text', 'YES', null),
+      ('workstream_links', 9, 'metadata', 'jsonb', 'NO', '''{}''::jsonb'),
+      ('workstream_links', 10, 'created_at', 'timestamptz', 'NO', 'now()'),
+      ('workstream_updates', 1, 'id', 'uuid', 'NO', 'gen_random_uuid()'),
+      ('workstream_updates', 2, 'workstream_id', 'uuid', 'NO', null),
+      ('workstream_updates', 3, 'update_type', 'text', 'NO', '''progress''::text'),
+      ('workstream_updates', 4, 'summary', 'text', 'NO', null),
+      ('workstream_updates', 5, 'detail', 'text', 'YES', null),
+      ('workstream_updates', 6, 'progress_pct', 'int2', 'YES', null),
+      ('workstream_updates', 7, 'actor_type', 'text', 'NO', '''other''::text'),
+      ('workstream_updates', 8, 'actor_name', 'text', 'YES', null),
+      ('workstream_updates', 9, 'source_ref', 'text', 'YES', null),
+      ('workstream_updates', 10, 'event_at', 'timestamptz', 'NO', 'now()'),
+      ('workstream_updates', 11, 'metadata', 'jsonb', 'NO', '''{}''::jsonb'),
+      ('workstream_updates', 12, 'created_at', 'timestamptz', 'NO', 'now()'),
+      ('workstreams', 1, 'id', 'uuid', 'NO', 'gen_random_uuid()'),
+      ('workstreams', 2, 'code', 'text', 'NO', null),
+      ('workstreams', 3, 'title', 'text', 'NO', null),
+      ('workstreams', 4, 'workstream_type', 'text', 'NO', '''other''::text'),
+      ('workstreams', 5, 'status', 'text', 'NO', '''planned''::text'),
+      ('workstreams', 6, 'objective', 'text', 'NO', null),
+      ('workstreams', 7, 'background', 'text', 'YES', null),
+      ('workstreams', 8, 'problem_statement', 'text', 'YES', null),
+      ('workstreams', 9, 'scope_note', 'text', 'YES', null),
+      ('workstreams', 10, 'non_goals', 'text', 'YES', null),
+      ('workstreams', 11, 'success_criteria', 'jsonb', 'NO', '''[]''::jsonb'),
+      ('workstreams', 12, 'current_phase', 'text', 'YES', null),
+      ('workstreams', 13, 'current_summary', 'text', 'YES', null),
+      ('workstreams', 14, 'next_actions', 'jsonb', 'NO', '''[]''::jsonb'),
+      ('workstreams', 15, 'blockers', 'jsonb', 'NO', '''[]''::jsonb'),
+      ('workstreams', 16, 'progress_pct', 'int2', 'YES', null),
+      ('workstreams', 17, 'handoff_note', 'text', 'YES', null),
+      ('workstreams', 18, 'started_at', 'timestamptz', 'YES', null),
+      ('workstreams', 19, 'target_date', 'date', 'YES', null),
+      ('workstreams', 20, 'completed_at', 'timestamptz', 'YES', null),
+      ('workstreams', 21, 'metadata', 'jsonb', 'NO', '''{}''::jsonb'),
+      ('workstreams', 22, 'created_at', 'timestamptz', 'NO', 'now()'),
+      ('workstreams', 23, 'updated_at', 'timestamptz', 'NO', 'now()')
+  ),
+  actual as (
+    select
+      table_name,
+      ordinal_position,
+      column_name,
+      udt_name,
+      is_nullable,
+      column_default
+    from information_schema.columns
+    where table_schema='coordination'
+      and table_name in ('workstreams','workstream_updates','workstream_links','chat_checkpoints')
+  ),
+  diff as (
+    (select * from expected except select * from actual)
+    union all
+    (select * from actual except select * from expected)
+  )
+  select count(*) into mismatch_count from diff;
+
+  if mismatch_count <> 0 then
+    raise exception 'coordination column contract drift: % mismatched rows', mismatch_count;
+  end if;
+end
+$$;
+
 select
   'coordination-reconciliation-ok' as result,
   (select count(*) from information_schema.columns
-   where table_schema='coordination' and table_name='workstreams') as workstream_columns,
-  (select count(*) from information_schema.columns
-   where table_schema='coordination' and table_name='chat_checkpoints') as checkpoint_columns;
+   where table_schema='coordination'
+     and table_name in ('workstreams','workstream_updates','workstream_links','chat_checkpoints'))
+    as verified_columns;
