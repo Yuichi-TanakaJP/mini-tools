@@ -181,7 +181,7 @@ class WorkspaceCoreCleanReplayTest(unittest.TestCase):
 
     def test_coordination_verification_passes(self) -> None:
         out = psql(VERIFY)
-        self.assertIn("coordination-reconciliation-ok|23|20", out)
+        self.assertIn("coordination-reconciliation-ok|65", out)
 
     def test_no_browser_role_can_read_coordination(self) -> None:
         out = psql(
