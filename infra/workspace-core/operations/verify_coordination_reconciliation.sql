@@ -277,6 +277,169 @@ begin
 end
 $crud$;
 
+do $viewdefs$
+declare
+  mismatch_count integer;
+begin
+  with expected(schema_name,view_name,viewdef_md5) as (
+    values
+      ('coordination','workstream_overview','392e19df52658fed0cf673c23ecb1b4b'),
+      ('public','workspace_core_architecture_alignment_v','8f3b812182fce89643ec50944ef44789'),
+      ('public','workspace_core_chat_orchestration_v','281888090556b3454bf3f2e991ed773d'),
+      ('public','workspace_core_workstream_resume_v','68a6cf836c3e256927ae4d973307035f')
+  ),
+  actual as (
+    select
+      schemaname as schema_name,
+      viewname as view_name,
+      md5(pg_get_viewdef((quote_ident(schemaname)||'.'||quote_ident(viewname))::regclass, true))
+        as viewdef_md5
+    from pg_views
+    where (schemaname='coordination' and viewname='workstream_overview')
+       or (schemaname='public' and viewname in (
+         'workspace_core_workstream_resume_v',
+         'workspace_core_chat_orchestration_v',
+         'workspace_core_architecture_alignment_v'
+       ))
+  ),
+  diff as (
+    (select * from expected except select * from actual)
+    union all
+    (select * from actual except select * from expected)
+  )
+  select count(*) into mismatch_count from diff;
+
+  if mismatch_count <> 0 then
+    raise exception 'reconciled view definition drift: % mismatched rows', mismatch_count;
+  end if;
+end
+$viewdefs$;
+
+do $constraintdefs$
+declare
+  mismatch_count integer;
+begin
+  with expected(table_name,constraint_name,constraint_type,def_md5) as (
+    values
+      ('chat_checkpoints','chat_checkpoints_done_check','c','edc313369aad5aaf00262bc98b502281'),
+      ('chat_checkpoints','chat_checkpoints_evidence_refs_check','c','58609819c95bbbd1e11ccb09ef42728d'),
+      ('chat_checkpoints','chat_checkpoints_metadata_check','c','6ddc2c4463783968135037a8b868aac6'),
+      ('chat_checkpoints','chat_checkpoints_nonblank_check','c','f1c6af8b997cfe4d4d2f665a1276413e'),
+      ('chat_checkpoints','chat_checkpoints_owner_check','c','0985bd75f3c5023d0536f7f7c880f4bb'),
+      ('chat_checkpoints','chat_checkpoints_pkey','p','4c6419b3704337bbfe50f018842a9ad3'),
+      ('chat_checkpoints','chat_checkpoints_session_key_key','u','002a7371172964ec97d5d5fa4ace4da2'),
+      ('chat_checkpoints','chat_checkpoints_state_check','c','f42abc8591d2fa9ba1cd8314320e8e33'),
+      ('chat_checkpoints','chat_checkpoints_workstream_id_fkey','f','6951e96471576dce99e31ff0eaead13b'),
+      ('workstream_links','workstream_links_check','c','5effd91c3795937b4d1c8b96a117afa4'),
+      ('workstream_links','workstream_links_metadata_check','c','6ddc2c4463783968135037a8b868aac6'),
+      ('workstream_links','workstream_links_pkey','p','4c6419b3704337bbfe50f018842a9ad3'),
+      ('workstream_links','workstream_links_relation_type_check','c','5b454a880b9653c5f7a85d6447fa530e'),
+      ('workstream_links','workstream_links_target_type_check','c','4937fce41443e8a7980923a4874691c1'),
+      ('workstream_links','workstream_links_workstream_id_fkey','f','6951e96471576dce99e31ff0eaead13b'),
+      ('workstream_updates','workstream_updates_actor_type_check','c','f76dae249dcc41c1cc55e14f992eb89f'),
+      ('workstream_updates','workstream_updates_metadata_check','c','6ddc2c4463783968135037a8b868aac6'),
+      ('workstream_updates','workstream_updates_pkey','p','4c6419b3704337bbfe50f018842a9ad3'),
+      ('workstream_updates','workstream_updates_progress_pct_check','c','a87b91a596bb1e8bfab043fa237df3c2'),
+      ('workstream_updates','workstream_updates_update_type_check','c','253882696e52ada9980d90f5946bb08d'),
+      ('workstream_updates','workstream_updates_workstream_id_fkey','f','6951e96471576dce99e31ff0eaead13b'),
+      ('workstreams','workstreams_blockers_check','c','eefc1aed1c8fbc198fb3f97b062ac884'),
+      ('workstreams','workstreams_check','c','adc0b42953e1fb37635e8426de15a01a'),
+      ('workstreams','workstreams_code_check','c','ddb6ac3933715a07ff9bfb3f7c84a912'),
+      ('workstreams','workstreams_code_key','u','62cc54e4d671b4dc6829956b3bc420bd'),
+      ('workstreams','workstreams_metadata_check','c','6ddc2c4463783968135037a8b868aac6'),
+      ('workstreams','workstreams_next_actions_check','c','99f7ac0f78956a20125d4a9d432511f3'),
+      ('workstreams','workstreams_pkey','p','4c6419b3704337bbfe50f018842a9ad3'),
+      ('workstreams','workstreams_progress_pct_check','c','a87b91a596bb1e8bfab043fa237df3c2'),
+      ('workstreams','workstreams_status_check','c','f532b4d9ee43fed604cbf06cd0bbff49'),
+      ('workstreams','workstreams_success_criteria_check','c','c2002d743692eadcbab3a1a94725382b'),
+      ('workstreams','workstreams_workstream_type_check','c','cc326ce5e6b3679bb298ddf3ac1f9a29')
+  ),
+  actual as (
+    select
+      c.relname as table_name,
+      con.conname as constraint_name,
+      con.contype::text as constraint_type,
+      md5(pg_get_constraintdef(con.oid,true)) as def_md5
+    from pg_constraint con
+    join pg_class c on c.oid=con.conrelid
+    join pg_namespace n on n.oid=c.relnamespace
+    where n.nspname='coordination'
+      and c.relname in ('workstreams','workstream_updates','workstream_links','chat_checkpoints')
+  ),
+  diff as (
+    (select * from expected except select * from actual)
+    union all
+    (select * from actual except select * from expected)
+  )
+  select count(*) into mismatch_count from diff;
+
+  if mismatch_count <> 0 then
+    raise exception 'coordination constraint definition drift: % mismatched rows', mismatch_count;
+  end if;
+end
+$constraintdefs$;
+
+do $indexdefs$
+declare
+  mismatch_count integer;
+begin
+  with expected(index_name,def_md5) as (
+    values
+      ('chat_checkpoints_checkpoint_at_idx','85b6010e22c05d2947c0d63da189d34f'),
+      ('chat_checkpoints_owner_state_idx','74f59ecd40c5f32fc699eebc14f56c99'),
+      ('chat_checkpoints_workstream_idx','ace7735a6d4869c68575455195e9c6c7'),
+      ('coordination_workstream_links_target_idx','a7944148b8147150c67cd7bdf3cb3a82'),
+      ('coordination_workstream_links_workstream_idx','6b4e0833f269f116d3cae58668855bdd'),
+      ('coordination_workstream_updates_type_idx','8c5eb159b0ba476a82653b238a6a08ba'),
+      ('coordination_workstream_updates_workstream_event_idx','0a0dd8259769307362f8ccbaad471664'),
+      ('coordination_workstreams_status_idx','29dcd51184e31effb57e1b0e92e2be59'),
+      ('coordination_workstreams_updated_at_idx','664f339b99555633c35ab96eb1b4f563')
+  ),
+  actual as (
+    select indexname as index_name, md5(indexdef) as def_md5
+    from pg_indexes
+    where schemaname='coordination'
+      and indexname not in (
+        select con.conname
+        from pg_constraint con
+        join pg_class c on c.oid=con.conrelid
+        join pg_namespace n on n.oid=c.relnamespace
+        where n.nspname='coordination' and con.contype in ('p','u')
+      )
+  ),
+  diff as (
+    (select * from expected except select * from actual)
+    union all
+    (select * from actual except select * from expected)
+  )
+  select count(*) into mismatch_count from diff;
+
+  if mismatch_count <> 0 then
+    raise exception 'coordination index definition drift: % mismatched rows', mismatch_count;
+  end if;
+end
+$indexdefs$;
+
+do $triggerdefs$
+declare
+  actual_md5 text;
+begin
+  select md5(pg_get_triggerdef(t.oid,true))
+  into actual_md5
+  from pg_trigger t
+  join pg_class c on c.oid=t.tgrelid
+  join pg_namespace n on n.oid=c.relnamespace
+  where n.nspname='coordination'
+    and c.relname='workstreams'
+    and t.tgname='coordination_workstreams_touch_updated_at'
+    and not t.tgisinternal;
+
+  if actual_md5 is distinct from 'fd00f42ff09b2d9f06f7510de0eb264d' then
+    raise exception 'coordination trigger definition drift';
+  end if;
+end
+$triggerdefs$;
+
 do $columns$
 declare
   mismatch_count integer;
