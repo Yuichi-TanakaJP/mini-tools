@@ -106,7 +106,7 @@ begin
 end
 $$;
 
-do $$
+do $
 declare
   view_name text;
 begin
@@ -125,8 +125,18 @@ begin
       raise exception 'service_role cannot read public.%', view_name;
     end if;
   end loop;
+
+  if has_table_privilege('anon', 'coordination.workstream_overview', 'SELECT')
+     or has_table_privilege('authenticated', 'coordination.workstream_overview', 'SELECT')
+     or has_table_privilege('public', 'coordination.workstream_overview', 'SELECT') then
+    raise exception 'coordination.workstream_overview unexpectedly readable by browser/public role';
+  end if;
+
+  if not has_table_privilege('service_role', 'coordination.workstream_overview', 'SELECT') then
+    raise exception 'service_role cannot read coordination.workstream_overview';
+  end if;
 end
-$$;
+$;
 
 do $$
 declare
