@@ -138,7 +138,7 @@ begin
 end
 $viewpriv$;
 
-do $
+do $constraintnames$
 declare
   expected text[] := array[
     'chat_checkpoints_done_check',
@@ -188,7 +188,7 @@ begin
     raise exception 'coordination constraint set drift. expected %, got %', expected, actual;
   end if;
 end
-$$;
+$constraintnames$;
 
 do $$
 declare
