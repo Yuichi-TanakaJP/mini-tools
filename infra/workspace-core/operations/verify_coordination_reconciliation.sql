@@ -106,7 +106,7 @@ begin
 end
 $$;
 
-do $
+do $viewpriv$
 declare
   view_name text;
 begin
@@ -136,9 +136,9 @@ begin
     raise exception 'service_role cannot read coordination.workstream_overview';
   end if;
 end
-$;
+$viewpriv$;
 
-do $$
+do $
 declare
   expected text[] := array[
     'chat_checkpoints_done_check',
