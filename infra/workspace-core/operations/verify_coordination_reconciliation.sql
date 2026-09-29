@@ -243,25 +243,39 @@ begin
 end
 $$;
 
-do $$
+do $
+declare
+  table_name text;
+  fq_name text;
 begin
-  if not has_table_privilege('service_role', 'coordination.chat_checkpoints', 'SELECT')
-     or not has_table_privilege('service_role', 'coordination.chat_checkpoints', 'INSERT')
-     or not has_table_privilege('service_role', 'coordination.chat_checkpoints', 'UPDATE')
-     or not has_table_privilege('service_role', 'coordination.chat_checkpoints', 'DELETE') then
-    raise exception 'service_role chat_checkpoints CRUD grant drift';
-  end if;
+  foreach table_name in array array[
+    'workstreams',
+    'workstream_updates',
+    'workstream_links',
+    'chat_checkpoints'
+  ]
+  loop
+    fq_name := 'coordination.' || table_name;
+
+    if not has_table_privilege('service_role', fq_name, 'SELECT')
+       or not has_table_privilege('service_role', fq_name, 'INSERT')
+       or not has_table_privilege('service_role', fq_name, 'UPDATE')
+       or not has_table_privilege('service_role', fq_name, 'DELETE') then
+      raise exception 'service_role CRUD grant drift on %', fq_name;
+    end if;
+
+    if has_table_privilege('anon', fq_name, 'SELECT')
+       or has_table_privilege('authenticated', fq_name, 'SELECT')
+       or has_table_privilege('public', fq_name, 'SELECT') then
+      raise exception 'browser/public roles unexpectedly read %', fq_name;
+    end if;
+  end loop;
 
   if has_table_privilege('service_role', 'coordination.chat_checkpoints', 'TRUNCATE') then
     raise exception 'service_role must not have TRUNCATE on chat_checkpoints';
   end if;
-
-  if has_table_privilege('anon', 'coordination.chat_checkpoints', 'SELECT')
-     or has_table_privilege('authenticated', 'coordination.chat_checkpoints', 'SELECT') then
-    raise exception 'browser roles unexpectedly read chat_checkpoints';
-  end if;
 end
-$$;
+$;
 
 do $$
 declare
