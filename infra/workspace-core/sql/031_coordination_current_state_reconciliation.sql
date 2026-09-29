@@ -263,85 +263,65 @@ grant select, insert, update, delete on coordination.chat_checkpoints to service
 create view coordination.workstream_overview
 with (security_invoker = true)
 as
-select
-  w.id,
-  w.code,
-  w.title,
-  w.workstream_type,
-  w.status,
-  w.objective,
-  w.current_phase,
-  w.current_summary,
-  w.progress_pct,
-  w.next_actions,
-  w.blockers,
-  w.handoff_note,
-  w.started_at,
-  w.target_date,
-  w.completed_at,
-  w.updated_at,
-  u.event_at as last_update_at,
-  u.update_type as last_update_type,
-  u.summary as last_update_summary,
-  coalesce(l.link_count, 0::bigint) as link_count,
-  nullif(w.metadata ->> 'snapshot_verified_at', '')::timestamptz as snapshot_verified_at,
-  coalesce(nullif(w.metadata #>> '{snapshot_freshness,status}', ''), 'unknown') as freshness_status,
-  nullif(w.metadata #>> '{snapshot_freshness,coverage}', '') as freshness_coverage,
-  nullif(w.metadata #>> '{snapshot_freshness,latest_basis_updated_at}', '')::timestamptz
-    as latest_basis_updated_at,
-  case
-    when coalesce(nullif(w.metadata #>> '{snapshot_freshness,status}', ''), 'unknown')
-      in ('needs_recheck', 'partial', 'unknown')
-      then true
-    else false
-  end as freshness_attention,
-  case
-    when jsonb_typeof(w.metadata -> 'snapshot_basis') = 'array'
-      then jsonb_array_length(w.metadata -> 'snapshot_basis')
-    else 0
-  end as snapshot_basis_count,
-  nullif(w.metadata #>> '{semantic_freshness,status}', '') as semantic_freshness_status,
-  coalesce(
-    nullif(w.metadata #>> '{semantic_freshness,last_materiality}', ''),
-    nullif(sm.metadata ->> 'materiality', '')
-  ) as semantic_last_materiality,
-  sm.event_at as semantic_candidate_at,
-  case
-    when sm.event_at is null and w.metadata -> 'semantic_freshness' is null then null::boolean
-    when coalesce(nullif(w.metadata #>> '{semantic_freshness,status}', ''), '') = 'needs_recheck'
-      then true
-    when coalesce((sm.metadata ->> 'requires_snapshot_recheck')::boolean, false)
-      and (
-        nullif(w.metadata #>> '{semantic_freshness,reviewed_at}', '')::timestamptz is null
-        or nullif(w.metadata #>> '{semantic_freshness,reviewed_at}', '')::timestamptz < sm.event_at
-      )
-      then true
-    when coalesce(nullif(w.metadata #>> '{semantic_freshness,status}', ''), '') = 'fresh'
-      then false
-    else null::boolean
-  end as semantic_attention
-from coordination.workstreams w
-left join lateral (
-  select wu.event_at, wu.update_type, wu.summary
-  from coordination.workstream_updates wu
-  where wu.workstream_id = w.id
-  order by wu.event_at desc, wu.created_at desc
-  limit 1
-) u on true
-left join lateral (
-  select count(*) as link_count
-  from coordination.workstream_links wl
-  where wl.workstream_id = w.id
-) l on true
-left join lateral (
-  select wu.event_at, wu.metadata
-  from coordination.workstream_updates wu
-  where wu.workstream_id = w.id
-    and (wu.metadata ? 'materiality' or wu.metadata ? 'requires_snapshot_recheck')
-  order by wu.event_at desc, wu.created_at desc
-  limit 1
-) sm on true;
-
+SELECT w.id,
+    w.code,
+    w.title,
+    w.workstream_type,
+    w.status,
+    w.objective,
+    w.current_phase,
+    w.current_summary,
+    w.progress_pct,
+    w.next_actions,
+    w.blockers,
+    w.handoff_note,
+    w.started_at,
+    w.target_date,
+    w.completed_at,
+    w.updated_at,
+    u.event_at AS last_update_at,
+    u.update_type AS last_update_type,
+    u.summary AS last_update_summary,
+    COALESCE(l.link_count, 0::bigint) AS link_count,
+    NULLIF(w.metadata ->> 'snapshot_verified_at'::text, ''::text)::timestamp with time zone AS snapshot_verified_at,
+    COALESCE(NULLIF(w.metadata #>> '{snapshot_freshness,status}'::text[], ''::text), 'unknown'::text) AS freshness_status,
+    NULLIF(w.metadata #>> '{snapshot_freshness,coverage}'::text[], ''::text) AS freshness_coverage,
+    NULLIF(w.metadata #>> '{snapshot_freshness,latest_basis_updated_at}'::text[], ''::text)::timestamp with time zone AS latest_basis_updated_at,
+        CASE
+            WHEN COALESCE(NULLIF(w.metadata #>> '{snapshot_freshness,status}'::text[], ''::text), 'unknown'::text) = ANY (ARRAY['needs_recheck'::text, 'partial'::text, 'unknown'::text]) THEN true
+            ELSE false
+        END AS freshness_attention,
+        CASE
+            WHEN jsonb_typeof(w.metadata -> 'snapshot_basis'::text) = 'array'::text THEN jsonb_array_length(w.metadata -> 'snapshot_basis'::text)
+            ELSE 0
+        END AS snapshot_basis_count,
+    NULLIF(w.metadata #>> '{semantic_freshness,status}'::text[], ''::text) AS semantic_freshness_status,
+    COALESCE(NULLIF(w.metadata #>> '{semantic_freshness,last_materiality}'::text[], ''::text), NULLIF(sm.metadata ->> 'materiality'::text, ''::text)) AS semantic_last_materiality,
+    sm.event_at AS semantic_candidate_at,
+        CASE
+            WHEN sm.event_at IS NULL AND (w.metadata -> 'semantic_freshness'::text) IS NULL THEN NULL::boolean
+            WHEN COALESCE(NULLIF(w.metadata #>> '{semantic_freshness,status}'::text[], ''::text), ''::text) = 'needs_recheck'::text THEN true
+            WHEN COALESCE((sm.metadata ->> 'requires_snapshot_recheck'::text)::boolean, false) AND (NULLIF(w.metadata #>> '{semantic_freshness,reviewed_at}'::text[], ''::text)::timestamp with time zone IS NULL OR NULLIF(w.metadata #>> '{semantic_freshness,reviewed_at}'::text[], ''::text)::timestamp with time zone < sm.event_at) THEN true
+            WHEN COALESCE(NULLIF(w.metadata #>> '{semantic_freshness,status}'::text[], ''::text), ''::text) = 'fresh'::text THEN false
+            ELSE NULL::boolean
+        END AS semantic_attention
+   FROM coordination.workstreams w
+     LEFT JOIN LATERAL ( SELECT wu.event_at,
+            wu.update_type,
+            wu.summary
+           FROM coordination.workstream_updates wu
+          WHERE wu.workstream_id = w.id
+          ORDER BY wu.event_at DESC, wu.created_at DESC
+         LIMIT 1) u ON true
+     LEFT JOIN LATERAL ( SELECT count(*) AS link_count
+           FROM coordination.workstream_links wl
+          WHERE wl.workstream_id = w.id) l ON true
+     LEFT JOIN LATERAL ( SELECT wu.event_at,
+            wu.metadata
+           FROM coordination.workstream_updates wu
+          WHERE wu.workstream_id = w.id AND (wu.metadata ? 'materiality'::text OR wu.metadata ? 'requires_snapshot_recheck'::text)
+          ORDER BY wu.event_at DESC, wu.created_at DESC
+         LIMIT 1) sm ON true;
 comment on view coordination.workstream_overview is
   'Human/AI-friendly current overview: workstream snapshot plus the latest timeline update and link count.';
 
@@ -351,72 +331,56 @@ grant all on coordination.workstream_overview to service_role;
 create view public.workspace_core_workstream_resume_v
 with (security_invoker = true)
 as
-select
-  w.id as workstream_id,
-  w.code as workstream_code,
-  w.title as workstream_title,
-  w.status,
-  w.current_phase,
-  w.progress_pct,
-  w.current_summary,
-  w.next_actions,
-  w.blockers,
-  w.updated_at as workstream_updated_at,
-  lu.event_at as last_update_at,
-  lu.update_type as last_update_type,
-  lu.summary as last_update_summary,
-  tl.id as thought_item_id,
-  tl.canonical_key as thought_item_key,
-  tl.title as thought_title,
-  tl.statement as thought_statement,
-  tl.updated_at as thought_updated_at,
-  case
-    when tl.id is null then null::jsonb
-    else jsonb_build_object(
-      'why', coalesce(nullif(tl.metadata ->> 'insight', ''), tl.statement),
-      'hypothesis', tl.metadata -> 'hypothesis',
-      'connections', coalesce(tl.metadata -> 'connections', '[]'::jsonb),
-      'selected_or_active', coalesce(tl.metadata -> 'selected_or_active', '[]'::jsonb),
-      'deferred', coalesce(tl.metadata -> 'deferred', '[]'::jsonb),
-      'defer_reason_summary', tl.metadata -> 'defer_reason_summary',
-      'next_question', tl.metadata -> 'next_question',
-      'next_meaningful_decision', tl.metadata -> 'next_meaningful_decision',
-      'evidence_refs', coalesce(tl.metadata -> 'evidence_refs', '[]'::jsonb),
-      'operational_state', jsonb_build_object(
-        'status', w.status,
-        'current_phase', w.current_phase,
-        'progress_pct', w.progress_pct,
-        'current_summary', w.current_summary,
-        'next_actions', w.next_actions,
-        'blockers', w.blockers,
-        'last_update_at', lu.event_at,
-        'last_update_type', lu.update_type,
-        'last_update_summary', lu.summary
-      )
-    )
-  end as resume_packet
-from coordination.workstreams w
-left join lateral (
-  select u.event_at, u.update_type, u.summary
-  from coordination.workstream_updates u
-  where u.workstream_id = w.id
-  order by u.event_at desc, u.created_at desc
-  limit 1
-) lu on true
-left join lateral (
-  select k.*
-  from coordination.workstream_links l
-  join knowledge.items k on k.id = l.target_id
-  where l.workstream_id = w.id
-    and l.target_type = 'knowledge_item'
-    and (
-      k.metadata ->> 'record_kind' = 'thought_lineage_v0_pilot'
-      or k.canonical_key like 'thought-lineage-pilot-%'
-    )
-  order by k.updated_at desc, k.created_at desc
-  limit 1
-) tl on true;
-
+SELECT w.id AS workstream_id,
+    w.code AS workstream_code,
+    w.title AS workstream_title,
+    w.status,
+    w.current_phase,
+    w.progress_pct,
+    w.current_summary,
+    w.next_actions,
+    w.blockers,
+    w.updated_at AS workstream_updated_at,
+    lu.event_at AS last_update_at,
+    lu.update_type AS last_update_type,
+    lu.summary AS last_update_summary,
+    tl.id AS thought_item_id,
+    tl.canonical_key AS thought_item_key,
+    tl.title AS thought_title,
+    tl.statement AS thought_statement,
+    tl.updated_at AS thought_updated_at,
+        CASE
+            WHEN tl.id IS NULL THEN NULL::jsonb
+            ELSE jsonb_build_object('why', COALESCE(NULLIF(tl.metadata ->> 'insight'::text, ''::text), tl.statement), 'hypothesis', tl.metadata -> 'hypothesis'::text, 'connections', COALESCE(tl.metadata -> 'connections'::text, '[]'::jsonb), 'selected_or_active', COALESCE(tl.metadata -> 'selected_or_active'::text, '[]'::jsonb), 'deferred', COALESCE(tl.metadata -> 'deferred'::text, '[]'::jsonb), 'defer_reason_summary', tl.metadata -> 'defer_reason_summary'::text, 'next_question', tl.metadata -> 'next_question'::text, 'next_meaningful_decision', tl.metadata -> 'next_meaningful_decision'::text, 'evidence_refs', COALESCE(tl.metadata -> 'evidence_refs'::text, '[]'::jsonb), 'operational_state', jsonb_build_object('status', w.status, 'current_phase', w.current_phase, 'progress_pct', w.progress_pct, 'current_summary', w.current_summary, 'next_actions', w.next_actions, 'blockers', w.blockers, 'last_update_at', lu.event_at, 'last_update_type', lu.update_type, 'last_update_summary', lu.summary))
+        END AS resume_packet
+   FROM coordination.workstreams w
+     LEFT JOIN LATERAL ( SELECT u.event_at,
+            u.update_type,
+            u.summary
+           FROM coordination.workstream_updates u
+          WHERE u.workstream_id = w.id
+          ORDER BY u.event_at DESC, u.created_at DESC
+         LIMIT 1) lu ON true
+     LEFT JOIN LATERAL ( SELECT k.id,
+            k.canonical_key,
+            k.kind,
+            k.title,
+            k.statement,
+            k.domain_id,
+            k.lifecycle_status,
+            k.verification_status,
+            k.supersedes_item_id,
+            k.source,
+            k.confidence,
+            k.verified_at,
+            k.metadata,
+            k.created_at,
+            k.updated_at
+           FROM coordination.workstream_links l
+             JOIN knowledge.items k ON k.id = l.target_id
+          WHERE l.workstream_id = w.id AND l.target_type = 'knowledge_item'::text AND ((k.metadata ->> 'record_kind'::text) = 'thought_lineage_v0_pilot'::text OR k.canonical_key ~~ 'thought-lineage-pilot-%'::text)
+          ORDER BY k.updated_at DESC, k.created_at DESC
+         LIMIT 1) tl ON true;
 comment on view public.workspace_core_workstream_resume_v is
   'Read-only resume packet for Workspace Core workstreams. Combines operational state with the latest linked Thought Lineage item so an AI or human can recover why the work exists, what is active/deferred, and the next meaningful decision without reconstructing the full chat.';
 
@@ -426,40 +390,41 @@ grant all on public.workspace_core_workstream_resume_v to service_role;
 create view public.workspace_core_chat_orchestration_v
 with (security_invoker = true)
 as
-select
-  c.id as checkpoint_id,
-  c.session_key,
-  c.chat_label,
-  w.id as workstream_id,
-  w.code as workstream_code,
-  w.title as workstream_title,
-  w.status as workstream_status,
-  c.purpose,
-  c.current_state,
-  c.done,
-  c.owner,
-  c.state,
-  c.waiting_for,
-  c.next_action,
-  c.evidence_refs,
-  c.thought_changed,
-  c.thought_lineage_key,
-  c.source_ref,
-  c.checkpoint_version,
-  c.checkpoint_at,
-  c.updated_at,
-  c.state in ('done', 'abandoned') as is_terminal,
-  case
-    when c.state in ('done', 'abandoned') then 'terminal'
-    when c.state = 'blocked' then 'blocked'
-    when c.owner = 'user' then 'user_action'
-    when c.state = 'waiting' then 'waiting'
-    when c.state = 'review' then 'review'
-    else 'active'
-  end as attention_class
-from coordination.chat_checkpoints c
-join coordination.workstreams w on w.id = c.workstream_id;
-
+SELECT c.id AS checkpoint_id,
+    c.session_key,
+    c.chat_label,
+    w.id AS workstream_id,
+    w.code AS workstream_code,
+    w.title AS workstream_title,
+    w.status AS workstream_status,
+    c.purpose,
+    c.current_state,
+    c.done,
+    c.owner,
+    c.state,
+    c.waiting_for,
+    c.next_action,
+    c.evidence_refs,
+    c.thought_changed,
+    c.thought_lineage_key,
+    c.source_ref,
+    c.checkpoint_version,
+    c.checkpoint_at,
+    c.updated_at,
+        CASE
+            WHEN c.state = ANY (ARRAY['done'::text, 'abandoned'::text]) THEN true
+            ELSE false
+        END AS is_terminal,
+        CASE
+            WHEN c.state = ANY (ARRAY['done'::text, 'abandoned'::text]) THEN 'terminal'::text
+            WHEN c.state = 'blocked'::text THEN 'blocked'::text
+            WHEN c.owner = 'user'::text THEN 'user_action'::text
+            WHEN c.state = 'waiting'::text THEN 'waiting'::text
+            WHEN c.state = 'review'::text THEN 'review'::text
+            ELSE 'active'::text
+        END AS attention_class
+   FROM coordination.chat_checkpoints c
+     JOIN coordination.workstreams w ON w.id = c.workstream_id;
 comment on view public.workspace_core_chat_orchestration_v is
   'Read-only cross-chat orchestration board. Shows one authoritative checkpoint per chat session together with its parent Workstream.';
 
@@ -469,49 +434,39 @@ grant all on public.workspace_core_chat_orchestration_v to service_role;
 create view public.workspace_core_architecture_alignment_v
 with (security_invoker = true)
 as
-select
-  c.id as checkpoint_id,
-  c.session_key,
-  c.chat_label,
-  w.id as workstream_id,
-  w.code as workstream_code,
-  w.title as workstream_title,
-  c.owner,
-  c.state,
-  c.current_state,
-  c.next_action,
-  c.checkpoint_at,
-  c.metadata -> 'architecture_alignment_v0' ->> 'review_version' as review_version,
-  nullif(c.metadata -> 'architecture_alignment_v0' ->> 'reviewed_at', '')::timestamptz
-    as architecture_reviewed_at,
-  c.metadata -> 'architecture_alignment_v0' -> 'origin_architecture_refs'
-    as origin_architecture_refs,
-  c.metadata -> 'architecture_alignment_v0' -> 'applicable_current_architecture_refs'
-    as applicable_current_architecture_refs,
-  c.metadata -> 'architecture_alignment_v0' ->> 'status' as alignment_status,
-  c.metadata -> 'architecture_alignment_v0' ->> 'rationale' as alignment_rationale,
-  c.metadata -> 'architecture_alignment_v0' ->> 'gap_or_risk' as alignment_gap_or_risk,
-  c.metadata -> 'architecture_alignment_v0' ->> 'recheck_trigger'
-    as architecture_recheck_trigger,
-  case
-    when not (c.metadata ? 'architecture_alignment_v0') then 'unreviewed'
-    when c.metadata -> 'architecture_alignment_v0' ->> 'status'
-      in ('drift-risk', 'superseded') then 'high'
-    when c.metadata -> 'architecture_alignment_v0' ->> 'status'
-      in ('transitional', 'unknown') then 'review'
-    when c.metadata -> 'architecture_alignment_v0' ->> 'status'
-      in ('aligned', 'legacy-intentional') then 'ok'
-    else 'review'
-  end as architecture_attention,
-  case
-    when not (c.metadata ? 'architecture_alignment_v0') then true
-    when c.metadata -> 'architecture_alignment_v0' ->> 'status'
-      in ('drift-risk', 'superseded', 'transitional', 'unknown') then true
-    else false
-  end as needs_architecture_review
-from coordination.chat_checkpoints c
-join coordination.workstreams w on w.id = c.workstream_id;
-
+SELECT c.id AS checkpoint_id,
+    c.session_key,
+    c.chat_label,
+    w.id AS workstream_id,
+    w.code AS workstream_code,
+    w.title AS workstream_title,
+    c.owner,
+    c.state,
+    c.current_state,
+    c.next_action,
+    c.checkpoint_at,
+    (c.metadata -> 'architecture_alignment_v0'::text) ->> 'review_version'::text AS review_version,
+    NULLIF((c.metadata -> 'architecture_alignment_v0'::text) ->> 'reviewed_at'::text, ''::text)::timestamp with time zone AS architecture_reviewed_at,
+    (c.metadata -> 'architecture_alignment_v0'::text) -> 'origin_architecture_refs'::text AS origin_architecture_refs,
+    (c.metadata -> 'architecture_alignment_v0'::text) -> 'applicable_current_architecture_refs'::text AS applicable_current_architecture_refs,
+    (c.metadata -> 'architecture_alignment_v0'::text) ->> 'status'::text AS alignment_status,
+    (c.metadata -> 'architecture_alignment_v0'::text) ->> 'rationale'::text AS alignment_rationale,
+    (c.metadata -> 'architecture_alignment_v0'::text) ->> 'gap_or_risk'::text AS alignment_gap_or_risk,
+    (c.metadata -> 'architecture_alignment_v0'::text) ->> 'recheck_trigger'::text AS architecture_recheck_trigger,
+        CASE
+            WHEN NOT c.metadata ? 'architecture_alignment_v0'::text THEN 'unreviewed'::text
+            WHEN ((c.metadata -> 'architecture_alignment_v0'::text) ->> 'status'::text) = ANY (ARRAY['drift-risk'::text, 'superseded'::text]) THEN 'high'::text
+            WHEN ((c.metadata -> 'architecture_alignment_v0'::text) ->> 'status'::text) = ANY (ARRAY['transitional'::text, 'unknown'::text]) THEN 'review'::text
+            WHEN ((c.metadata -> 'architecture_alignment_v0'::text) ->> 'status'::text) = ANY (ARRAY['aligned'::text, 'legacy-intentional'::text]) THEN 'ok'::text
+            ELSE 'review'::text
+        END AS architecture_attention,
+        CASE
+            WHEN NOT c.metadata ? 'architecture_alignment_v0'::text THEN true
+            WHEN ((c.metadata -> 'architecture_alignment_v0'::text) ->> 'status'::text) = ANY (ARRAY['drift-risk'::text, 'superseded'::text, 'transitional'::text, 'unknown'::text]) THEN true
+            ELSE false
+        END AS needs_architecture_review
+   FROM coordination.chat_checkpoints c
+     JOIN coordination.workstreams w ON w.id = c.workstream_id;
 comment on view public.workspace_core_architecture_alignment_v is
   'Read-only Architecture Alignment Review V0 board. Shows each chat checkpoint, its origin/applicable architecture refs, alignment status, rationale, gap/risk, and recheck trigger.';
 
