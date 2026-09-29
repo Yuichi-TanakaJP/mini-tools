@@ -277,7 +277,7 @@ begin
 end
 $;
 
-do $$
+do $
 declare
   mismatch_count integer;
 begin
