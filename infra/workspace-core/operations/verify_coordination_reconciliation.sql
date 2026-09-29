@@ -243,7 +243,7 @@ begin
 end
 $$;
 
-do $
+do $crud$
 declare
   table_name text;
   fq_name text;
@@ -275,9 +275,9 @@ begin
     raise exception 'service_role must not have TRUNCATE on chat_checkpoints';
   end if;
 end
-$;
+$crud$;
 
-do $
+do $columns$
 declare
   mismatch_count integer;
 begin
@@ -372,7 +372,7 @@ begin
     raise exception 'coordination column contract drift: % mismatched rows', mismatch_count;
   end if;
 end
-$$;
+$columns$;
 
 select
   'coordination-reconciliation-ok' as result,
