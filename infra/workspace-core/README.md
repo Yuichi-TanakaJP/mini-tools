@@ -13,9 +13,10 @@ Workspace Core has progressed beyond the original Product Map V1. The V1 API/sec
 | V3 Function / Capability / Knowledge / Evolution / Value Flow foundation | `sql/014` through `sql/020` |
 | V3 evidence-backed inventory expansion | `sql/021` through `sql/028` |
 | Product Evolution Evidence reader | `sql/029_product_evolution_evidence_reader.sql` |
+| System Map reviewed-facts reader | `sql/030_system_map_facts_reader.sql` |
 | Controlled origin follow-up for #583 / #588 | `operations/apply_origin_followup.sql`, with private replay input |
 
-The numeric SQL files should be reviewed/applied in order through **029** to reproduce the current V3 baseline. The old 001-010 procedure below reproduces only the original V1 baseline. A clean-database replay of the entire sequence was not re-tested in this follow-up.
+The numeric SQL files should be reviewed/applied in order through **030** to reproduce the current V3 baseline. The old 001-010 procedure below reproduces only the original V1 baseline. A clean-database replay of the entire sequence was not re-tested in this follow-up.
 
 The current origin follow-up adds data, not schema. The loader and [read-only checks](operations/verify_origin_followup.sql) are separate from unconditional bootstrap SQL because personal evidence must not be published in this public repository. The replay unit is the public loader plus the immutable private audit snapshot held by the canonical Workstream. Missing input or conflicting definitions abort rather than overwrite data.
 
@@ -51,6 +52,30 @@ Workspace Core is a **catalog and relationship graph**, not a content warehouse.
 ### Product Evolution Evidence reader
 
 `sql/029_product_evolution_evidence_reader.sql` adds a dedicated, NO-BYPASSRLS database principal for pc-saas-health-monitor. It can read only the key/status/timestamps of active `product-evolution-review-*` rows from `knowledge.items`; it cannot read Review statements/metadata, write Workspace Core, or access other private schemas. The migration is fail-closed: unexpected role membership, object ownership, direct ACL, or role-targeted policy state aborts instead of being silently preserved. The reader has both a PERMISSIVE allow policy and a matching RESTRICTIVE policy, so a future broad PERMISSIVE/PUBLIC policy cannot widen its row visibility. PostgreSQL 17's automatic creator ADMIN membership is allowed only with `ADMIN TRUE / INHERIT FALSE / SET FALSE`; the Health Monitor principal gets the capability with `ADMIN FALSE / INHERIT TRUE / SET FALSE`. The login password is configured out-of-band and stored only in the Health Monitor OS Credential Store. Privileged catalog verification lives in `operations/verify_product_evolution_evidence_reader.sql`; actual-principal allow/deny tests live in `operations/uat_product_evolution_evidence_reader.sql`; password initialization, rotation, emergency revoke, and recovery are documented in `operations/product_evolution_evidence_reader_runbook.md`.
+
+
+### System Map reviewed-facts reader
+
+`sql/030_system_map_facts_reader.sql` adds a second, deliberately separate
+Health Monitor database principal for Issue
+`pc-saas-health-monitor#326`. It does **not** extend the Product Evolution
+principal from migration 029, because 029 intentionally fail-closes on any
+unexpected membership or private-schema access.
+
+The System Map principal can read only selected identity/status columns from
+`registry.products`, `registry.product_relations`, `flow.value_flows`, and
+`flow.flow_versions`. It cannot read free-text descriptions, metadata,
+relation notes/source text, Flow purpose/summary, Flow steps/edges, Knowledge,
+or another private table, and it cannot write. RLS limits visible rows to the
+lifecycle/model/relation vocabularies reviewed on 2026-09-23 so a newly added
+status or relation type is fail-closed until the contract is reviewed.
+
+The login password is configured out-of-band under the separate Health Monitor
+credential `WORKSPACE_CORE_SYSTEM_MAP_DB_URL`. Privileged catalog checks live
+in `operations/verify_system_map_facts_reader.sql`; actual-login allow/deny
+tests live in `operations/uat_system_map_facts_reader.sql`; credential
+initialization, rotation, emergency revoke, and recovery are documented in
+`operations/system_map_facts_reader_runbook.md`.
 
 ## Source-of-truth policy
 
