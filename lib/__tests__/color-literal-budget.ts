@@ -42,7 +42,6 @@ export const COLOR_LITERAL_BUDGET: Readonly<Record<string, number>> = {
   "app/tools/econ-calendar/ToolClient.tsx": 22,
   "app/tools/investor-flow/ToolClient.tsx": 42,
   "app/tools/market-rankings/ToolClient.tsx": 23,
-  "app/tools/my-stocks/ToolClient.tsx": 9,
   "app/tools/nikkei-contribution/ToolClient.tsx": 40,
   "app/tools/nikkei-contribution/loading.tsx": 1,
   "app/tools/stock-notes/ToolClient.tsx": 17,
