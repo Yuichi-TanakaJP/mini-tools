@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
+import { verifyWorkspaceCoreReadProxyToken } from "@/lib/workspace-core/read-proxy-auth";
 import { isWorkspaceCoreConfigured } from "@/lib/workspace-core/config";
 import { createWorkspaceCoreServerClient } from "@/lib/workspace-core/server";
 import {
@@ -19,10 +20,19 @@ function json(data: unknown, status = 200) {
 }
 
 export async function GET(request: Request) {
-  const cookieStore = await cookies();
-  const session = cookieStore.get(PREMIUM_COOKIE_NAME)?.value;
-  if (!verifyPremiumSession(session)) {
-    return json({ status: "unauthenticated", data: null, message: "Premium認証が必要です。" }, 401);
+  const proxyAuthorized = verifyWorkspaceCoreReadProxyToken(
+    request.headers.get("authorization"),
+  );
+
+  if (!proxyAuthorized) {
+    const cookieStore = await cookies();
+    const session = cookieStore.get(PREMIUM_COOKIE_NAME)?.value;
+    if (!verifyPremiumSession(session)) {
+      return json(
+        { status: "unauthenticated", data: null, message: "Premium認証が必要です。" },
+        401,
+      );
+    }
   }
 
   if (!isWorkspaceCoreConfigured()) {
