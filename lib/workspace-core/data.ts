@@ -4,6 +4,11 @@ import {
   buildWorkspaceCoreControlCenter,
   type WorkspaceCoreControlCenter,
 } from "./control-center";
+import {
+  loadAllWorkspaceCoreCurrentStateRows,
+  loadAllWorkspaceCoreEvolutionRows,
+  loadAllWorkspaceCoreWorkstreamRows,
+} from "./control-center-read-pages";
 import type {
   WorkspaceCoreOverview,
   WorkspaceCoreProductDetail,
@@ -135,27 +140,7 @@ function assertResult(label: string, error: { message: string } | null) {
   if (error) throw new Error(`${label}: ${error.message}`);
 }
 
-const EVOLUTION_PAGE_SIZE = 1000;
-
-export async function loadAllWorkspaceCoreEvolutionRows(
-  supabase: SupabaseClient,
-): Promise<Row[]> {
-  const rows: Row[] = [];
-
-  for (let from = 0; ; from += EVOLUTION_PAGE_SIZE) {
-    const result = await supabase
-      .from("workspace_core_evolution_summary_v")
-      .select(
-        "event_id,event_type,title,summary,period_start,period_end,time_precision,source,confidence,verified_at,updated_at",
-      )
-      .range(from, from + EVOLUTION_PAGE_SIZE - 1);
-
-    assertResult("Evolution Eventの取得に失敗しました", result.error);
-    const page = (result.data ?? []) as Row[];
-    rows.push(...page);
-    if (page.length < EVOLUTION_PAGE_SIZE) return rows;
-  }
-}
+export { loadAllWorkspaceCoreEvolutionRows } from "./control-center-read-pages";
 
 export async function loadWorkspaceCoreOverview(supabase: SupabaseClient): Promise<WorkspaceCoreOverview> {
   const [productsResult, repositoriesResult, technologiesResult, providersResult, instancesResult, relationsResult, servicesResult, serviceProductsResult, serviceDeliveryResult] = await Promise.all([
@@ -236,23 +221,14 @@ export async function loadWorkspaceCoreControlCenter(
   supabase: SupabaseClient,
 ): Promise<WorkspaceCoreControlCenter> {
   const [
-    workstreamsResult,
-    currentResult,
+    workstreamRows,
+    currentRows,
     eventsResult,
     architectureResult,
     evolutionRows,
   ] = await Promise.all([
-    supabase
-      .from("workspace_core_workstream_resume_v")
-      .select(
-        "workstream_code,workstream_title,status,current_phase,progress_pct,current_summary,next_actions,blockers,workstream_updated_at,last_update_at,last_update_type,last_update_summary",
-      )
-      .in("status", ["active", "blocked", "paused"]),
-    supabase
-      .from("workspace_core_observability_current_v")
-      .select(
-        "source_key,subject_key,metric_key,status,observed_at,mirrored_at,subject_kind,subject_label,product_slug,metric_label,reason_code,usage_ratio,limit_needs_review",
-      ),
+    loadAllWorkspaceCoreWorkstreamRows(supabase),
+    loadAllWorkspaceCoreCurrentStateRows(supabase),
     supabase
       .from("workspace_core_observability_event_v")
       .select(
@@ -267,16 +243,14 @@ export async function loadWorkspaceCoreControlCenter(
     loadAllWorkspaceCoreEvolutionRows(supabase),
   ]);
 
-  assertResult("Workstream一覧の取得に失敗しました", workstreamsResult.error);
-  assertResult("Observability current stateの取得に失敗しました", currentResult.error);
   assertResult("Observability eventの取得に失敗しました", eventsResult.error);
   assertResult("Architecture countの取得に失敗しました", architectureResult.error);
 
   const architectureRow = (architectureResult.data ?? {}) as Row;
 
   return buildWorkspaceCoreControlCenter({
-    workstreamRows: (workstreamsResult.data ?? []) as Row[],
-    currentRows: (currentResult.data ?? []) as Row[],
+    workstreamRows,
+    currentRows,
     eventRows: (eventsResult.data ?? []) as Row[],
     evolutionRows,
     architecture: {
