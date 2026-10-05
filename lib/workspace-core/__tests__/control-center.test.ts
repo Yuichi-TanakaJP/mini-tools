@@ -135,3 +135,29 @@ describe("Workspace Core Control Center", () => {
     expect(result.architecture).toEqual({ products: 2, repositories: 2, services: 1 });
   });
 });
+
+
+describe("Workspace Core Control Center bounds", () => {
+  it("keeps workstream counts complete when the rendered list is capped", () => {
+    const workstreamRows = Array.from({ length: 15 }, (_, index) => ({
+      workstream_code: `active-${index}`,
+      workstream_title: `Active ${index}`,
+      status: "active",
+      blockers: [],
+      next_actions: [],
+      last_update_at: `2026-10-04T${String(index).padStart(2, "0")}:00:00Z`,
+    }));
+
+    const result = buildWorkspaceCoreControlCenter({
+      now: new Date("2026-10-05T00:00:00Z"),
+      workstreamRows,
+      currentRows: [],
+      eventRows: [],
+      evolutionRows: [],
+      architecture: { products: 0, repositories: 0, services: 0 },
+    });
+
+    expect(result.work.activeCount).toBe(15);
+    expect(result.work.items).toHaveLength(12);
+  });
+});
