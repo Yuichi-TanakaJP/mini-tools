@@ -19,6 +19,7 @@ export type WorkspaceCoreControlCenterCurrentState = {
   metricKey: string;
   status: string;
   observedAt: string | null;
+  mirroredAt: string | null;
   subjectLabel: string | null;
   metricLabel: string | null;
   productSlug: string | null;
@@ -35,11 +36,36 @@ export type WorkspaceCoreControlCenterStatusEvent = {
   previousStatus: string | null;
   newStatus: string;
   observedAt: string | null;
+  mirroredAt: string | null;
   subjectLabel: string | null;
   metricLabel: string | null;
   productSlug: string | null;
   reasonCode: string | null;
   eventKind: string | null;
+};
+
+export type WorkspaceCoreControlCenterSourceCoverage = {
+  sourceKey: string;
+  rowCount: number;
+  attentionCount: number;
+  lastObservedAt: string | null;
+  lastMirroredAt: string | null;
+  observationAgeHours: number | null;
+  mirrorDeliveryAgeHours: number | null;
+};
+
+export type WorkspaceCoreControlCenterEvolution = {
+  eventId: string;
+  eventType: string;
+  title: string;
+  summary: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
+  timePrecision: string | null;
+  source: string | null;
+  confidence: number | null;
+  verifiedAt: string | null;
+  updatedAt: string | null;
 };
 
 export type WorkspaceCoreControlCenter = {
@@ -59,11 +85,17 @@ export type WorkspaceCoreControlCenter = {
       other: number;
     };
     total: number;
-    lastObservedAt: string | null;
-    stale: boolean;
-    staleHours: number | null;
+    latestObservedAt: string | null;
+    latestMirroredAt: string | null;
+    observationAgeHours: number | null;
+    mirrorDeliveryAgeHours: number | null;
+    mirrorDeliveryStale: boolean;
+    sourceCoverage: WorkspaceCoreControlCenterSourceCoverage[];
     attention: WorkspaceCoreControlCenterCurrentState[];
     recentEvents: WorkspaceCoreControlCenterStatusEvent[];
+  };
+  evolution: {
+    items: WorkspaceCoreControlCenterEvolution[];
   };
   architecture: {
     products: number;
@@ -100,13 +132,35 @@ function nullableBoolean(row: Row, key: string): boolean | null {
 function stringArray(row: Row, key: string): string[] {
   const value = row[key];
   if (!Array.isArray(value)) return [];
-  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  return value.filter(
+    (item): item is string => typeof item === "string" && item.trim().length > 0,
+  );
 }
 
 function timestampMs(value: string | null): number | null {
   if (!value) return null;
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function latestMs(values: Array<string | null>): number | null {
+  return values
+    .map(timestampMs)
+    .filter((value): value is number => value !== null)
+    .reduce<number | null>(
+      (latest, value) => (latest === null || value > latest ? value : latest),
+      null,
+    );
+}
+
+function ageHours(now: Date, valueMs: number | null): number | null {
+  return valueMs === null
+    ? null
+    : Math.max(0, (now.getTime() - valueMs) / (60 * 60 * 1000));
+}
+
+function iso(valueMs: number | null): string | null {
+  return valueMs === null ? null : new Date(valueMs).toISOString();
 }
 
 function statusRank(status: string): number {
@@ -148,6 +202,7 @@ function currentState(row: Row): WorkspaceCoreControlCenterCurrentState {
     metricKey: text(row, "metric_key"),
     status: text(row, "status"),
     observedAt: nullableText(row, "observed_at"),
+    mirroredAt: nullableText(row, "mirrored_at"),
     subjectLabel: nullableText(row, "subject_label"),
     metricLabel: nullableText(row, "metric_label"),
     productSlug: nullableText(row, "product_slug"),
@@ -166,12 +221,64 @@ function statusEvent(row: Row): WorkspaceCoreControlCenterStatusEvent {
     previousStatus: nullableText(row, "previous_status"),
     newStatus: text(row, "new_status"),
     observedAt: nullableText(row, "observed_at"),
+    mirroredAt: nullableText(row, "mirrored_at"),
     subjectLabel: nullableText(row, "subject_label"),
     metricLabel: nullableText(row, "metric_label"),
     productSlug: nullableText(row, "product_slug"),
     reasonCode: nullableText(row, "reason_code"),
     eventKind: nullableText(row, "event_kind"),
   };
+}
+
+function evolution(row: Row): WorkspaceCoreControlCenterEvolution {
+  return {
+    eventId: text(row, "event_id"),
+    eventType: text(row, "event_type"),
+    title: text(row, "title"),
+    summary: nullableText(row, "summary"),
+    periodStart: nullableText(row, "period_start"),
+    periodEnd: nullableText(row, "period_end"),
+    timePrecision: nullableText(row, "time_precision"),
+    source: nullableText(row, "source"),
+    confidence: nullableNumber(row, "confidence"),
+    verifiedAt: nullableText(row, "verified_at"),
+    updatedAt: nullableText(row, "updated_at"),
+  };
+}
+
+function buildSourceCoverage(
+  current: WorkspaceCoreControlCenterCurrentState[],
+  now: Date,
+): WorkspaceCoreControlCenterSourceCoverage[] {
+  const groups = new Map<string, WorkspaceCoreControlCenterCurrentState[]>();
+  for (const item of current) {
+    const key = item.sourceKey || "unknown";
+    const list = groups.get(key) ?? [];
+    list.push(item);
+    groups.set(key, list);
+  }
+
+  return [...groups.entries()]
+    .map(([sourceKey, rows]) => {
+      const observedMs = latestMs(rows.map((row) => row.observedAt));
+      const mirroredMs = latestMs(rows.map((row) => row.mirroredAt));
+      return {
+        sourceKey,
+        rowCount: rows.length,
+        attentionCount: rows.filter((row) => row.status !== "ok").length,
+        lastObservedAt: iso(observedMs),
+        lastMirroredAt: iso(mirroredMs),
+        observationAgeHours: ageHours(now, observedMs),
+        mirrorDeliveryAgeHours: ageHours(now, mirroredMs),
+      };
+    })
+    .sort((a, b) => {
+      const attentionDiff = b.attentionCount - a.attentionCount;
+      if (attentionDiff !== 0) return attentionDiff;
+      const mirrorA = timestampMs(a.lastMirroredAt) ?? 0;
+      const mirrorB = timestampMs(b.lastMirroredAt) ?? 0;
+      return mirrorA - mirrorB;
+    });
 }
 
 export function uniqueNonEmptyCount(rows: Row[], key: string): number {
@@ -182,6 +289,7 @@ export function buildWorkspaceCoreControlCenter(input: {
   workstreamRows: Row[];
   currentRows: Row[];
   eventRows: Row[];
+  evolutionRows: Row[];
   architecture: { products: number; repositories: number; services: number };
   now?: Date;
 }): WorkspaceCoreControlCenter {
@@ -189,13 +297,21 @@ export function buildWorkspaceCoreControlCenter(input: {
 
   const workItems = input.workstreamRows
     .map(workstream)
-    .filter((item) => item.code && item.title && ["active", "blocked", "paused"].includes(item.status))
+    .filter(
+      (item) =>
+        item.code &&
+        item.title &&
+        ["active", "blocked", "paused"].includes(item.status),
+    )
     .sort((a, b) => {
       const statusDiff = workstreamRank(a.status) - workstreamRank(b.status);
       if (statusDiff !== 0) return statusDiff;
       const blockerDiff = b.blockers.length - a.blockers.length;
       if (blockerDiff !== 0) return blockerDiff;
-      return (timestampMs(b.lastUpdateAt ?? b.updatedAt) ?? 0) - (timestampMs(a.lastUpdateAt ?? a.updatedAt) ?? 0);
+      return (
+        (timestampMs(b.lastUpdateAt ?? b.updatedAt) ?? 0) -
+        (timestampMs(a.lastUpdateAt ?? a.updatedAt) ?? 0)
+      );
     })
     .slice(0, 12);
 
@@ -209,29 +325,51 @@ export function buildWorkspaceCoreControlCenter(input: {
     else counts.other += 1;
   }
 
-  const lastObservedMs = current
-    .map((item) => timestampMs(item.observedAt))
-    .filter((value): value is number => value !== null)
-    .reduce<number | null>((latest, value) => (latest === null || value > latest ? value : latest), null);
-
-  const staleHours =
-    lastObservedMs === null ? null : Math.max(0, (now.getTime() - lastObservedMs) / (60 * 60 * 1000));
-  const stale = staleHours === null || staleHours > 24;
+  const latestObservedMs = latestMs(current.map((item) => item.observedAt));
+  const latestMirroredMs = latestMs(current.map((item) => item.mirroredAt));
+  const observationAgeHours = ageHours(now, latestObservedMs);
+  const mirrorDeliveryAgeHours = ageHours(now, latestMirroredMs);
 
   const attention = current
     .filter((item) => item.status !== "ok")
     .sort((a, b) => {
       const statusDiff = statusRank(a.status) - statusRank(b.status);
       if (statusDiff !== 0) return statusDiff;
-      return (timestampMs(b.observedAt) ?? 0) - (timestampMs(a.observedAt) ?? 0);
+      return (
+        (timestampMs(b.observedAt) ?? 0) - (timestampMs(a.observedAt) ?? 0)
+      );
     })
     .slice(0, 20);
 
   const recentEvents = input.eventRows
     .map(statusEvent)
-    .filter((item) => item.eventId && item.sourceKey && item.metricKey && item.newStatus)
-    .sort((a, b) => (timestampMs(b.observedAt) ?? 0) - (timestampMs(a.observedAt) ?? 0))
+    .filter(
+      (item) =>
+        item.eventId && item.sourceKey && item.metricKey && item.newStatus,
+    )
+    .sort(
+      (a, b) =>
+        (timestampMs(b.observedAt) ?? 0) - (timestampMs(a.observedAt) ?? 0),
+    )
     .slice(0, 12);
+
+  const evolutionItems = input.evolutionRows
+    .map(evolution)
+    .filter((item) => item.eventId && item.eventType && item.title)
+    .sort((a, b) => {
+      const dateA =
+        timestampMs(a.periodEnd) ??
+        timestampMs(a.periodStart) ??
+        timestampMs(a.updatedAt) ??
+        0;
+      const dateB =
+        timestampMs(b.periodEnd) ??
+        timestampMs(b.periodStart) ??
+        timestampMs(b.updatedAt) ??
+        0;
+      return dateB - dateA;
+    })
+    .slice(0, 8);
 
   return {
     generatedAt: now.toISOString(),
@@ -244,11 +382,18 @@ export function buildWorkspaceCoreControlCenter(input: {
     operations: {
       counts,
       total: current.length,
-      lastObservedAt: lastObservedMs === null ? null : new Date(lastObservedMs).toISOString(),
-      stale,
-      staleHours,
+      latestObservedAt: iso(latestObservedMs),
+      latestMirroredAt: iso(latestMirroredMs),
+      observationAgeHours,
+      mirrorDeliveryAgeHours,
+      mirrorDeliveryStale:
+        mirrorDeliveryAgeHours === null || mirrorDeliveryAgeHours > 24,
+      sourceCoverage: buildSourceCoverage(current, now),
       attention,
       recentEvents,
+    },
+    evolution: {
+      items: evolutionItems,
     },
     architecture: input.architecture,
   };
