@@ -135,6 +135,28 @@ function assertResult(label: string, error: { message: string } | null) {
   if (error) throw new Error(`${label}: ${error.message}`);
 }
 
+const EVOLUTION_PAGE_SIZE = 1000;
+
+export async function loadAllWorkspaceCoreEvolutionRows(
+  supabase: SupabaseClient,
+): Promise<Row[]> {
+  const rows: Row[] = [];
+
+  for (let from = 0; ; from += EVOLUTION_PAGE_SIZE) {
+    const result = await supabase
+      .from("workspace_core_evolution_summary_v")
+      .select(
+        "event_id,event_type,title,summary,period_start,period_end,time_precision,source,confidence,verified_at,updated_at",
+      )
+      .range(from, from + EVOLUTION_PAGE_SIZE - 1);
+
+    assertResult("Evolution Eventの取得に失敗しました", result.error);
+    const page = (result.data ?? []) as Row[];
+    rows.push(...page);
+    if (page.length < EVOLUTION_PAGE_SIZE) return rows;
+  }
+}
+
 export async function loadWorkspaceCoreOverview(supabase: SupabaseClient): Promise<WorkspaceCoreOverview> {
   const [productsResult, repositoriesResult, technologiesResult, providersResult, instancesResult, relationsResult, servicesResult, serviceProductsResult, serviceDeliveryResult] = await Promise.all([
     supabase.from("workspace_core_product_summary_v").select("*").order("importance", { ascending: false }).order("name", { ascending: true }),
@@ -218,7 +240,7 @@ export async function loadWorkspaceCoreControlCenter(
     currentResult,
     eventsResult,
     architectureResult,
-    evolutionResult,
+    evolutionRows,
   ] = await Promise.all([
     supabase
       .from("workspace_core_workstream_resume_v")
@@ -242,18 +264,13 @@ export async function loadWorkspaceCoreControlCenter(
       .from("workspace_core_architecture_counts_v")
       .select("products,repositories,services")
       .single(),
-    supabase
-      .from("workspace_core_evolution_summary_v")
-      .select(
-        "event_id,event_type,title,summary,period_start,period_end,time_precision,source,confidence,verified_at,updated_at",
-      ),
+    loadAllWorkspaceCoreEvolutionRows(supabase),
   ]);
 
   assertResult("Workstream一覧の取得に失敗しました", workstreamsResult.error);
   assertResult("Observability current stateの取得に失敗しました", currentResult.error);
   assertResult("Observability eventの取得に失敗しました", eventsResult.error);
   assertResult("Architecture countの取得に失敗しました", architectureResult.error);
-  assertResult("Evolution Eventの取得に失敗しました", evolutionResult.error);
 
   const architectureRow = (architectureResult.data ?? {}) as Row;
 
@@ -261,7 +278,7 @@ export async function loadWorkspaceCoreControlCenter(
     workstreamRows: (workstreamsResult.data ?? []) as Row[],
     currentRows: (currentResult.data ?? []) as Row[],
     eventRows: (eventsResult.data ?? []) as Row[],
-    evolutionRows: (evolutionResult.data ?? []) as Row[],
+    evolutionRows,
     architecture: {
       products: numberValue(architectureRow, "products"),
       repositories: numberValue(architectureRow, "repositories"),
