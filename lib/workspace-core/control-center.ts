@@ -295,7 +295,7 @@ export function buildWorkspaceCoreControlCenter(input: {
 }): WorkspaceCoreControlCenter {
   const now = input.now ?? new Date();
 
-  const workItems = input.workstreamRows
+  const allWorkItems = input.workstreamRows
     .map(workstream)
     .filter(
       (item) =>
@@ -312,8 +312,8 @@ export function buildWorkspaceCoreControlCenter(input: {
         (timestampMs(b.lastUpdateAt ?? b.updatedAt) ?? 0) -
         (timestampMs(a.lastUpdateAt ?? a.updatedAt) ?? 0)
       );
-    })
-    .slice(0, 12);
+    });
+  const workItems = allWorkItems.slice(0, 12);
 
   const current = input.currentRows.map(currentState);
   const counts = { ok: 0, warning: 0, critical: 0, unknown: 0, other: 0 };
@@ -374,9 +374,9 @@ export function buildWorkspaceCoreControlCenter(input: {
   return {
     generatedAt: now.toISOString(),
     work: {
-      activeCount: workItems.filter((item) => item.status === "active").length,
-      blockedCount: workItems.filter((item) => item.status === "blocked").length,
-      pausedCount: workItems.filter((item) => item.status === "paused").length,
+      activeCount: allWorkItems.filter((item) => item.status === "active").length,
+      blockedCount: allWorkItems.filter((item) => item.status === "blocked").length,
+      pausedCount: allWorkItems.filter((item) => item.status === "paused").length,
       items: workItems,
     },
     operations: {
