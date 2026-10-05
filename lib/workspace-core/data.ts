@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dependencyFacingProductRelations } from "./product-relation-policy";
+import {
+  buildWorkspaceCoreControlCenter,
+  uniqueNonEmptyCount,
+  type WorkspaceCoreControlCenter,
+} from "./control-center";
 import type {
   WorkspaceCoreOverview,
   WorkspaceCoreProductDetail,
@@ -203,4 +208,61 @@ export async function loadWorkspaceCoreProviderImpact(supabase: SupabaseClient, 
   const result = await supabase.from("workspace_core_product_provider_v").select("*").eq("provider_slug", providerSlug).order("product_slug", { ascending: true });
   assertResult("Provider impactの取得に失敗しました", result.error);
   return { providerSlug, links: ((result.data ?? []) as Row[]).map(providerLink) };
+}
+
+
+export async function loadWorkspaceCoreControlCenter(
+  supabase: SupabaseClient,
+): Promise<WorkspaceCoreControlCenter> {
+  const [
+    workstreamsResult,
+    currentResult,
+    eventsResult,
+    productsResult,
+    repositoriesResult,
+    servicesResult,
+  ] = await Promise.all([
+    supabase
+      .from("workspace_core_workstream_resume_v")
+      .select(
+        "workstream_code,workstream_title,status,current_phase,progress_pct,current_summary,next_actions,blockers,workstream_updated_at,last_update_at,last_update_type,last_update_summary",
+      )
+      .in("status", ["active", "blocked", "paused"]),
+    supabase
+      .from("workspace_core_observability_current_v")
+      .select(
+        "source_key,subject_key,metric_key,status,observed_at,subject_kind,subject_label,product_slug,metric_label,reason_code,usage_ratio,limit_needs_review",
+      ),
+    supabase
+      .from("workspace_core_observability_event_v")
+      .select(
+        "event_id,source_key,subject_key,metric_key,previous_status,new_status,observed_at,subject_kind,subject_label,product_slug,metric_label,reason_code,event_kind",
+      )
+      .order("observed_at", { ascending: false })
+      .limit(12),
+    supabase.from("workspace_core_product_summary_v").select("product_id"),
+    supabase.from("workspace_core_product_repository_v").select("repository_id"),
+    supabase.from("workspace_core_service_summary_v").select("service_id"),
+  ]);
+
+  assertResult("Workstream一覧の取得に失敗しました", workstreamsResult.error);
+  assertResult("Observability current stateの取得に失敗しました", currentResult.error);
+  assertResult("Observability eventの取得に失敗しました", eventsResult.error);
+  assertResult("Product countの取得に失敗しました", productsResult.error);
+  assertResult("Repository countの取得に失敗しました", repositoriesResult.error);
+  assertResult("Service countの取得に失敗しました", servicesResult.error);
+
+  return buildWorkspaceCoreControlCenter({
+    workstreamRows: (workstreamsResult.data ?? []) as Row[],
+    currentRows: (currentResult.data ?? []) as Row[],
+    eventRows: (eventsResult.data ?? []) as Row[],
+    architecture: {
+      products: uniqueNonEmptyCount((productsResult.data ?? []) as Row[], "product_id"),
+      repositories: uniqueNonEmptyCount(
+        (repositoriesResult.data ?? []) as Row[],
+        "repository_id",
+      ),
+      services: uniqueNonEmptyCount((servicesResult.data ?? []) as Row[], "service_id"),
+    },
+  });
 }
