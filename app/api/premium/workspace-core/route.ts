@@ -5,6 +5,7 @@ import { verifyWorkspaceCoreReadProxyToken } from "@/lib/workspace-core/read-pro
 import { isWorkspaceCoreConfigured } from "@/lib/workspace-core/config";
 import { createWorkspaceCoreServerClient } from "@/lib/workspace-core/server";
 import {
+  loadWorkspaceCoreControlCenter,
   loadWorkspaceCoreOverview,
   loadWorkspaceCoreProductDetail,
   loadWorkspaceCoreProviderImpact,
@@ -55,8 +56,17 @@ export async function GET(request: Request) {
     return json({ status: "error", data: null, message: "有効なslugを指定してください。" }, 400);
   }
 
+  if ((mode === "overview" || mode === "control-center") && slug) {
+    return json({ status: "error", data: null, message: "このmodeではslugを指定できません。" }, 400);
+  }
+
   try {
     const supabase = createWorkspaceCoreServerClient();
+
+    if (mode === "control-center") {
+      const data = await loadWorkspaceCoreControlCenter(supabase);
+      return json({ status: "ok", data });
+    }
 
     if (mode === "overview") {
       const data = await loadWorkspaceCoreOverview(supabase);
