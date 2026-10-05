@@ -1,5 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dependencyFacingProductRelations } from "./product-relation-policy";
+import {
+  buildWorkspaceCoreControlCenter,
+  type WorkspaceCoreControlCenter,
+} from "./control-center";
+import {
+  loadAllWorkspaceCoreCurrentStateRows,
+  loadAllWorkspaceCoreEvolutionRows,
+  loadAllWorkspaceCoreWorkstreamRows,
+} from "./control-center-read-pages";
 import type {
   WorkspaceCoreOverview,
   WorkspaceCoreProductDetail,
@@ -131,6 +140,8 @@ function assertResult(label: string, error: { message: string } | null) {
   if (error) throw new Error(`${label}: ${error.message}`);
 }
 
+export { loadAllWorkspaceCoreEvolutionRows } from "./control-center-read-pages";
+
 export async function loadWorkspaceCoreOverview(supabase: SupabaseClient): Promise<WorkspaceCoreOverview> {
   const [productsResult, repositoriesResult, technologiesResult, providersResult, instancesResult, relationsResult, servicesResult, serviceProductsResult, serviceDeliveryResult] = await Promise.all([
     supabase.from("workspace_core_product_summary_v").select("*").order("importance", { ascending: false }).order("name", { ascending: true }),
@@ -203,4 +214,49 @@ export async function loadWorkspaceCoreProviderImpact(supabase: SupabaseClient, 
   const result = await supabase.from("workspace_core_product_provider_v").select("*").eq("provider_slug", providerSlug).order("product_slug", { ascending: true });
   assertResult("Provider impactの取得に失敗しました", result.error);
   return { providerSlug, links: ((result.data ?? []) as Row[]).map(providerLink) };
+}
+
+
+export async function loadWorkspaceCoreControlCenter(
+  supabase: SupabaseClient,
+): Promise<WorkspaceCoreControlCenter> {
+  const [
+    workstreamRows,
+    currentRows,
+    eventsResult,
+    architectureResult,
+    evolutionRows,
+  ] = await Promise.all([
+    loadAllWorkspaceCoreWorkstreamRows(supabase),
+    loadAllWorkspaceCoreCurrentStateRows(supabase),
+    supabase
+      .from("workspace_core_observability_event_v")
+      .select(
+        "event_id,source_key,subject_key,metric_key,previous_status,new_status,observed_at,mirrored_at,subject_kind,subject_label,product_slug,metric_label,reason_code,event_kind",
+      )
+      .order("observed_at", { ascending: false })
+      .limit(12),
+    supabase
+      .from("workspace_core_architecture_counts_v")
+      .select("products,repositories,services")
+      .single(),
+    loadAllWorkspaceCoreEvolutionRows(supabase),
+  ]);
+
+  assertResult("Observability eventの取得に失敗しました", eventsResult.error);
+  assertResult("Architecture countの取得に失敗しました", architectureResult.error);
+
+  const architectureRow = (architectureResult.data ?? {}) as Row;
+
+  return buildWorkspaceCoreControlCenter({
+    workstreamRows,
+    currentRows,
+    eventRows: (eventsResult.data ?? []) as Row[],
+    evolutionRows,
+    architecture: {
+      products: numberValue(architectureRow, "products"),
+      repositories: numberValue(architectureRow, "repositories"),
+      services: numberValue(architectureRow, "services"),
+    },
+  });
 }
