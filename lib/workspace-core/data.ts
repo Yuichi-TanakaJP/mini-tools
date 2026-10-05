@@ -2,7 +2,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { dependencyFacingProductRelations } from "./product-relation-policy";
 import {
   buildWorkspaceCoreControlCenter,
-  uniqueNonEmptyCount,
   type WorkspaceCoreControlCenter,
 } from "./control-center";
 import type {
@@ -218,9 +217,7 @@ export async function loadWorkspaceCoreControlCenter(
     workstreamsResult,
     currentResult,
     eventsResult,
-    productsResult,
-    repositoriesResult,
-    servicesResult,
+    architectureResult,
     evolutionResult,
   ] = await Promise.all([
     supabase
@@ -241,9 +238,10 @@ export async function loadWorkspaceCoreControlCenter(
       )
       .order("observed_at", { ascending: false })
       .limit(12),
-    supabase.from("workspace_core_product_summary_v").select("product_id"),
-    supabase.from("workspace_core_product_repository_v").select("repository_id"),
-    supabase.from("workspace_core_service_summary_v").select("service_id"),
+    supabase
+      .from("workspace_core_architecture_counts_v")
+      .select("products,repositories,services")
+      .single(),
     supabase
       .from("workspace_core_evolution_summary_v")
       .select(
@@ -256,10 +254,10 @@ export async function loadWorkspaceCoreControlCenter(
   assertResult("Workstream一覧の取得に失敗しました", workstreamsResult.error);
   assertResult("Observability current stateの取得に失敗しました", currentResult.error);
   assertResult("Observability eventの取得に失敗しました", eventsResult.error);
-  assertResult("Product countの取得に失敗しました", productsResult.error);
-  assertResult("Repository countの取得に失敗しました", repositoriesResult.error);
-  assertResult("Service countの取得に失敗しました", servicesResult.error);
+  assertResult("Architecture countの取得に失敗しました", architectureResult.error);
   assertResult("Evolution Eventの取得に失敗しました", evolutionResult.error);
+
+  const architectureRow = (architectureResult.data ?? {}) as Row;
 
   return buildWorkspaceCoreControlCenter({
     workstreamRows: (workstreamsResult.data ?? []) as Row[],
@@ -267,12 +265,9 @@ export async function loadWorkspaceCoreControlCenter(
     eventRows: (eventsResult.data ?? []) as Row[],
     evolutionRows: (evolutionResult.data ?? []) as Row[],
     architecture: {
-      products: uniqueNonEmptyCount((productsResult.data ?? []) as Row[], "product_id"),
-      repositories: uniqueNonEmptyCount(
-        (repositoriesResult.data ?? []) as Row[],
-        "repository_id",
-      ),
-      services: uniqueNonEmptyCount((servicesResult.data ?? []) as Row[], "service_id"),
+      products: numberValue(architectureRow, "products"),
+      repositories: numberValue(architectureRow, "repositories"),
+      services: numberValue(architectureRow, "services"),
     },
   });
 }
