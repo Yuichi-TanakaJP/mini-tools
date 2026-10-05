@@ -81,3 +81,8 @@ Development は 2026-09-27 の保存済み Chronicle snapshot と出典を表示
 失敗時は直前の承認済みアプリ deployment へ戻す。既存 DB projection はそのまま残し、DB を drop しない。独立した旧 Product Map / Dashboard を残す。本手順自体は deployment 操作や DB 変更を実行しない。
 
 PR 本文の実施記録には、確認者 / 日時 / commit SHA / 環境・deployment / 認証方式（秘密値なし）/ 確認ケース / pass・fail・未実施 / 残る blocking gate を記載する。
+
+
+## Preview UAT rebuild marker — 2026-10-06
+
+Branch-scoped Preview runtime settings were provisioned for Control Center V1 UAT. This marker intentionally triggers a fresh Preview build so Vercel captures the new environment scope. It is not itself evidence that UAT passed; actual results must still be recorded separately.
