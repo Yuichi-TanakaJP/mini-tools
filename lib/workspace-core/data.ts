@@ -221,6 +221,7 @@ export async function loadWorkspaceCoreControlCenter(
     productsResult,
     repositoriesResult,
     servicesResult,
+    evolutionResult,
   ] = await Promise.all([
     supabase
       .from("workspace_core_workstream_resume_v")
@@ -231,18 +232,25 @@ export async function loadWorkspaceCoreControlCenter(
     supabase
       .from("workspace_core_observability_current_v")
       .select(
-        "source_key,subject_key,metric_key,status,observed_at,subject_kind,subject_label,product_slug,metric_label,reason_code,usage_ratio,limit_needs_review",
+        "source_key,subject_key,metric_key,status,observed_at,mirrored_at,subject_kind,subject_label,product_slug,metric_label,reason_code,usage_ratio,limit_needs_review",
       ),
     supabase
       .from("workspace_core_observability_event_v")
       .select(
-        "event_id,source_key,subject_key,metric_key,previous_status,new_status,observed_at,subject_kind,subject_label,product_slug,metric_label,reason_code,event_kind",
+        "event_id,source_key,subject_key,metric_key,previous_status,new_status,observed_at,mirrored_at,subject_kind,subject_label,product_slug,metric_label,reason_code,event_kind",
       )
       .order("observed_at", { ascending: false })
       .limit(12),
     supabase.from("workspace_core_product_summary_v").select("product_id"),
     supabase.from("workspace_core_product_repository_v").select("repository_id"),
     supabase.from("workspace_core_service_summary_v").select("service_id"),
+    supabase
+      .from("workspace_core_evolution_summary_v")
+      .select(
+        "event_id,event_type,title,summary,period_start,period_end,time_precision,source,confidence,verified_at,updated_at",
+      )
+      .order("updated_at", { ascending: false })
+      .limit(8),
   ]);
 
   assertResult("Workstream一覧の取得に失敗しました", workstreamsResult.error);
@@ -251,11 +259,13 @@ export async function loadWorkspaceCoreControlCenter(
   assertResult("Product countの取得に失敗しました", productsResult.error);
   assertResult("Repository countの取得に失敗しました", repositoriesResult.error);
   assertResult("Service countの取得に失敗しました", servicesResult.error);
+  assertResult("Evolution Eventの取得に失敗しました", evolutionResult.error);
 
   return buildWorkspaceCoreControlCenter({
     workstreamRows: (workstreamsResult.data ?? []) as Row[],
     currentRows: (currentResult.data ?? []) as Row[],
     eventRows: (eventsResult.data ?? []) as Row[],
+    evolutionRows: (evolutionResult.data ?? []) as Row[],
     architecture: {
       products: uniqueNonEmptyCount((productsResult.data ?? []) as Row[], "product_id"),
       repositories: uniqueNonEmptyCount(
