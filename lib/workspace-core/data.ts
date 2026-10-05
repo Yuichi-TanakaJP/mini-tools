@@ -246,9 +246,7 @@ export async function loadWorkspaceCoreControlCenter(
       .from("workspace_core_evolution_summary_v")
       .select(
         "event_id,event_type,title,summary,period_start,period_end,time_precision,source,confidence,verified_at,updated_at",
-      )
-      .order("updated_at", { ascending: false })
-      .limit(8),
+      ),
   ]);
 
   assertResult("Workstream一覧の取得に失敗しました", workstreamsResult.error);
