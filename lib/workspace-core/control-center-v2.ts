@@ -516,7 +516,7 @@ function statusEvent(
 ): WorkspaceCoreControlCenterV2StatusEvent {
   const row = record(value, "status event");
   return {
-    eventId: stringValue(row.eventId, "event.eventId", 128),
+    eventId: stringValue(row.eventId, "event.eventId", 256),
     sourceKey: stringValue(row.sourceKey, "event.sourceKey", 128),
     subjectKey: nullableString(row.subjectKey, "event.subjectKey", 128),
     metricKey: stringValue(row.metricKey, "event.metricKey", 128),
