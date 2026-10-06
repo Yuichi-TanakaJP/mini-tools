@@ -1,4 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  buildWorkspaceCoreControlCenterV2,
+  type WorkspaceCoreControlCenterV2Success,
+} from "./control-center-v2";
 import { dependencyFacingProductRelations } from "./product-relation-policy";
 import {
   buildWorkspaceCoreControlCenter,
@@ -257,6 +261,58 @@ export async function loadWorkspaceCoreControlCenter(
       products: numberValue(architectureRow, "products"),
       repositories: numberValue(architectureRow, "repositories"),
       services: numberValue(architectureRow, "services"),
+    },
+  });
+}
+
+
+export async function loadWorkspaceCoreControlCenterV2(
+  supabase: SupabaseClient,
+  now = new Date(),
+): Promise<WorkspaceCoreControlCenterV2Success> {
+  const [
+    workResult,
+    operationsResult,
+    evolutionResult,
+    architectureResult,
+  ] = await Promise.all([
+    supabase
+      .from("workspace_core_control_center_work_v2")
+      .select("active_count,blocked_count,paused_count,eligible_total,items")
+      .single(),
+    supabase
+      .from("workspace_core_control_center_operations_v2")
+      .select(
+        "ok_count,warning_count,critical_count,unknown_count,other_count,total_count,attention_eligible_total,attention_items,event_eligible_total,recent_event_items,source_eligible_total,as_of_observed_at,as_of_delivered_at,delivery_basis,source_coverage_items",
+      )
+      .single(),
+    supabase
+      .from("workspace_core_control_center_evolution_v2")
+      .select("eligible_total,items")
+      .single(),
+    supabase
+      .from("workspace_core_control_center_architecture_v2")
+      .select("products,repositories,services")
+      .single(),
+  ]);
+
+  return buildWorkspaceCoreControlCenterV2({
+    now,
+    work: {
+      data: (workResult.data as Row | null) ?? null,
+      unavailable: Boolean(workResult.error),
+    },
+    operations: {
+      data: (operationsResult.data as Row | null) ?? null,
+      unavailable: Boolean(operationsResult.error),
+    },
+    evolution: {
+      data: (evolutionResult.data as Row | null) ?? null,
+      unavailable: Boolean(evolutionResult.error),
+    },
+    architecture: {
+      data: (architectureResult.data as Row | null) ?? null,
+      unavailable: Boolean(architectureResult.error),
     },
   });
 }
