@@ -215,3 +215,30 @@ Slice 1A Preview UATがpassしても Workspace Core UIをV2へ切り替えない
 - write method / write routeは公開しない
 
 クラウド開発agentへ渡すのはURLだけでよく、Vercel secret・Premium password・Bearer tokenをagent promptへ貼らない。
+
+
+### 7.8 PWA NetworkOnly / offline failure semantics
+
+`/api/premium/workspace-core` はPWA Service Workerでも **NetworkOnly** とする。Control Center V2は運用状態を読むfeedなので、ネットワーク障害時に過去の成功responseをCacheStorageから返してはならない。
+
+確認環境:
+- Service Workerが有効なPreviewまたはProduction相当のインストール済みPWA / browser session
+- 対象deploymentとcommit SHAを記録
+- V2 endpointへ一度オンラインで正常GETし、HTTP 200を確認した後に実施
+
+手順:
+1. Service Workerが対象scopeをcontrolしていることをDevTools/Application等で確認する。
+2. オンライン状態で `GET /api/premium/workspace-core?mode=control-center-v2` が200になることを確認する。
+3. DevToolsのOfflineまたは同等のネットワーク遮断を有効にする。
+4. 同じV2 GETを再実行する。
+5. 過去の200 responseが返らず、requestがnetwork failureとして失敗することを確認する。
+6. Network復旧後、同じGETが再びlive provider responseを返すことを確認する。
+
+期待結果:
+- offline時にHTTP 200のcached Control Center V2 payloadを返さない
+- staleな `ok` / `degraded` payloadへfallbackしない
+- CacheStorageにWorkspace Core API responseを永続化しない
+- network復旧後は現在のprovider結果を取得する
+- V1 `mode=control-center` も同じpath上のGETであるためNetworkOnlyを維持する
+
+この異常系はProduction DB/view/grantを変更して作らない。ブラウザ側のネットワーク遮断だけで確認する。
