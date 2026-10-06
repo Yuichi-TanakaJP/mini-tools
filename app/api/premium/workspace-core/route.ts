@@ -33,21 +33,15 @@ export async function GET(request: Request) {
     request.headers.get("authorization"),
   );
 
-  if (!proxyAuthorized) {
+  // Personal Dev Mode:
+  // Control Center V2 is a fixed GET-only read contract and is intentionally
+  // public so cloud development agents can inspect Workspace Core without
+  // sharing interactive login credentials. Every other mode keeps the
+  // existing Bearer-or-Premium-session authentication boundary.
+  if (!isControlCenterV2 && !proxyAuthorized) {
     const cookieStore = await cookies();
     const session = cookieStore.get(PREMIUM_COOKIE_NAME)?.value;
     if (!verifyPremiumSession(session)) {
-      if (isControlCenterV2) {
-        return json(
-          buildWorkspaceCoreControlCenterV2Error({
-            status: "unauthenticated",
-            code: "UNAUTHENTICATED",
-            message: "Premium認証が必要です。",
-            now: v2ErrorClock,
-          }),
-          401,
-        );
-      }
       return json(
         { status: "unauthenticated", data: null, message: "Premium認証が必要です。" },
         401,
