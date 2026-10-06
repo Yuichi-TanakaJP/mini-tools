@@ -745,6 +745,12 @@ function buildOperationsSection(
       };
     }
 
+    if (basis !== "row_timestamp_proxy") {
+      // Slice 1A has no reviewed producer-ledger implementation yet.
+      // A nonempty source set therefore must use the transitional proxy.
+      throw new ContractIntegrityError("operations.delivery_basis");
+    }
+
     const issueCodes: WorkspaceCoreControlCenterV2IssueCode[] = [];
     if (!observedAt) issueCodes.push("OBSERVATION_CLOCK_UNKNOWN");
     if (!deliveredAt) issueCodes.push("DELIVERY_CLOCK_UNKNOWN");
