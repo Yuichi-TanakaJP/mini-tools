@@ -13,10 +13,34 @@ describe("PWA authenticated API cache boundary", () => {
     }) })).toBe(true);
   });
 
-  it("leaves public GETs and non-GETs to existing rules", () => {
-    expect(isSensitiveApiGet({ request: new Request("https://images.example.org/public.png") })).toBe(false);
-    expect(isSensitiveApiGet({ request: new Request("https://example.supabase.co/rest/v1/rpc/test", {
-      method: "POST", headers: { Authorization: "Bearer synthetic-test-token" },
-    }) })).toBe(false);
+  it("keeps the public Workspace Core read route NetworkOnly", () => {
+    const request = new Request("https://mini-tools.example/api/premium/workspace-core?mode=control-center-v2");
+    expect(
+      isSensitiveApiGet({
+        request,
+        url: new URL(request.url),
+      }),
+    ).toBe(true);
+  });
+
+  it("leaves unrelated public GETs and non-GETs to existing rules", () => {
+    const publicRequest = new Request("https://images.example.org/public.png");
+    expect(
+      isSensitiveApiGet({
+        request: publicRequest,
+        url: new URL(publicRequest.url),
+      }),
+    ).toBe(false);
+
+    const postRequest = new Request("https://example.supabase.co/rest/v1/rpc/test", {
+      method: "POST",
+      headers: { Authorization: "Bearer synthetic-test-token" },
+    });
+    expect(
+      isSensitiveApiGet({
+        request: postRequest,
+        url: new URL(postRequest.url),
+      }),
+    ).toBe(false);
   });
 });

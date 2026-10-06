@@ -86,3 +86,159 @@ PR 本文の実施記録には、確認者 / 日時 / commit SHA / 環境・depl
 ## Preview UAT rebuild marker — 2026-10-06
 
 Branch-scoped Preview runtime settings were provisioned for Control Center V1 UAT. This marker intentionally triggers a fresh Preview build so Vercel captures the new environment scope. It is not itself evidence that UAT passed; actual results must still be recorded separately.
+
+
+## 7. Control Center Summary V2 / Slice 1A
+
+対象は固定 provider selector `GET /api/premium/workspace-core?mode=control-center-v2`。これは **GET-only / fixed-contract の read-only public endpoint** とし、Bearer token / Premium cookie を要求しない。Claude Code / Codex 等のクラウド開発環境から秘密値を共有せず参照できることを目的とする。V1 `mode=control-center` を置き換えず、Slice 1A の additive provider acceptance にだけ使用する。Workspace Core UI consumer の V2 切替は Slice 1B の別Gateであり、このUATでは行わない。
+
+### 7.1 実施前Gate
+
+- Workspace Core側の4つのV2 read modelが、レビュー済みmigrationとして対象Preview DBへ適用済みであること。
+- 対象 mini-tools commit SHA と Vercel Preview deployment ID が一致すること。
+- Previewのserver-side Supabase設定が対象branchで有効であること。V2 read-only endpoint自体はread-proxy token / Premium cookieを要求しないこと。
+- V1 `mode=control-center` は残したままにする。
+- Production DBのview削除・grant剥奪・障害注入で異常系を作らない。
+
+### 7.2 認証・入力・error envelope
+
+| 操作・入力 | 期待結果 |
+|---|---|
+| cookie/Authorizationなしで `mode=control-center-v2` | HTTP 200。contract=`workspace-core.control-center-summary`、version=`2.0`、status=`ok` または `degraded`。 |
+| Bearer/Premium cookieを付けて同じV2 GET | HTTP 200。認証情報の有無でread contractの意味は変わらない。 |
+| `mode=control-center-v2&slug=mini-tools` | HTTP 400、status=`error`、error.code=`INVALID_REQUEST`。 |
+| provider環境設定なし（Local隔離環境） | HTTP 503、status=`unconfigured`、error.code=`PROVIDER_UNCONFIGURED`。 |
+| 4つのV2 fixed readがすべて失敗するmock | HTTP 500、status=`error`、error.code=`PROVIDER_FAILURE`。raw DB errorを返さない。 |
+| 4 sectionのうち1つだけread失敗するmock | HTTP 200、top-level status=`degraded`。失敗sectionのみstate=`unavailable`、issueCodesに`SOURCE_UNAVAILABLE`。他sectionを0件に偽装しない。 |
+
+すべての認識済みV2 error responseには contract / version / generatedAt / data=null / error.code / **required nullable** error.message が存在する。raw database/upstream/log payload、credential、tokenを含めない。
+
+### 7.3 正常responseの契約
+
+Preview responseを**認証情報なし**で取得し、以下を確認する。
+
+- contract = `workspace-core.control-center-summary`
+- version = `2.0`
+- generatedAt は有効なISO timestamp
+- data.work / operations / evolution / architecture の4 sectionが常に存在
+- section state は available / degraded / unavailable のいずれか
+- empty success と unavailable を区別する
+
+Work:
+- counts.active + blocked + paused = workstreams.meta.eligibleTotal
+- workstreams.meta.completeness = `ranked_top_n`
+- limit=12、returned=min(eligibleTotal,12)
+- nextActions / blockers は items / total / returned / limit=5 / truncated を持つ
+- itemsはauthoritative stored orderの先頭 min(total,5)
+
+Operations:
+- ok + warning + critical + unknown + other = total
+- attention limit=20、recentEvents limit=12、sourceCoverage limit=64
+- eligible populationを完全評価できた正常系では3 collectionとも completeness=`ranked_top_n`
+- observation / delivery freshnessを別フィールドで返す
+- Slice 1Aの非空 sourceCoverage では delivery.basis=`row_timestamp_proxy`
+- `TRANSITIONAL_DELIVERY_PROXY` はこの一時basisの明示であり、それだけでsectionをdegraded扱いにしない
+- asOf はtop64ではなく完全なsource populationのoldest valid watermarkから導出する
+- raw Observability messageはresponseに存在しない
+
+Evolution:
+- confirmed eventのみ
+- limit=8、completeness=`ranked_top_n`
+- periodEnd -> periodStart -> updatedAt、eventId tie-breakerの意味順を維持
+
+Architecture:
+- products / repositories / services は非負整数
+- 取得不能時に synthetic 0 にしない
+
+### 7.4 自動テスト
+
+```sh
+npm test -- lib/workspace-core/__tests__/control-center-v2.test.ts lib/workspace-core/__tests__/control-center-v2-loader.test.ts
+npm run lint
+npm run build
+```
+
+確認対象:
+- exact success/error envelope
+- empty Operations source set
+- isolated section failure -> degraded
+- all four fixed reads failure -> top-level provider failure
+- malformed ordered prefix -> integrity unavailable
+- future watermark -> ageHours=null
+- V1 control-center testsが引き続き成功
+
+### 7.5 V1 / V2 parity evidence
+
+同じ証拠windowで V1 と V2 をserver-side readし、最低限次を照合する。
+
+- Work active/blocked/paused counts
+- Operations status counts / total
+- non-ok attentionの意味集合（V2のbounded orderを考慮）
+- source count
+- confirmed Evolution eligible countとtop event identities
+- Architecture counts
+
+V2はwire shapeが異なるためJSON全体のbyte equalityは要求しない。意味上の差分があれば、仕様上意図した差なのかblockerなのかをPR本文へ記録する。
+
+### 7.6 Preview acceptance記録
+
+PR本文へ以下を記載する。UAT文書自体に実施済みcheckは付けない。
+
+- commit SHA
+- Preview deployment ID / URL
+- 実施日時
+- public read-only確認（Bearer / cookieなし）
+- V2匿名200 / V2不正input 400 / V1匿名401
+- isolated degraded case（mock可）
+- complete provider failure 500（mock可）
+- bounded/completeness/freshness確認
+- V1/V2 parity evidence
+- 残る未実施項目
+
+Slice 1A Preview UATがpassしても Workspace Core UIをV2へ切り替えない。Slice 1B implementation GOがIssue #13に明示されるまで、V1がproduction consumer/rollback contractである。
+
+
+### 7.7 Public read-only boundary
+
+この公開化は `mode=control-center-v2` の **GET固定read contractだけ** に限定する。
+
+必須回帰:
+
+- 匿名 `mode=control-center-v2` -> HTTP 200
+- 匿名 `mode=control-center` -> HTTP 401
+- 匿名 `mode=overview` -> HTTP 401
+- 匿名 `mode=product&slug=...` -> HTTP 401
+- 匿名 `mode=provider&slug=...` -> HTTP 401
+- V2でslug指定 -> HTTP 400
+- V2 responseにcredential / proxy token / raw Observability messageを含めない
+- DBへ任意table/schema/SQLを指定できるinterfaceを追加しない
+- write method / write routeは公開しない
+
+クラウド開発agentへ渡すのはURLだけでよく、Vercel secret・Premium password・Bearer tokenをagent promptへ貼らない。
+
+
+### 7.8 PWA NetworkOnly / offline failure semantics
+
+`/api/premium/workspace-core` はPWA Service Workerでも **NetworkOnly** とする。Control Center V2は運用状態を読むfeedなので、ネットワーク障害時に過去の成功responseをCacheStorageから返してはならない。
+
+確認環境:
+- Service Workerが有効なPreviewまたはProduction相当のインストール済みPWA / browser session
+- 対象deploymentとcommit SHAを記録
+- V2 endpointへ一度オンラインで正常GETし、HTTP 200を確認した後に実施
+
+手順:
+1. Service Workerが対象scopeをcontrolしていることをDevTools/Application等で確認する。
+2. オンライン状態で `GET /api/premium/workspace-core?mode=control-center-v2` が200になることを確認する。
+3. DevToolsのOfflineまたは同等のネットワーク遮断を有効にする。
+4. 同じV2 GETを再実行する。
+5. 過去の200 responseが返らず、requestがnetwork failureとして失敗することを確認する。
+6. Network復旧後、同じGETが再びlive provider responseを返すことを確認する。
+
+期待結果:
+- offline時にHTTP 200のcached Control Center V2 payloadを返さない
+- staleな `ok` / `degraded` payloadへfallbackしない
+- CacheStorageにWorkspace Core API responseを永続化しない
+- network復旧後は現在のprovider結果を取得する
+- V1 `mode=control-center` も同じpath上のGETであるためNetworkOnlyを維持する
+
+この異常系はProduction DB/view/grantを変更して作らない。ブラウザ側のネットワーク遮断だけで確認する。
