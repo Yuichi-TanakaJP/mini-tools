@@ -190,6 +190,40 @@ describe("Control Center Summary V2 contract", () => {
     });
   });
 
+  it("accepts valid composite status event IDs longer than 128 characters", () => {
+    const fixtures = successFixtures();
+    const longEventId = "x".repeat(135);
+    if (fixtures.operations.data) {
+      const events = fixtures.operations.data.recent_event_items as Array<Record<string, unknown>>;
+      events[0].eventId = longEventId;
+    }
+
+    const result = buildWorkspaceCoreControlCenterV2({
+      ...fixtures,
+      now: new Date("2026-10-06T00:00:00Z"),
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.data.operations.recentEvents.items[0].eventId).toBe(longEventId);
+  });
+
+  it("fails closed when a status event ID exceeds the explicit 256-character bound", () => {
+    const fixtures = successFixtures();
+    if (fixtures.operations.data) {
+      const events = fixtures.operations.data.recent_event_items as Array<Record<string, unknown>>;
+      events[0].eventId = "x".repeat(257);
+    }
+
+    const result = buildWorkspaceCoreControlCenterV2({
+      ...fixtures,
+      now: new Date("2026-10-06T00:00:00Z"),
+    });
+
+    expect(result.status).toBe("degraded");
+    expect(result.data.operations.state).toBe("unavailable");
+    expect(result.data.operations.issueCodes).toEqual(["INTEGRITY_ERROR"]);
+  });
+
   it("keeps a legitimate empty Operations source set distinct from failure", () => {
     const fixtures = successFixtures();
     fixtures.operations.data = {
