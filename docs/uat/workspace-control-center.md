@@ -86,3 +86,113 @@ PR 本文の実施記録には、確認者 / 日時 / commit SHA / 環境・depl
 ## Preview UAT rebuild marker — 2026-10-06
 
 Branch-scoped Preview runtime settings were provisioned for Control Center V1 UAT. This marker intentionally triggers a fresh Preview build so Vercel captures the new environment scope. It is not itself evidence that UAT passed; actual results must still be recorded separately.
+
+
+## 7. Control Center Summary V2 / Slice 1A
+
+対象は固定 provider selector `GET /api/premium/workspace-core?mode=control-center-v2`。これは V1 `mode=control-center` を置き換えず、Slice 1A の additive provider acceptance にだけ使用する。Workspace Core UI consumer の V2 切替は Slice 1B の別Gateであり、このUATでは行わない。
+
+### 7.1 実施前Gate
+
+- Workspace Core側の4つのV2 read modelが、レビュー済みmigrationとして対象Preview DBへ適用済みであること。
+- 対象 mini-tools commit SHA と Vercel Preview deployment ID が一致すること。
+- Previewのserver-side Supabase設定とread-proxy認証設定が対象branchで有効であること。
+- V1 `mode=control-center` は残したままにする。
+- Production DBのview削除・grant剥奪・障害注入で異常系を作らない。
+
+### 7.2 認証・入力・error envelope
+
+| 操作・入力 | 期待結果 |
+|---|---|
+| cookie/Authorizationなしで `mode=control-center-v2` | HTTP 401。contract=`workspace-core.control-center-summary`、version=`2.0`、status=`unauthenticated`、data=null、error.code=`UNAUTHENTICATED`。 |
+| 有効なserver-side BearerまたはPremium cookie | HTTP 200。status=`ok` または `degraded`。 |
+| `mode=control-center-v2&slug=mini-tools` | HTTP 400、status=`error`、error.code=`INVALID_REQUEST`。 |
+| provider環境設定なし（Local隔離環境） | HTTP 503、status=`unconfigured`、error.code=`PROVIDER_UNCONFIGURED`。 |
+| 4つのV2 fixed readがすべて失敗するmock | HTTP 500、status=`error`、error.code=`PROVIDER_FAILURE`。raw DB errorを返さない。 |
+| 4 sectionのうち1つだけread失敗するmock | HTTP 200、top-level status=`degraded`。失敗sectionのみstate=`unavailable`、issueCodesに`SOURCE_UNAVAILABLE`。他sectionを0件に偽装しない。 |
+
+すべての認識済みV2 error responseには contract / version / generatedAt / data=null / error.code / **required nullable** error.message が存在する。raw database/upstream/log payload、credential、tokenを含めない。
+
+### 7.3 正常responseの契約
+
+認証済みPreview responseで以下を確認する。
+
+- contract = `workspace-core.control-center-summary`
+- version = `2.0`
+- generatedAt は有効なISO timestamp
+- data.work / operations / evolution / architecture の4 sectionが常に存在
+- section state は available / degraded / unavailable のいずれか
+- empty success と unavailable を区別する
+
+Work:
+- counts.active + blocked + paused = workstreams.meta.eligibleTotal
+- workstreams.meta.completeness = `ranked_top_n`
+- limit=12、returned=min(eligibleTotal,12)
+- nextActions / blockers は items / total / returned / limit=5 / truncated を持つ
+- itemsはauthoritative stored orderの先頭 min(total,5)
+
+Operations:
+- ok + warning + critical + unknown + other = total
+- attention limit=20、recentEvents limit=12、sourceCoverage limit=64
+- eligible populationを完全評価できた正常系では3 collectionとも completeness=`ranked_top_n`
+- observation / delivery freshnessを別フィールドで返す
+- Slice 1Aの非空 sourceCoverage では delivery.basis=`row_timestamp_proxy`
+- `TRANSITIONAL_DELIVERY_PROXY` はこの一時basisの明示であり、それだけでsectionをdegraded扱いにしない
+- asOf はtop64ではなく完全なsource populationのoldest valid watermarkから導出する
+- raw Observability messageはresponseに存在しない
+
+Evolution:
+- confirmed eventのみ
+- limit=8、completeness=`ranked_top_n`
+- periodEnd -> periodStart -> updatedAt、eventId tie-breakerの意味順を維持
+
+Architecture:
+- products / repositories / services は非負整数
+- 取得不能時に synthetic 0 にしない
+
+### 7.4 自動テスト
+
+```sh
+npm test -- lib/workspace-core/__tests__/control-center-v2.test.ts lib/workspace-core/__tests__/control-center-v2-loader.test.ts
+npm run lint
+npm run build
+```
+
+確認対象:
+- exact success/error envelope
+- empty Operations source set
+- isolated section failure -> degraded
+- all four fixed reads failure -> top-level provider failure
+- malformed ordered prefix -> integrity unavailable
+- future watermark -> ageHours=null
+- V1 control-center testsが引き続き成功
+
+### 7.5 V1 / V2 parity evidence
+
+同じ証拠windowで V1 と V2 をserver-side readし、最低限次を照合する。
+
+- Work active/blocked/paused counts
+- Operations status counts / total
+- non-ok attentionの意味集合（V2のbounded orderを考慮）
+- source count
+- confirmed Evolution eligible countとtop event identities
+- Architecture counts
+
+V2はwire shapeが異なるためJSON全体のbyte equalityは要求しない。意味上の差分があれば、仕様上意図した差なのかblockerなのかをPR本文へ記録する。
+
+### 7.6 Preview acceptance記録
+
+PR本文へ以下を記載する。UAT文書自体に実施済みcheckは付けない。
+
+- commit SHA
+- Preview deployment ID / URL
+- 実施日時
+- 認証方式（秘密値なし）
+- 401 / 400 / 200正常系
+- isolated degraded case（mock可）
+- complete provider failure 500（mock可）
+- bounded/completeness/freshness確認
+- V1/V2 parity evidence
+- 残る未実施項目
+
+Slice 1A Preview UATがpassしても Workspace Core UIをV2へ切り替えない。Slice 1B implementation GOがIssue #13に明示されるまで、V1がproduction consumer/rollback contractである。
