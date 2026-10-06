@@ -314,6 +314,24 @@ describe("Control Center Summary V2 contract", () => {
     ).toBeNull();
   });
 
+
+  it("rejects a non-applicable delivery basis for a nonempty source set", () => {
+    const fixtures = successFixtures();
+    if (fixtures.operations.data) {
+      fixtures.operations.data.delivery_basis = "not_applicable";
+    }
+
+    const result = buildWorkspaceCoreControlCenterV2({
+      ...fixtures,
+      now: new Date("2026-10-06T00:00:00Z"),
+    });
+
+    expect(result.status).toBe("degraded");
+    expect(result.data.operations.state).toBe("unavailable");
+    expect(result.data.operations.issueCodes).toEqual(["INTEGRITY_ERROR"]);
+    expect(result.data.operations.counts.total).toBeNull();
+  });
+
   it("builds the exact non-success envelope with required nullable message", () => {
     expect(
       buildWorkspaceCoreControlCenterV2Error({
