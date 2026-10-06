@@ -296,6 +296,18 @@ export async function loadWorkspaceCoreControlCenterV2(
       .single(),
   ]);
 
+  const providerResults = [
+    workResult,
+    operationsResult,
+    evolutionResult,
+    architectureResult,
+  ];
+  if (providerResults.every((result) => Boolean(result.error))) {
+    // Complete provider failure belongs to the route-level V2 error envelope.
+    // Never include raw Supabase error details in the thrown error.
+    throw new Error("Control Center V2 provider unavailable");
+  }
+
   return buildWorkspaceCoreControlCenterV2({
     now,
     work: {
