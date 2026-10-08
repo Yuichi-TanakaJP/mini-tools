@@ -1,6 +1,6 @@
 # mini-tools 機能ポートフォリオ台帳
 
-最終確認: 2026-09-13
+最終確認: 2026-10-08
 
 対象: `app/` の主要画面、`lib/tools-catalog.ts`、現在の導線、Tool Spec、Decision Log で確認できる機能
 
@@ -62,8 +62,8 @@
 | 業界マップ (`/premium/industry-map`) | 産業構造と企業経済圏を見る → 関係を複数表現で探索 | Supabase stock-notes関係データ | Premium + Supabase | 可（pan/zoom対応） | Premium投資 | 実装済み・実データUAT要確認 | 維持・統合候補 | 企業関係系3画面の入口整理余地あり | P2 |
 | 企業関係マップ (`/premium/company-network`) | 企業グループ/出資関係を見る → 個社周辺の構造を理解 | Supabase stock-notes関係データ/RPC | Premium + Supabase | 可 | Premium投資 | 実装済み・実データUAT要確認 | 維持・統合候補 | 業界マップと表示軸は異なるがデータ領域が近い | P2 |
 | テーマ×企業関係 (`/premium/theme-company-network`) | テーマと企業関係を横断 → テーマ内の企業配置を理解 | Supabase stock-notesテーマ/企業関係 | Premium + Supabase | 可 | Premium投資 | 実装済み・実データUAT要確認 | 統合候補・判断保留 | 独立入口が必要か、テーマViewer内のビューかを要判断 | P2 |
-| Workspace Dashboard (`/premium/product-map/dashboard`) | Product状態を俯瞰 → 対応優先度を判断 | Workspace Core API/Supabase read model | Premium必須 | 適 | Workspace | 実装済み・ライブ鮮度要確認 | 維持・改善 | Product Mapの意思決定サマリー | P1 |
-| Product Map (`/premium/product-map`) | Product/Repository/Provider関係を探索 → 依存関係を確認 | Workspace Core API/Supabase read model | Premium必須 | 適 | Workspace | 実装済み・ライブ鮮度要確認 | 維持 | Dashboardの詳細探索面 | P1 |
+| Workspace Dashboard（retired） | mini-toolsから退役。個人開発Productの俯瞰はWorkspace Coreへ移管 | Workspace Core | mini-tools側なし | - | Workspace | 2026-10-08 retired | mini-toolsから削除済み | 所有権をWorkspace Coreへ完全移管し、mini-tools runtime couplingを廃止 | P0 |
+| Product Map（retired） | mini-toolsから退役。Product/Repository/Provider探索はWorkspace Coreへ移管 | Workspace Core | mini-tools側なし | - | Workspace | 2026-10-08 retired | mini-toolsから削除済み | Workspace Core direct-readのProduction検証完了後に旧UI/APIを削除 | P0 |
 | ルーティン一覧 (`/premium/routines`) | 定期作業量を棚卸し → 減らす/まとめる判断材料を得る | repo内 `routines.ts`。保存なし | Premium必須 | 閲覧可、表は横スクロール | Workspace | 静的のみ・現状同期要確認 | 改善・判断保留 | 実行実績ではなく棚卸し時点の設定。鮮度誤認を避ける | P1 |
 | 管理コンソール (`/admin`) | データ更新/SLAを監視 → 運用異常候補を把握 | 各manifest/APIと静的スケジュール定義 | Premium必須 | 可（情報量多） | Workspace | 実装済み・監視網羅性要確認 | 改善 | 利用者向け機能ではなく運用面 | P1 |
 | 外部TODO (`https://todo-app-ten-rose-62.vercel.app/`) | 別アプリのタスクを開く → TODOを管理 | 別アプリ、mini-toolsとは別管理 | Premium時のみ入口表示、外部側は別認証 | 外部依存 | Workspace | 外部導線のみ・利用状況要確認 | 判断保留 | mini-tools機能ではなくリンク。所属/必要性は利用実績確認後 | P3 |
@@ -96,6 +96,14 @@
 
 - TDNET一覧は**全件の探索と原文到達**、レーダーは**正規化・分類した優先確認と既読管理**。
 - 推奨: 両方維持し、レーダーから対応するTDNET/公開元へ遷移できる関係を強める。分類不能を「重要でない」と扱わない。
+
+## Workspace Core runtime retirement — 2026-10-08
+
+- mini-toolsの `/api/premium/workspace-core` compatibility routeを廃止。
+- mini-toolsの `/premium/product-map` / `/premium/product-map/dashboard` を廃止。
+- mini-toolsの `lib/workspace-core/*` runtime実装を廃止。
+- Product Map / Control Center V2の現行所有者は独立 `workspace-core` repository / deployment。
+- `docs/**` と `infra/workspace-core/**` は履歴・migration provenanceとして当面保持し、runtimeとしては扱わない。
 
 ## このPRで決めないこと
 
