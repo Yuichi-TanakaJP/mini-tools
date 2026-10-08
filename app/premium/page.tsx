@@ -73,20 +73,6 @@ const FEATURE_CARDS: FeatureCard[] = [
     group: "investment",
   },
   {
-    href: "/premium/product-map/dashboard",
-    icon: "▦",
-    title: "Workspace Dashboard",
-    short: "個人開発Productの状態を俯瞰",
-    group: "workspace",
-  },
-  {
-    href: "/premium/product-map",
-    icon: "🧩",
-    title: "Product Map",
-    short: "ProductとRepositoryの関係を確認",
-    group: "workspace",
-  },
-  {
     href: "/premium/routines",
     icon: "🗓",
     title: "ルーティン一覧",

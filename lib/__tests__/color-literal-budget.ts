@@ -29,8 +29,6 @@ export const COLOR_LITERAL_BUDGET: Readonly<Record<string, number>> = {
   "app/premium/market/page.tsx": 1,
   "app/premium/portfolio/PortfolioDashboard.tsx": 11,
   "app/premium/portfolio/PortfolioWorkspace.tsx": 3,
-  "app/premium/product-map/ProductMapClient.tsx": 18,
-  "app/premium/product-map/dashboard/ProductPortfolioCockpit.module.css": 21,
   "app/premium/routines/RoutinesView.tsx": 7,
   "app/premium/shared/radial/RadialHierarchyCanvas.module.css": 3,
   "app/premium/theme-company-network/ThemeCompanyNetworkClient.tsx": 5,

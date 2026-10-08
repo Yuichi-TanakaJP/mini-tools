@@ -32,8 +32,8 @@ PR マージ後・リリース前に「何を確認すれば OK か」をツー�
 | ポートフォリオ | `/premium/portfolio` | Supabase（RLS付き読み取り）、Premium + Supabase Auth | [portfolio.md](./portfolio.md) |
 | テーマViewer | `/premium/themes` | stock-notes Viewer API（server-only token）、Premium | [theme-viewer.md](./theme-viewer.md) |
 | 業界マップ | `/premium/industry-map` | Supabase直読み（RLS）、Premium | [industry-map.md](./industry-map.md) |
-| Product Map | `/premium/product-map` | Workspace Core server-only read、Premium | [product-map.md](./product-map.md) |
-| Workspace Control Center API | `/api/premium/workspace-core?mode=control-center` | 固定 projection、server-side Bearer または Premium | [workspace-control-center.md](./workspace-control-center.md) |
+| Product Map（retired） | mini-toolsから削除済み | Workspace Coreへ移管 | 過去UAT: [product-map.md](./product-map.md) |
+| Workspace Control Center API V1（retired） | mini-toolsから削除済み | Workspace Core Control Center V2へ移管 | 過去UAT: [workspace-control-center.md](./workspace-control-center.md) |
 
 ## 確認環境
 
@@ -48,4 +48,4 @@ PR マージ後・リリース前に「何を確認すれば OK か」をツー�
 - **JPX 休場日**: `MARKET_INFO_API_BASE_URL` が設定されている場合は API から取得。未設定またはエラー時は同梱 JSON にフォールバック。ローカル開発では `.env` に `MARKET_INFO_API_BASE_URL` を設定しなければ常にローカル JSON が使われる。
 - **タイムアウト**: 外部 API 呼び出しはすべて 5 秒タイムアウト。タイムアウト時は `null` / データなし扱いになる。
 - **revalidate**: API レスポンスは 300 秒（5 分）キャッシュされる。本番でデータが古いと感じた場合は時間を置いて再確認する。
-- **Workspace Control Center の例外**: read proxy は `Cache-Control: private, no-store`。上記の 300 秒キャッシュではなく、個別 UAT の認証・エラー・完全性の条件を使う。
+- **Workspace Core runtime**: 2026-10-08にmini-toolsから退役。Product MapとControl Centerの現行運用は独立した Workspace Core 側を参照する。mini-tools内の旧UAT文書は履歴・provenanceとしてのみ残す。
