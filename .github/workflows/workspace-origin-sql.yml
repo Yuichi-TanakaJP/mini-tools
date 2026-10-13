@@ -16,6 +16,11 @@ on:
       - 'infra/workspace-core/tests/**'
       - '.github/workflows/workspace-origin-sql.yml'
 
+# Keep only the latest PR validation; preserve independent main pushes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 

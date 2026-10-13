@@ -221,3 +221,7 @@ git push origin --delete feature/<topic>
   - 既存プロセスの終了を確認するまで、同じ差分への review を重複起動しない。
   - review 自体が失敗した場合は原因を確認し、無条件に再実行しない。
 - 小さな修正のたびに lint・全テスト・build を一式で繰り返さない。作業中は関連確認に絞り、commit / PR 前の最終ゲートで全体確認する。
+
+## CI scope maintenance
+
+ファイルの追加・移動・用途変更時は [CI対象と更新手順](docs/specs/cross-cutting/ci-scope-policy.md) を確認する。新pathは自動除外せず、必要な場合だけ用途・参照を確認して同じPRでYAMLを更新する。変更範囲をローカル検証してまとめてpushし、同じheadのCI/レビューを無条件に再実行しない。

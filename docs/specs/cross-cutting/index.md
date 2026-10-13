@@ -21,3 +21,5 @@
 - ツール固有の詳細は `docs/specs/tools/` に置く
 - 横断仕様には対象範囲と関連 tool を明記する
 - 計画や段階移行の話は `docs/plans/` に置く
+
+- [CI対象ファイルと更新手順](./ci-scope-policy.md)
