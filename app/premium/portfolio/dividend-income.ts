@@ -1,7 +1,7 @@
 /**
  * Read-only domestic-stock dividend projection derived from the existing
  * Stock Notes owner-scoped view. ETF/MMF income and actual cash receipts
- * are deliberately outside this phase (mini-tools #584 / A3 Q2).
+ * are deliberately outside this phase (Mini Tools issue 584 / A3 Q2).
  */
 export type DividendProjectionRow = {
   snapshot_id: string;
