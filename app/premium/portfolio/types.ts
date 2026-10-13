@@ -1,3 +1,5 @@
+import type { DomesticDividendProjection } from "./dividend-income";
+
 export type PortfolioAccountType =
   | "taxable"
   | "nisa_growth"
@@ -260,6 +262,7 @@ export type PortfolioData = {
   currentSnapshot: PortfolioSnapshot | null;
   dbPositionSnapshot: PortfolioSnapshot | null;
   externalAssets: PortfolioExternalAssets;
+  domesticDividends?: DomesticDividendProjection;
   positions: PortfolioPosition[];
   instrumentAnalysis: PortfolioInstrumentAnalysis[];
   instrumentAnalysisStatus: "loaded" | "error";
