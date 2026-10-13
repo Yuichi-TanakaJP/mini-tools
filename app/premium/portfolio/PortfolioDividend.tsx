@@ -2,9 +2,9 @@
 
 import type { DomesticDividendProjection, DomesticDividendPosition } from "./dividend-income";
 
-function yen(value: number | null): string {
+function yen(value: number | null, digits = 0): string {
   return value === null ? "—" : new Intl.NumberFormat("ja-JP", {
-    style: "currency", currency: "JPY", maximumFractionDigits: 0,
+    style: "currency", currency: "JPY", maximumFractionDigits: digits,
   }).format(value);
 }
 
@@ -96,8 +96,8 @@ export default function PortfolioDividend({ projection }: {
                         <strong>{p.ticker ?? "不明"}</strong> {p.name ?? ""}
                       </td>
                       <td style={{ padding: "8px 6px" }}>{number(p.quantity)}</td>
-                      <td style={{ padding: "8px 6px" }}>{yen(p.actualDps)}</td>
-                      <td style={{ padding: "8px 6px" }}>{yen(p.forecastDps)}</td>
+                      <td style={{ padding: "8px 6px" }}>{yen(p.actualDps, 2)}</td>
+                      <td style={{ padding: "8px 6px" }}>{yen(p.forecastDps, 2)}</td>
                       <td style={{ padding: "8px 6px" }}>{yen(p.annualGross)}</td>
                       <td style={{ padding: "8px 6px" }}>{changeLabel(p.changeType)}</td>
                       <td style={{ padding: "8px 6px" }}>{yen(p.rateEffectGross)}</td>
