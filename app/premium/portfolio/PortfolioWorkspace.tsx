@@ -7,6 +7,7 @@ import { summarizePortfolioDbResult } from "./db-check";
 import { isUnresolvedExternalInstrument } from "./external-assets";
 import { summarizePortfolioValuation, type PortfolioValuationSummary } from "./valuation-summary";
 import PortfolioDecision from "./PortfolioDecision";
+import PortfolioDividend from "./PortfolioDividend";
 import PortfolioAnalysisCard from "./PortfolioAnalysisCard";
 
 type Tab = "decision" | "overview" | "record" | "policy" | "history" | "db";
@@ -663,6 +664,7 @@ export default function PortfolioWorkspace({ data, groupExposure }: { data: Port
           <Section title="総資産の内訳">
             <AssetAllocationChart valuation={valuation} data={data} />
           </Section>
+          <PortfolioDividend projection={data.domesticDividends} />
           <Section title="ポートフォリオ分析">
             <PortfolioAnalysisCard data={data} />
           </Section>

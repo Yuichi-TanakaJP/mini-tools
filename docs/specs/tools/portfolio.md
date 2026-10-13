@@ -65,6 +65,18 @@
 - 業種、景気感応度、インカム特性、時価総額帯はsnapshot取込日時点で有効なclassificationを使う。classification取得失敗は構成分析内に表示し、保有一覧全体を失敗させない
 - role、theme、industry map、corporate groupは複数所属可能なExposureであり、合計100%を前提とするAllocationへ混ぜない
 
+### 国内株の配当ランレート（Mini Tools #584 Phase 1）
+
+「保有一覧」の「国内株の予想配当（税引前・年換算）」は、Stock Notes正本の stock_notes_portfolio_current_dividend_projection_v を、本人のログイン済みSupabaseセッションから**read-only**で取得する。公式ready Snapshotのportfolio_id・snapshot_idに限定し、viewの金額をそのまま使用する（MiniTools側へ配当Factを保存・再計算しない）。
+
+- **対象**：国内個別株の会社予想DPS×保有数量の年間ランレートに限る。ETF分配金・MMF・預金・投信内部収益・税引後額・実際の受取配当金を含む「Portfolio Income全体」ではない。#584の拡張範囲は引き続き未完成。
+- **鮮度・カバレッジ**：Snapshot基準日と予想の出典最終確認日、対象銘柄数/観測銘柄数を表示する。Snapshotが異なる、金額/数量/予想出典が欠損、予想出典が保有基準日より未来、対象国内株に取得漏れがある場合は金額合計を「—」にする。
+- **増配寄与**：dividend_rate_effect_grossを「比較可能な銘柄の配当単価変化寄与」として表示する。比較不能銘柄は除き、その件数を明示する。**年間予想額の前年差や過去実入金と同一視しない**。直近実績DPSベース合計が1行でも不明なら、全体実績額を表示しない。
+- **失敗時**：viewのRLS/権限/ネットワークエラー時は配当部分だけ「取得失敗」とし、0円に置き換えず、保有一覧の既存表示を続ける。公式ready Snapshotなし・国内個別株なしも別状態。
+- **表示**：主指標と銘柄別表（モバイル横スクロール、詳細を開いたときのみ表示）。銘柄別DPS「実績」は過去の会社DPSであり、証券会社の配当入金証拠ではない。
+
+これはサービスA3 Q2の「年間予想（国内株のみ）」部分を実現するPhase 1であり、**実入金Ledger・配当の総Income・時系列・買増効果/配当単価効果の完全分解・本番UAT**は未完了のまま。必要な次Gateはdocs/uat/portfolio.mdに記載。
+
 ### 現段階でできないこと
 
 - MiniToolsからChatGPTの相談・保存を開始する

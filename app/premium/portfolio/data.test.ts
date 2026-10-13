@@ -105,6 +105,72 @@ describe("portfolio data loader", () => {
     expect(data.recommendations[0]).toMatchObject({ instrumentId: null, stockId: "s", instrumentIdentifier: "9999", instrumentName: "テスト銘柄" });
   });
 
+  it("Portfolioの既存readと並行して国内株の予想配当を取得できる", async () => {
+    const date = "2026-09-21T04:08:00Z";
+    const data = await loadPortfolio(stubClient({
+      stock_notes_portfolios: { data: { id: "portfolio-1", name: "試験", base_currency: "JPY" }, error: null },
+      stock_notes_portfolio_snapshots: { data: [
+        { id: "s1", as_of: date, status: "ready", portfolio_scope: "official",
+          source_type: "broker_csv", imported_at: date },
+      ], error: null },
+      stock_notes_portfolio_accounts: { data: [
+        { id: "a1", account_name: "証券", account_type: "taxable", institution_name: "金融機関" },
+      ], error: null },
+      stock_notes_portfolio_instruments: { data: [
+        { id: "i1", asset_type: "domestic_stock", identifier: "1111", name: "試験株" },
+      ], error: null },
+      stock_notes_portfolio_positions: { data: [
+        { id: "pos", snapshot_id: "s1", account_id: "a1", instrument_id: "i1",
+          quantity: "10", unit_cost: "100", quoted_price: "120", quote_unit: "1",
+          cost_basis: "1000", market_value: "1200", unrealized_pnl: "200",
+          distribution_method: null },
+      ], error: null },
+      stock_notes_portfolio_current_dividend_projection_v: { data: [
+        { snapshot_id: "s1", snapshot_as_of: date, instrument_id: "i1",
+          ticker: "1111", instrument_name: "試験株", quantity: "10",
+          latest_actual_dps: "5", forecast_dps: "6",
+          forecast_as_of: "2026-09-15T00:00:00Z",
+          projected_annual_dividend_gross: "60",
+          prior_actual_run_rate_gross: "50",
+          dividend_rate_effect_gross: "10", dividend_change_type: "increase" },
+      ], error: null },
+    }));
+    expect(data.positions).toHaveLength(1);
+    expect(data.domesticDividends).toMatchObject({
+      status: "ready", projectedAnnualGross: 60, coveredStocks: 1,
+    });
+  });
+
+  it("配当Viewが読めなくても保有一覧を破壊せず、ゼロ円と表示しない", async () => {
+    const date = "2026-09-21T04:08:00Z";
+    const data = await loadPortfolio(stubClient({
+      stock_notes_portfolios: { data: { id: "portfolio-1", name: "試験", base_currency: "JPY" }, error: null },
+      stock_notes_portfolio_snapshots: { data: [
+        { id: "s1", as_of: date, status: "ready", portfolio_scope: "official",
+          source_type: "broker_csv", imported_at: date },
+      ], error: null },
+      stock_notes_portfolio_accounts: { data: [
+        { id: "a1", account_name: "証券", account_type: "taxable", institution_name: "金融機関" },
+      ], error: null },
+      stock_notes_portfolio_instruments: { data: [
+        { id: "i1", asset_type: "domestic_stock", identifier: "1111", name: "試験株" },
+      ], error: null },
+      stock_notes_portfolio_positions: { data: [
+        { id: "pos", snapshot_id: "s1", account_id: "a1", instrument_id: "i1",
+          quantity: "10", unit_cost: "100", quoted_price: "120", quote_unit: "1",
+          cost_basis: "1000", market_value: "1200", unrealized_pnl: "200",
+          distribution_method: null },
+      ], error: null },
+      stock_notes_portfolio_current_dividend_projection_v: {
+        data: null, error: { message: "permission denied" },
+      },
+    }));
+    expect(data.positions).toHaveLength(1);
+    expect(data.domesticDividends).toMatchObject({
+      status: "error", projectedAnnualGross: null,
+    });
+  });
+
   it("認証必須状態をサンプルデータなしで返す", () => {
     const data = portfolioAuthRequired();
 

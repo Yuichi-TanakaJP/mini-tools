@@ -1,6 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { selectPortfolio, selectReadySnapshot } from "@/lib/portfolio/holdings";
 import { emptyExternalAssets, externalAssetsError, externalAssetsLoading, loadedExternalAssets } from "./external-assets";
+import {
+  emptyDomesticDividendProjection,
+  summarizeDomesticDividendProjection,
+  type DividendProjectionRow,
+} from "./dividend-income";
 import type {
   PortfolioAccountType,
   PortfolioDbPosition,
@@ -316,6 +321,50 @@ function snapshotFromRow(row: SnapshotRow): PortfolioSnapshot {
   };
 }
 
+
+const dividendPageSize = 200;
+
+/** An optional read surface must not break the already-working holdings page. */
+async function loadDomesticDividends(
+  supabase: SupabaseClient,
+  portfolioId: string,
+  snapshot: PortfolioSnapshot | null,
+  positions: PortfolioPosition[],
+) {
+  if (!snapshot) return emptyDomesticDividendProjection("no_snapshot");
+  const domesticIds = [...new Set(positions.filter((row) =>
+    row.assetType === "domestic_stock").map((row) => row.instrumentId))];
+  if (domesticIds.length === 0) {
+    return emptyDomesticDividendProjection("no_domestic_stocks", snapshot.asOf);
+  }
+
+  const rows: DividendProjectionRow[] = [];
+  try {
+    for (let from = 0; from < 5000; from += dividendPageSize) {
+      const { data, error } = await supabase
+        .from("stock_notes_portfolio_current_dividend_projection_v")
+        .select(
+          "snapshot_id, snapshot_as_of, instrument_id, ticker, instrument_name, quantity, latest_actual_dps, forecast_dps, forecast_as_of, projected_annual_dividend_gross, prior_actual_run_rate_gross, dividend_rate_effect_gross, dividend_change_type",
+        )
+        .eq("portfolio_id", portfolioId)
+        .eq("snapshot_id", snapshot.id)
+        .order("instrument_id", { ascending: true })
+        .range(from, from + dividendPageSize - 1)
+        .returns<DividendProjectionRow[]>();
+      if (error) return emptyDomesticDividendProjection("error", snapshot.asOf);
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < dividendPageSize) {
+        return summarizeDomesticDividendProjection(rows, snapshot, domesticIds);
+      }
+    }
+  } catch {
+    return emptyDomesticDividendProjection("error", snapshot.asOf);
+  }
+  // A capped/truncated response is not a valid portfolio-wide total.
+  return emptyDomesticDividendProjection("incomplete", snapshot.asOf);
+}
+
 function emptyPortfolio(): PortfolioData {
   return {
     authState: "authenticated",
@@ -325,6 +374,7 @@ function emptyPortfolio(): PortfolioData {
     currentSnapshot: null,
     dbPositionSnapshot: null,
     externalAssets: emptyExternalAssets(),
+    domesticDividends: emptyDomesticDividendProjection("no_snapshot"),
     positions: [],
     instrumentAnalysis: [],
     instrumentAnalysisStatus: "loaded",
@@ -715,6 +765,10 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     institutionName: position.institutionName ?? "不明",
   }));
 
+  const domesticDividends = await loadDomesticDividends(
+    supabase, portfolio.id, currentSnapshot, positions,
+  );
+
   let review: PortfolioReview | null = null;
   if (reviewRow) {
     review = {
@@ -831,6 +885,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
       reviewItems: reviewItemRows.length,
     },
     externalAssets,
+    domesticDividends,
     source: currentSnapshot ? "server" : "empty",
   };
 }
