@@ -114,11 +114,13 @@ export function summarizeDomesticDividendProjection(
   const consistentSnapshot = Number.isFinite(snapshotAt)
     && rows.every((row) => row.snapshot_id === snapshot.id
       && Date.parse(row.snapshot_as_of) === snapshotAt);
-  const allAnnualAmountsKnown = positions.every((row) => row.annualGross !== null);
+  const allAnnualAmountsKnown = positions.every((row) =>
+    row.annualGross !== null && row.forecastDps !== null && row.quantity !== null);
   // The selected view uses timestamps for forecasts; a missing date means
   // the projection cannot be certified fresh, even if an amount is present.
   const hasAllSourceDates = positions.every((row) => row.forecastAsOf
-    && Number.isFinite(Date.parse(row.forecastAsOf)));
+    && Number.isFinite(Date.parse(row.forecastAsOf))
+    && Date.parse(row.forecastAsOf) <= snapshotAt);
   const complete = completeCoverage && consistentSnapshot
     && allAnnualAmountsKnown && hasAllSourceDates;
 
