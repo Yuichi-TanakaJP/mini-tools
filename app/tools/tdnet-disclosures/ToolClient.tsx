@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouterTransition } from "@/app/tools/_shared/use-router-transition";
+import { useAudience } from "@/lib/portfolio/useAudience";
+import { filterFullTdnetByHoldings } from "./holdings-filter";
 import type { TdnetDisclosureItem, TdnetDisclosureListResponse } from "./types";
 
 type FilterKey = "financialOnly" | "earningsOnly" | "hideCorrections";
@@ -270,12 +272,32 @@ export default function ToolClient({
   data,
   requestedDate,
   requestedRange,
+  initialHoldingsOnly = false,
 }: {
   data: TdnetDisclosureListResponse | null;
   requestedDate?: string;
   requestedRange?: string;
+  initialHoldingsOnly?: boolean;
 }) {
   const { navigate, isPendingFor } = useRouterTransition();
+  const audience = useAudience();
+  const [holdingsOnly, setHoldingsOnly] = useState(initialHoldingsOnly);
+  const holdingsReady = audience.data?.holdings.state === "ready";
+  const holdingCodes = useMemo(
+    () => new Set(
+      audience.data?.holdings.state === "ready"
+        ? audience.data.holdings.holdings.map((holding) => holding.code)
+        : [],
+    ),
+    [audience.data],
+  );
+  const navigateKeepingHoldings: typeof navigate = (href, options) =>
+    navigate(
+      holdingsOnly
+        ? `${href}${href.includes("?") ? "&" : "?"}holdings=1`
+        : href,
+      options,
+    );
   const [dateInput, setDateInput] = useState(toDateInputValue(requestedDate ?? data?.target_date));
   const [rangeDays, setRangeDays] = useState<RangeDays>(toRangeDays(requestedRange));
   const [searchQuery, setSearchQuery] = useState("");
@@ -305,7 +327,10 @@ export default function ToolClient({
 
   const filteredItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    return (data?.items ?? []).filter((item) => {
+    const sourceItems = holdingsOnly
+      ? (holdingsReady ? filterFullTdnetByHoldings(data?.items ?? [], holdingCodes) : [])
+      : (data?.items ?? []);
+    return sourceItems.filter((item) => {
       if (filters.financialOnly && !item.is_financial_related) return false;
       if (filters.earningsOnly && !item.is_earnings_release) return false;
       if (filters.hideCorrections && item.is_correction) return false;
@@ -324,17 +349,17 @@ export default function ToolClient({
         item.disclosure_category.toLowerCase().includes(query)
       );
     });
-  }, [categoryFilter, data?.items, filters, linkFilter, searchQuery, timeFilter, topicFilter]);
+  }, [categoryFilter, data?.items, filters, holdingCodes, holdingsOnly, holdingsReady, linkFilter, searchQuery, timeFilter, topicFilter]);
 
   const applyDate = () => {
     if (!dateInput) {
-      navigate(
+      navigateKeepingHoldings(
         rangeDays === "1" ? "/tools/tdnet-disclosures" : `/tools/tdnet-disclosures?range=${rangeDays}`,
         { key: "apply" },
       );
       return;
     }
-    navigate(`/tools/tdnet-disclosures?date=${dateInput}&range=${rangeDays}`, { key: "apply" });
+    navigateKeepingHoldings(`/tools/tdnet-disclosures?date=${dateInput}&range=${rangeDays}`, { key: "apply" });
   };
 
   const navigateByDays = (days: number) => {
@@ -342,7 +367,7 @@ export default function ToolClient({
     if (!baseDate) return;
     const nextDate = addDays(baseDate, days);
     setDateInput(nextDate);
-    navigate(`/tools/tdnet-disclosures?date=${nextDate}&range=${rangeDays}`, {
+    navigateKeepingHoldings(`/tools/tdnet-disclosures?date=${nextDate}&range=${rangeDays}`, {
       key: days < 0 ? "prev" : "next",
     });
   };
@@ -350,13 +375,13 @@ export default function ToolClient({
   const changeRange = (nextRange: RangeDays) => {
     setRangeDays(nextRange);
     if (!dateInput) {
-      navigate(
+      navigateKeepingHoldings(
         nextRange === "1" ? "/tools/tdnet-disclosures" : `/tools/tdnet-disclosures?range=${nextRange}`,
         { key: "range" },
       );
       return;
     }
-    navigate(`/tools/tdnet-disclosures?date=${dateInput}&range=${nextRange}`, { key: "range" });
+    navigateKeepingHoldings(`/tools/tdnet-disclosures?date=${dateInput}&range=${nextRange}`, { key: "range" });
   };
 
   const resetFilters = () => {
@@ -370,6 +395,7 @@ export default function ToolClient({
       earningsOnly: false,
       hideCorrections: false,
     });
+    setHoldingsOnly(false);
   };
 
   const toggleFilter = (key: FilterKey) => {
@@ -489,7 +515,7 @@ export default function ToolClient({
           type="button"
           onClick={() => {
             setDateInput("");
-            navigate(
+            navigateKeepingHoldings(
               rangeDays === "1" ? "/tools/tdnet-disclosures" : `/tools/tdnet-disclosures?range=${rangeDays}`,
               { key: "latest" },
             );
@@ -552,7 +578,7 @@ export default function ToolClient({
           <span style={{ color: "var(--color-text-muted)", fontSize: 12, fontWeight: 700 }}>
             総件数 {totalCount.toLocaleString()}件
           </span>
-          {data && filteredItems.length !== totalCount ? (
+          {data && (!holdingsOnly || holdingsReady) && filteredItems.length !== totalCount ? (
             <span style={{ color: "var(--color-accent)", fontSize: 12, fontWeight: 800 }}>
               表示中 {filteredItems.length.toLocaleString()}件
             </span>
@@ -589,6 +615,24 @@ export default function ToolClient({
               outline: "none",
             }}
           />
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 800 }}>
+              <input
+                type="checkbox"
+                checked={holdingsOnly}
+                onChange={(event) => setHoldingsOnly(event.target.checked)}
+              />
+              保有銘柄だけ
+            </label>
+            {holdingsOnly ? (
+              <span role="status" style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+                {holdingsReady
+                  ? `Portfolio保有 ${holdingCodes.size}銘柄（基準日 ${audience.data?.holdings.updatedAt?.slice(0, 10) ?? "不明"}）`
+                  : audience.status}
+              </span>
+            ) : null}
+          </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
             <label style={{ display: "flex", flex: "1 1 220px", flexDirection: "column", gap: 4 }}>
@@ -747,6 +791,10 @@ export default function ToolClient({
         ) : data.items.length === 0 ? (
           <div style={{ padding: "34px 20px", textAlign: "center", color: "var(--color-text-muted)", fontSize: 14 }}>
             この日の適時開示はありません。休日やTDNET休止日の latest では0件になる場合があります。
+          </div>
+        ) : holdingsOnly && !holdingsReady ? (
+          <div role="status" style={{ padding: "34px 20px", textAlign: "center", color: "var(--color-text-muted)", fontSize: 14 }}>
+            {audience.status} 保有データが確認できていないため、該当0件とは判定していません。
           </div>
         ) : filteredItems.length === 0 ? (
           <div style={{ padding: "34px 20px", textAlign: "center", color: "var(--color-text-muted)", fontSize: 14 }}>
