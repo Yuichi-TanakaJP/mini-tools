@@ -43,3 +43,7 @@
 ## CI scope
 
 When adding/moving/reclassifying paths or changing CI/skip behavior, follow [the repository CI policy](docs/specs/cross-cutting/ci-scope-policy.md). Preserve domain/deploy/schedule workflows and unknown-path validation; do not repeat unchanged checks.
+
+## Navigation contract maintenance
+
+For page/link/router/form/data-condition/fallback changes, follow [navigation contracts](docs/specs/cross-cutting/navigation-transitions.md#9-遷移契約の変更時チェック) and run `npm run check:navigation -- --base <actual-base>` plus affected tests. Use the shared `navigation-design-review` Skill for state/condition/latency semantics that static checks cannot prove. Update canonical contracts, generated spec tables and affected test/UAT references together; do not approve a bulk inventory snapshot as behavioral evidence.

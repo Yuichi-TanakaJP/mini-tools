@@ -9,7 +9,10 @@
     "lint": "node --import ./scripts/suppress-baseline-browser-mapping-warning.mjs ./node_modules/eslint/bin/eslint.js .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:ui": "playwright test --config=playwright.ui-smoke.config.ts"
+    "test:ui": "playwright test --config=playwright.ui-smoke.config.ts",
+    "check:navigation": "node scripts/check-navigation-contracts.mjs",
+    "navigation:docs": "node scripts/check-navigation-contracts.mjs --write-docs",
+    "test:navigation-contracts": "vitest run scripts/__tests__/navigation-contracts.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
