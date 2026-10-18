@@ -66,20 +66,35 @@ describe("lightweight theme list pages", () => {
     expect(await loadThemeListPage("same", fetcher)).toMatchObject({ status: "invalid_response" });
   });
 
-  it.each([[401, "unauthorized"], [413, "upstream_error"], [503, "upstream_error"], [400, "invalid_cursor"]])("keeps HTTP %s as an error without leaking the body", async (status, expected) => {
+  it.each([[401, "unauthorized"], [403, "forbidden"], [413, "too_large"], [429, "rate_limited"], [503, "upstream_error"], [400, "invalid_cursor"]])("keeps HTTP %s as an error without leaking the body", async (status, expected) => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response({ detail: "private upstream data" }, status as number));
     const result = await loadThemeListPage("valid_cursor", fetcher);
     expect(result).toMatchObject({ status: expected, httpStatus: status });
     expect(JSON.stringify(result)).not.toContain("private upstream data");
   });
 
-  it("aborts a stalled page after five seconds", async () => {
+  it("aborts a stalled page after eight seconds", async () => {
     vi.useFakeTimers();
     const fetcher = vi.fn<typeof fetch>().mockImplementation((_url, init) => new Promise((_resolve, reject) => {
       init?.signal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
     }));
     const pending = loadThemeListPage(undefined, fetcher);
-    await vi.advanceTimersByTimeAsync(5_000);
-    expect(await pending).toMatchObject({ status: "upstream_error" });
+    await vi.advanceTimersByTimeAsync(8_000);
+    expect(await pending).toMatchObject({ status: "timeout" });
   });
+});
+
+it("accepts cold-start latency beyond the old five-second limit", async () => {
+  vi.useFakeTimers();
+  const fetcher = vi.fn<typeof fetch>().mockImplementation(() => new Promise(resolve => setTimeout(() => resolve(response(page())), 5500)));
+  const pending = loadThemeListPage(undefined, fetcher);
+  await vi.advanceTimersByTimeAsync(5500);
+  expect(await pending).toMatchObject({ status: "ok" });
+});
+it("bounds body decoding by ten seconds even when the body ignores abort", async () => {
+  vi.useFakeTimers();
+  const fetcher = vi.fn<typeof fetch>().mockImplementation(() => new Promise(resolve => setTimeout(() => resolve({ ok: true, status: 200, json: () => new Promise(() => {}) } as Response), 7000)));
+  const pending = loadThemeListPage(undefined, fetcher);
+  await vi.advanceTimersByTimeAsync(10000);
+  expect(await pending).toMatchObject({ status: "timeout" });
 });

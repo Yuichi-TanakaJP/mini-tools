@@ -1,5 +1,6 @@
+import RetryButton from "@/components/navigation/RetryButton";
 import type { CSSProperties, ReactNode } from "react";
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import type {
   ThemeConfidence,
   ThemeDataState,
@@ -194,7 +195,12 @@ function ViewerState({
     );
   }
 
-  const title = result.status === "invalid_cursor"
+  const title = result.status === "timeout" ? "取得に時間がかかっています"
+    : result.status === "connection_error" ? "接続できませんでした"
+    : result.status === "forbidden" ? "アクセスが許可されていません"
+    : result.status === "too_large" ? "データ容量の上限を超えました"
+    : result.status === "rate_limited" ? "少し待って再試行してください"
+    : result.status === "invalid_cursor"
     ? "ページを開けません"
     : result.status === "not_configured"
     ? "サーバー設定が未完了です"
@@ -213,6 +219,7 @@ function ViewerState({
     <div style={{ ...cardStyle, background, borderColor: border, color: foreground }}>
       <h2 style={{ ...styles.stateTitle, color: foreground }}>{title}</h2>
       <p style={{ ...mutedStyle, color: foreground }}>{result.message}</p>
+      <RetryButton />
       {result.status === "not_configured" ? (
         <p style={{ ...mutedStyle, color: foreground, marginTop: 10 }}>
           `STOCK_NOTES_API_BASE_URL` と `STOCK_NOTES_API_TOKEN` はServer側だけに設定してください。
@@ -243,9 +250,10 @@ function ViewerHero({
   );
 }
 
-export function ThemeListView({ result, isContinuation = false }: {
+export function ThemeListView({ result, isContinuation = false, cursor }: {
   result: ThemeListLoadResult;
   isContinuation?: boolean;
+  cursor?: string;
 }) {
   const meta = result.status === "ok" || result.status === "empty" ? result.data : null;
   return (
@@ -274,7 +282,7 @@ export function ThemeListView({ result, isContinuation = false }: {
         {result.status === "ok" ? (
           <section style={styles.listGrid}>
             {result.data.themes.map((theme) => (
-              <Link key={theme.id} href={`/premium/themes/${encodeURIComponent(theme.id)}`} prefetch={false} style={styles.themeCard}>
+              <Link key={theme.id} href={`/premium/themes/${encodeURIComponent(theme.id)}${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`} prefetch={false} style={styles.themeCard}>
                 <div style={styles.themeCardTop}>
                   <StatusBadge status={theme.status} />
                   <span style={styles.themeSlug}>{theme.slug}</span>
@@ -699,13 +707,13 @@ function OpenActionsSection({ data }: { data: NonNullable<Extract<ThemeDetailLoa
   );
 }
 
-export function ThemeDetailView({ result }: { result: ThemeDetailLoadResult }) {
+export function ThemeDetailView({ result, listHref = "/premium/themes" }: { result: ThemeDetailLoadResult; listHref?: string }) {
   return (
     <main style={styles.page}>
       <div style={styles.shellWide}>
         <nav style={styles.topNav}>
           <div style={styles.navGroup}>
-            <Link href="/premium/themes" style={styles.backLink}>← テーマ一覧</Link>
+            <Link href={listHref} style={styles.backLink}>← テーマ一覧</Link>
             <Link href="/premium" style={styles.backLink}>Premium ホーム</Link>
           </div>
           <span style={styles.readOnlyChip}>読み取り専用</span>

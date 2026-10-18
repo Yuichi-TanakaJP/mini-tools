@@ -1,5 +1,7 @@
 "use client";
 
+import ReloadButton from "@/components/navigation/ReloadButton";
+
 import { useYutaiWorkspace } from "@/lib/yutai/browser";
 import { isSyncConfigured } from "@/lib/supabase/config";
 import DatabaseRewards from "./DatabaseRewards";
@@ -29,7 +31,7 @@ export default function DatabaseRewardsGate({ scanEnabled = false }: { scanEnabl
         <p role="alert">ログインは確認済みですが、優待データの取得処理で失敗しました。再読み込みで直らない場合は、データ形式またはアプリ側の不整合です。</p>
       )}
       {signedOut && <a href="/account">ログイン画面へ</a>}
-      {" "}<button type="button" onClick={() => window.location.reload()}>再読み込み</button>
+      {" "}<ReloadButton />
     </section>
   );
 }

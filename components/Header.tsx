@@ -2,7 +2,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import ShareButtons from "@/components/ShareButtonsSuspended";
 import NavDrawer from "@/components/NavDrawer";
 import ColorThemeSelector from "@/components/ColorThemeSelector";

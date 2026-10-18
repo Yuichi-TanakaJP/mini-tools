@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useRouterTransition } from "@/app/tools/_shared/use-router-transition";
 import type { EdinetDocumentListResponse, EdinetDocItem, EdinetManifest } from "./types";
 
@@ -192,7 +191,6 @@ export default function ToolClient({
   manifest: EdinetManifest | null;
   currentDate?: string;
 }) {
-  const router = useRouter();
   const { navigate: navigateRoute, isPendingFor } = useRouterTransition();
   const [secCodeOnly, setSecCodeOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -223,8 +221,8 @@ export default function ToolClient({
 
   useEffect(() => {
     if (!isDateNormalized || !normalizedDisplayDate) return;
-    router.replace(`/tools/edinet-documents?date=${normalizedDisplayDate}`);
-  }, [isDateNormalized, normalizedDisplayDate, router]);
+    navigateRoute(`/tools/edinet-documents?date=${normalizedDisplayDate}`, { method: "replace" });
+  }, [isDateNormalized, normalizedDisplayDate, navigateRoute]);
 
   const docTypeCounts = useMemo(() => {
     const counts = new Map<string, number>();

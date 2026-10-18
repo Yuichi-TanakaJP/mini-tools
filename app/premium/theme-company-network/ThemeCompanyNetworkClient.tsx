@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import { useMemo, useState } from "react";
 import type { ThemeCompanyNetworkLoadResult, ThemeCompanyRelationship, ThemeDirectCompany } from "./data-loader";
 

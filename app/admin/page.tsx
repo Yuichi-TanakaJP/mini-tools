@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { CSSProperties, ReactNode } from "react";
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";

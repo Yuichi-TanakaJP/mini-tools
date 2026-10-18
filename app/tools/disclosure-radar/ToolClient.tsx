@@ -1,6 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import PendingRegion from "@/components/navigation/PendingRegion";
+import { readNavigationJson } from "@/lib/navigation-read";
+
+import Link from "@/components/navigation/Link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAudience } from "@/lib/portfolio/useAudience";
 import { loadReadEventIds, saveReadEventIds } from "./read-state";
@@ -133,6 +136,8 @@ export default function ToolClient({
   const [manifest, setManifest] = useState<DisclosureEventsManifest | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [manifestAttempt, setManifestAttempt] = useState(0);
+  const [dataAttempt, setDataAttempt] = useState(0);
   const [view, setView] = useState<RadarView>(initialView);
   const [rangeDays, setRangeDays] = useState<RangeDays>(initialRange);
   const [topic, setTopic] = useState<TopicFilter>("all");
@@ -157,11 +162,8 @@ export default function ToolClient({
 
   useEffect(() => {
     let active = true;
-    fetch("/api/disclosure-events/manifest")
-      .then((response) => {
-        if (!response.ok) throw new Error(`manifest: ${response.status}`);
-        return response.json() as Promise<DisclosureEventsManifest>;
-      })
+    const controller = new AbortController();
+    readNavigationJson<DisclosureEventsManifest>("/api/disclosure-events/manifest", { signal: controller.signal })
       .then((value) => {
         if (active) setManifest(value);
       })
@@ -173,12 +175,14 @@ export default function ToolClient({
       });
     return () => {
       active = false;
+      controller.abort();
     };
-  }, []);
+  }, [manifestAttempt]);
 
   useEffect(() => {
     if (!manifest) return;
     const requestId = ++requestIdRef.current;
+    const controller = new AbortController();
     const dates = selectDisclosureDates(manifest, rangeDays);
     const missingDates = dates.filter((date) => !responsesRef.current.has(date));
     setLoading(true);
@@ -187,16 +191,15 @@ export default function ToolClient({
     Promise.all(
       missingDates.map(async (date) => {
         try {
-          const response = await fetch(`/api/disclosure-events/${date}`);
-          if (!response.ok) return null;
-          return await response.json() as DisclosureEventsResponse;
+          const response = await readNavigationJson<DisclosureEventsResponse>(`/api/disclosure-events/${date}`, { signal: controller.signal });
+          return response.target_date === date ? response : null;
         } catch {
           return null;
         }
       }),
     )
       .then((responses) => {
-        if (requestId !== requestIdRef.current) return;
+        if (controller.signal.aborted || requestId !== requestIdRef.current) return;
         for (const response of responses) {
           if (!response) continue;
           responsesRef.current.set(response.target_date, response);
@@ -224,8 +227,9 @@ export default function ToolClient({
             .sort(),
           items,
         };
-        setData(nextData);
-        setLoadFailed(dates.length > 0 && selectedResponses.length === 0);
+        const complete = dates.length === selectedResponses.length;
+        if (complete) setData(nextData);
+        setLoadFailed(!complete);
         setLoading(false);
       })
       .catch(() => {
@@ -234,7 +238,8 @@ export default function ToolClient({
           setLoading(false);
         }
       });
-  }, [manifest, rangeDays]);
+    return () => controller.abort();
+  }, [manifest, rangeDays, dataAttempt]);
 
   useEffect(() => {
     if (!initialEventId || !data || loading) return;
@@ -298,6 +303,8 @@ export default function ToolClient({
 
   return (
     <main className={styles.main}>
+      <PendingRegion active={loading} label="開示データ" />
+      {data && (loading || loadFailed) ? <p role="status">表示中の取得日: {data.loadedDates.join(", ")}。新しい条件の取得結果ではありません。</p> : null}
       <header className={styles.hero}>
         <div>
           <p className={styles.eyebrow}>TDNET EVENT RADAR</p>
@@ -376,9 +383,14 @@ export default function ToolClient({
         aria-label="イベント検索"
       />
 
+      {loadFailed ? <p role="alert">取得に失敗しました。{data ? "表示中のデータは前回の取得結果です。" : ""} <button type="button" onClick={() => {
+        setLoading(true); setLoadFailed(false);
+        if (manifest) setDataAttempt(value => value + 1);
+        else setManifestAttempt(value => value + 1);
+      }}>同じ条件で再試行</button></p> : null}
       {loading && !data ? (
         <section className={styles.empty}>開示イベントを読み込んでいます。</section>
-      ) : loadFailed ? (
+      ) : loadFailed && !data ? (
         <section className={styles.empty}>
           開示イベントを取得できませんでした。API設定または通信状況を確認してください。
         </section>

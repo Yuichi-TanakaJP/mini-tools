@@ -1,6 +1,7 @@
 // app/layout.tsx
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
+import NavigationProvider from "@/components/navigation/NavigationProvider";
 import Header from "@/components/Header";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import { createColorThemeInitScript } from "@/lib/color-theme";
@@ -79,9 +80,11 @@ export default function RootLayout({
       </head>
 
       <body>
+        <NavigationProvider>
         <Header />
         {children}
         <MobileBottomNav />
+        </NavigationProvider>
       </body>
     </html>
   );

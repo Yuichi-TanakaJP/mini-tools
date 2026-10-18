@@ -1,5 +1,7 @@
 "use client";
 
+import ReloadButton from "@/components/navigation/ReloadButton";
+
 import { useEffect, useState } from "react";
 import { useYutaiWorkspace } from "@/lib/yutai/browser";
 import { isSyncConfigured } from "@/lib/supabase/config";
@@ -24,7 +26,7 @@ export default function DatabaseMemo({ shortBalance }: { shortBalance: NikkoShor
   if (!view.data) return <main className={styles.page}><h1>優待銘柄メモ帳</h1>
     <p>{view.status === "signed_out" ? "Supabaseへのログインが必要です。" : "優待メモを取得しています。"}</p>
     {view.error && <p role="alert">取得に失敗しました。通信とログイン状態を確認してください。</p>}
-    <a href="/account">ログイン画面へ</a> <button onClick={() => window.location.reload()}>再読み込み</button></main>;
+    <a href="/account">ログイン画面へ</a> <ReloadButton /></main>;
   return <ConnectedMemo key={view.sessionRevision} view={view} shortBalance={shortBalance} />;
 }
 function ConnectedMemo({ view, shortBalance }: { view: ViewState; shortBalance: NikkoShortBalanceData }) {

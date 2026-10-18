@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import type {
   InvestorFlowAnalysisPayload,
   InvestorFlowCompositionItem,

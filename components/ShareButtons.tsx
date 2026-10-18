@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "@/components/navigation/Link";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { track } from "@/lib/analytics";
@@ -258,7 +259,7 @@ export default function ShareButtons({
 
           if (m === "premium") {
             return (
-              <a
+              <Link
                 key={m}
                 href="/premium"
                 onClick={() => onShare("premium")}
@@ -271,7 +272,7 @@ export default function ShareButtons({
                 {!iconsOnly ? (
                   <span className={styles.labelText}>{labelFor(m)}</span>
                 ) : null}
-              </a>
+              </Link>
             );
           }
 

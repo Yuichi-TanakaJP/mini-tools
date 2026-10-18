@@ -247,6 +247,11 @@ export type ThemeDetailData = {
 };
 
 export type ThemeViewerErrorStatus =
+  | "timeout"
+  | "connection_error"
+  | "forbidden"
+  | "too_large"
+  | "rate_limited"
   | "invalid_cursor"
   | "not_configured"
   | "unauthorized"

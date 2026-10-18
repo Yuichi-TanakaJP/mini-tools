@@ -2,7 +2,7 @@
 // 状態も入力も持たないため "use client" は付けない。
 
 import type { CSSProperties } from "react";
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import type { Routine, RoutineMode } from "./types";
 import {
   MODE_ICONS,

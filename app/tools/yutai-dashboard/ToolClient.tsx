@@ -1,5 +1,7 @@
 "use client";
 
+import ReloadButton from "@/components/navigation/ReloadButton";
+
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import { isSyncConfigured } from "@/lib/supabase/config";
@@ -358,7 +360,7 @@ export default function ToolClient(props: DashboardProps) {
   if (!valid || !configured || !view.data) return <main style={styles.page}><h1>優待ダッシュボード — DB接続検証</h1>
     <p>{!configured || !valid ? "Supabase設定と有効な月が必要です。従来保存へは戻しません。" : view.status === "signed_out" ? "Supabaseへのログインが必要です。" : "優待データを取得しています。"}</p>
     {view.error && <p role="alert">取得に失敗しました。通信・ログイン状態を確認してください。</p>}
-    <a href="/account">ログイン画面へ</a> <button onClick={() => window.location.reload()}>再読み込み</button></main>;
+    <a href="/account">ログイン画面へ</a> <ReloadButton /></main>;
   return <ConnectedDashboard key={`${view.sessionRevision}:${props.data.selectedMonthId}`} {...props} view={view} month={month} />;
 }
 function ConnectedDashboard({ view, month, ...props }: DashboardProps & { view: ViewState; month: number }) {

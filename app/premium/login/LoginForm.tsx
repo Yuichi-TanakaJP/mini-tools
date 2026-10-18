@@ -1,5 +1,7 @@
 "use client";
 
+import { useNavigationActivity } from "@/components/navigation/NavigationProvider";
+
 import { FormEvent, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { getSafePremiumNextPath } from "@/lib/premium-navigation";
@@ -11,6 +13,7 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<{ message: string; kind: "auth" | "config" | "network" } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  useNavigationActivity(isSubmitting, "認証");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

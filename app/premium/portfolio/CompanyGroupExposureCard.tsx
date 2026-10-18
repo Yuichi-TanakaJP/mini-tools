@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import type { CompanyGroupExposure } from "./company-group-exposure";
 
 function formatYen(value: number | null) {

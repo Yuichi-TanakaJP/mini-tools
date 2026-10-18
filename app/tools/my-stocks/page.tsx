@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 
 export const metadata: Metadata = {
   title: "マイ銘柄リスト | mini-tools",

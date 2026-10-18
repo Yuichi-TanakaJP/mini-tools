@@ -1,10 +1,12 @@
+import LoadingActivity from "@/components/navigation/LoadingActivity";
 export default function Loading() {
   const sk = {
     background: "var(--color-border)",
     animation: "skeleton-pulse 1.4s ease-in-out infinite",
   } as const;
 
-  return (
+  return (<>
+      <LoadingActivity />
     <main style={{ minHeight: "100vh", padding: "24px 16px 72px" }}>
       <div style={{ width: "100%", maxWidth: 980, margin: "0 auto" }}>
         {/* Hero block */}
@@ -79,5 +81,5 @@ export default function Loading() {
         }
       `}</style>
     </main>
-  );
+  </>);
 }

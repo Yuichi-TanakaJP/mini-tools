@@ -31,3 +31,9 @@ push/replaceの履歴、login後のCookie反映用全画面遷移、修飾クリ
 - [From/To・通信量・時間の正本](../specs/cross-cutting/navigation-transitions.md)
 - [受入手順](../uat/navigation-transitions.md)
 - [既存pending判断](2026-05-30-router-transition-pending-feedback.md)
+
+## 実装時の補足
+
+8秒の予算はMiniTools→上流HTTPの待機で強制し、body読取を含む総待機を10秒で制限する。API serverの内部deadlineやDB構造は変更しない。共通Linkを入口にし、URL commit以後のloading/Client取得は別のactivityとして終了を追う。全画面の実時間が目標内と確定する変更ではなく、遷移feedbackと回復手段の実装である。
+
+2026-10-19のレビュー対応: 同URLの要求も再取得/他要求の中断として扱い、重複pendingだけを抑止する。日付再選択は以前の失敗を解除し、成功したデータをerrorで隠さない。開示のretryはlocal条件を保持したまま不足日の読取をやり直す。企業scopeの前回図はラベル/探索条件と一緒に保持し、要求中の条件へ読み替えない。

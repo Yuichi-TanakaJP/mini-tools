@@ -1,10 +1,12 @@
+import LoadingActivity from "@/components/navigation/LoadingActivity";
 export default function Loading() {
   const sk = {
     background: "var(--color-border)",
     animation: "skeleton-pulse 1.4s ease-in-out infinite",
   } as const;
 
-  return (
+  return (<>
+      <LoadingActivity />
     <main style={{ minHeight: "100vh", padding: "24px 16px 96px" }}>
       <div style={{ width: "100%", maxWidth: 760, margin: "0 auto", display: "grid", gap: 16 }}>
         <div style={{ display: "grid", gap: 8 }}>
@@ -25,5 +27,5 @@ export default function Loading() {
         }
       `}</style>
     </main>
-  );
+  </>);
 }

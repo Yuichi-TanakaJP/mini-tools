@@ -3,7 +3,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
 import { loadThemeListPage } from "./data-loader";
-import { ThemeListView } from "./ThemeViewer";
+import ThemeListSession from "./ThemeListSession";
+import { themeListHref } from "./navigation";
 
 export const metadata: Metadata = {
   title: "テーマViewer | mini-tools premium",
@@ -22,14 +23,14 @@ export default async function PremiumThemesPage({
 }: {
   searchParams: Promise<{ cursor?: string | string[] }>;
 }) {
+  const { cursor } = await searchParams;
   const cookieStore = await cookies();
   const session = cookieStore.get(PREMIUM_COOKIE_NAME)?.value;
 
   if (!verifyPremiumSession(session)) {
-    redirect(`/premium/login?next=${encodeURIComponent("/premium/themes")}`);
+    redirect(`/premium/login?next=${encodeURIComponent(themeListHref(cursor))}`);
   }
 
-  const { cursor } = await searchParams;
   const result = await loadThemeListPage(cursor);
-  return <ThemeListView result={result} isContinuation={cursor !== undefined} />;
+  return <ThemeListSession result={result} isContinuation={cursor !== undefined} cursor={typeof cursor === "string" && themeListHref(cursor).includes("?") ? cursor : undefined} />;
 }
