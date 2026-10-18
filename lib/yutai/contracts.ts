@@ -40,7 +40,7 @@ export interface Workspace {
   profile_tags: { profile_id: string; tag_id: string; created_at: string }[];
   rewards: Reward[];
   reward_events: { id: string; reward_id: string; track_mode: TrackMode;
-    event_type: "received" | "consumed" | "restocked" | "adjusted";
+    event_type: "received" | "consumed" | "restocked" | "expired" | "adjusted";
     delta_value: number; occurred_at: string; note: string | null; created_at: string }[];
   selections: (Row & { stock_code: string; entitlement_month: number | null; selection_status: SelectionStatus })[];
   effective_selections: { stock_code: string; selection_status: SelectionStatus; selection_scope: "global" | "monthly" }[];
@@ -110,7 +110,7 @@ const enums: Record<string, readonly unknown[]> = {
   priority: [1, 2, 3], track_mode: ["count", "amount"],
   selection_status: ["picked", "passed", "unreviewed"], selection_scope: ["global", "monthly"],
   status: ["considering", "planned", "prepared", "rights_secured", "settled", "received", "skipped", "cancelled"],
-  event_type: ["received", "consumed", "restocked", "adjusted"],
+  event_type: ["received", "consumed", "restocked", "expired", "adjusted"],
 };
 export function parseWorkspace(value: unknown, month: number): Workspace {
   if (!isObject(value) || value.schema_version !== 1 || value.selected_month !== month ||

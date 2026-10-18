@@ -7,10 +7,10 @@ describe("PWA authenticated API cache boundary", () => {
   it("routes bearer and apikey GETs to NetworkOnly", () => {
     expect(isSensitiveApiGet({ request: new Request("https://example.supabase.co/rest/v1/rpc/test", {
       headers: { Authorization: "Bearer synthetic-test-token" },
-    }) })).toBe(true);
+    }), url: new URL("https://example.supabase.co/rest/v1/rpc/test") })).toBe(true);
     expect(isSensitiveApiGet({ request: new Request("https://example.supabase.co/auth/v1/user", {
       headers: { apikey: "synthetic-publishable-key" },
-    }) })).toBe(true);
+    }), url: new URL("https://example.supabase.co/auth/v1/user") })).toBe(true);
   });
 
   it("keeps the public Workspace Core read route NetworkOnly", () => {
