@@ -51,7 +51,6 @@ export function useRouterTransition(): RouterTransitionApi {
   const navigate = useCallback(
     (href: string, options?: NavigateOptions) => {
       const method = options?.method ?? "push";
-      const sameUrl = typeof window !== "undefined" && href === window.location.pathname + window.location.search;
       if (feedback?.isCurrent(href)) return;
       token.current = feedback?.begin(href) ?? null;
       if (options?.key !== undefined) {
@@ -63,8 +62,6 @@ export function useRouterTransition(): RouterTransitionApi {
         } else {
           router.push(href);
         }
-        // Current-page requests are intentional retries and may supersede another move.
-        if (sameUrl) router.refresh();
       });
     },
     [router, feedback],

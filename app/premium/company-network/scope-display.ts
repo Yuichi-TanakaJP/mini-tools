@@ -11,3 +11,9 @@ export function selectScopeDisplay(snapshot: ScopeSnapshot | null, key: string, 
   return { data: snapshot?.data ?? null, context: previous ? snapshot.context : requested,
     previous, current: snapshot?.key === key ? snapshot.data : null };
 }
+
+/** Save a local focus change while its scope is still current, before the next request key. */
+export function withScopeFocus(snapshot: ScopeSnapshot | null, key: string, baseId: string): ScopeSnapshot | null {
+  if (!snapshot || snapshot.key !== key || snapshot.context.baseId === baseId) return snapshot;
+  return { ...snapshot, context: { ...snapshot.context, baseId } };
+}

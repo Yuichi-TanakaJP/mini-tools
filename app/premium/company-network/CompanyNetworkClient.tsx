@@ -26,7 +26,7 @@ import TableView from "./views/TableView";
 
 const ALL_CATEGORIES: readonly RelationCategory[] = ["capital", "control", "historical"];
 
-import { selectScopeDisplay, type ScopeContext, type ScopeSnapshot } from "./scope-display";
+import { selectScopeDisplay, withScopeFocus, type ScopeContext, type ScopeSnapshot } from "./scope-display";
 type ScopedState = ScopeSnapshot;
 type ScopedError = { key: string; message: string };
 type ScopedSelection = CompanyNetworkNodeSelection & { key: string };
@@ -151,6 +151,7 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
   };
   const changeDisplayBase = (companyId: string) => {
     setDisplayBaseCompanyId(companyId);
+    setScopedState(current => withScopeFocus(current, requestKey, companyId));
     setSelectedRelationId(null);
     setSelection(companyId ? { key: requestKey, kind: "company", id: companyId } : { key: requestKey, kind: "group", id: selectedGroupId });
   };

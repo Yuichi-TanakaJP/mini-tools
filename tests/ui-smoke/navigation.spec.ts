@@ -190,9 +190,10 @@ test("same-URL display is a real retry with pending feedback", async ({ page }) 
     await route.continue();
   });
   await page.getByRole("button", { name: "表示", exact: true }).click();
-  await expect.poll(() => reads).toBeGreaterThan(0);
+  await expect.poll(() => reads).toBe(1);
   await expect(page).toHaveURL(/date=2026-10-16&range=1$/);
   await expect(page.locator(".navigation-feedback")).toHaveAttribute("data-visible", "false");
+  expect(reads).toBe(1);
 });
 
 test("failed date can be reselected after a cached date without stale errors", async ({ page }) => {
