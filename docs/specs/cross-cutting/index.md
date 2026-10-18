@@ -6,6 +6,7 @@
 
 | 仕様 | 内容 |
 |---|---|
+| [画面遷移と通信予算](./navigation-transitions.md) | 全39ページのFrom/To、待機/回復仕様、通信量見積りと時間目標、適用順 |
 | [優待の共通データ層](./yutai-repository.md) | Supabase正本、本人別cache、24操作の保存結果、切替工程3の境界 |
 | [優待 Reward Model v2](./yutai-reward-model-v2.md) | Entitlement / Account / Grant Lot / Deadline / Operation の責務、legacy coverage、期限・残高の分離 |
 | [mini-tools システム構成概要](./system-architecture-overview.md) | アプリ全体の構成、データ取得、保存、外部依存 |
