@@ -73,3 +73,12 @@
 ### 経済カレンダーの表示切替
 
 `npx playwright test --config=playwright.calendar-navigation.config.ts` はloopbackの経済カレンダーfixtureを使う。初回月取得中を未発行と扱わず、失敗した月の同条件再試行が実際に通信すること、月→週・週→月の切替で別表示のエラーと再試行操作が残らないことを確認する。取得済みの月の行は次の取得中も保持する。
+
+## 遷移契約チェッカーの運用確認
+
+- `npm run check:navigation -- --base origin/main` を実行し、39ページ・81遷移とsource候補の一致を確認する。PASSは機械的な照合だけであり、REVIEWを挙動確認済みと扱わない。
+- 契約変更時は `npm run navigation:docs` 後にdiffを確認し、表以外の文章・既存予算を意図せず変更していないことを確認する。変更なしでの再実行は差分を増やさない。
+- `npm run test:navigation-contracts` で新規/削除ページ、共通Link迂回、宛先なし、理由なしnative遷移、fallback欠落、構文不正、テスト参照/仕様表不一致を再現して失敗を検出する。ここでのfixtureはスクリプトの検出能力のテストであり、本番データの成功証拠ではない。
+- 未登録siteのエラーを単純な再収集で消さず、From→To・例外理由・テストの確認範囲をレビューする。静的検出外のlocal switchや間接呼出しは、変更pathのREVIEWと共通Skillで確認する。
+
+このチェック追加は画面やAPIの実行コードを変更しない。全画面のbuild/E2Eや本番故障注入を、チェッカーの検証だけのために追加実行しない。将来のUI変更ではその変更に必要な確認を省略しない。

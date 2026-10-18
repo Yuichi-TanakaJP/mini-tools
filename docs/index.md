@@ -219,3 +219,5 @@ PR マージ後・リリース前の確認観点をツールごとにまとめ�
 - **Dev Log**：区切りの良い作業単位で追加
 - 仕様や議論結果の残し方は [Docs Writing Workflow](./docs-writing-workflow.md) を参照
 - ファイル名は `YYYY-MM-DD-内容.md` 形式
+
+- [遷移契約の機械検証と共通Skill](./decision-log/2026-10-19-navigation-contract-checks.md)

@@ -2,7 +2,7 @@
 
 更新日: 2026-10-18。対象: mini-toolsの全39ページ定義と、同一画面内の条件変更・データ切替。
 
-**実装ブランチで共通遷移の適用済み。本番は未反映。** 現状の根拠は本番コード `86ada02d061ffe0447232c29c76c8ccc0e7c9bbd`。旧画面の押下が無反応に見える状態を解消し、遅い/失敗した場合も条件と戻り先を保持する。以下の「目標」は実測値ではなく、実装後の受入基準である。
+**共通遷移は#703で本番反映済み（配備確認SHA `4fb33e9`）。** 以下の初期調査・asset見積りの基準ソースは `86ada02d061ffe0447232c29c76c8ccc0e7c9bbd`。目標は実測の全画面合格を意味しない。指定経路の本番単発確認は [#703の記録](https://github.com/Yuichi-TanakaJP/mini-tools/pull/703) を参照する。
 
 ## 1. 対応方針
 
@@ -63,8 +63,9 @@
 
 JS/CSSの「追加/初回」はKiB。実際のFromがホーム以外の場合の追加assetは、その画面で既に取得したchunkとの差分で再計算する。下表の時間はProfileの**目標**を参照。現状のend-to-end時間は、テーマ以外も含め全39画面では未測定。
 
+<!-- navigation-contracts:pages -->
 | ID | From | To | JS/CSS見積り 追加/初回 | データ/遷移時間目標 | U/DB論理読取の見積り |
-|---|---|---|---:|---|---|
+| --- | --- | --- | --- | --- | --- |
 | R01 | DBツールの認証案内・D | `/account` | 5.3 / 228.7 | C2 | Supabase認証/同期状態（回数未計測） |
 | R02 | 再設定メールリンク（送信元/account）・D | `/account/reset-password` | 8.0 / 231.5 | C2 | 認証セッション確認。更新送信は遷移外 |
 | R03 | H・D | `/admin` | 0.2 / 223.6 | S3 | 18 API論理読取、現状2グループ |
@@ -104,13 +105,15 @@ JS/CSSの「追加/初回」はKiB。実際のFromがホーム以外の場合の
 | R37 | P・D | `/tools/yutai-expiry` | 64.5 / 287.9 | C2 | 認証/DBまたはlocal版（回数未計測） |
 | R38 | D（PoC、通常入口なし） | `/tools/yutai-expiry/scan-poc` | 6.6 / 230.1 | C1 | 入口API 0。画像送信は遷移外 |
 | R39 | P・D | `/tools/yutai-memo` | 37.2 / 260.6 | C2 | 認証/DBまたはlocal版、信用参照（回数未計測） |
+<!-- /navigation-contracts:pages -->
 
 Profileは入口の表示責務に対応する。例えばC1のscan PoCは入口の予算であり、画像のアップロード/AI処理をこの予算へ含めない。Portfolioは入口/戻りの遷移境界のみを対象とし、意思決定やデータ契約の業務仕様は変更しない。
 
 ## 5. ページ間の共通辺
 
+<!-- navigation-contracts:global -->
 | ID | From | To | 遷移時の仕様 | 想定通信量・時間 |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | G01 | 任意ページのロゴ/メニューHome | `/` | 通常Link。押下反応、待機時の共通bar | S1。取得済みassetは再利用 |
 | G02 | 任意ページのNavDrawer | Pで列挙したtool | drawerを閉じてもheaderの移動中表示を残す | ToのProfile＋不足asset差分 |
 | G03 | 非Premium画面の下部ナビ | `/`、`/tools/stock-notes`、`/tools/yutai-candidates`、`/tools/earnings-calendar`、`/tools/disclosure-radar` | activeは表示中画面、pendingは押した対象として別表示 | ToのProfile |
@@ -120,13 +123,15 @@ Profileは入口の表示責務に対応する。例えばC1のscan PoCは入口
 | G07 | Premium login成功 | next指定先 | Cookie反映の理由で全画面assignを維持。押下→認証→移動を表示 | POST≤8KiB + ToのHTML/asset。RSCだけとは計上しない |
 | G08 | ブラウザーBack/Forward/直URL | 履歴または指定route | clickに依存せずfallback/error。可能な状態とscrollを復元 | cache hitなら0〜不足分、missならToのProfile |
 | G09 | 外部原本/PDF/_blank/メール/共有/hash | 外部または同一画面見出し | 通常のbrowser動作。元画面を移動中のままにしない | 外部通信量は本仕様の予算外 |
+<!-- /navigation-contracts:global -->
 
 ### 共通ナビ以外の関連画面リンク
 
 以下も通常の内部遷移として受付/pendingを適用する。表の予算はToのR行/Profileと、Fromで取得済みのasset差分を使う。現在のaによるdocument移動は、認証等の理由を確認してからLinkへ統一する。
 
+<!-- navigation-contracts:related -->
 | ID | From | To | 条件・現状と対応 |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | E01 | Premium各子画面・`/admin` | `/premium` | 画面内の戻りリンク。S1 |
 | E02 | `/premium/market` | `/tools/topix33` | 関連ツール。S2 |
 | E03 | `/premium/tdnet-router` | `/tools/disclosure-radar`、`/account` | 通常版/認証案内。各ToのProfile |
@@ -141,13 +146,15 @@ Profileは入口の表示責務に対応する。例えばC1のscan PoCは入口
 | E12 | `/tools/yutai-expiry`、`/tools/yutai-memo` | `/tools/data-transfer` | DB preview flagが有効な場合のみ。現在a、C2 |
 | E13 | `/account/reset-password` | `/account` | 成功/失敗画面からの復帰。C2 |
 | E14 | `/admin`のデータ/ツール表 | `/tools/{topix33,nikkei-contribution,stock-ranking,us-stock-ranking,market-rankings,investor-flow,earnings-calendar,econ-calendar,edinet-documents,tdnet-disclosures,disclosure-radar,yutai-candidates,stock-notes,total,charcount,yutai-expiry,yutai-memo}` | 表の実在hrefに限る。各ToのProfile |
+<!-- /navigation-contracts:related -->
 
 ## 6. 同一ページ内のFrom→Toと追加通信
 
 query変更は新たな39ページとして数えないが、操作単位のpendingを必須にする。「0KiB」は追加JS/CSSであって、データ通信が0という意味ではない。
 
+<!-- navigation-contracts:operations -->
 | ID | From | To | 現状の追加通信見積り | 採用する遷移仕様・時間 |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Q01 | `/premium/themes`のページc | `/premium/themes?cursor=c2` | 追加asset通常0、RSC 1、U 1。U実測約6.8KiB、DB通常31 | V1。旧一覧保持、押下spinner、同条件retry |
 | Q02 | テーマ一覧カード（cursor c） | `/premium/themes/[themeId]` | RSC 1、U 1。U実測約2.0〜9.2KiB、DB複数 | V2。loading、戻りのcursorを保持する方針 |
 | Q03 | 詳細（一覧cursor cから進入） | 元の`/premium/themes?cursor=c` | RSC 0〜1（cache依存）、U 0〜1。追加asset通常0 | V1。詳細URLの検証済みcursorを使って元一覧へ戻る |
@@ -167,6 +174,7 @@ query変更は新たな39ページとして数えないが、操作単位のpend
 | L01 | 決算の市場/月/日、既取得表/graph、mapの表示方式、各ツールのlocalタブ | 同routeの表示状態 | 0 bytes、0 request（追加データ不要の場合） | L0。ネットワークspinnerは出さない |
 | X01 | `/account`のreset依頼 | メールの`/account/reset-password`→復帰先 | 認証メール/更新は操作。移動部分はTo profile | 認証の送信状態と移動中を分ける。自動再送なし |
 | X02 | local/DB toolsの認証案内a/reload | `/account`または同route再読込 | document GET。RSC遷移の予算と分ける | 意図を確認してLink化、必要な全画面reloadは維持 |
+<!-- /navigation-contracts:operations -->
 
 ## 7. 実測値と採用する予算の関係
 
@@ -229,3 +237,22 @@ DB集約RPCやmigrationを要する最適化は別PRで設計・承認し、件�
 - データ予算/p95は引き続き受入目標であり、本番の全画面実測合格ではない。view別取得最適化、DB集約、root bundle分割は、計測で超過箇所を特定してから行う。
 
 PortfolioについてはUI-4/V2 Phase 6の業務機能を拡張せず、既存入口/関連Linkへの共通feedback適用のみ。受入条件はPremium境界・既存hrefの維持と、無関係な保有操作/保存契約へ差分がないこと。
+
+## 9. 遷移契約の変更時チェック
+
+`config/navigation-contracts.json` をFrom/To表とsource候補の正本にする。節4〜6の表はマーカー内だけを `npm run navigation:docs` で生成する。候補を再収集して自動承認するコマンドは設けない。リンク・router・フォーム・Client通信・chunk/segment fallbackを変えるときは実際の仕様とテストを読んで登録する。
+
+```powershell
+npm run check:navigation -- --base origin/main
+npm run test:navigation-contracts
+# 契約の表を更新した場合だけ
+npm run navigation:docs
+```
+
+- 未登録のページ/遷移サイト、仕様表の差分、共通Provider/loading/errorの欠落・loading接続の解除、next/linkの迂回、静的内部hrefの宛先欠落、理由なしのnative/document遷移・dynamic fallback例外、消えたテスト参照は失敗する。
+- `--base` は実在commitへ解決してからgit diffを読む。変更されたUI/data pathをREVIEWとして出す。ローカルstate切替、変数から組み立てるhref、間接API/RPC、callback内の意味、実際の通信回数/時間は静的解析の保証外であり、Skill・独立レビュー・必要な実操作で補う。既存のsource署名は整形済み構文の一致を検査し、正しさの証明には使わない。
+- `form-submit` はGETと断定できない操作フォームも含む候補、`client-request` はPOST等も含む候補。保存/送信を実行する指示ではない。読み取りか書込みかを確認し、確認対象外の動作を勝手に広げない。
+- `coverage` の `entry-only` / `partial` / `unit` は登録したテストがどこまで扱うかを表す。参照が存在することと、テストの実行・実データの到達・全経路の合格は別。現時点で多数の遷移は入口のみ/部分的な自動確認であり、全81遷移の意味的な網羅を主張しない。
+- normal checkは読み取り専用。`navigation:docs` だけが明示操作で仕様書の表を更新する。いずれも通信・秘密情報参照・DB書込み・CI起動・配備を行わない。既存workflowや強制checkは変更しない。
+
+共通Skillは `claude-skills/.claude/skills/navigation-design-review/SKILL.md`。各製品の時間/容量予算と権限は当該リポジトリの契約・AGENTSに従う。

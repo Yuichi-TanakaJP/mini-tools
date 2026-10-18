@@ -1,0 +1,2513 @@
+{
+  "schemaVersion": 1,
+  "transitions": [
+    {
+      "id": "R01",
+      "from": "DBツールの認証案内・D",
+      "to": "`/account`",
+      "details": [
+        "5.3 / 228.7",
+        "C2",
+        "Supabase認証/同期状態（回数未計測）"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R02",
+      "from": "再設定メールリンク（送信元/account）・D",
+      "to": "`/account/reset-password`",
+      "details": [
+        "8.0 / 231.5",
+        "C2",
+        "認証セッション確認。更新送信は遷移外"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R03",
+      "from": "H・D",
+      "to": "`/admin`",
+      "details": [
+        "0.2 / 223.6",
+        "S3",
+        "18 API論理読取、現状2グループ"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R04",
+      "from": "全画面ロゴ/通常ホーム/メニュー・D",
+      "to": "`/`",
+      "details": [
+        "0.0 / 223.4",
+        "S1",
+        "Cookie判定。通知等のClient追加通信は別"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R05",
+      "from": "H・D",
+      "to": "`/premium/company-network`",
+      "details": [
+        "33.1 / 256.6",
+        "S3",
+        "認証+DB bootstrap。選択後のscope APIは別"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R06",
+      "from": "H・D",
+      "to": "`/premium/industry-map`",
+      "details": [
+        "28.0 / 251.4",
+        "S3",
+        "認証+DB（回数未計測）"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R07",
+      "from": "未認証で保護ページへ移動→redirect・D",
+      "to": "`/premium/login`",
+      "details": [
+        "2.2 / 225.6",
+        "A1",
+        "Cookie確認。submit後POST 1→全画面移動"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R08",
+      "from": "H・D・Premium下部ナビ",
+      "to": "`/premium/market`",
+      "details": [
+        "2.8 / 226.2",
+        "S3",
+        "休場日+manifest+対象月のn日（2+n）"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R09",
+      "from": "HeaderのPremium・Premium下部ナビ・D",
+      "to": "`/premium`",
+      "details": [
+        "0.7 / 224.1",
+        "S1",
+        "Cookie判定のみ。ログアウトPOSTは別"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R10",
+      "from": "H・D・Premium下部ナビ",
+      "to": "`/premium/portfolio`",
+      "details": [
+        "17.0 / 240.4",
+        "S3",
+        "認証/DB+後続の関連取得（回数未計測）"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R11",
+      "from": "H・D",
+      "to": "`/premium/routines`",
+      "details": [
+        "0.8 / 224.3",
+        "S1",
+        "Cookie+同梱表示"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R12",
+      "from": "H・D",
+      "to": "`/premium/tdnet-router`",
+      "details": [
+        "2.7 / 226.2",
+        "S2",
+        "認証+DB条件検索（回数未計測）"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R13",
+      "from": "H・D",
+      "to": "`/premium/theme-company-network`",
+      "details": [
+        "3.7 / 227.1",
+        "S2",
+        "認証+DB（回数未計測）"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R14",
+      "from": "テーマ一覧カード・D",
+      "to": "`/premium/themes/[themeId]`",
+      "details": [
+        "0.8 / 224.3",
+        "V2",
+        "stock-notes 1、DB複数（回数未計測）"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R15",
+      "from": "H・D・Premium下部ナビ",
+      "to": "`/premium/themes`",
+      "details": [
+        "0.8 / 224.3",
+        "V1",
+        "stock-notes 1、通常DB 1+3n（n=10で31）"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R16",
+      "from": "P・D",
+      "to": "`/tools/charcount`",
+      "details": [
+        "7.6 / 231.0",
+        "C1",
+        "業務API 0"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R17",
+      "from": "P・D",
+      "to": "`/tools/data-transfer`",
+      "details": [
+        "13.7 / 237.1",
+        "C2",
+        "local版0、DB版は認証/DB。転送操作は別"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R18",
+      "from": "P・D・通常下部ナビ",
+      "to": "`/tools/disclosure-radar`",
+      "details": [
+        "7.8 / 231.3",
+        "C2",
+        "Client: manifest+対象日n（1+n）、本人対象照合は別"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R19",
+      "from": "P・D・通常下部ナビ",
+      "to": "`/tools/earnings-calendar`",
+      "details": [
+        "5.9 / 229.3",
+        "S3",
+        "国内/海外manifestと収録月数に比例、calendar等"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R20",
+      "from": "P・D",
+      "to": "`/tools/econ-calendar`",
+      "details": [
+        "5.5 / 228.9",
+        "S2",
+        "初回3 API、月追加は週数に比例"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R21",
+      "from": "P・D",
+      "to": "`/tools/edinet-documents`",
+      "details": [
+        "4.0 / 227.5",
+        "S2",
+        "manifest+日次 2 API"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R22",
+      "from": "P・D",
+      "to": "`/tools/investor-flow`",
+      "details": [
+        "7.9 / 231.3",
+        "S2",
+        "raw/analysis manifest+snapshot 通常4 API"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R23",
+      "from": "P・D",
+      "to": "`/tools/market-rankings`",
+      "details": [
+        "5.8 / 229.2",
+        "S2",
+        "manifest+選択月 2 API"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R24",
+      "from": "旧bookmark・D（統合済み案内）",
+      "to": "`/tools/my-stocks`",
+      "details": [
+        "0.2 / 223.6",
+        "S1",
+        "業務API 0"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R25",
+      "from": "P・D",
+      "to": "`/tools/nikkei-contribution`",
+      "details": [
+        "8.0 / 231.4",
+        "S2",
+        "manifest+calendar+有効日探索（2+n）"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R26",
+      "from": "P・D",
+      "to": "`/tools/penguin-rabbit-shooter`",
+      "details": [
+        "7.3 / 230.7",
+        "C1",
+        "入口業務API 0。画像/音声assetは別"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R27",
+      "from": "P・D",
+      "to": "`/tools/penguin-shooter`",
+      "details": [
+        "25.3 / 248.7",
+        "C1",
+        "入口業務API 0。画像/音声assetは別"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R28",
+      "from": "D（検証用、通常入口なし）",
+      "to": "`/tools/stock-notes/edinet-identity-uat`",
+      "details": [
+        "2.8 / 226.3",
+        "C2",
+        "入口だけでは検証RPCを自動起動しない"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R29",
+      "from": "P・D・通常下部ナビ",
+      "to": "`/tools/stock-notes`",
+      "details": [
+        "14.1 / 237.5",
+        "C2",
+        "認証/DB/参照API（回数未計測）"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R30",
+      "from": "P・D",
+      "to": "`/tools/stock-ranking`",
+      "details": [
+        "3.8 / 227.2",
+        "S2",
+        "manifest+calendar+日次 3 API"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R31",
+      "from": "P・D",
+      "to": "`/tools/tdnet-disclosures`",
+      "details": [
+        "4.5 / 228.0",
+        "S2",
+        "日次/期間条件に依存（回数未計測）"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R32",
+      "from": "P・D",
+      "to": "`/tools/topix33`",
+      "details": [
+        "4.9 / 228.3",
+        "S2",
+        "manifest+calendar+有効日探索（2+n）"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R33",
+      "from": "P・D",
+      "to": "`/tools/total`",
+      "details": [
+        "6.5 / 229.9",
+        "C1",
+        "業務API 0"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R34",
+      "from": "P・D",
+      "to": "`/tools/us-stock-ranking`",
+      "details": [
+        "3.7 / 227.1",
+        "S2",
+        "manifest+有効日探索 最大6 API"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R35",
+      "from": "P・D・通常下部ナビ",
+      "to": "`/tools/yutai-candidates`",
+      "details": [
+        "28.3 / 251.7",
+        "S3",
+        "manifest/在庫/月データ 通常4 API、本人DBは別"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R36",
+      "from": "P・D",
+      "to": "`/tools/yutai-dashboard`",
+      "details": [
+        "40.1 / 263.5",
+        "S3",
+        "月表示通常4 API、全月m+3 API、本人DBは別"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R37",
+      "from": "P・D",
+      "to": "`/tools/yutai-expiry`",
+      "details": [
+        "64.5 / 287.9",
+        "C2",
+        "認証/DBまたはlocal版（回数未計測）"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R38",
+      "from": "D（PoC、通常入口なし）",
+      "to": "`/tools/yutai-expiry/scan-poc`",
+      "details": [
+        "6.6 / 230.1",
+        "C1",
+        "入口API 0。画像送信は遷移外"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "R39",
+      "from": "P・D",
+      "to": "`/tools/yutai-memo`",
+      "details": [
+        "37.2 / 260.6",
+        "C2",
+        "認証/DBまたはlocal版、信用参照（回数未計測）"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "G01",
+      "from": "任意ページのロゴ/メニューHome",
+      "to": "`/`",
+      "details": [
+        "通常Link。押下反応、待機時の共通bar",
+        "S1。取得済みassetは再利用"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#mobile bottom navigation, drawer and local interactions keep working"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "G02",
+      "from": "任意ページのNavDrawer",
+      "to": "Pで列挙したtool",
+      "details": [
+        "drawerを閉じてもheaderの移動中表示を残す",
+        "ToのProfile＋不足asset差分"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#mobile bottom navigation, drawer and local interactions keep working"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "G03",
+      "from": "非Premium画面の下部ナビ",
+      "to": "`/`、`/tools/stock-notes`、`/tools/yutai-candidates`、`/tools/earnings-calendar`、`/tools/disclosure-radar`",
+      "details": [
+        "activeは表示中画面、pendingは押した対象として別表示",
+        "ToのProfile"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#mobile bottom navigation, drawer and local interactions keep working"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "G04",
+      "from": "Premium画面の下部ナビ",
+      "to": "`/premium`、`/premium/portfolio`、`/premium/market`、`/premium/themes`、`/`",
+      "details": [
+        "G03と同じ",
+        "ToのProfile"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#mobile bottom navigation, drawer and local interactions keep working"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "G05",
+      "from": "`/premium`のHub",
+      "to": "Premium8機能と`/admin`",
+      "details": [
+        "通常Link＋共通pending。本人データを無条件prefetchしない",
+        "各R行のProfile"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#mobile bottom navigation, drawer and local interactions keep working"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "G06",
+      "from": "保護ページへ未認証で進入",
+      "to": "`/premium/login?next=<安全な元URL>`",
+      "details": [
+        "本人データ取得前にredirect。条件を復帰可能な範囲で保持",
+        "認証ページshell＋redirect、A1/To"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#anonymous protection and login full navigation retain the requested cursor"
+      ],
+      "coverage": "partial"
+    },
+    {
+      "id": "G07",
+      "from": "Premium login成功",
+      "to": "next指定先",
+      "details": [
+        "Cookie反映の理由で全画面assignを維持。押下→認証→移動を表示",
+        "POST≤8KiB + ToのHTML/asset。RSCだけとは計上しない"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#anonymous protection and login full navigation retain the requested cursor"
+      ],
+      "coverage": "partial"
+    },
+    {
+      "id": "G08",
+      "from": "ブラウザーBack/Forward/直URL",
+      "to": "履歴または指定route",
+      "details": [
+        "clickに依存せずfallback/error。可能な状態とscrollを復元",
+        "cache hitなら0〜不足分、missならToのProfile"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#detail returns to the originating cursor, including history navigation"
+      ],
+      "coverage": "partial"
+    },
+    {
+      "id": "G09",
+      "from": "外部原本/PDF/_blank/メール/共有/hash",
+      "to": "外部または同一画面見出し",
+      "details": [
+        "通常のbrowser動作。元画面を移動中のままにしない",
+        "外部通信量は本仕様の予算外"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#mobile bottom navigation, drawer and local interactions keep working"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "E01",
+      "from": "Premium各子画面・`/admin`",
+      "to": "`/premium`",
+      "details": [
+        "画面内の戻りリンク。S1"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "E02",
+      "from": "`/premium/market`",
+      "to": "`/tools/topix33`",
+      "details": [
+        "関連ツール。S2"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "E03",
+      "from": "`/premium/tdnet-router`",
+      "to": "`/tools/disclosure-radar`、`/account`",
+      "details": [
+        "通常版/認証案内。各ToのProfile"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "E04",
+      "from": "`/premium/theme-company-network`",
+      "to": "`/premium/industry-map`、`/premium/company-network`",
+      "details": [
+        "関連マップ。S3"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "E05",
+      "from": "`/premium/company-network`",
+      "to": "`/premium/industry-map`",
+      "details": [
+        "関連マップ。S3"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "E06",
+      "from": "`/premium/industry-map`",
+      "to": "`/premium/themes`",
+      "details": [
+        "テーマ一覧。V1"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "E07",
+      "from": "`/premium/portfolio`",
+      "to": "`/tools/yutai-memo`、`/premium/company-network`、`/account`",
+      "details": [
+        "関連ツール/認証案内。業務データの変更を伴わない遷移のみ"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "E08",
+      "from": "`/tools/stock-notes`",
+      "to": "`/premium/portfolio`、`/account`",
+      "details": [
+        "保有全体/認証案内。S3/C2"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "E09",
+      "from": "`/tools/my-stocks`",
+      "to": "`/premium/portfolio`、`/tools/stock-notes`",
+      "details": [
+        "旧画面の移行案内。S3/C2"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "E10",
+      "from": "`/tools/disclosure-radar`",
+      "to": "`/tools/stock-notes`",
+      "details": [
+        "ウォッチ管理。C2"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "E11",
+      "from": "`/tools/yutai-dashboard`",
+      "to": "`/tools/yutai-memo`",
+      "details": [
+        "現在a。C2、document/Client遷移を区別して改善"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "E12",
+      "from": "`/tools/yutai-expiry`、`/tools/yutai-memo`",
+      "to": "`/tools/data-transfer`",
+      "details": [
+        "DB preview flagが有効な場合のみ。現在a、C2"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "E13",
+      "from": "`/account/reset-password`",
+      "to": "`/account`",
+      "details": [
+        "成功/失敗画面からの復帰。C2"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "E14",
+      "from": "`/admin`のデータ/ツール表",
+      "to": "`/tools/{topix33,nikkei-contribution,stock-ranking,us-stock-ranking,market-rankings,investor-flow,earnings-calendar,econ-calendar,edinet-documents,tdnet-disclosures,disclosure-radar,yutai-candidates,stock-notes,total,charcount,yutai-expiry,yutai-memo}`",
+      "details": [
+        "表の実在hrefに限る。各ToのProfile"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "Q01",
+      "from": "`/premium/themes`のページc",
+      "to": "`/premium/themes?cursor=c2`",
+      "details": [
+        "追加asset通常0、RSC 1、U 1。U実測約6.8KiB、DB通常31",
+        "V1。旧一覧保持、押下spinner、同条件retry"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#failed continuation keeps the last good list and retries the same cursor",
+        "tests/ui-smoke/navigation.spec.ts#Viewer accepts 5.5s cold latency and shows immediate receipt, delayed feedback and completion"
+      ],
+      "coverage": "partial"
+    },
+    {
+      "id": "Q02",
+      "from": "テーマ一覧カード（cursor c）",
+      "to": "`/premium/themes/[themeId]`",
+      "details": [
+        "RSC 1、U 1。U実測約2.0〜9.2KiB、DB複数",
+        "V2。loading、戻りのcursorを保持する方針"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#detail returns to the originating cursor, including history navigation"
+      ],
+      "coverage": "partial"
+    },
+    {
+      "id": "Q03",
+      "from": "詳細（一覧cursor cから進入）",
+      "to": "元の`/premium/themes?cursor=c`",
+      "details": [
+        "RSC 0〜1（cache依存）、U 0〜1。追加asset通常0",
+        "V1。詳細URLの検証済みcursorを使って元一覧へ戻る"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#detail returns to the originating cursor, including history navigation"
+      ],
+      "coverage": "partial"
+    },
+    {
+      "id": "Q04",
+      "from": "`/premium/market?month=m`",
+      "to": "同pathのmonth=m2",
+      "details": [
+        "RSC 1、U論理2+n。追加asset通常0",
+        "S3。旧月と要求月を区別"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "Q05",
+      "from": "`/tools/market-rankings?type=t&month=m`",
+      "to": "同pathのtype=t2/month=m2",
+      "details": [
+        "RSC 1、U論理2。追加asset通常0",
+        "S2。既存hookを共通仕様に合わせる"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "Q06",
+      "from": "`/tools/investor-flow?start=s&end=e`",
+      "to": "同pathの別週",
+      "details": [
+        "RSC 1、U通常4。追加asset通常0",
+        "S2。通常Linkにもpendingを追加"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "Q07",
+      "from": "`/tools/edinet-documents?date=d`",
+      "to": "同pathのdate=d2",
+      "details": [
+        "RSC 1、U通常2。追加asset通常0",
+        "S2。既存hook/正規化replaceの意味を維持"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "Q08",
+      "from": "`/tools/tdnet-disclosures?date=d&range=r`",
+      "to": "同pathの条件変更/クリア",
+      "details": [
+        "RSC 1、Uは期間条件依存",
+        "S2。最新要求のみ表示、失敗で正常表示を保持"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#same-URL display is a real retry with pending feedback"
+      ],
+      "coverage": "partial"
+    },
+    {
+      "id": "Q09",
+      "from": "`/tools/yutai-candidates?month=m`",
+      "to": "同pathのmonth=m2",
+      "details": [
+        "RSC 1、U通常4、本人DBは別",
+        "S3。月確定まで旧月表示に更新中を明記"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "Q10",
+      "from": "`/tools/yutai-dashboard`の月/全月",
+      "to": "同pathの月/表示query",
+      "details": [
+        "RSC 1、U通常4またはm+3",
+        "S3。全月を無制限に同期取得しない"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "Q11",
+      "from": "`/admin?view=v`",
+      "to": "同pathのview=v2",
+      "details": [
+        "RSC 1、現状18論理API（cache依存）",
+        "S3。view切替だけで全データ再取得しない設計へ"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "Q12",
+      "from": "`/premium/tdnet-router`のGET条件form",
+      "to": "同pathのstatus/event/limit query",
+      "details": [
+        "現状document GET 1、認証/DB。To assetは通常cache",
+        "S2。pending対応GET formへ、履歴/URL保持"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#native GET condition submission reports pending and preserves its URL"
+      ],
+      "coverage": "partial"
+    },
+    {
+      "id": "D01",
+      "from": "国内/米国ランキング、日経、TOPIXの日付d",
+      "to": "同じ画面の選択日d2",
+      "details": [
+        "cacheあり0、なければbrowser JSON 1→U通常1。追加asset0",
+        "C2。JSON≤256KiB、warm p95≤3秒、対象パネルだけ更新"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#date switching cancels stale work, retains the labeled good day, and retries",
+        "tests/ui-smoke/navigation.spec.ts#failed date can be reselected after a cached date without stale errors"
+      ],
+      "coverage": "partial"
+    },
+    {
+      "id": "D02",
+      "from": "`/tools/econ-calendar`週/月",
+      "to": "同画面の別週/月",
+      "details": [
+        "cacheあり0、なければ対象週数のJSON",
+        "C2。必要週だけ取得、古いrequest採用を抑制"
+      ],
+      "tests": [
+        "tests/ui-smoke/calendar-navigation.spec.ts#initial month loading is not an empty result and successful rows replace it",
+        "tests/ui-smoke/calendar-navigation.spec.ts#failed month retries its own weeks and switching to week clears its error",
+        "tests/ui-smoke/calendar-navigation.spec.ts#switching to month also clears the failed week operation"
+      ],
+      "coverage": "partial"
+    },
+    {
+      "id": "D03",
+      "from": "`/premium/company-network`グループ/企業",
+      "to": "同画面の別scope",
+      "details": [
+        "scope cacheあり0、なければ内部JSON API",
+        "C2。旧scopeに更新中表示、新scope取得後に確定"
+      ],
+      "tests": [
+        "app/premium/company-network/scope-display.test.ts#keeps old scope and its own labels together while another scope is pending or failed",
+        "app/premium/company-network/scope-display.test.ts#retains the latest group focus across pending/failed scope changes and restoration"
+      ],
+      "coverage": "unit"
+    },
+    {
+      "id": "D04",
+      "from": "`/tools/disclosure-radar`の期間/対象",
+      "to": "同画面の別条件",
+      "details": [
+        "取得済みのlocal絞込0、未取得日ならJSON追加",
+        "C2またはL0を実際の処理で分ける"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#disclosure retry preserves the failed range, topic and search"
+      ],
+      "coverage": "partial"
+    },
+    {
+      "id": "L01",
+      "from": "決算の市場/月/日、既取得表/graph、mapの表示方式、各ツールのlocalタブ",
+      "to": "同routeの表示状態",
+      "details": [
+        "0 bytes、0 request（追加データ不要の場合）",
+        "L0。ネットワークspinnerは出さない"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#mobile bottom navigation, drawer and local interactions keep working"
+      ],
+      "coverage": "partial"
+    },
+    {
+      "id": "X01",
+      "from": "`/account`のreset依頼",
+      "to": "メールの`/account/reset-password`→復帰先",
+      "details": [
+        "認証メール/更新は操作。移動部分はTo profile",
+        "認証の送信状態と移動中を分ける。自動再送なし"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    },
+    {
+      "id": "X02",
+      "from": "local/DB toolsの認証案内a/reload",
+      "to": "`/account`または同route再読込",
+      "details": [
+        "document GET。RSC遷移の予算と分ける",
+        "意図を確認してLink化、必要な全画面reloadは維持"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+      ],
+      "coverage": "entry-only"
+    }
+  ],
+  "sources": {
+    "app/account/AccountClient.tsx": {
+      "transitions": [
+        "R01"
+      ],
+      "sites": [
+        {
+          "kind": "document-navigation",
+          "signature": "window.location.reload()"
+        }
+      ],
+      "exceptions": {
+        "document-navigation": "既存の認証完了/復帰用reload。認証方式は変更しない。"
+      }
+    },
+    "app/account/reset-password/ResetPasswordClient.tsx": {
+      "transitions": [
+        "R02"
+      ],
+      "sites": [
+        {
+          "kind": "link",
+          "signature": "\"/account\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/account\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/account\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/account\""
+        }
+      ]
+    },
+    "app/admin/page.tsx": {
+      "transitions": [
+        "R03"
+      ],
+      "sites": [
+        {
+          "kind": "link",
+          "signature": "\"/premium\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/premium\""
+        },
+        {
+          "kind": "link",
+          "signature": "`/admin?view=${v.key}`"
+        },
+        {
+          "kind": "link",
+          "signature": "row.href"
+        },
+        {
+          "kind": "link",
+          "signature": "row.href"
+        },
+        {
+          "kind": "link",
+          "signature": "row.href"
+        },
+        {
+          "kind": "link",
+          "signature": "t.href"
+        }
+      ]
+    },
+    "app/error.tsx": {
+      "transitions": [
+        "G08"
+      ],
+      "sites": [
+        {
+          "kind": "activity",
+          "signature": "useNavigationActivity(pending, \"画面\")"
+        },
+        {
+          "kind": "link",
+          "signature": "\"/\""
+        }
+      ]
+    },
+    "app/HomeNotifications.tsx": {
+      "transitions": [
+        "R04",
+        "G01"
+      ],
+      "sites": [
+        {
+          "kind": "client-request",
+          "signature": "fetch(\"/api/disclosure-events/manifest\")"
+        },
+        {
+          "kind": "client-request",
+          "signature": "fetch(\"/api/earnings-calendar/notifications\")"
+        },
+        {
+          "kind": "client-request",
+          "signature": "fetch(\"/api/econ-calendar/notifications\")"
+        },
+        {
+          "kind": "client-request",
+          "signature": "fetch(`/api/disclosure-events/${date}`)"
+        },
+        {
+          "kind": "link",
+          "signature": "\"/premium/portfolio\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/tools/disclosure-radar?view=my-stocks&range=7\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/tools/disclosure-radar?view=yutai&range=7\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/tools/earnings-calendar\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/tools/econ-calendar\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/tools/stock-notes\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/tools/yutai-expiry\""
+        }
+      ]
+    },
+    "app/layout.tsx": {
+      "transitions": [
+        "G01",
+        "G02",
+        "G03",
+        "G04"
+      ],
+      "sites": [
+        {
+          "kind": "feedback",
+          "signature": "NavigationProvider "
+        }
+      ]
+    },
+    "app/loading.tsx": {
+      "transitions": [
+        "G08"
+      ],
+      "sites": [
+        {
+          "kind": "feedback",
+          "signature": "RouteLoading "
+        }
+      ]
+    },
+    "app/premium/company-network/CompanyNetworkClient.tsx": {
+      "transitions": [
+        "R05",
+        "D03",
+        "E05",
+        "L01"
+      ],
+      "sites": [
+        {
+          "kind": "client-request",
+          "signature": "readNavigationJson<CompanyNetworkScopeResult>(`/api/premium/company-network?${params.toString()}`, { credentials: \"same-origin\", signal: controller.signal, cache: \"no-store\" })"
+        },
+        {
+          "kind": "feedback",
+          "signature": "PendingRegion active={loading} label=\"選択した企業関係\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/premium\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/premium\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/premium/industry-map\""
+        }
+      ]
+    },
+    "app/premium/industry-map/IndustryMapClient.tsx": {
+      "transitions": [
+        "R06"
+      ],
+      "sites": [
+        {
+          "kind": "link",
+          "signature": "\"/premium\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/premium/themes\""
+        }
+      ]
+    },
+    "app/premium/login/LoginForm.tsx": {
+      "transitions": [
+        "R07",
+        "G07"
+      ],
+      "sites": [
+        {
+          "kind": "activity",
+          "signature": "useNavigationActivity(isSubmitting, \"認証\")"
+        },
+        {
+          "kind": "client-request",
+          "signature": "fetch(\"/api/premium/login\", {\n    method: \"POST\",\n    headers: {\n        \"Content-Type\": \"application/json\",\n    },\n    body: JSON.stringify({ password }),\n})"
+        },
+        {
+          "kind": "document-navigation",
+          "signature": "window.location.assign(nextPath)"
+        },
+        {
+          "kind": "form-submit",
+          "signature": "onSubmit={handleSubmit} style={{\n        display: \"flex\",\n        flexDirection: \"column\",\n        gap: 14,\n    }}"
+        }
+      ],
+      "exceptions": {
+        "document-navigation": "認証Cookie反映後のdocument assign。安全なnextは既存検証を維持する（G07）。"
+      }
+    },
+    "app/premium/LogoutButton.tsx": {
+      "transitions": [
+        "R09",
+        "G06"
+      ],
+      "sites": [
+        {
+          "kind": "activity",
+          "signature": "useNavigationActivity(isSubmitting, \"認証\")"
+        },
+        {
+          "kind": "client-request",
+          "signature": "fetch(\"/api/premium/logout\", { method: \"POST\" })"
+        },
+        {
+          "kind": "router-hook",
+          "signature": "useRouter()"
+        },
+        {
+          "kind": "router",
+          "signature": "router.push(\"/premium/login\")"
+        },
+        {
+          "kind": "router",
+          "signature": "router.refresh()"
+        }
+      ]
+    },
+    "app/premium/market/page.tsx": {
+      "transitions": [
+        "R08"
+      ],
+      "sites": [
+        {
+          "kind": "link",
+          "signature": "\"/premium\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/tools/topix33\""
+        },
+        {
+          "kind": "link",
+          "signature": "`/premium/market?month=${preview.nextMonth}`"
+        },
+        {
+          "kind": "link",
+          "signature": "`/premium/market?month=${preview.previousMonth}`"
+        }
+      ]
+    },
+    "app/premium/page.tsx": {
+      "transitions": [
+        "R09"
+      ],
+      "sites": [
+        {
+          "kind": "link",
+          "signature": "\"/\""
+        },
+        {
+          "kind": "link",
+          "signature": "card.href"
+        }
+      ]
+    },
+    "app/premium/portfolio/CompanyGroupExposureCard.tsx": {
+      "transitions": [
+        "R10"
+      ],
+      "sites": [
+        {
+          "kind": "link",
+          "signature": "\"/premium/company-network\""
+        }
+      ]
+    },
+    "app/premium/portfolio/page.tsx": {
+      "transitions": [
+        "R10"
+      ],
+      "sites": [
+        {
+          "kind": "link",
+          "signature": "\"/premium\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/tools/yutai-memo\""
+        }
+      ]
+    },
+    "app/premium/portfolio/PortfolioWorkspace.tsx": {
+      "transitions": [
+        "R10"
+      ],
+      "sites": [
+        {
+          "kind": "native-link",
+          "signature": "\"/account\""
+        }
+      ],
+      "exceptions": {
+        "native-link": "Supabaseログイン案内の/account。既存document移動を維持し、rootのnative anchor受付で表示する。"
+      }
+    },
+    "app/premium/routines/RoutinesView.tsx": {
+      "transitions": [
+        "R11"
+      ],
+      "sites": [
+        {
+          "kind": "link",
+          "signature": "\"/premium\""
+        }
+      ]
+    },
+    "app/premium/tdnet-router/page.tsx": {
+      "transitions": [
+        "R12",
+        "Q12"
+      ],
+      "sites": [
+        {
+          "kind": "get-form",
+          "signature": "className={styles.filterForm} method=\"get\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/account\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/premium\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/premium/tdnet-router\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/tools/disclosure-radar\""
+        }
+      ]
+    },
+    "app/premium/theme-company-network/ThemeCompanyNetworkClient.tsx": {
+      "transitions": [
+        "R13"
+      ],
+      "sites": [
+        {
+          "kind": "link",
+          "signature": "\"/premium\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/premium\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/premium/company-network\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/premium/industry-map\""
+        }
+      ]
+    },
+    "app/premium/themes/loading.tsx": {
+      "transitions": [
+        "R15",
+        "Q01",
+        "Q02",
+        "Q03"
+      ],
+      "sites": [
+        {
+          "kind": "feedback",
+          "signature": "RouteLoading label=\"テーマ\""
+        }
+      ]
+    },
+    "app/premium/themes/ThemeViewer.tsx": {
+      "transitions": [
+        "R15",
+        "Q01",
+        "Q02",
+        "Q03"
+      ],
+      "sites": [
+        {
+          "kind": "link",
+          "signature": "\"/premium\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/premium\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/premium/themes\""
+        },
+        {
+          "kind": "link",
+          "signature": "`/premium/themes?cursor=${encodeURIComponent(meta.nextCursor)}`"
+        },
+        {
+          "kind": "link",
+          "signature": "`/premium/themes/${encodeURIComponent(theme.id)}${cursor ? `?cursor=${encodeURIComponent(cursor)}` : \"\"}`"
+        },
+        {
+          "kind": "link",
+          "signature": "listHref"
+        }
+      ]
+    },
+    "app/ToolGridClient.tsx": {
+      "transitions": [
+        "G02",
+        "R04"
+      ],
+      "sites": [
+        {
+          "kind": "link",
+          "signature": "t.href"
+        }
+      ]
+    },
+    "app/tools/data-transfer/DatabaseTransfer.tsx": {
+      "transitions": [
+        "R17"
+      ],
+      "sites": [
+        {
+          "kind": "native-link",
+          "signature": "\"/account\""
+        }
+      ],
+      "exceptions": {
+        "native-link": "Supabaseログイン案内/account。既存document移動と認証復帰を維持しrootのnative受付を使う（X02）。"
+      }
+    },
+    "app/tools/disclosure-radar/ClientOnly.tsx": {
+      "transitions": [
+        "R18",
+        "D04"
+      ],
+      "sites": [
+        {
+          "kind": "dynamic-fallback",
+          "signature": "dynamic(() => import(\"./ToolClient\"), { ssr: false, loading: () => <RouteLoading label=\"ツール\"/> })"
+        },
+        {
+          "kind": "feedback",
+          "signature": "RouteLoading label=\"ツール\""
+        }
+      ]
+    },
+    "app/tools/disclosure-radar/ToolClient.tsx": {
+      "transitions": [
+        "R18",
+        "D04"
+      ],
+      "sites": [
+        {
+          "kind": "client-request",
+          "signature": "readNavigationJson<DisclosureEventsManifest>(\"/api/disclosure-events/manifest\", { signal: controller.signal })"
+        },
+        {
+          "kind": "client-request",
+          "signature": "readNavigationJson<DisclosureEventsResponse>(`/api/disclosure-events/${date}`, { signal: controller.signal })"
+        },
+        {
+          "kind": "feedback",
+          "signature": "PendingRegion active={loading} label=\"開示データ\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/tools/stock-notes\""
+        }
+      ]
+    },
+    "app/tools/earnings-calendar/loading.tsx": {
+      "transitions": [
+        "R19"
+      ],
+      "sites": [
+        {
+          "kind": "feedback",
+          "signature": "LoadingActivity "
+        }
+      ]
+    },
+    "app/tools/econ-calendar/loading.tsx": {
+      "transitions": [
+        "R20",
+        "D02"
+      ],
+      "sites": [
+        {
+          "kind": "feedback",
+          "signature": "LoadingActivity "
+        }
+      ]
+    },
+    "app/tools/econ-calendar/ToolClient.tsx": {
+      "transitions": [
+        "R20",
+        "D02"
+      ],
+      "sites": [
+        {
+          "kind": "client-request",
+          "signature": "readNavigationJson<EconCalendarWeeklyResponse>(`/api/econ-calendar/${weekStart}`, { signal })"
+        },
+        {
+          "kind": "feedback",
+          "signature": "PendingRegion active={weekLoading || monthLoading} label=\"カレンダー\""
+        }
+      ]
+    },
+    "app/tools/investor-flow/loading.tsx": {
+      "transitions": [
+        "R22"
+      ],
+      "sites": [
+        {
+          "kind": "feedback",
+          "signature": "LoadingActivity "
+        }
+      ]
+    },
+    "app/tools/investor-flow/ToolClient.tsx": {
+      "transitions": [
+        "R22"
+      ],
+      "sites": [
+        {
+          "kind": "link",
+          "signature": "href"
+        }
+      ]
+    },
+    "app/tools/my-stocks/ClientOnly.tsx": {
+      "transitions": [
+        "R24"
+      ],
+      "sites": [
+        {
+          "kind": "dynamic-fallback",
+          "signature": "dynamic(() => import(\"./ToolClient\"), { ssr: false, loading: () => <RouteLoading label=\"ツール\"/> })"
+        },
+        {
+          "kind": "feedback",
+          "signature": "RouteLoading label=\"ツール\""
+        }
+      ]
+    },
+    "app/tools/my-stocks/loading.tsx": {
+      "transitions": [
+        "R24"
+      ],
+      "sites": [
+        {
+          "kind": "feedback",
+          "signature": "LoadingActivity "
+        }
+      ]
+    },
+    "app/tools/my-stocks/page.tsx": {
+      "transitions": [
+        "R24"
+      ],
+      "sites": [
+        {
+          "kind": "link",
+          "signature": "\"/premium/portfolio\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/tools/stock-notes\""
+        }
+      ]
+    },
+    "app/tools/my-stocks/useStockMaster.ts": {
+      "transitions": [
+        "R24"
+      ],
+      "sites": [
+        {
+          "kind": "client-request",
+          "signature": "fetch(MASTER_URL)"
+        }
+      ]
+    },
+    "app/tools/nikkei-contribution/loading.tsx": {
+      "transitions": [
+        "R25"
+      ],
+      "sites": [
+        {
+          "kind": "feedback",
+          "signature": "LoadingActivity "
+        }
+      ]
+    },
+    "app/tools/nikkei-contribution/ToolClient.tsx": {
+      "transitions": [
+        "R25"
+      ],
+      "sites": [
+        {
+          "kind": "client-request",
+          "signature": "readNavigationJson<NikkeiContributionDayData>(`/tools/nikkei-contribution/data/${currentSelectedDate}`, { signal: controller.signal })"
+        },
+        {
+          "kind": "feedback",
+          "signature": "PendingRegion active={isDataLoading} label=\"選択日のデータ\""
+        }
+      ]
+    },
+    "app/tools/stock-notes/ClientOnly.tsx": {
+      "transitions": [
+        "R29"
+      ],
+      "sites": [
+        {
+          "kind": "dynamic-fallback",
+          "signature": "dynamic(() => import(\"./ToolClient\"), { ssr: false, loading: () => <RouteLoading label=\"ツール\"/> })"
+        },
+        {
+          "kind": "feedback",
+          "signature": "RouteLoading label=\"ツール\""
+        }
+      ]
+    },
+    "app/tools/stock-notes/edinet-identity-uat/Client.tsx": {
+      "transitions": [
+        "R28"
+      ],
+      "sites": [
+        {
+          "kind": "client-request",
+          "signature": "fetch(edinetIdentityUatUrl(url), {\n    method: \"GET\",\n    cache: \"no-store\",\n    credentials: \"omit\",\n    headers: {\n        apikey: anonKey,\n        Authorization: `Bearer ${session.access_token}`,\n        Accept: \"application/json\",\n    },\n})"
+        }
+      ]
+    },
+    "app/tools/stock-notes/loading.tsx": {
+      "transitions": [
+        "R29"
+      ],
+      "sites": [
+        {
+          "kind": "feedback",
+          "signature": "LoadingActivity "
+        }
+      ]
+    },
+    "app/tools/stock-notes/ToolClient.tsx": {
+      "transitions": [
+        "R29"
+      ],
+      "sites": [
+        {
+          "kind": "link",
+          "signature": "\"/account\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/account\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/premium/portfolio\""
+        }
+      ]
+    },
+    "app/tools/stock-notes/useStockNotesStockMaster.ts": {
+      "transitions": [
+        "R29"
+      ],
+      "sites": [
+        {
+          "kind": "client-request",
+          "signature": "fetch(MASTER_URL)"
+        }
+      ]
+    },
+    "app/tools/stock-ranking/loading.tsx": {
+      "transitions": [
+        "R30"
+      ],
+      "sites": [
+        {
+          "kind": "feedback",
+          "signature": "LoadingActivity "
+        }
+      ]
+    },
+    "app/tools/stock-ranking/ToolClient.tsx": {
+      "transitions": [
+        "R30"
+      ],
+      "sites": [
+        {
+          "kind": "feedback",
+          "signature": "PendingRegion active={isLoading} label=\"選択日のデータ\""
+        }
+      ]
+    },
+    "app/tools/tdnet-disclosures/loading.tsx": {
+      "transitions": [
+        "R31"
+      ],
+      "sites": [
+        {
+          "kind": "feedback",
+          "signature": "LoadingActivity "
+        }
+      ]
+    },
+    "app/tools/topix33/loading.tsx": {
+      "transitions": [
+        "R32"
+      ],
+      "sites": [
+        {
+          "kind": "feedback",
+          "signature": "LoadingActivity "
+        }
+      ]
+    },
+    "app/tools/topix33/ToolClient.tsx": {
+      "transitions": [
+        "R32"
+      ],
+      "sites": [
+        {
+          "kind": "feedback",
+          "signature": "PendingRegion active={isLoading} label=\"選択日のデータ\""
+        }
+      ]
+    },
+    "app/tools/us-stock-ranking/loading.tsx": {
+      "transitions": [
+        "R34"
+      ],
+      "sites": [
+        {
+          "kind": "feedback",
+          "signature": "LoadingActivity "
+        }
+      ]
+    },
+    "app/tools/us-stock-ranking/ToolClient.tsx": {
+      "transitions": [
+        "R34"
+      ],
+      "sites": [
+        {
+          "kind": "feedback",
+          "signature": "PendingRegion active={isLoading} label=\"選択日のデータ\""
+        },
+        {
+          "kind": "feedback",
+          "signature": "PendingRegion active={isLoading} label=\"選択日のデータ\""
+        }
+      ]
+    },
+    "app/tools/yutai-candidates/loading.tsx": {
+      "transitions": [
+        "R35"
+      ],
+      "sites": [
+        {
+          "kind": "feedback",
+          "signature": "LoadingActivity "
+        }
+      ]
+    },
+    "app/tools/yutai-candidates/ToolClient.tsx": {
+      "transitions": [
+        "R35"
+      ],
+      "sites": [
+        {
+          "kind": "native-link",
+          "signature": "\"/account\""
+        }
+      ],
+      "exceptions": {
+        "native-link": "Supabaseログイン案内/account。既存document移動と認証復帰を維持しrootのnative受付を使う（X02）。"
+      }
+    },
+    "app/tools/yutai-dashboard/loading.tsx": {
+      "transitions": [
+        "R36"
+      ],
+      "sites": [
+        {
+          "kind": "feedback",
+          "signature": "LoadingActivity "
+        }
+      ]
+    },
+    "app/tools/yutai-dashboard/ToolClient.tsx": {
+      "transitions": [
+        "R36"
+      ],
+      "sites": [
+        {
+          "kind": "client-request",
+          "signature": "fetch(`/api/yutai/launch-display${query}`, {\n    cache: \"default\",\n    signal: controller.signal,\n})"
+        },
+        {
+          "kind": "client-request",
+          "signature": "fetch(`/api/yutai/stock-prices?month=${stockPriceScopeMonth}`, {\n    cache: \"default\",\n    signal: controller.signal,\n})"
+        },
+        {
+          "kind": "native-link",
+          "signature": "\"/account\""
+        },
+        {
+          "kind": "native-link",
+          "signature": "\"/tools/yutai-memo\""
+        }
+      ],
+      "exceptions": {
+        "native-link": "サインイン案内/accountと既存優待メモ導線。document移動を維持し共通native受付を使う（E11/X02）。"
+      }
+    },
+    "app/tools/yutai-expiry/ClientOnly.tsx": {
+      "transitions": [
+        "R37"
+      ],
+      "sites": [
+        {
+          "kind": "dynamic-fallback",
+          "signature": "dynamic(() => import(\"./ToolClient\"), { ssr: false, loading: () => <RouteLoading label=\"ツール\"/> })"
+        },
+        {
+          "kind": "dynamic-fallback",
+          "signature": "dynamic(() => import(\"./YutaiExpiryApp\"), { ssr: false, loading: () => <RouteLoading label=\"ツール\"/> })"
+        },
+        {
+          "kind": "feedback",
+          "signature": "RouteLoading label=\"ツール\""
+        },
+        {
+          "kind": "feedback",
+          "signature": "RouteLoading label=\"ツール\""
+        }
+      ]
+    },
+    "app/tools/yutai-expiry/components/EditBenefitDialog.tsx": {
+      "transitions": [
+        "R37"
+      ],
+      "sites": [
+        {
+          "kind": "form-submit",
+          "signature": "method=\"dialog\" className={styles.dialogInner} onSubmit={(e) => {\n        e.preventDefault();\n        onSubmit();\n    }}"
+        }
+      ]
+    },
+    "app/tools/yutai-expiry/components/ImportBenefitDialog.tsx": {
+      "transitions": [
+        "R37"
+      ],
+      "sites": [
+        {
+          "kind": "form-submit",
+          "signature": "method=\"dialog\" className={styles.dialogInner}"
+        }
+      ]
+    },
+    "app/tools/yutai-expiry/components/UsageDialog.tsx": {
+      "transitions": [
+        "R37"
+      ],
+      "sites": [
+        {
+          "kind": "form-submit",
+          "signature": "method=\"dialog\" className={styles.dialogInner} onSubmit={(e) => {\n        e.preventDefault();\n        onSubmit();\n    }}"
+        }
+      ]
+    },
+    "app/tools/yutai-expiry/DatabaseRewards.tsx": {
+      "transitions": [
+        "R37"
+      ],
+      "sites": [
+        {
+          "kind": "form-submit",
+          "signature": "onSubmit={e => {\n        e.preventDefault();\n        setError(\"\");\n        try {\n            const command = rewardAction(snapshot, reward, kind, { value, reason, mode, unit, eventId });\n            if ([\"delete\", \"mode\", \"remove\", \"adjust\"].includes(kind) && !window.confirm(`${reward.title}: ${warning}`))\n                return;\n            onSave(command);\n        }\n        catch (e) {\n            setError((e as Error).message);\n        }\n    }}"
+        },
+        {
+          "kind": "form-submit",
+          "signature": "onSubmit={e => {\n        e.preventDefault();\n        setError(\"\");\n        try {\n            onSave(saveReward(snapshot, reward, { ...fields, unit_yen: mode === \"count\" && unit.trim() ? rewardNumber(unit, \"amount\") : null }, { mode, initial, profileId, cycleId }));\n        }\n        catch (e) {\n            setError((e as Error).message);\n        }\n    }}"
+        },
+        {
+          "kind": "native-link",
+          "signature": "\"/account\""
+        },
+        {
+          "kind": "native-link",
+          "signature": "\"/tools/data-transfer\""
+        }
+      ],
+      "exceptions": {
+        "native-link": "サインイン案内とpreview flag付き全件出力・照合入口。既存flag/認証/保全の意味を維持しrootで受付する。"
+      }
+    },
+    "app/tools/yutai-expiry/DatabaseRewardsGate.tsx": {
+      "transitions": [
+        "R37"
+      ],
+      "sites": [
+        {
+          "kind": "native-link",
+          "signature": "\"/account\""
+        }
+      ],
+      "exceptions": {
+        "native-link": "サインイン案内とpreview flag付き全件出力・照合入口。既存flag/認証/保全の意味を維持しrootで受付する。"
+      }
+    },
+    "app/tools/yutai-expiry/DatabaseRewardTotals.tsx": {
+      "transitions": [
+        "R37"
+      ],
+      "sites": [
+        {
+          "kind": "client-request",
+          "signature": "fetch(`${env.url}/rest/v1/rpc/stock_notes_get_yutai_reward_totals`, {\n    method: \"POST\", headers: { apikey: env.anonKey, Authorization: `Bearer ${data.session.access_token}`, \"Content-Type\": \"application/json\" },\n    body: JSON.stringify({ p_today: localToday() }), signal: abort.current.signal,\n})"
+        }
+      ]
+    },
+    "app/tools/yutai-expiry/DatabaseScan.tsx": {
+      "transitions": [
+        "R37"
+      ],
+      "sites": [
+        {
+          "kind": "form-submit",
+          "signature": "onSubmit={event => {\n        event.preventDefault();\n        setError(\"\");\n        try {\n            const quantity = rewardNumber(String(draft.quantity ?? \"\"), \"count\", true);\n            const fields = { ...rewardFields(), title: draft.title ?? \"\", company: draft.company ?? \"\", expires_on: draft.expiresOn,\n                unit_yen: draft.amountYen === null ? null : rewardNumber(String(draft.amountYen), \"amount\") };\n            const validated = saveReward(captured, null, fields, { mode: \"count\", initial: String(quantity), profileId: null, cycleId: null })!;\n            const existing = captured.rewards.find(r => r.id === target);\n            if (target && (!existing || existing.archived_at || existing.track_mode !== \"count\"))\n                throw new Error(\"統合対象を選び直してください。\");\n            if (existing && (existing.expires_on !== fields.expires_on || existing.unit_yen !== fields.unit_yen))\n                throw new Error(\"期限・額面が異なる優待には統合できません。別の優待として追加してください。\");\n            if (!window.confirm(existing ? `${existing.title}へ${quantity}枚を補充します。既存メモと履歴は残ります。` : `${fields.title}を${quantity}枚で新規登録します。既存の優待は変更しません。`))\n                return;\n            onSave(existing ? { command_type: \"restock_reward\", target: { id: existing.id }, expected_revision: existing.revision,\n                payload: { value: quantity }, note: \"画像スキャン結果を確認して補充\" } : validated);\n            setDraft(null);\n        }\n        catch (cause) {\n            setError((cause as Error).message);\n        }\n    }}"
+        }
+      ]
+    },
+    "app/tools/yutai-expiry/RewardLedgerV2Panel.tsx": {
+      "transitions": [
+        "R37"
+      ],
+      "sites": [
+        {
+          "kind": "form-submit",
+          "signature": "className={styles.form} onSubmit={addGrant}"
+        },
+        {
+          "kind": "form-submit",
+          "signature": "className={styles.form} onSubmit={createAccount}"
+        },
+        {
+          "kind": "form-submit",
+          "signature": "className={styles.inline} onSubmit={consume}"
+        },
+        {
+          "kind": "form-submit",
+          "signature": "className={styles.inline} onSubmit={consumeAccount}"
+        },
+        {
+          "kind": "form-submit",
+          "signature": "className={styles.inline} onSubmit={saveOption}"
+        }
+      ]
+    },
+    "app/tools/yutai-expiry/scan-poc/page.tsx": {
+      "transitions": [
+        "R38"
+      ],
+      "sites": [
+        {
+          "kind": "client-request",
+          "signature": "fetch(\"/api/yutai-expiry/scan\", {\n    method: \"POST\",\n    headers: { \"Content-Type\": \"application/json\" },\n    body: JSON.stringify({ imageBase64: base64, mimeType }),\n})"
+        }
+      ]
+    },
+    "app/tools/yutai-expiry/ToolClient.tsx": {
+      "transitions": [
+        "R37"
+      ],
+      "sites": [
+        {
+          "kind": "form-submit",
+          "signature": "method=\"dialog\" className={styles.dialogInner} onSubmit={(e) => {\n        e.preventDefault();\n        dismissScanDup(false);\n    }}"
+        }
+      ]
+    },
+    "app/tools/yutai-expiry/YutaiExpiryDailyView.tsx": {
+      "transitions": [
+        "R37"
+      ],
+      "sites": [
+        {
+          "kind": "native-link",
+          "signature": "\"/account\""
+        }
+      ],
+      "exceptions": {
+        "native-link": "Supabaseログイン案内/account。既存document移動と認証復帰を維持しrootのnative受付を使う（X02）。"
+      }
+    },
+    "app/tools/yutai-expiry/YutaiExpiryDashboard.tsx": {
+      "transitions": [
+        "R37"
+      ],
+      "sites": [
+        {
+          "kind": "native-link",
+          "signature": "\"/account\""
+        }
+      ],
+      "exceptions": {
+        "native-link": "Supabaseログイン案内/account。既存document移動と認証復帰を維持しrootのnative受付を使う（X02）。"
+      }
+    },
+    "app/tools/yutai-memo/ClientOnly.tsx": {
+      "transitions": [
+        "R39"
+      ],
+      "sites": [
+        {
+          "kind": "dynamic-fallback",
+          "signature": "dynamic(() => import(\"./ToolClient\"), { ssr: false, loading: () => <RouteLoading label=\"ツール\"/> })"
+        },
+        {
+          "kind": "feedback",
+          "signature": "RouteLoading label=\"ツール\""
+        }
+      ]
+    },
+    "app/tools/yutai-memo/DatabaseCycles.tsx": {
+      "transitions": [
+        "R39"
+      ],
+      "sites": [
+        {
+          "kind": "form-submit",
+          "signature": "onSubmit={e => {\n        e.preventDefault();\n        try {\n            onSave(saveCycle(snapshot, profileId, original, { ...draft, quantity: quantity.trim() ? Number(quantity) : null }));\n        }\n        catch (e) {\n            setError((e as Error).message);\n        }\n    }}"
+        }
+      ]
+    },
+    "app/tools/yutai-memo/DatabaseMemo.tsx": {
+      "transitions": [
+        "R39"
+      ],
+      "sites": [
+        {
+          "kind": "form-submit",
+          "signature": "onSubmit={e => {\n        e.preventDefault();\n        try {\n            onSave(saveMonth(original, profile.id, month, { ...draft,\n                required_shares: optionalNumber(shares, \"株数\"), benefit_value_yen: optionalNumber(value, \"優待価値\"),\n                preparation_months_before: optionalNumber(lead, \"仕込み開始\", true) }));\n        }\n        catch (e) {\n            setError((e as Error).message);\n        }\n    }}"
+        },
+        {
+          "kind": "form-submit",
+          "signature": "onSubmit={e => { e.preventDefault(); try {\n    onSave(saveProfile(original, code, draft));\n}\ncatch (e) {\n    setError((e as Error).message);\n} }}"
+        },
+        {
+          "kind": "native-link",
+          "signature": "\"/account\""
+        },
+        {
+          "kind": "native-link",
+          "signature": "\"/tools/data-transfer\""
+        }
+      ],
+      "exceptions": {
+        "native-link": "サインイン案内とpreview flag付き全件出力・照合入口。既存flag/認証/保全の意味を維持しrootで受付する。"
+      }
+    },
+    "app/tools/yutai-memo/DatabaseShortBalance.tsx": {
+      "transitions": [
+        "R39"
+      ],
+      "sites": [
+        {
+          "kind": "client-request",
+          "signature": "fetch(\"/api/nikko/short-balance\", { method: \"POST\", headers: { \"Content-Type\": \"application/json\" },\n    body: JSON.stringify({ codes: visible }), signal: AbortSignal.timeout(15000) })"
+        }
+      ]
+    },
+    "app/tools/yutai-memo/DatabaseTags.tsx": {
+      "transitions": [
+        "R39"
+      ],
+      "sites": [
+        {
+          "kind": "form-submit",
+          "signature": "onSubmit={e => { e.preventDefault(); execute(() => assignTags(snapshot, profileId, selected)); }}"
+        },
+        {
+          "kind": "form-submit",
+          "signature": "onSubmit={e => { e.preventDefault(); execute(() => saveTag(original, name, snapshot.tags)); }}"
+        }
+      ]
+    },
+    "app/tools/yutai-memo/ToolClient.tsx": {
+      "transitions": [
+        "R39"
+      ],
+      "sites": [
+        {
+          "kind": "client-request",
+          "signature": "fetch(\"/api/nikko/short-balance\", {\n    method: \"POST\",\n    headers: { \"Content-Type\": \"application/json\" },\n    body: JSON.stringify({ codes: visibleCodes }),\n})"
+        },
+        {
+          "kind": "client-request",
+          "signature": "fetch(\"/data/jpx_listed_companies.json\")"
+        }
+      ]
+    },
+    "app/tools/_shared/use-daily-market-data.ts": {
+      "transitions": [
+        "D01"
+      ],
+      "sites": [
+        {
+          "kind": "client-request",
+          "signature": "readNavigationJson<T>(`${routePrefix}/${activeDate}`, { signal: controller.signal })"
+        }
+      ]
+    },
+    "app/tools/_shared/use-router-transition.ts": {
+      "transitions": [
+        "Q05",
+        "Q07",
+        "Q08",
+        "Q09",
+        "Q10"
+      ],
+      "sites": [
+        {
+          "kind": "router-hook",
+          "signature": "useRouter()"
+        },
+        {
+          "kind": "router",
+          "signature": "router.push(href)"
+        },
+        {
+          "kind": "router",
+          "signature": "router.refresh()"
+        },
+        {
+          "kind": "router",
+          "signature": "router.replace(href)"
+        }
+      ]
+    },
+    "components/createClientOnlyTool.tsx": {
+      "transitions": [
+        "G08"
+      ],
+      "sites": [
+        {
+          "kind": "dynamic-fallback",
+          "signature": "dynamic(loader, { ssr: false, loading: () => <RouteLoading label=\"ツール\"/> })"
+        },
+        {
+          "kind": "feedback",
+          "signature": "RouteLoading label=\"ツール\""
+        }
+      ]
+    },
+    "components/Header.tsx": {
+      "transitions": [
+        "G01",
+        "G05"
+      ],
+      "sites": [
+        {
+          "kind": "link",
+          "signature": "\"/\""
+        }
+      ]
+    },
+    "components/MobileBottomNav.tsx": {
+      "transitions": [
+        "G03",
+        "G04"
+      ],
+      "sites": [
+        {
+          "kind": "link",
+          "signature": "item.href"
+        }
+      ]
+    },
+    "components/NavDrawer.tsx": {
+      "transitions": [
+        "G01",
+        "G02"
+      ],
+      "sites": [
+        {
+          "kind": "link",
+          "signature": "\"/\""
+        },
+        {
+          "kind": "link",
+          "signature": "\"/\""
+        },
+        {
+          "kind": "link",
+          "signature": "tool.href"
+        }
+      ]
+    },
+    "components/navigation/LoadingActivity.tsx": {
+      "transitions": [
+        "G08"
+      ],
+      "sites": [
+        {
+          "kind": "activity",
+          "signature": "useNavigationActivity(true, \"画面\")"
+        }
+      ]
+    },
+    "components/navigation/NavigationProvider.tsx": {
+      "transitions": [
+        "G08"
+      ],
+      "sites": [
+        {
+          "kind": "document-navigation",
+          "signature": "window.history.back()"
+        },
+        {
+          "kind": "document-navigation",
+          "signature": "window.location.assign(navigation.target)"
+        },
+        {
+          "kind": "document-navigation",
+          "signature": "window.location.reload()"
+        }
+      ],
+      "exceptions": {
+        "document-navigation": "12秒の回復操作として利用者が選ぶassign/reload/back。自動再送しない。"
+      }
+    },
+    "components/navigation/PendingRegion.tsx": {
+      "transitions": [
+        "G08"
+      ],
+      "sites": [
+        {
+          "kind": "activity",
+          "signature": "useNavigationActivity(active, label)"
+        }
+      ]
+    },
+    "components/navigation/ReloadButton.tsx": {
+      "transitions": [
+        "G08"
+      ],
+      "sites": [
+        {
+          "kind": "document-navigation",
+          "signature": "window.location.reload()"
+        }
+      ],
+      "exceptions": {
+        "document-navigation": "利用者が明示選択した再読込。ReloadButtonのactivityを通す。"
+      }
+    },
+    "components/navigation/RouteLoading.tsx": {
+      "transitions": [
+        "G08"
+      ],
+      "sites": [
+        {
+          "kind": "activity",
+          "signature": "useNavigationActivity(true, label)"
+        }
+      ]
+    },
+    "components/ShareButtons.tsx": {
+      "transitions": [
+        "G01",
+        "G05"
+      ],
+      "sites": [
+        {
+          "kind": "link",
+          "signature": "\"/premium\""
+        }
+      ]
+    },
+    "lib/portfolio/useAudience.ts": {
+      "transitions": [
+        "R10",
+        "E07"
+      ],
+      "sites": [
+        {
+          "kind": "client-request",
+          "signature": "fetch(\"/api/stock-notes/audience\", { cache: \"no-store\" })"
+        }
+      ]
+    },
+    "lib/yutai/calendar-connection.tsx": {
+      "transitions": [
+        "R37",
+        "R38",
+        "E12",
+        "X02"
+      ],
+      "sites": [
+        {
+          "kind": "native-link",
+          "signature": "\"/account\""
+        },
+        {
+          "kind": "native-link",
+          "signature": "\"/tools/data-transfer\""
+        }
+      ],
+      "exceptions": {
+        "native-link": "保守時のdata-transfer案内とサインイン案内。保全/認証へのdocument移動を維持し、rootで受付する。"
+      }
+    }
+  },
+  "tables": [
+    {
+      "name": "pages",
+      "prefixes": [
+        "R"
+      ],
+      "headers": [
+        "ID",
+        "From",
+        "To",
+        "JS/CSS見積り 追加/初回",
+        "データ/遷移時間目標",
+        "U/DB論理読取の見積り"
+      ]
+    },
+    {
+      "name": "global",
+      "prefixes": [
+        "G"
+      ],
+      "headers": [
+        "ID",
+        "From",
+        "To",
+        "遷移時の仕様",
+        "想定通信量・時間"
+      ]
+    },
+    {
+      "name": "related",
+      "prefixes": [
+        "E"
+      ],
+      "headers": [
+        "ID",
+        "From",
+        "To",
+        "条件・現状と対応"
+      ]
+    },
+    {
+      "name": "operations",
+      "prefixes": [
+        "Q",
+        "D",
+        "L",
+        "X"
+      ],
+      "headers": [
+        "ID",
+        "From",
+        "To",
+        "現状の追加通信見積り",
+        "採用する遷移仕様・時間"
+      ]
+    }
+  ]
+}
