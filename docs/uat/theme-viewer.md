@@ -6,6 +6,24 @@
 - stock-notesのViewer APIに対して、設定済み環境と未設定環境を確認できる
 - テスト用テーマに、`draft`、分析履歴、根拠、直接リンク、taxonomy、metrics、open actionsの有無を用意する
 
+## 一覧ページ化（2026-10-18）
+
+確認環境はローカルまたはPreviewのMiniToolsと、軽量一覧APIが配備されたstock-notesを記録する。本人データを変更せず、多件数・長文の合成fixtureを使う。実施結果は手順書に記入せずPR本文へ記録する。
+
+- [ ] 100件を超える一覧で、1ページ最大10件の表示と「このページ N件」を確認する
+- [ ] 容量上限により10件未満で分割された場合も「続きを見る」で残りに到達する
+- [ ] 全ページのIDを照合し、変更のない一覧で重複・欠落がない
+- [ ] 最後のページでは続きリンクが消え、最初のページから読み直せる
+- [ ] 続きのAPIが503/timeoutの場合、空一覧や完了扱いにならずエラーと読み直しリンクを表示する
+- [ ] 不正cursor・多重cursor、上流400で読み直し案内を表示する
+- [ ] schemaVersion、hasMore/nextCursor不整合、同じcursorの再返却は契約エラーになる
+- [ ] 一覧・続き・詳細の先読みがなく、操作したページだけが取得される
+- [ ] 閲覧中に新規テーマが追加された場合は最初から読み直す。ライブ一覧を固定snapshotと誤認しない
+- [ ] 未認証では続きのURLでもstock-notes取得前にloginへ遷移する
+- [ ] stock-notes互換追加→MiniToolsの順で配備し、旧v1一覧・詳細の利用者に影響がない
+
+ローカル対象テスト: `npm test -- app/premium/themes`。build: `npm run build`。HTTP/合成fixture確認と本人ログイン済み本番の実画面確認は別の証拠として記録する。
+
 ## 正常系
 
 - [ ] Premiumホームに「テーマViewer」カードが表示される
@@ -51,4 +69,5 @@
 ## 関連
 
 - 仕様: [テーマViewer仕様](../specs/tools/theme-viewer.md)
+- Decision Log: [一覧413とページ分割](../decision-log/2026-10-18-theme-viewer-pagination.md)
 - Decision Log: [テーマViewerの読み取り契約と責任境界](../decision-log/2026-08-27-theme-viewer-read-model.md)

@@ -9,6 +9,8 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 
 ## 📘 Decision Log（設計判断）
 
+- [2026-10-18 テーマViewer一覧の容量制限とページ分割](./decision-log/2026-10-18-theme-viewer-pagination.md)
+
 - [2026-09-18 保有の正本をPortfolioへ統合](./decision-log/2026-09-18-portfolio-holdings-authority.md)
 
 - [2026-09-13 機能ポートフォリオの3所属と評価語](./decision-log/2026-09-13-feature-portfolio-boundaries.md)

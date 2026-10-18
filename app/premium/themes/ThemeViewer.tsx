@@ -194,7 +194,9 @@ function ViewerState({
     );
   }
 
-  const title = result.status === "not_configured"
+  const title = result.status === "invalid_cursor"
+    ? "ページを開けません"
+    : result.status === "not_configured"
     ? "サーバー設定が未完了です"
     : result.status === "unauthorized"
       ? "stock-notes APIの認証に失敗しました"
@@ -241,7 +243,10 @@ function ViewerHero({
   );
 }
 
-export function ThemeListView({ result }: { result: ThemeListLoadResult }) {
+export function ThemeListView({ result, isContinuation = false }: {
+  result: ThemeListLoadResult;
+  isContinuation?: boolean;
+}) {
   const meta = result.status === "ok" || result.status === "empty" ? result.data : null;
   return (
     <main style={styles.page}>
@@ -252,7 +257,7 @@ export function ThemeListView({ result }: { result: ThemeListLoadResult }) {
         </nav>
 
         <ViewerHero
-          eyebrow="theme viewer / v1"
+          eyebrow="theme viewer"
           title="テーマViewer"
           description="ChatGPT + Supabaseで整備したテーマの概要と履歴を、stock-notesの専用read modelから確認します。ここではテーマから売買判断を確定しません。"
         >
@@ -261,13 +266,15 @@ export function ThemeListView({ result }: { result: ThemeListLoadResult }) {
 
         <ViewerState
           result={result}
-          emptyMessage="表示できるテーマがありません。ChatGPT + Supabaseの編集チャネルでテーマを登録すると、ここへ反映されます。"
+          emptyMessage={isContinuation
+            ? "このページにテーマはありません。最初のページから読み直してください。"
+            : "表示できるテーマがありません。ChatGPT + Supabaseの編集チャネルでテーマを登録すると、ここへ反映されます。"}
         />
 
         {result.status === "ok" ? (
           <section style={styles.listGrid}>
             {result.data.themes.map((theme) => (
-              <Link key={theme.id} href={`/premium/themes/${encodeURIComponent(theme.id)}`} style={styles.themeCard}>
+              <Link key={theme.id} href={`/premium/themes/${encodeURIComponent(theme.id)}`} prefetch={false} style={styles.themeCard}>
                 <div style={styles.themeCardTop}>
                   <StatusBadge status={theme.status} />
                   <span style={styles.themeSlug}>{theme.slug}</span>
@@ -289,6 +296,20 @@ export function ThemeListView({ result }: { result: ThemeListLoadResult }) {
             ))}
           </section>
         ) : null}
+
+        <nav aria-label="テーマ一覧のページ" style={{ ...styles.topNav, marginTop: 20, flexWrap: "wrap", gap: 16 }}>
+          {meta ? (
+            <span style={mutedStyle}>
+              このページ {meta.themes.length}件{meta.hasMore ? "（続きがあります）" : isContinuation ? "（最後のページ）" : ""}
+            </span>
+          ) : null}
+          {isContinuation ? <Link href="/premium/themes" prefetch={false} style={styles.backLink}>最初のページへ</Link> : null}
+          {meta?.hasMore && meta.nextCursor ? (
+            <Link href={`/premium/themes?cursor=${encodeURIComponent(meta.nextCursor)}`} prefetch={false} style={styles.backLink}>
+              続きを見る →
+            </Link>
+          ) : null}
+        </nav>
 
         <p style={styles.footnote}>
           テーマの根拠・関連・指標は保存済み情報の表示です。データが空または未提供の場合は、未判明や0件と混同しないよう状態を分けて表示します。
