@@ -17,21 +17,6 @@
 - 会話・レビュー・実装中に仕様や運用判断が固まった場合は、コード変更だけで終わらせず docs に判断を残す。
 - docs の残し方は `docs/docs-writing-workflow.md` を参照し、少なくとも `docs/decision-log/` への記録要否を毎回確認する。
 
-## Task Request Format
-
-- 新しい依頼は、可能な限り先頭に次のヘッダー形式を付ける。
-
-```text
-[repo:<repo_name>] [type:<report|fix|review|investigation|docs>] [target:<artifact_or_scope>] [action:<specific_work>]
-```
-
-- 例:
-  - `[repo:mini-tools] [type:fix] [target:market calendar screen] [action:resolve loading flicker]`
-  - `[repo:mini-tools] [type:review] [target:PR #123] [action:code review]`
-- 依頼文がこの形式で始まっていない場合でも、作業前に内容をこの構造へ正規化して解釈する。
-- 初回応答では、正規化したヘッダーを先頭に短く明示してから作業を進める。
-- 日本語の簡略形式でもよいが、会話一覧で判別しやすくするため、`repo` / `type` / `target` / `action` が分かる形を優先する。
-
 ## ポートフォリオ意思決定ワークスペースの作業（must）
 
 `/premium/portfolio`、銘柄ダッシュボードとのportfolio連携、関連データ取得・UI・UATを
