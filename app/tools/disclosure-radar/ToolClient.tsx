@@ -136,6 +136,8 @@ export default function ToolClient({
   const [manifest, setManifest] = useState<DisclosureEventsManifest | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [manifestAttempt, setManifestAttempt] = useState(0);
+  const [dataAttempt, setDataAttempt] = useState(0);
   const [view, setView] = useState<RadarView>(initialView);
   const [rangeDays, setRangeDays] = useState<RangeDays>(initialRange);
   const [topic, setTopic] = useState<TopicFilter>("all");
@@ -175,7 +177,7 @@ export default function ToolClient({
       active = false;
       controller.abort();
     };
-  }, []);
+  }, [manifestAttempt]);
 
   useEffect(() => {
     if (!manifest) return;
@@ -237,7 +239,7 @@ export default function ToolClient({
         }
       });
     return () => controller.abort();
-  }, [manifest, rangeDays]);
+  }, [manifest, rangeDays, dataAttempt]);
 
   useEffect(() => {
     if (!initialEventId || !data || loading) return;
@@ -381,7 +383,11 @@ export default function ToolClient({
         aria-label="イベント検索"
       />
 
-      {loadFailed ? <p role="alert">取得に失敗しました。{data ? "表示中のデータは前回の取得結果です。" : ""} <button type="button" onClick={() => window.location.reload()}>同じ条件で再読み込み</button></p> : null}
+      {loadFailed ? <p role="alert">取得に失敗しました。{data ? "表示中のデータは前回の取得結果です。" : ""} <button type="button" onClick={() => {
+        setLoading(true); setLoadFailed(false);
+        if (manifest) setDataAttempt(value => value + 1);
+        else setManifestAttempt(value => value + 1);
+      }}>同じ条件で再試行</button></p> : null}
       {loading && !data ? (
         <section className={styles.empty}>開示イベントを読み込んでいます。</section>
       ) : loadFailed && !data ? (

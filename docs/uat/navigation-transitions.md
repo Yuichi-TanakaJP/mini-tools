@@ -59,3 +59,11 @@
 `npx playwright test --config=playwright.navigation.config.ts` はloopback専用の合成APIとNext production build/startを起動する。既存Edgeを既定で使用し、必要なら `NAVIGATION_BROWSER_CHANNEL=chrome` へ切り替える。`NAVIGATION_TEST_OUTPUT_DIR` へscratchの絶対pathを指定してtrace/失敗画像を保存する。指定なしはOSのtemporary directoryとなる。本番のtokenやDBは使わない。
 
 対象: 39ページの入口、Viewerの5.5秒遅延/8秒timeout/503・同条件retry・元cursor・履歴・競合、mobile共通ナビ、日付の正常表示保持/手動retry、native GET。unitは `npm test`、型は `npx tsc --noEmit`、production生成は `npm run build`。テストbuildでは公開同梱JSONのfallbackを明示的に有効にする。fixture時間を本番p95として報告しない。実データの全条件、実機回線・cold start、各Profileの容量/p95合否は別に計測し、未実施を記録する。
+
+### 再試行の回帰確認
+
+- 同じURLの「表示」を押しても取得が実行され、別の待機要求を上書きできること。同じURLという理由だけでno-opにしない。
+- 日付B失敗→cached A→B再選択で、B取得中表示が復帰し、成功後に以前のerrorが残らないこと。
+- 開示30日等の条件で失敗後、期間・view・topic・検索を保持したまま不足日の再試行を行うこと。URLにないlocal条件をfull reloadで失わない。
+
+- 企業scope A取得済み→B取得中/失敗でAの図・ラベル・中心企業が一緒に保持され、旧図の操作だけが止まること。「前回の条件に戻る」でAが再び操作可能になり、「同じ条件で再試行」でBの条件を変えずに取得すること。実DB未接続の場合はsnapshot選択のunit検証と未設定入口のUI検証を区別し、実scope UATを未実施と記載する。

@@ -14,14 +14,20 @@ export function useDailyMarketData<T extends DatedDayData>({ activeDate, initial
   const [lastGood, setLastGood] = useState<T | null>(initialDayData);
   const [failure, setFailure] = useState<{ key: string; message: string } | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [observedDate, setObservedDate] = useState(activeDate);
   const storeDayData = useCallback((day: T) => {
     setLoadedDays(current => ({ ...current, [day.date]: day }));
     setLastGood(day);
+    setFailure(previous => previous?.key.startsWith(`${day.date}:`) ? null : previous);
   }, []);
   const key = `${activeDate}:${attempt}`;
   const cached = loadedDays[activeDate];
   if (cached && lastGood !== cached) setLastGood(cached);
-  const loadError = failure?.key === key ? failure.message : null;
+  if (observedDate !== activeDate) {
+    setObservedDate(activeDate);
+    if (failure?.key === key) setFailure(null);
+  }
+  const loadError = !cached && failure?.key === key ? failure.message : null;
   const isLoading = Boolean(activeDate && !cached && !loadError);
   useEffect(() => {
     if (!activeDate || loadedDays[activeDate]) return;

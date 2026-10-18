@@ -224,7 +224,7 @@ DB集約RPCやmigrationを要する最適化は別PRで設計・承認し、件�
 - URL commitと実データ/fallbackの待機は別登録。最新nav IDだけを完了可能にし、query/refresh/redirect/履歴でも古い完了が新しい進捗を消さない。同一の待機中Linkの連打を抑止する。
 - ヘッダーのPremium導線は従来のnative aから共通Linkへ統一し、不要なdocument再読込を避ける。native内部aとGET formはbrowser動作を保ったまま受付表示。同条件GET再読込も対象。外部、download、修飾クリック、同一documentのhashは元画面をpendingにしない。
 - Viewerは**MiniTools側で上流HTTP応答を8秒、bodyのJSON読取までを合計10秒で打切る**。Cloud Run内の各DB処理へ新しいdeadlineを配布する変更は含めない。前回成功一覧はmounted session内のみ保持し、storage/共有cacheへ保存しない。
-- 日付4画面、経済指標の週/月、開示条件、企業scopeに中断/時間制限/更新中を接続。日付と週/月は前回表示と要求条件を区別し、失敗を0件として確定しない。企業scopeは条件が違う前回データを新scopeへ混ぜず、取得結果をkeyで照合する。
+- 日付4画面、経済指標の週/月、開示条件、企業scopeに中断/時間制限/更新中を接続。日付と週/月は前回表示と要求条件を区別し、失敗を0件として確定しない。企業scopeは前回データと表示ラベル/中心企業/探索条件を一緒に保持し、新scopeへ混ぜない。旧図の操作だけを一時停止し、同条件retry/前回条件への復帰を図の外で提供する。取得結果はkeyで照合する。
 - Premium login後のfull assign、logoutの既存認証処理は維持し、既存の送信中状態を共通表示へ接続。認証方式・RLS・保存処理は変更しない。
 - データ予算/p95は引き続き受入目標であり、本番の全画面実測合格ではない。view別取得最適化、DB集約、root bundle分割は、計測で超過箇所を特定してから行う。
 

@@ -181,3 +181,65 @@ test("a stalled page move offers recovery at twelve seconds and respects reduced
   await expect(page).toHaveURL(/\/premium$/, { timeout: 5000 });
   await expect(page.locator(".navigation-feedback")).toHaveAttribute("data-visible", "false");
 });
+
+test("same-URL display is a real retry with pending feedback", async ({ page }) => {
+  await page.goto("/tools/tdnet-disclosures?date=2026-10-16&range=1");
+  let reads = 0;
+  await page.route("**/tools/tdnet-disclosures?*", async route => {
+    if (route.request().headers().rsc === "1") { reads++; await new Promise(resolve => setTimeout(resolve, 600)); }
+    await route.continue();
+  });
+  await page.getByRole("button", { name: "表示", exact: true }).click();
+  await expect.poll(() => reads).toBeGreaterThan(0);
+  await expect(page).toHaveURL(/date=2026-10-16&range=1$/);
+  await expect(page.locator(".navigation-feedback")).toHaveAttribute("data-visible", "false");
+});
+
+test("failed date can be reselected after a cached date without stale errors", async ({ page }) => {
+  await page.goto("/tools/stock-ranking");
+  const select = page.getByRole("combobox").first();
+  const dates = await select.locator("option").evaluateAll(options => options.map(option => (option as HTMLOptionElement).value));
+  let fail = true;
+  await page.route("**/tools/stock-ranking/data/*", async route => {
+    const date = new URL(route.request().url()).pathname.split("/").at(-1);
+    await new Promise(resolve => setTimeout(resolve, 600));
+    await route.fulfill({ status: fail ? 503 : 200, contentType: "application/json", body: JSON.stringify({ date, records: [] }) });
+  });
+  await select.selectOption(dates[1]);
+  await expect(page.getByRole("button", { name: "同じ日で再試行" })).toBeVisible();
+  await select.selectOption(dates[0]);
+  fail = false;
+  await select.selectOption(dates[1]);
+  await expect(page.locator(".data-pending")).toBeVisible();
+  await expect(page.getByRole("button", { name: "同じ日で再試行" })).toHaveCount(0);
+  await expect(page.locator(".data-pending")).toHaveCount(0);
+  await expect(page.getByText("要求中の選択日とは異なります。", { exact: false })).toHaveCount(0);
+});
+
+test("disclosure retry preserves the failed range, topic and search", async ({ page }) => {
+  const latest = "2026-10-18"; const older = "2026-10-01";
+  const dates = [older, latest];
+  let fail = true; let olderReads = 0;
+  await page.route("**/api/disclosure-events/manifest", route => route.fulfill({ json: { schema_version: "disclosure-events-manifest-v1", generated_at: "2026-10-18", latest, dates } }));
+  await page.route(/\/api\/disclosure-events\/\d{4}-\d{2}-\d{2}$/, async route => {
+    const date = new URL(route.request().url()).pathname.split("/").at(-1)!;
+    if (date === older) olderReads++;
+    await route.fulfill({ status: date === older && fail ? 503 : 200, json: { schema_version: "disclosure-events-v1", target_date: date, generated_at: "2026-10-18", total_count: 0, items: [] } });
+  });
+  await page.goto("/tools/disclosure-radar");
+  await expect(page.locator(".data-pending")).toHaveCount(0);
+  await page.getByRole("tab", { name: /保有・ウォッチ/ }).click();
+  await page.getByRole("button", { name: "重要", exact: true }).click();
+  await page.getByRole("textbox", { name: "イベント検索" }).fill("fixture filter");
+  await page.getByRole("button", { name: "30日", exact: true }).click();
+  await expect(page.getByRole("button", { name: "同じ条件で再試行" })).toBeVisible();
+  fail = false;
+  await page.getByRole("button", { name: "同じ条件で再試行" }).click();
+  await expect.poll(() => olderReads).toBe(2);
+  await expect(page.getByRole("textbox", { name: "イベント検索" })).toHaveValue("fixture filter");
+  await expect(page.getByRole("button", { name: "30日", exact: true })).toHaveClass(/chipActive/);
+  await expect(page.getByRole("button", { name: "重要", exact: true })).toHaveClass(/chipActive/);
+  await expect(page.getByRole("tab", { name: /保有・ウォッチ/ })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("button", { name: "同じ条件で再試行" })).toHaveCount(0);
+  await expect(page.locator(".data-pending")).toHaveCount(0);
+});
