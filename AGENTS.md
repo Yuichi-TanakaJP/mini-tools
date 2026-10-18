@@ -1,36 +1,18 @@
-# AGENTS.md
+# MiniTools working agreements
 
-このリポジトリでの Git 運用手順を固定する。  
-目的は「コミット、push、レビュー確認、マージ、pull/prune、branch delete」を毎回同じ手順で正確に実行すること。
+## Safety and authority
 
-## 0. 基本ルール
+- Verify facts; leave unknowns explicit. Preserve unrelated dirty/untracked work; never read or expose secret environment values or commit credentials/private data. Only secret-free environment examples belong in Git.
+- Reversible branch-local work proceeds without extra approval. Explain API/schema/dependency/schedule/instruction changes once before implementation. Diagnosis alone does not authorize implementation.
+- Obtain explicit approval immediately before default-branch merge, deletion/overwrite, force push, production deploy, external publication or paid operations; state what remains and what is removed. Do not infer authorization from a checklist.
+- Use a purpose-specific branch/PR against the actual default, one purpose per PR. Inspect branch/status before changes and merge; stage only intended files. Preserve generated/environment files unless intentionally changed. Use --body-file for multiline GitHub bodies.
+- PRs record changes, related issue, actual checks/review and limitations. Inspect final diff, current base/head, checks and unresolved findings before approved merge. After merge, sync without overwriting dirty work; clean worktree/branches and prune only with deletion approval.
 
-- `main` へ直接コミットしない。必ず feature ブランチで作業する。
-- 1 PR = 1 目的。無関係な差分は混ぜない。
-- コード変更 PR と生成データ更新 PR は分ける。大きい JSON / CSV 差分を実装差分と同じ PR に混ぜない。
-- 変更前後で `git status --short` を確認する。
-- スクショ確認やレビュー後に追加修正した場合、PRマージ前に `git status --short` を確認し、未コミット差分が残っていないことを必ず確認する。
-- Issue はタイトルだけで「どの tool の、何の話か」が分かるように書く（例: `UI(yutai-memo): ...`, `feat(yutai-expiry): ...`, `TOP-UI: ...`）。
-- `gh issue create` / `gh issue comment` / `gh pr create` / `gh pr comment` で複数行本文を渡すときは、CLI の `--body "..."` に直接改行を書かず、本文ファイル（例: 一時 `.md`）を作って `--body-file` で渡す。
-- `next-env.d.ts` などの環境起因ファイルは、意図がない限りコミットしない。
-- コード変更では、リポジトリに定義済みの lint/test コマンドから変更範囲に必要なものを実行する。確認のためだけに依存を追加しない。
-- 会話・レビュー・実装中に仕様や運用判断が固まった場合は、コード変更だけで終わらせず docs に判断を残す。
-- docs の残し方は `docs/docs-writing-workflow.md` を参照し、少なくとも `docs/decision-log/` への記録要否を毎回確認する。
+## Repository-specific workflow
 
-## Task Request Format
-
-- 新しい依頼は、可能な限り先頭に次のヘッダー形式を付ける。
-
-```text
-[repo:<repo_name>] [type:<report|fix|review|investigation|docs>] [target:<artifact_or_scope>] [action:<specific_work>]
-```
-
-- 例:
-  - `[repo:mini-tools] [type:fix] [target:market calendar screen] [action:resolve loading flicker]`
-  - `[repo:mini-tools] [type:review] [target:PR #123] [action:code review]`
-- 依頼文がこの形式で始まっていない場合でも、作業前に内容をこの構造へ正規化して解釈する。
-- 初回応答では、正規化したヘッダーを先頭に短く明示してから作業を進める。
-- 日本語の簡略形式でもよいが、会話一覧で判別しやすくするため、`repo` / `type` / `target` / `action` が分かる形を優先する。
+- Keep implementation PRs and generated-data-update PRs separate for every size/format; in particular do not mix large JSON/CSV diffs with implementation. Do not commit incidental next-env.d.ts changes.
+- Record settled specification/operational decisions in docs; when such decisions change, follow [the writing workflow](docs/docs-writing-workflow.md), including decision-log applicability.
+- Follow stacked-PR order and the existing merge-commit strategy; do not fold cleanup into merge automatically. For browser verification, review-process tracking or approved branch cleanup, read [operation notes](docs/agent-operation-notes.md).
 
 ## ポートフォリオ意思決定ワークスペースの作業（must）
 
@@ -46,193 +28,21 @@
 
 正本計画と異なるスコープ縮小、Phase移動、完成条件変更は、理由と影響をdocsへ記録し、
 ユーザーの明示確認を得るまで実施しない。
+## Behavior validation
 
-## 1. 作業開始
+- Tier 0: meaning-preserving docs/comments/examples; final diff and relevant syntax/link checks. Tier 1: local internal logic; targeted lint/tests and independent review for behavior changes.
+- Tier 2: API/UI, scheduled work or external I/O; affected lint/tests, relevant build and **executed changed-behavior UAT**. Tier 3: auth/billing/migrations/security/production or broad impact; related full suite/build, rollback/recovery and executed release/UAT checks. Use the highest applicable tier.
+- Add practical regression/boundary tests for changed behavior. Scheduled work, public output and external delivery need real tests and documented commands; document a justified absence instead of installing a synthetic gate.
+- For Tier 2+ user-visible behavior, update the relevant UAT document in the same PR: operation/input, expected result, failure behavior and environment. Keep execution evidence in the PR, not permanent checked boxes. Before publication or a major release, check the applicable release checklist.
+- High-risk or broad changes require the related full suite/build, recovery/rollback evidence and relevant UAT; local edits use targeted checks. Classify by actual meaning/operational impact, not extension or line count; unknown impact is not review-skippable.
 
-```powershell
-git fetch --prune
-git switch main
-git merge --ff-only origin/main
-git switch -c feature/<topic>
-git status --short
-```
+## Review and local verification
 
-## 2. 実装と確認
+- Meaning-preserving edits: final diff and relevant syntax/link/output checks. Behavior changes: one independent review. Auth/permissions/secrets/billing/migrations/production or broad impact: heightened review with specialist and rollback scrutiny.
+- The agent chooses model/profile/effort and records review depth/reason in the PR. Failed invocations are not reviews and alone do not justify lowering depth; use an available method. Reassessed depth needs a reason. Re-review material changes, not typo/comment/evidence-only followups.
+- Use affected repository checks; do not add dependencies or unrelated full suites just for verification. Failures, unresolved findings and missing required evidence block merge. Report untested coverage.
+- Local validation is primary; optional Actions are skipped by default after checking enforced rules and repo exceptions. Existing automatic triggers remain: use [skip ci] only when permitted; do not dispatch/re-run by default. Record real run outcomes, using NOT_RUN only for no execution. Approval for merge, deletion, publication, deployment and paid operations remains required.
 
-```powershell
-# 実装後、下記の品質ゲートに応じて必要なコマンドだけ実行する
-git status --short
-```
+## CI scope
 
-### リスク別品質ゲート（must）
-
-変更の影響と可逆性で Tier を決める。迷った場合は1段階上を使う。既存のCIやリポ固有ルールがより厳しい場合はそちらを優先する。
-
-| Tier | 変更例 | 必須確認 | AIレビュー / UAT |
-|---|---|---|---|
-| 0 非実行変更 | docs、コメント、文言、設定例 | diff、必要な構文・リンク確認 | 原則不要 |
-| 1 低リスク | 局所的な内部ロジック、機械的変更 | 対象lint・対象テスト | 挙動変更は独立レビュー1回 |
-| 2 中リスク | API/UI挙動、定期処理、外部入出力 | 対象lint・影響範囲テスト・必要なbuild | 独立レビュー1回、変更した挙動のUAT |
-| 3 高リスク | 認証、課金、データ移行、公開、セキュリティ | 関連フルスイート、build、ロールバック確認 | 高強度レビュー、UAT/リリース確認必須 |
-
-- バグ修正には原則として再発防止テストを付ける。新機能の異常系・境界値は、実装に存在するリスクに対応して追加する。
-- 定期実行・公開物・外部送信を持つ機能はテストを実体化し、実行コマンドを README または該当docsに明記する。
-- 形骸のテスト設定を置かない。テストを持たない判断は理由を README または該当docsに記録する。
-- 低リスクで可逆な変更に、無関係な全テスト・build・新規依存導入を追加しない。
-
-### 動作確認・UAT（UI/公開物を持つ機能）
-
-- Tier 2以上でユーザーが触れる挙動を追加・変更した場合、該当する `docs/uat/<機能名>.md` を**同じPR**で更新する。文言・コメント等のTier 0変更だけなら不要。
-- UAT文書は恒久的な確認手順書とし、操作、入力、期待結果、異常時の挙動、確認環境を記載する。
-- UATの実施結果は手順書ファイルにチェックを入れず、**PR本文に貼る**。
-- 公開前・大きめリリース前は、該当するリリースチェックリストを全体確認する。
-
-## 3. コミット
-
-```powershell
-# コミット前に現在ブランチを必ず確認する
-git branch --show-current
-# `main` と表示されたらコミット禁止。feature ブランチへ切り直してからやり直す。
-# 必要ファイルだけ add する（git add . は原則使わない）
-git add <file1> <file2>
-git commit -m "feat(scope): summary"
-git status --short
-```
-
-## 4. push
-
-```powershell
-git push -u origin feature/<topic>
-```
-
-## 5. PR 作成
-
-```powershell
-gh pr create --base main --head feature/<topic> --title "<title>" --body "<body>"
-```
-
-PR 本文に必ず記載する項目:
-
-- 概要
-- 変更内容
-- 確認項目（lint/test/動作確認）
-- 関連 Issue（例: `Closes #xx`）
-
-## 6. レビュー確認と対応
-
-```powershell
-# 動作変更は、PR作成後〜マージ前に独立レビューを1回実施する。手段はagentが選ぶ
-gh pr view <PR番号> --comments
-gh api repos/Yuichi-TanakaJP/mini-tools/pulls/<PR番号>/reviews
-gh api repos/Yuichi-TanakaJP/mini-tools/pulls/<PR番号>/comments
-```
-
-- 動作変更はTier 1でも独立レビューを1回行う。意味・動作・運用判断・契約・実行手順を変えない変更だけ省略できる。
-- P1/P0 指摘は優先対応する。
-- 修正後は同じブランチで再コミットし push する。
-- レビュー後の意味のある挙動・scope変更は再レビューする。typo/comment/evidenceだけの修正は最終diff確認とする。
-
-```powershell
-git add <files>
-git commit -m "fix(scope): address review feedback"
-git push
-```
-
-## 7. マージ
-
-```powershell
-git status --short
-gh pr merge <PR番号> --merge --delete-branch=false
-```
-
-- 積み上げ PR は必ず順番を守る（下位PR -> 上位PR）。
-- マージ後に状態確認する。
-- マージ後は、必ず「8. ローカル同期」→「9. ブランチ削除」まで続けて実施する。
-
-```powershell
-gh pr view <PR番号> --json number,state,mergedAt,url
-```
-
-## 8. ローカル同期（pull/prune）
-
-```powershell
-git fetch --prune
-git switch main
-git merge --ff-only origin/main
-```
-
-- merge 後の標準フローは次の順番に固定する。
-  1. `gh pr view <PR番号> --json ...` でマージ状態を確認する
-  2. `git fetch --prune` → `git switch main` → `git merge --ff-only origin/main` でローカル `main` を最新化する
-  3. local branch cleanup は、個別に `git branch --merged` / `git branch -d` を打ち直さず、`scripts/git-branch-cleanup.ps1` を入口として使う
-  4. remote branch を消す必要がある場合だけ、最後に `git push origin --delete <branch>` を別途実行する
-- すでに手動で `git fetch --prune` / `git switch main` / `git merge --ff-only origin/main` を実行した直後に、同じ目的で cleanup script を重ねて回さない。local branch cleanup を始める地点から script に切り替える。
-- マージ後に branch 整理を抜け漏れしやすい場合は、`pwsh -File .\scripts\git-branch-cleanup.ps1` を実行して merged local branch の一覧を確認する。
-- 実際に削除するときは `pwsh -File .\scripts\git-branch-cleanup.ps1 -DeleteMerged` を使う。
-- このスクリプトはまず安全な `git branch -d` を試し、rebase / squash merge などで `-d` できない branch は一覧表示して手動確認へ回す。
-- Codex からこのスクリプトを実行する場合は、`git fetch --prune` / `git merge --ff-only origin/main` / `git branch -d` を含むため、最初から権限付き実行を申請する。実行は承認後に行う。
-
-## 9. ブランチ削除（local / remote）
-
-1. まず `main` にマージ済みか確認する。
-```powershell
-git branch --merged main
-```
-
-2. マージ済みのみローカル削除する。
-```powershell
-git branch -d feature/<topic>
-```
-
-3. 不要なリモートブランチも削除する場合。
-```powershell
-git push origin --delete feature/<topic>
-```
-
-- 日常運用では、まず `scripts/git-branch-cleanup.ps1` のプレビューで対象 branch を確認してから削除する。
-- `scripts/git-branch-cleanup.ps1 -DeleteMerged` を使っても消えなかった branch は、自動で無理に削除しない。`origin/main` への取り込み状況を確認したうえで、必要な場合だけ手動で `git branch -D <branch>` を使う。
-- remote branch の削除はこのスクリプトでは行わない。必要な場合は別途 `git push origin --delete <branch>` を使う。
-
-## 10. トラブル時
-
-- `index.lock` が残っている場合:
-  - 別 Git プロセスが無いことを確認して `\.git\index.lock` を削除。
-- 無関係差分がある場合:
-  - そのファイルは add しない。
-  - 必要なら `git stash push -- <file>` で一時退避して作業する。
-
-## 11. トークン効率と品質維持
-
-- 検証項目を省くのではなく、作業中と PR 前で段階化する。
-  - 作業中: 変更箇所の lint、関連テスト、`git diff --check` を優先する。
-  - PR 前: 上記のリスク別品質ゲートに従い、Tier 2以上で影響範囲テストと必要なbuild、Tier 3で関連フルスイートを実施する。
-  - Tier 0のドキュメントのみのPR: `git diff --check` と必要なリンク・構文確認を基本とし、コード向けlint・test・buildは原則省略する。
-- 検索は対象ディレクトリ・拡張子・語句を絞る。大量ヒット時は全量を出さず、件数確認後に必要な範囲だけ読む。
-- ビルドやテストの成功ログは要点だけ確認し、失敗時のみ該当エラー周辺を追加取得する。
-- GitHub の PR コメント・reviews・inline comments・checks は、PR 作成後とマージ直前を基本にまとめて確認し、同じ情報を短時間に重複取得しない。
-- Cursor 拡張環境では Codex の in-app browser (`iab`) を利用できないため、ブラウザー接続診断や実画面操作を自動実行しない。
-  - ユーザーが実画面確認を明示した場合、または利用可能なブラウザーが事前に確認できている場合だけ実行する。
-  - `Browser is not available: iab` または利用可能ブラウザー `[]` を確認したら、その作業中は再診断しない。
-  - ブラウザー確認を行えない場合は、lint・テスト・build・Preview CI を確認し、実画面未確認であることを報告する。
-- `codex review` は 1 PR につき原則 1 プロセスだけ起動する。
-  - 最初からバックグラウンド実行し、PID と出力先を保持して同じプロセスを追跡する。
-  - 呼び出し側のタイムアウトだけを理由に再実行しない。既存プロセスの終了状態と出力を確認する。
-  - 既存プロセスの終了を確認するまで、同じ差分への review を重複起動しない。
-  - review 自体が失敗した場合は原因を確認し、無条件に再実行しない。
-- 小さな修正のたびに lint・全テスト・build を一式で繰り返さない。作業中は関連確認に絞り、commit / PR 前の最終ゲートで全体確認する。
-
-## CI scope maintenance
-
-ファイルの追加・移動・用途変更時は [CI対象と更新手順](docs/specs/cross-cutting/ci-scope-policy.md) を確認する。新pathは自動除外せず、必要な場合だけ用途・参照を確認して同じPRでYAMLを更新する。変更範囲をローカル検証してまとめてpushし、同じheadのCI/レビューを無条件に再実行しない。
-
-## Review and verification defaults
-
-- **省略可**: 意味・動作・運用判断・契約・実行手順を変えないdocs/comment等。最終diffと関連syntax/link/outputを確認する。
-- **通常**: 動作を変えるcode/UI/API/config/schedule/external I/O。独立レビューを1回行う。
-- **重点**: auth/permission/secrets/billing/DB migration/production operation/広い影響。独立レビューに専門・security・rollback観点を含める。
-- model/profile/reasoning effortはagentがリスクと不確実性から選ぶ。レビューの起動失敗・quota・認証・model利用不能は完了ではなく、その失敗だけを理由にdepthを下げない。利用可能な別手段で必要な結果を満たす。変更内容の再評価でdepthを変える場合は理由を記録する。
-- 意味のあるレビュー後修正だけ再レビューする。typo/comment/evidenceだけなら最終diff確認とする。PRにdepthと理由・実施結果を記録する。
-- ローカルのリスク相応の検証を主とし、Actionsは任意・既定スキップ。未実行やbilling停止はNOT_RUNでありPASSではない。それだけでmergeを止めないが、ローカル失敗・未解決指摘・必須証拠不足はHOLD。実際の強制branch ruleと明示のrepo例外を確認し、無断でbypassしない。
-- この方針は削除・本番deploy・公開・課金・mergeの承認を代替しない。既存の固有安全・データ・UAT条件は保持する。
-
-Actions任意の方針は既存YAMLの自動trigger変更を意味しない。agentからのdispatch/re-runは既定で行わず、自動実行を省略するときは強制check/例外がないことを確認して `[skip ci]` をcommitへ付ける。起動したrunは実状態を記録し、NOT_RUNとは書かない。詳細は上のCI方針参照先に従う。
+When adding/moving/reclassifying paths or changing CI/skip behavior, follow [the repository CI policy](docs/specs/cross-cutting/ci-scope-policy.md). Preserve domain/deploy/schedule workflows and unknown-path validation; do not repeat unchanged checks.
