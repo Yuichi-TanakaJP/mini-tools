@@ -13,8 +13,8 @@ Read only the relevant section for browser verification, review execution, or br
 
 - 検証項目を省くのではなく、作業中と PR 前で段階化する。
   - 作業中: 変更箇所の lint、関連テスト、`git diff --check` を優先する。
-  - PR 前: ルートAGENTS.mdの「Behavior validation」にあるTier定義に従い、Tier 2以上で影響範囲テストと必要なbuild、Tier 3で関連フルスイートを実施する。
-  - Tier 0のドキュメントのみのPR: `git diff --check` と必要なリンク・構文確認を基本とし、コード向けlint・test・buildは原則省略する。
+  - PR 前: ルートAGENTS.mdの「Review and local verification」に従い、変更の影響に合う確認を選ぶ。通常変更は影響範囲テストと必要なbuild、高リスク変更は関連フルスイートを実施する。
+  - 意味不変のドキュメントのみのPR: `git diff --check` と必要なリンク・構文確認を基本とし、コード向けlint・test・buildは原則省略する。
 - 検索は対象ディレクトリ・拡張子・語句を絞る。大量ヒット時は全量を出さず、件数確認後に必要な範囲だけ読む。
 - ビルドやテストの成功ログは要点だけ確認し、失敗時のみ該当エラー周辺を追加取得する。
 - GitHub の PR コメント・reviews・inline comments・checks は、PR 作成後とマージ直前を基本にまとめて確認し、同じ情報を短時間に重複取得しない。
@@ -27,4 +27,4 @@ Read only the relevant section for browser verification, review execution, or br
   - 呼び出し側のタイムアウトだけを理由に再実行しない。既存プロセスの終了状態と出力を確認する。
   - 既存プロセスの終了を確認するまで、同じ差分への review を重複起動しない。
   - review 自体が失敗した場合は原因を確認し、無条件に再実行しない。
-- 小さな修正のたびに lint・全テスト・build を一式で繰り返さない。作業中は関連確認に絞り、commit / PR 前の最終ゲートで全体確認する。
+- 小さな修正のたびに lint・全テスト・build を一式で繰り返さない。作業中は関連確認に絞り、commit / PR 前も変更の影響に合う最終確認に絞る。
