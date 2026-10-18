@@ -338,7 +338,7 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
           <button
             type="button"
             style={{ ...styles.viewTab, ...(viewMode === "week" ? styles.viewTabActive : {}) }}
-            onClick={() => { monthRequest.current?.abort(); setMonthLoading(false); setViewMode("week"); }}
+            onClick={() => { monthRequest.current?.abort(); setMonthLoading(false); setReadError(null); setViewMode("week"); }}
           >
             週表示
           </button>
@@ -346,7 +346,7 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
             type="button"
             style={{ ...styles.viewTab, ...(viewMode === "month" ? styles.viewTabActive : {}) }}
             onClick={() => {
-              weekRequest.current?.abort(); setWeekLoading(false);
+              weekRequest.current?.abort(); setWeekLoading(false); setReadError(null);
               setViewMode("month");
               if (manifest) loadMonth(selectedMonth);
             }}
@@ -590,7 +590,11 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
               ))}
             </div>
 
-            {monthGroupedByDate.length === 0 ? (
+            {monthGroupedByDate.length === 0 && (monthLoading || readError) ? (
+              <article style={styles.emptyCard} role="status">
+                {monthLoading ? "月のデータを取得中…" : "月のデータを取得できませんでした。同じ条件で再試行できます。"}
+              </article>
+            ) : monthGroupedByDate.length === 0 ? (
               <article style={styles.emptyCard}>
                 <div style={styles.emptyTitle}>データがありません</div>
                 <div style={styles.emptyNote}>
