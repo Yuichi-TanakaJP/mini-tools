@@ -27,7 +27,7 @@ import type {
   ThemeViewerError,
   ThemeViewerErrorStatus,
 } from "./types";
-import { THEME_VIEWER_CONTRACT_VERSION } from "./types";
+import { THEME_LIST_CONTRACT_VERSION, THEME_VIEWER_CONTRACT_VERSION } from "./types";
 
 /**
  * Theme Viewerはstock-notesのDBや編集APIを直接読まない。
@@ -678,6 +678,68 @@ function invalidResponseResult(message = "stock-notes APIのレスポンス形�
     message,
     httpStatus: null,
   };
+}
+
+// One server request per page; the API also caps the serialized response size.
+export const THEME_LIST_PAGE_SIZE = 10;
+const CURSOR_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
+
+export function parseThemeListPageResponse(input: unknown): ThemeListData {
+  const root = requiredObject(input, "theme list page");
+  if (root.schemaVersion !== THEME_LIST_CONTRACT_VERSION) {
+    throw new ThemeViewerResponseError("unsupported list contract version");
+  }
+  const nextCursor = root.nextCursor;
+  if (nextCursor !== null && (typeof nextCursor !== "string" || !CURSOR_PATTERN.test(nextCursor))) {
+    throw new ThemeViewerResponseError("invalid next cursor");
+  }
+  if (typeof root.hasMore !== "boolean" || root.hasMore !== (nextCursor !== null)) {
+    throw new ThemeViewerResponseError("inconsistent page continuation");
+  }
+  const field = objectArray(root, ["themes"]);
+  if (!Array.isArray(root.themes) || !field.found || field.values.length > THEME_LIST_PAGE_SIZE) {
+    throw new ThemeViewerResponseError("invalid page items");
+  }
+  const fallback = topLevelProvenance(root);
+  const themes = field.values.map((item) => parseListItem(item, fallback));
+  if ((themes.length === 0 && root.hasMore) || new Set(themes.map((theme) => theme.id)).size !== themes.length) {
+    throw new ThemeViewerResponseError("empty continuation or duplicate items");
+  }
+  return {
+    contractVersion: THEME_LIST_CONTRACT_VERSION,
+    source: fallback.source,
+    asOf: fallback.asOf,
+    themes,
+    nextCursor: typeof nextCursor === "string" ? nextCursor : null,
+    hasMore: root.hasMore,
+  };
+}
+
+export async function loadThemeListPage(
+  cursor?: string | string[],
+  fetcher: Fetcher = fetch,
+): Promise<ThemeListLoadResult> {
+  if (cursor !== undefined && (typeof cursor !== "string" || !CURSOR_PATTERN.test(cursor))) {
+    return viewerError(errorResult("invalid_cursor", "ページの指定が不正です。最初のページから読み直してください。"));
+  }
+  const query = new URLSearchParams({ limit: String(THEME_LIST_PAGE_SIZE) });
+  if (typeof cursor === "string") query.set("cursor", cursor);
+  const response = await requestViewerJson(`/viewer/theme-cards?${query}`, "list", fetcher);
+  if (response.ok === false) {
+    if (response.httpStatus === 400 && cursor !== undefined) {
+      return viewerError(errorResult("invalid_cursor", "ページの指定が無効です。最初のページから読み直してください。", 400));
+    }
+    return viewerError(response);
+  }
+  try {
+    const data = parseThemeListPageResponse(response.body);
+    if (data.nextCursor !== null && data.nextCursor === cursor) {
+      return invalidResponseResult("続きのページを読み取れませんでした。最初のページから読み直してください。");
+    }
+    return { status: data.themes.length === 0 ? "empty" : "ok", data };
+  } catch {
+    return invalidResponseResult();
+  }
 }
 
 export async function loadThemeList(fetcher: Fetcher = fetch): Promise<ThemeListLoadResult> {

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
-import { loadThemeList } from "./data-loader";
+import { loadThemeListPage } from "./data-loader";
 import { ThemeListView } from "./ThemeViewer";
 
 export const metadata: Metadata = {
@@ -17,7 +17,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function PremiumThemesPage() {
+export default async function PremiumThemesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cursor?: string | string[] }>;
+}) {
   const cookieStore = await cookies();
   const session = cookieStore.get(PREMIUM_COOKIE_NAME)?.value;
 
@@ -25,6 +29,7 @@ export default async function PremiumThemesPage() {
     redirect(`/premium/login?next=${encodeURIComponent("/premium/themes")}`);
   }
 
-  const result = await loadThemeList();
-  return <ThemeListView result={result} />;
+  const { cursor } = await searchParams;
+  const result = await loadThemeListPage(cursor);
+  return <ThemeListView result={result} isContinuation={cursor !== undefined} />;
 }

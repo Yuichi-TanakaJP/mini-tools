@@ -7,6 +7,7 @@
  */
 
 export const THEME_VIEWER_CONTRACT_VERSION = "theme-viewer.v1" as const;
+export const THEME_LIST_CONTRACT_VERSION = "theme-viewer-list.v2" as const;
 
 export type ThemeViewerContractVersion = typeof THEME_VIEWER_CONTRACT_VERSION;
 export type ThemeStatus = "draft" | "active" | "archived";
@@ -49,7 +50,9 @@ export type ThemeListItem = {
 };
 
 export type ThemeListData = {
-  contractVersion: ThemeViewerContractVersion;
+  contractVersion: ThemeViewerContractVersion | typeof THEME_LIST_CONTRACT_VERSION;
+  nextCursor?: string | null;
+  hasMore?: boolean;
   source: string | null;
   asOf: string | null;
   themes: ThemeListItem[];
@@ -244,6 +247,7 @@ export type ThemeDetailData = {
 };
 
 export type ThemeViewerErrorStatus =
+  | "invalid_cursor"
   | "not_configured"
   | "unauthorized"
   | "upstream_error"

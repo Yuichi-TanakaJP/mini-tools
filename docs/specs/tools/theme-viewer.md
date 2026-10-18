@@ -1,10 +1,10 @@
 # テーマViewer 仕様
 
-> **実装状態:** 2026-08-27時点の初回版。`/premium/themes` とテーマ詳細を、stock-notesのViewer APIから読み取り専用で表示する。テーマ編集、Supabaseへの書き込み、売買判断の確定はこの画面の責務ではない。
+> **実装状態:** 2026-10-18の一覧ページ化対応。`/premium/themes` とテーマ詳細を、stock-notesのViewer APIから読み取り専用で表示する。テーマ編集、Supabaseへの書き込み、売買判断の確定はこの画面の責務ではない。
 
 ## 結論
 
-ChatGPT + Supabaseを編集チャネル、stock-notesをバージョン付き読み取り契約の提供元、MiniToolsを閲覧チャネルとする。MiniToolsはstock-notesのDBや編集APIを直接読まず、サーバー側loaderを経由して `theme-viewer.v1` のcamelCase read modelだけをUIへ渡す。
+ChatGPT + Supabaseを編集チャネル、stock-notesをバージョン付き読み取り契約の提供元、MiniToolsを閲覧チャネルとする。MiniToolsはstock-notesのDBや編集APIを直接読まず、サーバー側loaderを経由して 一覧は `theme-viewer-list.v2`、詳細は `theme-viewer.v1` のcamelCase read modelだけをUIへ渡す。
 
 ## 概要
 
@@ -17,6 +17,11 @@ ChatGPT + Supabaseを編集チャネル、stock-notesをバージョン付き読
 
 ### 一覧
 
+- 1ページ最大10件。APIの容量予算により10件未満でも続きがある場合がある
+- 「このページ N件」と続きの有無を表示し、「続きを見る」で次のページを受信・表示する（全件総数とは表示しない）
+- 続きのページと取得失敗画面から「最初のページへ」で読み直せる
+- ページ順は不変IDの昇順。閲覧中の追加・変更を含むライブ一覧なので、新規追加を確認するときは最初から読み直す
+- カード／次ページは先読みしない。詳細の本文は詳細を開いた時に取得する
 - テーマ名、slug、status（`draft` / `active` / `archived`）、概要を表示する
 - source、as-of、confidenceを表示する。値がない場合は「未提供」と表示する
 - 分析件数とopen action件数は、APIが値を返した場合だけ表示する
@@ -51,18 +56,28 @@ ChatGPT + Supabaseを編集チャネル、stock-notesをバージョン付き読
 
 Server Componentから次のstock-notes endpointへGETする。
 
-- `GET /viewer/themes`
+- `GET /viewer/theme-cards?limit=10&cursor=<opaque cursor>`（初回はcursorなし）
 - `GET /viewer/themes/{theme_id}`
 
 環境変数は `STOCK_NOTES_API_BASE_URL` と `STOCK_NOTES_API_TOKEN`。どちらもserver-onlyで扱い、`Authorization: Bearer ...` はサーバーからstock-notesへだけ送る。ブラウザーのprops、HTML、URL、クライアントfetchへtokenを渡さない。レスポンスは `no-store`、timeoutは5秒とする。
 
+### 一覧ページ契約
+
+`GET /viewer/theme-cards` は `schemaVersion: "theme-viewer-list.v2"` と、flatな `themes`、`nextCursor: string | null`、`hasMore: boolean` を返す。末尾は `nextCursor: null / hasMore: false`。分析本文・仮説全文などのnestedデータは一覧に含めない。詳細はv1のまま。
+
+MiniToolsのloaderは1リクエストにつき1ページだけを取得する。契約version、継続情報の整合、重複ID、ページ件数、継続カーソルのループを検証し、不正を空一覧として隠さない。cursorの多重指定・空文字・不正な形式はAPI取得前に拒否し、上流400も読み直し案内にする。途中の取得失敗は「テーマなし」や「全件取得済み」にしない。
+
+旧 `GET /viewer/themes` はstock-notes側の既存利用者との互換用に残るが、この画面は呼ばない。軽量APIが未配備の場合に旧一覧へfallbackしない（413再発と部分表示を防ぐ）。stock-notesの互換追加を先に配備し、その後MiniToolsを配備する。
+
 ### versioned camelCase read model
 
-Viewer APIの正本契約は `schemaVersion: "theme-viewer.v1"` とする。代表的な形は次のとおり。
+一覧の正本契約は `schemaVersion: "theme-viewer-list.v2"` とする。代表的な形は次のとおり。
 
 ```json
 {
-  "schemaVersion": "theme-viewer.v1",
+  "schemaVersion": "theme-viewer-list.v2",
+  "nextCursor": null,
+  "hasMore": false,
   "source": "stock-notes",
   "asOf": "2026-08-27T00:00:00Z",
   "themes": [
@@ -83,7 +98,7 @@ Viewer APIの正本契約は `schemaVersion: "theme-viewer.v1"` とする。代�
 }
 ```
 
-詳細は同じ `schemaVersion` とトップレベルのsource/as-ofを持ち、`theme`、`currentThesis`、`analysisHistory`、`evidence`、`directLinks`、`taxonomyMap`、`metrics`、`openActions`を含む。各配列・オブジェクトのフィールドもcamelCaseとする。`directLinks` の対象URLは `url`、taxonomyは `nodes` / `edges` / `themeLinks` / `stockLinks`、metricsは `definitions` / `snapshots` / `values` とする。
+詳細は `schemaVersion: "theme-viewer.v1"` とトップレベルのsource/as-ofを持ち、`theme`、`currentThesis`、`analysisHistory`、`evidence`、`directLinks`、`taxonomyMap`、`metrics`、`openActions`を含む。各配列・オブジェクトのフィールドもcamelCaseとする。`directLinks` の対象URLは `url`、taxonomyは `nodes` / `edges` / `themeLinks` / `stockLinks`、metricsは `definitions` / `snapshots` / `values` とする。
 
 アプリ内部の型は [テーマViewer types](../../../app/premium/themes/types.ts) に定義する。移行期間の互換性としてloaderは既存snake_case名も受け付けるが、UIへ渡すread modelは常にcamelCaseである。
 
@@ -94,18 +109,11 @@ Viewer APIの正本契約は `schemaVersion: "theme-viewer.v1"` とする。代�
 - `confidence`: `high` / `medium` / `low`。未提供は空欄ではなく「未提供」
 - 上位メタデータがない場合、レコード固有のprovenanceを優先する
 
-## API契約の不足と変更候補
+## 容量上限と互換性
 
-現時点のstock-notesにはテーマ単位の既存読み取りendpointはあるが、MiniToolsが想定する `/viewer/themes` と `/viewer/themes/{theme_id}` のversioned aggregate endpoint、camelCase envelopeはまだ正本化されていない。したがって、このPRではUI側の境界と互換parserを先に実装し、stock-notes側のAPI変更をこのPRへ混在させない。
+2026-10-18の本番一覧413はstock-notesの60,000文字以上の応答ガードで発生した。件数上限を下げるだけでは未表示テーマが残るため、一覧の軽量化と容量予算によるページ化を採用する。共通上限や詳細契約は緩和せず、一覧の続きで全件へ到達する。
 
-stock-notes側で次に確定すべき変更候補は以下のとおり。
-
-1. `theme-viewer.v1` の一覧／詳細 envelopeと必須フィールドをAPI契約として公開する
-2. 詳細endpointで、thesis、analysis history、evidence、direct links、taxonomy map、metrics、open actionsを1つの読み取りpayloadに集約する
-3. source、asOf、confidence、draft、未提供、明示的な空を各セクションで表現する
-4. direct linksの表示名・関係・対象ID・安全なtarget URLを返す
-5. taxonomy／metricsの定義、snapshot、value、根拠IDを同じread modelで返す
-6. 401、404、5xxと空データの意味を明文化する。テーマが存在しない場合は404、存在するが未登録のセクションはmissingまたはemptyとする
+一覧の件数が取得できない場合はnull（未提供）を維持し、0件に置き換えない。DBへの変更・テーマ削除や本文書換えは行わない。
 
 ## 状態・エラー表示
 
@@ -116,6 +124,7 @@ stock-notes側で次に確定すべき変更候補は以下のとおり。
 | stock-notes 401 | `unauthorized`。認証設定を確認する案内を表示 |
 | stock-notes 404（詳細） | `not_found`。指定テーマなしとして表示 |
 | stock-notes 5xx／接続失敗／timeout | `upstream_error`。一時的な取得失敗として表示 |
+| cursor不正／継続ページ400 | `invalid_cursor`。最初から読み直すリンクを表示 |
 | JSON／version／必須項目不正 | `invalid_response`。契約不一致として表示 |
 | 一覧が空 | `empty`。テーマなしとして表示 |
 | 詳細のセクションが未提供 | `missing`。APIが返していないことを表示 |
@@ -138,5 +147,6 @@ stock-notes側で次に確定すべき変更候補は以下のとおり。
 ## 関連 docs
 
 - UAT: [テーマViewer UAT](../../uat/theme-viewer.md)
+- Decision Log: [一覧413とページ分割](../../decision-log/2026-10-18-theme-viewer-pagination.md)
 - Decision Log: [テーマViewerの読み取り契約と責任境界](../../decision-log/2026-08-27-theme-viewer-read-model.md)
 - Docs Writing Workflow: [docs作成ルール](../../docs-writing-workflow.md)
