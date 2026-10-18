@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useNavigationFeedback } from "@/components/navigation/NavigationProvider";
 import { useRouter } from "next/navigation";
 
 type NavigateMethod = "push" | "replace";
@@ -11,6 +12,7 @@ type NavigateOptions = {
 };
 
 export type RouterTransitionApi = {
+  refresh: () => void;
   isPending: boolean;
   pendingKey: string | null;
   navigate: (href: string, options?: NavigateOptions) => void;
@@ -25,6 +27,8 @@ export type RouterTransitionApi = {
  */
 export function useRouterTransition(): RouterTransitionApi {
   const router = useRouter();
+  const feedback = useNavigationFeedback();
+  const token = useRef<number | null>(null);
   const [isPending, startTransition] = useTransition();
   const [pendingKey, setPendingKey] = useState<string | null>(null);
 
@@ -32,15 +36,24 @@ export function useRouterTransition(): RouterTransitionApi {
     // 遷移完了 (isPending=false) 時に pendingKey を解除する。
     // useTransition の状態と同期するための effect であり、外部状態同期に相当する。
     /* eslint-disable react-hooks/set-state-in-effect */
+    if (!isPending && token.current !== null) {
+      feedback?.finish(token.current);
+      token.current = null;
+    }
     if (!isPending && pendingKey !== null) {
       setPendingKey(null);
     }
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [isPending, pendingKey]);
+  }, [isPending, pendingKey, feedback]);
+
+  useEffect(() => () => { if (token.current !== null) feedback?.finish(token.current); }, [feedback]);
 
   const navigate = useCallback(
     (href: string, options?: NavigateOptions) => {
       const method = options?.method ?? "push";
+      if (typeof window !== "undefined" && href === window.location.pathname + window.location.search) return;
+      if (feedback?.isCurrent(href)) return;
+      token.current = feedback?.begin(href) ?? null;
       if (options?.key !== undefined) {
         setPendingKey(options.key);
       }
@@ -52,13 +65,18 @@ export function useRouterTransition(): RouterTransitionApi {
         }
       });
     },
-    [router],
+    [router, feedback],
   );
+
+  const refresh = useCallback(() => {
+    token.current = feedback?.begin(window.location.pathname + window.location.search) ?? null;
+    startTransition(() => router.refresh());
+  }, [feedback, router]);
 
   const isPendingFor = useCallback(
     (key: string) => isPending && pendingKey === key,
     [isPending, pendingKey],
   );
 
-  return { isPending, pendingKey, navigate, isPendingFor };
+  return { isPending, pendingKey, navigate, isPendingFor, refresh };
 }

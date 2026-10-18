@@ -11,6 +11,7 @@ import type {
 } from "./types";
 import type { JpxMarketClosedDay } from "@/app/tools/_shared/market-calendar-types";
 import { formatToolDate, signPrefix } from "@/app/tools/_shared/tool-client-format";
+import PendingRegion from "@/components/navigation/PendingRegion";
 import { useDailyMarketData } from "@/app/tools/_shared/use-daily-market-data";
 
 function getDayOfWeek(dateStr: string) {
@@ -242,6 +243,7 @@ export default function ToolClient({ data }: { data: Topix33PageData }) {
     isLoading,
     loadError,
     currentDayData: dayData,
+    isPreviousData, retry,
   } = useDailyMarketData<Topix33DayData>({
     activeDate: currentSelectedDate,
     initialDayData,
@@ -369,11 +371,13 @@ export default function ToolClient({ data }: { data: Topix33PageData }) {
 
         {loadError && !isLoading && (
           <div style={{ textAlign: "center", fontSize: 13, color: "var(--color-error)", padding: "4px 0" }}>
-            {loadError}
+            {loadError} <button type="button" onClick={retry}>同じ日で再試行</button>
           </div>
         )}
       </section>
 
+      <PendingRegion active={isLoading} label="選択日のデータ" />
+      {isPreviousData ? <p role="status">表示中: {dayData?.date}。要求中の選択日とは異なります。</p> : null}
       {isLoading && !dayData && <LoadingSpinner />}
 
       {/* サマリー */}

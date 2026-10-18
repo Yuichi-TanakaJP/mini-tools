@@ -1,10 +1,12 @@
+import LoadingActivity from "@/components/navigation/LoadingActivity";
 export default function Loading() {
   const sk = {
     background: "var(--color-border)",
     animation: "skeleton-pulse 1.4s ease-in-out infinite",
   } as const;
 
-  return (
+  return (<>
+      <LoadingActivity />
     <main style={{ maxWidth: 1120, margin: "0 auto", padding: "0 16px 64px" }}>
       <section style={{ padding: "32px 0 24px" }}>
         <div style={{ ...sk, width: 240, height: 30, borderRadius: 6, marginBottom: 12 }} />
@@ -44,5 +46,5 @@ export default function Loading() {
         ))}
       </section>
     </main>
-  );
+  </>);
 }

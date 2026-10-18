@@ -1,5 +1,7 @@
+import LoadingActivity from "@/components/navigation/LoadingActivity";
 export default function Loading() {
-  return (
+  return (<>
+      <LoadingActivity />
     <main style={styles.page}>
       <div style={styles.shell}>
         <div style={styles.skeletonHero} />
@@ -7,7 +9,7 @@ export default function Loading() {
         <div style={styles.skeletonTable} />
       </div>
     </main>
-  );
+  </>);
 }
 
 const styles: Record<string, React.CSSProperties> = {

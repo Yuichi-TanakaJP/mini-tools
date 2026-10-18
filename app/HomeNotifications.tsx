@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   selectUpcomingBenefitExpiries,

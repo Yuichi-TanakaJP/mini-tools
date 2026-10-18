@@ -10,6 +10,7 @@ import type {
 import LoadingSpinner from "@/components/LoadingSpinner";
 import TabBar from "@/app/tools/_shared/TabBar";
 import { formatToolDate, signPrefix } from "@/app/tools/_shared/tool-client-format";
+import PendingRegion from "@/components/navigation/PendingRegion";
 import { useDailyMarketData } from "@/app/tools/_shared/use-daily-market-data";
 
 const RANKINGS: UsRankingType[] = ["値上り率", "値下り率", "売買代金"];
@@ -211,7 +212,7 @@ export default function ToolClient({ data }: { data: UsRankingPageData }) {
   const [selectedDate, setSelectedDate] = useState<string>(manifest?.latest ?? "");
   const [selectedRanking, setSelectedRanking] = useState<UsRankingType>("値上り率");
 
-  const { loadedDays, isLoading, loadError } = useDailyMarketData<UsRankingDayData>({
+  const { currentDayData, isPreviousData, isLoading, loadError, retry } = useDailyMarketData<UsRankingDayData>({
     activeDate: selectedDate,
     initialDayData,
     routePrefix: "/tools/us-stock-ranking/data",
@@ -219,10 +220,10 @@ export default function ToolClient({ data }: { data: UsRankingPageData }) {
 
   const filtered = useMemo<UsRankingRecord[]>(() => {
     if (!selectedDate) return [];
-    const day = loadedDays[selectedDate];
+    const day = currentDayData;
     if (!day) return [];
     return day.records.filter((r) => r.ranking === selectedRanking);
-  }, [loadedDays, selectedDate, selectedRanking]);
+  }, [currentDayData, selectedRanking, selectedDate]);
 
   const dates = manifest?.dates ?? [];
   const currentDateIndex = dates.indexOf(selectedDate);
@@ -402,7 +403,11 @@ export default function ToolClient({ data }: { data: UsRankingPageData }) {
         </span>
       </div>
 
+      <PendingRegion active={isLoading} label="選択日のデータ" />
+      {isPreviousData ? <p role="status">表示中: {currentDayData?.date}。要求中の選択日とは異なります。</p> : null}
       {/* テーブル */}
+      <PendingRegion active={isLoading} label="選択日のデータ" />
+      {isPreviousData ? <p role="status">表示中: {currentDayData?.date}。要求中の選択日とは異なります。</p> : null}
       <div
         style={{
           background: "var(--color-bg-card)",
@@ -420,9 +425,10 @@ export default function ToolClient({ data }: { data: UsRankingPageData }) {
               fontSize: 14,
             }}
           >
-            {loadError}
+            {loadError} <button type="button" onClick={retry}>同じ日で再試行</button>
           </div>
-        ) : isLoading && !loadedDays[selectedDate] ? (
+        ) : null}
+        {isLoading && !currentDayData ? (
           <LoadingSpinner />
         ) : (
           <RankingTable records={filtered} />

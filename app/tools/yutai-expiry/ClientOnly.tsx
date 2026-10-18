@@ -1,13 +1,14 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import RouteLoading from "@/components/navigation/RouteLoading";
 
 type Props = { scanEnabled: boolean };
 
 // scanEnabled は server component が cookie 検証して props で渡す前提なので、
 // 共通の createClientOnlyTool は使わずインラインで dynamic 化する。
-const ToolClient = dynamic(() => import("./ToolClient"), { ssr: false });
-const YutaiExpiryApp = dynamic(() => import("./YutaiExpiryApp"), { ssr: false });
+const ToolClient = dynamic(() => import("./ToolClient"), { ssr: false, loading: () => <RouteLoading label="ツール" /> });
+const YutaiExpiryApp = dynamic(() => import("./YutaiExpiryApp"), { ssr: false, loading: () => <RouteLoading label="ツール" /> });
 
 export default function ClientOnly(props: Props) {
   if (process.env.NEXT_PUBLIC_YUTAI_EXPIRY_DB_PREVIEW === "true") {

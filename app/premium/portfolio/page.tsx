@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import CompanyGroupExposureCard from "./CompanyGroupExposureCard";

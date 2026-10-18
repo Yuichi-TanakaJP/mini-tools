@@ -11,6 +11,8 @@ import type {
 } from "./types";
 import type { JpxMarketClosedDay } from "@/app/tools/_shared/market-calendar-types";
 import { formatToolDate, signPrefix } from "@/app/tools/_shared/tool-client-format";
+import PendingRegion from "@/components/navigation/PendingRegion";
+import { readNavigationJson } from "@/lib/navigation-read";
 import { useDailyMarketData } from "@/app/tools/_shared/use-daily-market-data";
 
 function getDayOfWeek(dateStr: string) {
@@ -764,6 +766,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
     isLoading,
     loadError,
     storeDayData,
+    currentDayData, retry,
   } = useDailyMarketData<NikkeiContributionDayData>({
     activeDate: selectedDate,
     initialDayData,
@@ -807,16 +810,13 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
     }
 
     let active = true;
+    const controller = new AbortController();
 
     async function loadFallbackDate() {
       setIsFallbackLoading(true);
       try {
-        const res = await fetch(`/tools/nikkei-contribution/data/${currentSelectedDate}`);
-        if (!res.ok) {
-          return;
-        }
-
-        const day = (await res.json()) as NikkeiContributionDayData;
+        const day = await readNavigationJson<NikkeiContributionDayData>(`/tools/nikkei-contribution/data/${currentSelectedDate}`, { signal: controller.signal });
+        if (day.date !== currentSelectedDate) return;
         if (!active) {
           return;
         }
@@ -836,10 +836,11 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
 
     return () => {
       active = false;
+      controller.abort();
     };
   }, [currentSelectedDate, loadedDays, selectedDate, storeDayData]);
 
-  const dayData = currentSelectedDate ? loadedDays[currentSelectedDate] ?? null : null;
+  const dayData = currentSelectedDate ? loadedDays[currentSelectedDate] ?? currentDayData : null;
   const isDataLoading = isLoading || isFallbackLoading;
   const selectedRecord = useMemo(() => {
     if (!dayData) return null;
@@ -1067,8 +1068,10 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
         </div>
       </section>
 
+      <PendingRegion active={isDataLoading} label="選択日のデータ" />
+      {dayData && dayData.date !== currentSelectedDate ? <p role="status">表示中: {dayData.date}。要求中の選択日とは異なります。</p> : null}
       {loadError ? (
-        <div style={{ padding: "20px 0", color: "var(--color-text-muted)" }}>{loadError}</div>
+        <div style={{ padding: "20px 0", color: "var(--color-text-muted)" }}>{loadError} <button type="button" onClick={retry}>同じ日で再試行</button></div>
       ) : isDataLoading && !dayData ? (
         <LoadingSpinner />
       ) : !dayData ? (

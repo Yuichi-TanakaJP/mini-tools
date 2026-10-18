@@ -53,3 +53,9 @@
 
 - [判断理由](../decision-log/2026-10-18-navigation-feedback-and-latency.md)
 - [テーマViewer UAT](theme-viewer.md)
+
+## 再現可能なローカル確認
+
+`npx playwright test --config=playwright.navigation.config.ts` はloopback専用の合成APIとNext production build/startを起動する。既存Edgeを既定で使用し、必要なら `NAVIGATION_BROWSER_CHANNEL=chrome` へ切り替える。`NAVIGATION_TEST_OUTPUT_DIR` へscratchの絶対pathを指定してtrace/失敗画像を保存する。指定なしはOSのtemporary directoryとなる。本番のtokenやDBは使わない。
+
+対象: 39ページの入口、Viewerの5.5秒遅延/8秒timeout/503・同条件retry・元cursor・履歴・競合、mobile共通ナビ、日付の正常表示保持/手動retry、native GET。unitは `npm test`、型は `npx tsc --noEmit`、production生成は `npm run build`。テストbuildでは公開同梱JSONのfallbackを明示的に有効にする。fixture時間を本番p95として報告しない。実データの全条件、実機回線・cold start、各Profileの容量/p95合否は別に計測し、未実施を記録する。

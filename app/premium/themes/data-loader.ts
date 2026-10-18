@@ -37,7 +37,8 @@ import { THEME_LIST_CONTRACT_VERSION, THEME_VIEWER_CONTRACT_VERSION } from "./ty
 
 const API_BASE_ENV = "STOCK_NOTES_API_BASE_URL";
 const API_TOKEN_ENV = "STOCK_NOTES_API_TOKEN";
-const REQUEST_TIMEOUT_MS = 5_000;
+export const THEME_UPSTREAM_TIMEOUT_MS = 8_000;
+export const THEME_REQUEST_TIMEOUT_MS = 10_000;
 
 type RawObject = Record<string, unknown>;
 type Fetcher = typeof fetch;
@@ -626,10 +627,19 @@ async function requestViewerJson(
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let timeoutId: ReturnType<typeof setTimeout>;
+  const deadline = Date.now() + THEME_REQUEST_TIMEOUT_MS;
+  function withinBudget<T>(operation: Promise<T>, milliseconds: number): Promise<T> {
+    return Promise.race([operation, new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        controller.abort();
+        reject(new Error("viewer timeout"));
+      }, milliseconds);
+    })]).finally(() => clearTimeout(timeoutId));
+  }
 
   try {
-    const response = await fetcher(url, {
+    const response = await withinBudget(fetcher(url, {
       method: "GET",
       headers: {
         Accept: "application/json",
@@ -637,8 +647,17 @@ async function requestViewerJson(
       },
       cache: "no-store",
       signal: controller.signal,
-    });
+    }), THEME_UPSTREAM_TIMEOUT_MS);
 
+    if (response.status === 403) {
+      return errorResult("forbidden", "stock-notes APIへのアクセスが許可されていません。", 403);
+    }
+    if (response.status === 413) {
+      return errorResult("too_large", "取得するデータが大きすぎます。最初のページへ戻ってください。", 413);
+    }
+    if (response.status === 429) {
+      return errorResult("rate_limited", "アクセスが集中しています。少し待ってから再試行してください。", 429);
+    }
     if (response.status === 401) {
       return errorResult("unauthorized", "stock-notes APIの認証に失敗しました。", response.status);
     }
@@ -661,14 +680,17 @@ async function requestViewerJson(
     }
 
     try {
-      return { ok: true, body: await response.json() };
+      return { ok: true, body: await withinBudget(response.json(), Math.max(1, deadline - Date.now())) };
     } catch {
+      if (controller.signal.aborted) return errorResult("timeout", "取得が時間内に完了しませんでした。同じ条件で再試行できます。");
       return errorResult("invalid_response", "stock-notes APIのレスポンスを読み取れませんでした。");
     }
   } catch {
-    return errorResult("upstream_error", "stock-notes APIへ接続できませんでした。");
+    return controller.signal.aborted
+      ? errorResult("timeout", "取得が時間内に完了しませんでした。同じ条件で再試行できます。")
+      : errorResult("connection_error", "stock-notes APIへ接続できませんでした。接続を確認して再試行してください。");
   } finally {
-    clearTimeout(timeoutId);
+    clearTimeout(timeoutId!);
   }
 }
 

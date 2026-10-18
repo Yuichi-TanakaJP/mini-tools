@@ -1,7 +1,7 @@
 // app/ToolGridClient.tsx
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import type { MouseEvent, PointerEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { track } from "@/lib/analytics";

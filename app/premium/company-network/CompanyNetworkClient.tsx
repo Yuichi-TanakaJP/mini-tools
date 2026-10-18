@@ -1,6 +1,8 @@
 "use client";
 
-import Link from "next/link";
+import PendingRegion from "@/components/navigation/PendingRegion";
+import { readNavigationJson } from "@/lib/navigation-read";
+import Link from "@/components/navigation/Link";
 import { useEffect, useMemo, useState } from "react";
 import styles from "./CompanyNetwork.module.css";
 import { CATEGORY_LABEL, VIEWS, type CompanyNetworkViewMode } from "./presentation";
@@ -87,10 +89,9 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
     }
     const key = requestKey;
 
-    fetch(`/api/premium/company-network?${params.toString()}`, { credentials: "same-origin", signal: controller.signal, cache: "no-store" })
-      .then(async (response) => {
-        const payload = await response.json() as CompanyNetworkScopeResult;
-        if (!response.ok || payload.status === "error" || payload.status === "unauthenticated" || payload.status === "unconfigured") throw new Error(payload.message);
+    readNavigationJson<CompanyNetworkScopeResult>(`/api/premium/company-network?${params.toString()}`, { credentials: "same-origin", signal: controller.signal, cache: "no-store" })
+      .then((payload) => {
+        if ( payload.status === "error" || payload.status === "unauthenticated" || payload.status === "unconfigured") throw new Error(payload.message);
         return payload.data;
       })
       .then((data) => {
@@ -171,6 +172,7 @@ export default function CompanyNetworkClient({ result }: { result: CompanyNetwor
 
   return (
     <main className={styles.page}>
+      <PendingRegion active={loading} label="選択した企業関係" />
       <nav className={styles.topNav}>
         <Link href="/premium" className={styles.topNavLink}>← Premium ホーム</Link>
         <Link href="/premium/industry-map" className={styles.topNavLink}>業界マップ →</Link>

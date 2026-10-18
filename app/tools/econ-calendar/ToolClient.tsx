@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
+import PendingRegion from "@/components/navigation/PendingRegion";
+import { readNavigationJson } from "@/lib/navigation-read";
 import type { CSSProperties } from "react";
 import type { EconCalendarPageData, EconCalendarEvent, EconCalendarWeeklyResponse } from "./types";
 
@@ -112,18 +114,21 @@ function ImpactDots({ impact }: { impact: number | null }) {
 
 type ImpactFilter = "all" | "3+" | "4+" | "5";
 
-async function fetchWeek(weekStart: string): Promise<EconCalendarWeeklyResponse | null> {
+async function fetchWeek(weekStart: string, signal: AbortSignal): Promise<EconCalendarWeeklyResponse | null> {
   try {
-    const res = await fetch(`/api/econ-calendar/${weekStart}`);
-    if (!res.ok) return null;
-    return (await res.json()) as EconCalendarWeeklyResponse;
-  } catch {
-    return null;
-  }
+    const result = await readNavigationJson<EconCalendarWeeklyResponse>(`/api/econ-calendar/${weekStart}`, { signal });
+    return result.week_start === weekStart && Array.isArray(result.calendar) ? result : null;
+  } catch { return null; }
 }
 
 export default function ToolClient({ data }: { data: EconCalendarPageData }) {
   const { meta, manifest } = data;
+  const weekRequest = useRef<AbortController | null>(null);
+  const monthRequest = useRef<AbortController | null>(null);
+  const [readError, setReadError] = useState<string | null>(null);
+  const [requestedMonth, setRequestedMonth] = useState<string | null>(null);
+  const [requestedWeek, setRequestedWeek] = useState<string | null>(null);
+  useEffect(() => () => { weekRequest.current?.abort(); monthRequest.current?.abort(); }, []);
 
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentWeekly, setCurrentWeekly] = useState<EconCalendarWeeklyResponse | null>(data.weekly);
@@ -173,16 +178,22 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
     : null;
 
   const navigateWeek = useCallback(async (weekStart: string) => {
-    setWeekLoading(true);
-    const result = await fetchWeek(weekStart);
+    weekRequest.current?.abort();
+    const controller = new AbortController(); weekRequest.current = controller;
+    setRequestedWeek(weekStart); setWeekLoading(true); setReadError(null);
+    const result = await fetchWeek(weekStart, controller.signal);
+    if (controller.signal.aborted) return;
     if (result) setCurrentWeekly(result);
+    else setReadError("選択週の取得に失敗しました。表示中の週を保持しています。");
     setWeekLoading(false);
   }, []);
 
   // 月表示: 選択月が変わったら対象週を取得
   const loadMonth = useCallback(async (month: string) => {
     if (!manifest) return;
-    setMonthLoading(true);
+    monthRequest.current?.abort();
+    const controller = new AbortController(); monthRequest.current = controller;
+    setRequestedMonth(month); setMonthLoading(true); setReadError(null);
     // 週が選択月と重なるか（week_start〜week_start+6 が month の範囲と交差）
     const [y, m] = month.split("-").map(Number);
     const monthStart = new Date(Date.UTC(y, m - 1, 1));
@@ -195,7 +206,12 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
     });
     const toFetch = weeksInMonth.filter((w) => !monthData.has(w));
     if (toFetch.length > 0) {
-      const results = await Promise.all(toFetch.map(fetchWeek));
+      const results = await Promise.all(toFetch.map(week => fetchWeek(week, controller.signal)));
+      if (controller.signal.aborted) return;
+      if (results.some(result => result === null)) {
+        setReadError("選択月の取得に失敗しました。表示中の月を保持しています。");
+        setMonthLoading(false); return;
+      }
       setMonthData((prev) => {
         const next = new Map(prev);
         toFetch.forEach((w, i) => {
@@ -204,12 +220,11 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
         return next;
       });
     }
-    setMonthLoading(false);
+    if (!controller.signal.aborted) { setSelectedMonth(month); setMonthLoading(false); }
   }, [manifest, monthData]);
 
   const handleMonthChange = useCallback((month: string) => {
-    setSelectedMonth(month);
-    loadMonth(month);
+    void loadMonth(month);
   }, [loadMonth]);
 
   // 週表示: イベント集計
@@ -305,6 +320,12 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
 
   return (
     <main style={styles.page}>
+      <PendingRegion active={weekLoading || monthLoading} label="カレンダー" />
+      {readError ? <p role="alert">{readError} <button type="button" onClick={() => {
+        if (viewMode === "month" && requestedMonth) void loadMonth(requestedMonth);
+        else if (requestedWeek) void navigateWeek(requestedWeek);
+      }}>同じ条件で再試行</button></p> : null}
+      {(monthLoading && requestedMonth !== selectedMonth) ? <p>要求中: {requestedMonth}。表示中: {selectedMonth}</p> : null}
       <div style={styles.shell}>
         {/* ヒーロー */}
         <section style={styles.heroBlock}>
@@ -317,7 +338,7 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
           <button
             type="button"
             style={{ ...styles.viewTab, ...(viewMode === "week" ? styles.viewTabActive : {}) }}
-            onClick={() => setViewMode("week")}
+            onClick={() => { monthRequest.current?.abort(); setMonthLoading(false); setViewMode("week"); }}
           >
             週表示
           </button>
@@ -325,6 +346,7 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
             type="button"
             style={{ ...styles.viewTab, ...(viewMode === "month" ? styles.viewTabActive : {}) }}
             onClick={() => {
+              weekRequest.current?.abort(); setWeekLoading(false);
               setViewMode("month");
               if (manifest) loadMonth(selectedMonth);
             }}
@@ -341,7 +363,7 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
               <button
                 type="button"
                 style={{ ...styles.weekNavBtn, ...(prevWeekStart ? {} : styles.weekNavBtnDisabled) }}
-                disabled={!prevWeekStart || weekLoading}
+                disabled={!prevWeekStart}
                 onClick={() => prevWeekStart && navigateWeek(prevWeekStart)}
               >
                 ‹ 前の週
@@ -352,7 +374,7 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
               <button
                 type="button"
                 style={{ ...styles.weekNavBtn, ...(nextWeekStart ? {} : styles.weekNavBtnDisabled) }}
-                disabled={!nextWeekStart || weekLoading}
+                disabled={!nextWeekStart}
                 onClick={() => nextWeekStart && navigateWeek(nextWeekStart)}
               >
                 次の週 ›
@@ -568,9 +590,7 @@ export default function ToolClient({ data }: { data: EconCalendarPageData }) {
               ))}
             </div>
 
-            {monthLoading ? (
-              <div style={styles.loadingText}>読み込み中…</div>
-            ) : monthGroupedByDate.length === 0 ? (
+            {monthGroupedByDate.length === 0 ? (
               <article style={styles.emptyCard}>
                 <div style={styles.emptyTitle}>データがありません</div>
                 <div style={styles.emptyNote}>

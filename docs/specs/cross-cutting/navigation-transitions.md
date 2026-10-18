@@ -2,7 +2,7 @@
 
 更新日: 2026-10-18。対象: mini-toolsの全39ページ定義と、同一画面内の条件変更・データ切替。
 
-**決定した実装仕様。現行の全画面への適用は未実施。** 現状の根拠は本番コード `86ada02d061ffe0447232c29c76c8ccc0e7c9bbd`。旧画面の押下が無反応に見える状態を解消し、遅い/失敗した場合も条件と戻り先を保持する。以下の「目標」は実測値ではなく、実装後の受入基準である。
+**実装ブランチで共通遷移の適用済み。本番は未反映。** 現状の根拠は本番コード `86ada02d061ffe0447232c29c76c8ccc0e7c9bbd`。旧画面の押下が無反応に見える状態を解消し、遅い/失敗した場合も条件と戻り先を保持する。以下の「目標」は実測値ではなく、実装後の受入基準である。
 
 ## 1. 対応方針
 
@@ -150,7 +150,7 @@ query変更は新たな39ページとして数えないが、操作単位のpend
 |---|---|---|---|---|
 | Q01 | `/premium/themes`のページc | `/premium/themes?cursor=c2` | 追加asset通常0、RSC 1、U 1。U実測約6.8KiB、DB通常31 | V1。旧一覧保持、押下spinner、同条件retry |
 | Q02 | テーマ一覧カード（cursor c） | `/premium/themes/[themeId]` | RSC 1、U 1。U実測約2.0〜9.2KiB、DB複数 | V2。loading、戻りのcursorを保持する方針 |
-| Q03 | 詳細（一覧cursor cから進入） | 元の`/premium/themes?cursor=c` | RSC 0〜1（cache依存）、U 0〜1。追加asset通常0 | V1。現在は先頭へ戻るだけのため、元条件保持へ改善 |
+| Q03 | 詳細（一覧cursor cから進入） | 元の`/premium/themes?cursor=c` | RSC 0〜1（cache依存）、U 0〜1。追加asset通常0 | V1。詳細URLの検証済みcursorを使って元一覧へ戻る |
 | Q04 | `/premium/market?month=m` | 同pathのmonth=m2 | RSC 1、U論理2+n。追加asset通常0 | S3。旧月と要求月を区別 |
 | Q05 | `/tools/market-rankings?type=t&month=m` | 同pathのtype=t2/month=m2 | RSC 1、U論理2。追加asset通常0 | S2。既存hookを共通仕様に合わせる |
 | Q06 | `/tools/investor-flow?start=s&end=e` | 同pathの別週 | RSC 1、U通常4。追加asset通常0 | S2。通常Linkにもpendingを追加 |
@@ -217,3 +217,15 @@ DB集約RPCやmigrationを要する最適化は別PRで設計・承認し、件�
 - [既存router pending判断](../../decision-log/2026-05-30-router-transition-pending-feedback.md)、[既存loading判断](../../decision-log/2026-04-07-loading-ui-and-parallel-fetch.md)
 - [Next.js useLinkStatus](https://nextjs.org/docs/app/api-reference/functions/use-link-status)、[loading](https://nextjs.org/docs/app/api-reference/file-conventions/loading)、[useRouter](https://nextjs.org/docs/app/api-reference/functions/use-router)
 - ソース：`app/layout.tsx`、`components/Header.tsx`、`NavDrawer.tsx`、`MobileBottomNav.tsx`、`app/ToolGridClient.tsx`、`lib/tools-catalog.ts`、`app/tools/_shared/use-router-transition.ts`、`use-daily-market-data.ts`、各`page.tsx`とClient、`app/premium/themes/data-loader.ts`。
+
+## 2026-10-18 実装範囲
+
+- rootのNavigationProvider、全内部Next Linkの共通wrapper、既存router hook、root loading/error、既存segment loading、ClientOnly chunk fallbackを接続。39ページの入口と共通/関連リンクに適用する。
+- URL commitと実データ/fallbackの待機は別登録。最新nav IDだけを完了可能にし、query/refresh/redirect/履歴でも古い完了が新しい進捗を消さない。同一の待機中Linkの連打を抑止する。
+- ヘッダーのPremium導線は従来のnative aから共通Linkへ統一し、不要なdocument再読込を避ける。native内部aとGET formはbrowser動作を保ったまま受付表示。同条件GET再読込も対象。外部、download、修飾クリック、同一documentのhashは元画面をpendingにしない。
+- Viewerは**MiniTools側で上流HTTP応答を8秒、bodyのJSON読取までを合計10秒で打切る**。Cloud Run内の各DB処理へ新しいdeadlineを配布する変更は含めない。前回成功一覧はmounted session内のみ保持し、storage/共有cacheへ保存しない。
+- 日付4画面、経済指標の週/月、開示条件、企業scopeに中断/時間制限/更新中を接続。日付と週/月は前回表示と要求条件を区別し、失敗を0件として確定しない。企業scopeは条件が違う前回データを新scopeへ混ぜず、取得結果をkeyで照合する。
+- Premium login後のfull assign、logoutの既存認証処理は維持し、既存の送信中状態を共通表示へ接続。認証方式・RLS・保存処理は変更しない。
+- データ予算/p95は引き続き受入目標であり、本番の全画面実測合格ではない。view別取得最適化、DB集約、root bundle分割は、計測で超過箇所を特定してから行う。
+
+PortfolioについてはUI-4/V2 Phase 6の業務機能を拡張せず、既存入口/関連Linkへの共通feedback適用のみ。受入条件はPremium境界・既存hrefの維持と、無関係な保有操作/保存契約へ差分がないこと。

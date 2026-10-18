@@ -369,13 +369,13 @@ describe("Theme Viewer data loader", () => {
     expect(result).toEqual({ status: "empty" });
   });
 
-  it("接続失敗をupstream_errorとして返す", async () => {
+  it("接続失敗をconnection_errorとして返す", async () => {
     setApiConfig();
     vi.mocked(globalThis.fetch).mockRejectedValue(new Error("network failure"));
 
     const result = await loadThemeList();
 
-    expect(result).toMatchObject({ status: "upstream_error", httpStatus: null });
+    expect(result).toMatchObject({ status: "connection_error", httpStatus: null });
     expect(JSON.stringify(result)).not.toContain("network failure");
   });
 

@@ -1,4 +1,6 @@
 "use client";
+
+import ReloadButton from "@/components/navigation/ReloadButton";
 import { useEffect, useState } from "react";
 import { useYutaiWorkspace } from "@/lib/yutai/browser";
 import { isSyncConfigured } from "@/lib/supabase/config";
@@ -19,7 +21,7 @@ export default function DatabaseRewards({ scanEnabled = false }: { scanEnabled?:
   if (!view.data) return <section className={styles.page}><h1>株主優待期限帳</h1>
     <p>{view.status === "signed_out" ? "Supabaseへのログインが必要です。" : "優待残高を取得しています。"}</p>
     {view.error && <p role="alert">取得に失敗しました。通信とログイン状態を確認してください。</p>}
-    <a href="/account">ログイン画面へ</a> <button onClick={() => window.location.reload()}>再読み込み</button></section>;
+    <a href="/account">ログイン画面へ</a> <ReloadButton /></section>;
   return <ConnectedRewards key={view.sessionRevision} view={view} scanEnabled={scanEnabled} />;
 }
 type Edit = { snapshot: Workspace; reward: Reward | null };

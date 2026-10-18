@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import { usePathname } from "next/navigation";
 import {
   CATEGORY_LABELS,

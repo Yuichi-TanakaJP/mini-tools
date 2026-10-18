@@ -5,6 +5,7 @@ import type { RankingDayData, RankingManifest, RankingMarket, RankingType, Ranki
 import LoadingSpinner from "@/components/LoadingSpinner";
 import TabBar from "@/app/tools/_shared/TabBar";
 import { formatToolDate, signPrefix } from "@/app/tools/_shared/tool-client-format";
+import PendingRegion from "@/components/navigation/PendingRegion";
 import { useDailyMarketData } from "@/app/tools/_shared/use-daily-market-data";
 
 const MARKETS: RankingMarket[] = ["プライム", "スタンダード", "グロース"];
@@ -157,19 +158,19 @@ export default function ToolClient({
   const [selectedDate, setSelectedDate] = useState<string>(manifest.latest);
   const [selectedMarket, setSelectedMarket] = useState<RankingMarket>("プライム");
   const [selectedRanking, setSelectedRanking] = useState<RankingType>("値上がり率");
-  const { loadedDays, isLoading, loadError } = useDailyMarketData<RankingDayData>({
+  const { currentDayData, isPreviousData, isLoading, loadError, retry } = useDailyMarketData<RankingDayData>({
     activeDate: selectedDate,
     initialDayData,
     routePrefix: "/tools/stock-ranking/data",
   });
 
   const filtered = useMemo<RankingRecord[]>(() => {
-    const day = loadedDays[selectedDate];
+    const day = currentDayData;
     if (!day) return [];
     return day.records.filter(
       (r) => r.market === selectedMarket && r.ranking === selectedRanking,
     );
-  }, [loadedDays, selectedDate, selectedMarket, selectedRanking]);
+  }, [currentDayData, selectedMarket, selectedRanking]);
   const currentDateIndex = manifest.dates.indexOf(selectedDate);
   const prevDate =
     currentDateIndex >= 0 && currentDateIndex < manifest.dates.length - 1
@@ -315,6 +316,8 @@ export default function ToolClient({
         </span>
       </div>
 
+      <PendingRegion active={isLoading} label="選択日のデータ" />
+      {isPreviousData ? <p role="status">表示中: {currentDayData?.date}。要求中の選択日とは異なります。</p> : null}
       {/* テーブル */}
       <div style={{
         background: "var(--color-bg-card)",
@@ -324,9 +327,10 @@ export default function ToolClient({
       }}>
         {loadError ? (
           <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--color-text-muted)", fontSize: 14 }}>
-            {loadError}
+            {loadError} <button type="button" onClick={retry}>同じ日で再試行</button>
           </div>
-        ) : isLoading && !loadedDays[selectedDate] ? (
+        ) : null}
+        {isLoading && !currentDayData ? (
           <LoadingSpinner />
         ) : (
         <RankingTable records={filtered} rankingType={selectedRanking} />

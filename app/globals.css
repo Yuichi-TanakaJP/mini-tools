@@ -254,3 +254,25 @@ html {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* Navigation feedback: independent of active-page styling and layout width. */
+[data-navigation-pending="true"] { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+[data-navigation-link] { position: relative; }
+.navigation-link-hint { position: absolute; top: 4px; right: 4px; pointer-events: none; display: inline-block; width: .65em; height: .65em; margin-inline-start: .35em; opacity: 0; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; }
+.navigation-link-hint[data-pending="true"] { animation: navigation-spin .8s linear 150ms infinite, navigation-reveal 0s 150ms forwards; }
+.navigation-feedback { position: fixed; top: 54px; left: 0; right: 0; z-index: 1000; pointer-events: none; font-size: .875rem; padding: 8px 16px; }
+.navigation-feedback[data-visible="true"] { background: var(--color-bg-card); border-bottom: 1px solid var(--color-accent); }
+.navigation-progress { position: absolute; top: 0; left: 0; height: 3px; width: 35%; background: var(--color-accent); animation: navigation-progress 1.2s ease-in-out infinite; }
+.navigation-recovery { display: inline-flex; gap: 12px; margin-inline-start: 12px; pointer-events: auto; }
+.navigation-recovery a { color: var(--color-accent); cursor: pointer; }
+.route-loading { max-width: 960px; margin: 24px auto; padding: 24px; min-height: 240px; }
+.route-loading h1 { font-size: 1.4rem; }
+.route-loading-skeleton { margin-top: 20px; min-height: 120px; background: var(--color-bg-card); border-radius: 16px; }
+.data-pending { color: var(--color-text-sub); }
+@keyframes navigation-spin { to { transform: rotate(360deg); } }
+@keyframes navigation-reveal { to { opacity: 1; } }
+@keyframes navigation-progress { from { transform: translateX(-100%); } to { transform: translateX(385%); } }
+@media (prefers-reduced-motion: reduce) {
+  .navigation-progress { animation: none; width: 100%; }
+  .navigation-link-hint[data-pending="true"] { animation: none; opacity: 1; }
+}

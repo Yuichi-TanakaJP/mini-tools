@@ -1,5 +1,7 @@
 "use client";
 
+import ReloadButton from "@/components/navigation/ReloadButton";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useYutaiWorkspace } from "@/lib/yutai/browser";
@@ -142,7 +144,7 @@ export default function ToolClient({ data }: { data: MonthlyYutaiPageData }) {
     <h1>優待カレンダー — Supabase接続検証</h1>
     <p>{view.status === "signed_out" ? "Supabaseへのログインが必要です。" : "優待データを取得しています。"}</p>
     {view.error && <p role="alert">データの取得に失敗しました。ログイン状態・通信を確認してください。</p>}
-    <a href="/account">ログイン画面へ</a> <button type="button" onClick={() => window.location.reload()}>再読み込み</button>
+    <a href="/account">ログイン画面へ</a> <ReloadButton />
   </main>;
   return <ConnectedCalendar key={`${view.sessionRevision}:${data.selectedMonthId}`} data={data} view={view} />;
 }

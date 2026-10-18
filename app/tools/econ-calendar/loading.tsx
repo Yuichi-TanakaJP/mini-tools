@@ -1,5 +1,7 @@
+import LoadingActivity from "@/components/navigation/LoadingActivity";
 export default function Loading() {
-  return (
+  return (<>
+      <LoadingActivity />
     <main
       style={{
         minHeight: "100vh",
@@ -24,5 +26,5 @@ export default function Loading() {
         読み込み中…
       </div>
     </main>
-  );
+  </>);
 }

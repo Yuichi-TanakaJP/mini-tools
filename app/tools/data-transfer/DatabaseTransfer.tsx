@@ -1,5 +1,7 @@
 "use client";
 
+import ReloadButton from "@/components/navigation/ReloadButton";
+
 import { useEffect, useRef, useState } from "react";
 import { getYutaiRepository, useYutaiWorkspace } from "@/lib/yutai/browser";
 import { getSessionActionRunner } from "@/lib/yutai/action-runner";
@@ -14,7 +16,7 @@ export default function DatabaseTransfer() {
   if (!configured || !view.data) return <section style={panel} aria-label="優待DBの出力・照合"><h2>優待DBの出力・照合</h2>
     <p>{!configured ? "DB接続設定がありません。旧データへは戻しません。" : view.status === "signed_out" ? "Supabaseへのログインが必要です。" : "優待データを取得しています。"}</p>
     {view.error && <p role="alert">DBから取得できませんでした。通信・ログイン状態を確認してください。</p>}
-    <a href="/account">ログイン画面へ</a> <button onClick={() => window.location.reload()}>再読み込み</button></section>;
+    <a href="/account">ログイン画面へ</a> <ReloadButton /></section>;
   return <div key={view.sessionRevision}><ConnectedTransfer view={view} />
     {process.env.NEXT_PUBLIC_YUTAI_RESTORE_DB_PREVIEW === "true" && <DatabaseRestore />}</div>;
 }

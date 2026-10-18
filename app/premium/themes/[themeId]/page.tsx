@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
 import { loadThemeDetail } from "../data-loader";
+import { themeListHref } from "../navigation";
 import { ThemeDetailView } from "../ThemeViewer";
 
 export const metadata: Metadata = {
@@ -16,17 +17,22 @@ export const metadata: Metadata = {
 
 export default async function PremiumThemeDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ themeId: string }>;
+  searchParams: Promise<{ cursor?: string | string[] }>;
 }) {
   const { themeId } = await params;
+  const { cursor } = await searchParams;
+  const listHref = themeListHref(cursor);
+  const detailHref = `/premium/themes/${encodeURIComponent(themeId)}${listHref.includes("?") ? listHref.slice(listHref.indexOf("?")) : ""}`;
   const cookieStore = await cookies();
   const session = cookieStore.get(PREMIUM_COOKIE_NAME)?.value;
 
   if (!verifyPremiumSession(session)) {
-    redirect(`/premium/login?next=${encodeURIComponent(`/premium/themes/${themeId}`)}`);
+    redirect(`/premium/login?next=${encodeURIComponent(detailHref)}`);
   }
 
   const result = await loadThemeDetail(themeId);
-  return <ThemeDetailView result={result} />;
+  return <ThemeDetailView result={result} listHref={listHref} />;
 }

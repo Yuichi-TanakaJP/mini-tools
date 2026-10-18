@@ -1,5 +1,7 @@
 "use client";
 
+import ReloadButton from "@/components/navigation/ReloadButton";
+
 import { useEffect, useMemo, useState } from "react";
 import { useYutaiRewardLedgerV2 } from "../../../lib/yutai/reward-v2-browser";
 import type {
@@ -287,7 +289,7 @@ export default function YutaiExpiryDashboard({ scanEnabled = false }: { scanEnab
         <section className={styles.hero}>
           <h1>株主優待期限帳</h1>
           <p>{state.error ? `優待データを取得できませんでした: ${state.error}` : "優待データを読み込んでいます…"}</p>
-          {state.error && <button type="button" onClick={() => window.location.reload()}>再読み込み</button>}
+          {state.error && <ReloadButton />}
         </section>
       </main>
     );

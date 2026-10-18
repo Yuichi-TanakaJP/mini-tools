@@ -1,17 +1,22 @@
 "use client";
 
+import { useNavigationFeedback, useNavigationActivity } from "@/components/navigation/NavigationProvider";
+
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function LogoutButton() {
   const router = useRouter();
+  const feedback = useNavigationFeedback();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  useNavigationActivity(isSubmitting, "認証");
 
   async function handleLogout() {
     setIsSubmitting(true);
 
     try {
       await fetch("/api/premium/logout", { method: "POST" });
+      feedback?.begin("/premium/login");
       router.push("/premium/login");
       router.refresh();
     } finally {
