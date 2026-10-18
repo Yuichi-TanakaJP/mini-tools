@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { inspectSource, routeForPage, validateContracts, transitionCells, renderTransitionTables, run } from '../check-navigation-contracts.mjs';
+import { inspectSource, routeForPage, validateContracts, transitionCells, renderTransitionTables, run, collectTestNames } from '../check-navigation-contracts.mjs';
 import path from 'node:path';
+import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const ref='tests/ui-smoke/navigation.spec.ts#entry';
@@ -49,3 +50,26 @@ describe('navigation contract omissions',()=>{
  it('keeps table values in named canonical fields',()=>expect(transitionCells({id:'Q01',from:'list',to:'cursor',details:['V1']})).toEqual(['Q01','list','cursor','V1']));
  it('checks the actual repository, including existing E2E references',()=>{const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');const result=run(root);expect(result.errors).toEqual([]);expect(result.pages).toBeGreaterThan(0);expect(result.transitions).toBeGreaterThan(0);expect(result.review.length).toBeGreaterThan(0);});
 });
+
+ describe('valid maintenance forms from independent review',()=>{
+  it('recognizes each tables, tagged tables and ordinary tests',()=>{
+    const names=collectTestNames({'components/navigation/a.test.ts':'it.each([1,2])("case %s", value=>{}); test.each`a | b`("tagged $a",()=>{}); it("plain",()=>{});'});
+    expect([...names]).toEqual(['components/navigation/a.test.ts#case %s','components/navigation/a.test.ts#tagged $a','components/navigation/a.test.ts#plain']);
+  });
+  it('keeps provider identity when its default import is renamed',()=>{
+    const f=fixture();f.files['app/layout.tsx']='import NavProvider from "@/components/navigation/NavigationProvider";export default function Layout(){return <NavProvider/>}';
+    expect(errors(f)).toBe('');
+  });
+  it('resolves existing colocated and parameterized navigation references',()=>{
+    const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
+    const fsModule=fs;
+    const original=fsModule.readFileSync;
+    const contract=JSON.parse(original(path.join(root,'config/navigation-contracts.json'),'utf8'));
+    contract.transitions.find(row=>row.id==='G07').tests=[
+      'components/navigation/navigation-target.test.ts#preserves a valid opaque cursor',
+      'lib/__tests__/premium-navigation.test.ts#許可した内部パスへ復帰できる: %s',
+    ];
+    fsModule.readFileSync=function(file,...args){return path.resolve(String(file))===path.join(root,'config/navigation-contracts.json') ? JSON.stringify(contract) : original.call(this,file,...args);};
+    try{expect(run(root).errors).toEqual([]);}finally{fsModule.readFileSync=original;}
+  });
+ });

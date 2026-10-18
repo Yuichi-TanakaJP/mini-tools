@@ -15,7 +15,7 @@ const external = value => value !== null && (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.t
 export function inspectSource(file, source) {
   const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, file.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
   const sites = [], errors = [];
-  const linkNames = new Set(), dynamicNames = new Set(), routerHooks = new Set(), routers = new Set(), reads = new Set(["fetch", "window.fetch", "globalThis.fetch", "readNavigationJson"]), feedbackComponents = new Set();
+  const linkNames = new Set(), dynamicNames = new Set(), routerHooks = new Set(), routers = new Set(), reads = new Set(["fetch", "window.fetch", "globalThis.fetch", "readNavigationJson"]), feedbackComponents = new Map();
   const client = ast.statements.some(s => ts.isExpressionStatement(s) && stringValue(s.expression) === 'use client');
   const add = (kind, signature) => sites.push({ kind, signature });
   for (const node of ast.statements) {
@@ -32,7 +32,7 @@ export function inspectSource(file, source) {
   for(const node of ast.statements) {
     if(!ts.isImportDeclaration(node)) continue;
     const moduleName=stringValue(node.moduleSpecifier), clause=node.importClause;
-    if(moduleName && /navigation\/(?:PendingRegion|RouteLoading|LoadingActivity|NavigationProvider)$/.test(moduleName) && clause?.name) feedbackComponents.add(clause.name.text);
+    if(moduleName && /navigation\/(?:PendingRegion|RouteLoading|LoadingActivity|NavigationProvider)$/.test(moduleName) && clause?.name) feedbackComponents.set(clause.name.text, moduleName.split('/').at(-1));
     if(clause?.namedBindings && ts.isNamedImports(clause.namedBindings)) for(const item of clause.namedBindings.elements) if((item.propertyName?.text ?? item.name.text)==='readNavigationJson') reads.add(item.name.text);
   }
   for(const error of ast.parseDiagnostics) errors.push(file+': syntax error: '+ts.flattenDiagnosticMessageText(error.messageText,' '));
@@ -47,7 +47,7 @@ export function inspectSource(file, source) {
       const attrs = node.attributes.properties.filter(ts.isJsxAttribute);
       const get = name => attrs.find(a => a.name.getText(ast) === name);
       const href = attrValue(get('href'));
-      if (feedbackComponents.has(tag)) add('feedback', tag + ' ' + text(node.attributes));
+      if (feedbackComponents.has(tag)) add('feedback', feedbackComponents.get(tag) + ' ' + text(node.attributes));
       if (linkNames.has(tag)) add('link', href ? text(href) : '<spread-or-missing-href>');
       if (tag === 'a' && !get('download') && stringValue(attrValue(get('target'))) !== '_blank' && !external(stringValue(href))) add('native-link', href ? text(href) : '<spread-or-missing-href>');
       if (tag === 'form') add(stringValue(attrValue(get('method')))?.toLowerCase() === 'get' ? 'get-form' : 'form-submit', text(node.attributes));
@@ -101,14 +101,22 @@ export function parseTransitionRows(markdown) {
   return markdown.split(/\r?\n/).filter(line => /^\| [RGEQDLX]\d{2} \|/.test(line)).map(line => line.slice(1,-1).split(' | ').map(cell=>cell.trim()));
 }
 
-function testNames(files) {
+export function collectTestNames(files) {
   const names = new Set();
   for (const [file,source] of Object.entries(files)) {
     if (!/\.(?:spec|test)\.[cm]?[jt]sx?$/.test(file)) continue;
     const ast=ts.createSourceFile(file,source,ts.ScriptTarget.Latest,true);
     function visit(node) {
-      if (ts.isCallExpression(node) && /^(?:test|it)(?:\.(?:skip|only))?$/.test(node.expression.getText(ast))) {
+      if (ts.isCallExpression(node)) {
+        const expression=node.expression;
+        const declaration = ts.isCallExpression(expression) && ts.isPropertyAccessExpression(expression.expression) && expression.expression.name.text === 'each'
+          ? expression.expression.expression.getText(ast)
+          : ts.isTaggedTemplateExpression(expression) && ts.isPropertyAccessExpression(expression.tag) && expression.tag.name.text === 'each'
+            ? expression.tag.expression.getText(ast)
+            : expression.getText(ast);
+        if (/^(?:test|it)(?:\.(?:skip|only))?$/.test(declaration)) {
         const argument=node.arguments[0]; const name=stringValue(argument) ?? (argument && ts.isTemplateExpression(argument) ? argument.getText(ast).slice(1,-1) : null); if(name) names.add(`${file}#${name}`);
+        }
       }
       ts.forEachChild(node,visit);
     }
@@ -171,9 +179,9 @@ export function validateContracts({contract, files, markdown, tests}) {
 
 function readTests(root) {
   const result={};
-  function walk(dir) { if(!fs.existsSync(path.join(root,dir))) return; for(const item of fs.readdirSync(path.join(root,dir),{withFileTypes:true})) {const file=normalize(path.join(dir,item.name)); if(item.isDirectory()){if(item.name!=='node_modules' && !item.isSymbolicLink())walk(file);}else if(/\.(?:spec|test)\.[jt]sx?$/.test(file))result[file]=fs.readFileSync(path.join(root,file),'utf8');} }
-  walk('tests/ui-smoke'); walk('lib/__tests__'); walk('app/premium/company-network');
-  return testNames(result);
+  function walk(dir) { if(!fs.existsSync(path.join(root,dir))) return; for(const item of fs.readdirSync(path.join(root,dir),{withFileTypes:true})) {const file=normalize(path.join(dir,item.name)); if(item.isDirectory()){if(item.name!=='node_modules' && !item.isSymbolicLink())walk(file);}else if(/\.(?:spec|test)\.[cm]?[jt]sx?$/.test(file))result[file]=fs.readFileSync(path.join(root,file),'utf8');} }
+  for(const dir of ['app','components','lib','tests','scripts']) walk(dir);
+  return collectTestNames(result);
 }
 
 export function renderTransitionTables(markdown, contract) {
