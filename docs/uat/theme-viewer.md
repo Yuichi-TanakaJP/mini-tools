@@ -88,3 +88,16 @@
 
 対象unit: `npm test -- app/premium/themes app/api/premium/themes lib/__tests__/uncached-api-request.test.ts`。
 対象UI: `npx playwright test --config=playwright.navigation.config.ts --grep "full text reads"`（合成API/認証のみ）。`NAVIGATION_TEST_OUTPUT_DIR` はtask別scratchへ設定する。
+
+
+## 全文の整形・待機・失敗・モバイル・キーボード
+
+- 原文に文字としての\n、Markdown見出し/箇条書き/強調/HTMLを含め、整形表示で段落と安全な見出し/リストを確認する。原文表示は取得した文字列と完全一致し、切替でHTTPが増えない。
+- 2,000文字の境界で\とnや見出しが分かれても、追加後は蓄積した原文全体から正しく整形される。
+- 読む項目の分析日時を元の分析履歴の日時と照合する。末尾の完了表示と残数、本文先頭へ戻る操作を確認する。
+- 未取得→待機→成功、続き503→既読保持→同offsetretry→全文末尾、3秒長時間→12秒timeout→retry、中断→retry、409と文字数矛盾→読み直しを確認する。
+- Tabで選択欄・整形/原文・取得へ移動し、Enterで取得/継続/再試行する。各状態でフォーカスが失われず、末尾取得後も画面位置が大きく飛ばない。先頭へ戻る操作は見出しにフォーカスが移る。
+- 390×844のモバイルで横溢れ、選択欄、タップ領域44px以上、原文と整形表示を確認する。実機・スクリーンリーダーの実発声は別途未確認として記録する。
+
+対象unit: `npm test -- app/premium/themes`。
+対象UI: `npx playwright test --config=playwright.navigation.config.ts --grep "full text"`。画像・traceはtask別scratchを `NAVIGATION_TEST_OUTPUT_DIR` に指定する。異常系は合成/ローカルで行い、本番障害を故意に起こさない。実施結果はPR本文へ記録する。

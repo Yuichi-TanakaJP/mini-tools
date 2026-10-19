@@ -174,7 +174,7 @@ query変更は新たな39ページとして数えないが、操作単位のpend
 | L01 | 決算の市場/月/日、既取得表/graph、mapの表示方式、各ツールのlocalタブ | 同routeの表示状態 | 0 bytes、0 request（追加データ不要の場合） | L0。ネットワークspinnerは出さない |
 | X01 | `/account`のreset依頼 | メールの`/account/reset-password`→復帰先 | 認証メール/更新は操作。移動部分はTo profile | 認証の送信状態と移動中を分ける。自動再送なし |
 | X02 | local/DB toolsの認証案内a/reload | `/account`または同route再読込 | document GET。RSC遷移の予算と分ける | 意図を確認してLink化、必要な全画面reloadは維持 |
-| Q13 | テーマ詳細「本文を全文で読む」未取得/取得途中/失敗 | 同じ本文の次2,000文字／項目変更で未取得／409で最初から | ブラウザー→同origin proxy→stock-notes GET各1回/操作。本文最大2,000 Unicode文字（UTF-8最大8KB＋JSON metadata）。DB→APIは単一field全文。 | 即時pending、取得済み本文保持、12秒timeout・中断・同offset retry。版不一致は読み直し。統計未測定。 |
+| Q13 | テーマ詳細「本文を全文で読む」未取得/取得途中/失敗 | 同じ本文の次2,000文字／項目変更で未取得／409で最初から | ブラウザー→同origin proxy→stock-notes GET各1回/操作。本文最大2,000 Unicode文字（UTF-8最大8KB＋JSON metadata）。DB→APIは単一field全文。 | 即時pending、取得済み本文保持、12秒timeout・中断・同offset retry。版不一致は読み直し。統計未測定。 整形/原文はlocal切替、原文不変。日時付き選択、末尾完了と残数。追加時focus/scroll保持、先頭操作で見出しへfocus。 |
 <!-- /navigation-contracts:operations -->
 
 ## 7. 実測値と採用する予算の関係

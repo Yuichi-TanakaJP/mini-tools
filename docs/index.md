@@ -9,6 +9,8 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 
 ## 📘 Decision Log（設計判断）
 
+- [2026-10-20 原文を保持した全文の読みやすさ](./decision-log/2026-10-20-theme-viewer-readable-text.md)
+
 - [2026-10-20 テーマ本文の分割取得と全文表示](./decision-log/2026-10-20-theme-viewer-full-text.md)
 
 - [2026-10-18 全ページの画面遷移と待機予算](./decision-log/2026-10-18-navigation-feedback-and-latency.md)
