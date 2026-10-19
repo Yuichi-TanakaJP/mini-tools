@@ -71,3 +71,20 @@
 - 仕様: [テーマViewer仕様](../specs/tools/theme-viewer.md)
 - Decision Log: [一覧413とページ分割](../decision-log/2026-10-18-theme-viewer-pagination.md)
 - Decision Log: [テーマViewerの読み取り契約と責任境界](../decision-log/2026-08-27-theme-viewer-read-model.md)
+
+
+## 本文を全文で読む
+
+確認環境: 長文API実装版stock-notesを接続したローカル/Preview。未配備の本番画面と区別する。実施結果はPR本文へ記録し、本人の本文・設定値はGitへ保存しない。
+
+1. 一覧から対象テーマの詳細 `/premium/themes/[themeId]#full-text` を開く。
+2. タイトル直下「本文を全文で読む」で、対象の分析履歴・記録本文を選択する。未取得では通信が発生しないことを確認する。
+3. 「全文を読み始める」を押す。即時の取得中表示、先頭2,000文字、取得済み/全体文字数を確認する。
+4. 「次の2,000文字を読む」を終端まで押す。結合した表示文字列がDB元本文と完全一致し、最後の文章まで表示され「全文表示済み」になることを確認する。Unicodeの絵文字・改行を含む6,001文字以上でも欠落/重複しないことを合成テストする。
+5. 実データの検証は実在の文字数を記録する。6,000文字超の対象がなければその条件は未検証と記録し、合成データで代用した成功とはしない。
+6. 続きの503/timeout/中断でも先頭が残り、同offsetの再試行で回復する。項目変更では未取得へ戻り、古い完了が混ざらないことを確認する。
+7. 409では最初から読み直す。版不一致・offset不一致・誤ったrecord応答は完了扱いにならないことを確認する。
+8. Cookieなしは中継401かつ上流呼出し0回。本文・tokenはPWA CacheStorageに残らない。旧APIでmetadataがなければ未対応を表示する。
+
+対象unit: `npm test -- app/premium/themes app/api/premium/themes lib/__tests__/uncached-api-request.test.ts`。
+対象UI: `npx playwright test --config=playwright.navigation.config.ts --grep "full text reads"`（合成API/認証のみ）。`NAVIGATION_TEST_OUTPUT_DIR` はtask別scratchへ設定する。

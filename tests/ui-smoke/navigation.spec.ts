@@ -244,3 +244,64 @@ test("disclosure retry preserves the failed range, topic and search", async ({ p
   await expect(page.getByRole("button", { name: "同じ条件で再試行" })).toHaveCount(0);
   await expect(page.locator(".data-pending")).toHaveCount(0);
 });
+
+
+test("full text reads >6000 chars to end with pending, retained retry, revision restart and cancellation", async ({ page }) => {
+  const source = "文😀".repeat(4000) + "全文末尾";
+  const points = Array.from(source);
+  let fail = false, conflict = false, inconsistent = false, delay = 0;
+  const offsets: number[] = [];
+  await page.route("**/api/premium/themes/text?*", async route => {
+    const url = new URL(route.request().url()); const offset = Number(url.searchParams.get("offset")); offsets.push(offset);
+    await new Promise(resolve => setTimeout(resolve, delay));
+    if (conflict) { await route.fulfill({ status: 409, body: "{}" }); return; }
+    if (fail) { await route.fulfill({ status: 503, body: "{}" }); return; }
+    const text = points.slice(offset, offset + 2000).join("");const end = offset + Array.from(text).length;
+    await route.fulfill({ json: { schemaVersion: "theme-viewer-text.v1", themeId: url.searchParams.get("themeId"), recordId: url.searchParams.get("recordId"),section: url.searchParams.get("section"),field:url.searchParams.get("field"),text,offset,totalChars:points.length + (inconsistent ? 1 : 0),revision:"a".repeat(64),hasMore:end<points.length,nextOffset:end<points.length?end:null } });
+  });
+  await page.goto("/premium/themes/00000000-0000-4000-8000-000000000001");
+  const region = page.getByRole("region", { name: "本文を全文で読む", exact: true });
+  expect(offsets).toEqual([]);
+  delay = 300;
+  await region.getByRole("button", { name: "全文を読み始める", exact: true }).click();
+  await expect(region.getByRole("status")).toContainText("本文を取得中");
+  await expect(region.getByRole("status")).toContainText("2,000 / 8,004");
+  fail = true;
+  await region.getByRole("button", { name: "次の2,000文字を読む", exact: true }).click();
+  await expect(region.getByRole("alert")).toBeVisible();
+  expect(await region.getByTestId("full-text-content").textContent()).toBe(points.slice(0, 2000).join(""));
+  fail = false; delay = 0;
+  await region.getByRole("button", { name: "同じ続きから再試行", exact: true }).click();
+  await expect(region.getByRole("status")).toContainText("4,000 / 8,004");
+  expect(offsets.slice(-2)).toEqual([2000,2000]);
+  for (let i = 0; i < 3; i++) {
+    await region.getByRole("button", { name: "次の2,000文字を読む", exact: true }).click();
+    await expect(region.getByRole("status")).toContainText(i === 2 ? "全文表示済み" : `${6000 + i * 2000 > 6000 ? "8,000" : "6,000"} / 8,004`);
+  }
+  expect(await region.getByTestId("full-text-content").textContent()).toBe(source);
+  await page.getByRole("combobox", { name: "全文を読む項目" }).selectOption("1");
+  await expect(region.getByRole("status")).toHaveText("未取得");
+  delay = 1000;
+  await region.getByRole("button", { name: "全文を読み始める", exact: true }).click();
+  await region.getByRole("button", { name: "取得を中断", exact: true }).click();
+  await expect(region.getByRole("alert")).toContainText("取得を中断");
+  delay = 0;
+  await region.getByRole("button", { name: "同じ続きから再試行", exact: true }).click();
+  await expect(region.getByRole("status")).toContainText("2,000 / 8,004");
+  conflict = true;
+  await region.getByRole("button", { name: "次の2,000文字を読む", exact: true }).click();
+  await expect(region.getByRole("alert")).toContainText("本文が更新");
+  conflict = false;
+  await region.getByRole("button", { name: "最初から読み直す", exact: true }).click();
+  await expect(region.getByRole("status")).toContainText("2,000 / 8,004");
+  expect(offsets.at(-1)).toBe(0);
+  inconsistent = true;
+  await region.getByRole("button", { name: "次の2,000文字を読む", exact: true }).click();
+  await expect(region.getByRole("alert")).toContainText("本文の文字数が変わりました");
+  await expect(region.getByRole("button", { name: "最初から読み直す", exact: true })).toBeVisible();
+  expect(await region.getByTestId("full-text-content").textContent()).toBe(points.slice(0, 2000).join(""));
+  inconsistent = false;
+  await region.getByRole("button", { name: "最初から読み直す", exact: true }).click();
+  await expect(region.getByRole("status")).toContainText("2,000 / 8,004");
+  expect(offsets.at(-1)).toBe(0);
+});

@@ -18,6 +18,9 @@ const server=http.createServer(async(req,res)=>{
   const cursor=url.searchParams.get("cursor");const page=cursor==="page2"?2:1;
   res.end(JSON.stringify({schemaVersion:"theme-viewer-list.v2",nextCursor:page===1?"page2":null,hasMore:page===1,themes:[theme(page)]}));return;
  }
+ if(url.pathname === "/viewer/themes/00000000-0000-4000-8000-000000000001") {
+  res.end(JSON.stringify({schemaVersion:"theme-viewer.v1",theme:{...theme(1),id:"00000000-0000-4000-8000-000000000001"},textSources:[{section:"analysisHistory",recordId:"00000000-0000-4000-8000-000000000002",fields:["body","concerns"]}],analysisHistory:[],currentThesis:null}));return;
+ }
  if(url.pathname.startsWith("/viewer/themes/")){
   res.end(JSON.stringify({schemaVersion:"theme-viewer.v1",theme:theme(Number(url.pathname.split("-").at(-1))||1),currentThesis:null,analysisHistory:[],evidence:[],directLinks:[],taxonomyMap:{nodes:[],themeLinks:[],stockLinks:[],edges:[]},metrics:{definitions:[],snapshots:[],values:[]},openActions:[]}));return;
  }
