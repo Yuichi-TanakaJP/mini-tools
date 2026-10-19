@@ -1,5 +1,8 @@
+import { TEXT_FIELDS, UUID, isThemeTextRequest, validateThemeTextChunk, type ThemeTextRequest } from "./text-contract";
 import type {
   ThemeAnalysis,
+  ThemeTextSource,
+  ThemeTextChunk,
   ThemeConfidence,
   ThemeDetailData,
   ThemeDetailLoadResult,
@@ -562,6 +565,7 @@ export function parseThemeDetailResponse(input: unknown): ThemeDetailData | null
     taxonomyMap,
     metrics,
     openActions,
+    textSources: parseTextSources(root.textSources),
     availability: buildAvailability(
       root,
       themeRecord,
@@ -649,6 +653,9 @@ async function requestViewerJson(
       signal: controller.signal,
     }), THEME_UPSTREAM_TIMEOUT_MS);
 
+    if (response.status === 409) {
+      return errorResult("upstream_error", "本文が更新されました。最初から読み直してください。", 409);
+    }
     if (response.status === 403) {
       return errorResult("forbidden", "stock-notes APIへのアクセスが許可されていません。", 403);
     }
@@ -796,3 +803,31 @@ export const themeViewerConfig = {
   baseEnv: API_BASE_ENV,
   tokenEnv: API_TOKEN_ENV,
 };
+
+function parseTextSources(input: unknown): ThemeTextSource[] | undefined {
+  if (input === undefined) return undefined;
+  if (!Array.isArray(input) || input.length > 150) throw new ThemeViewerResponseError("invalid text sources");
+  return input.map((value) => {
+    const row = requiredObject(value, "text source");
+    if (typeof row.section !== "string" || !Object.hasOwn(TEXT_FIELDS, row.section) ||
+      typeof row.recordId !== "string" || !UUID.test(row.recordId) ||
+      !Array.isArray(row.fields) || row.fields.length === 0 ||
+      row.fields.some((field) => typeof field !== "string" || !TEXT_FIELDS[row.section as string].includes(field))) {
+      throw new ThemeViewerResponseError("invalid text source");
+    }
+    return { section: row.section, recordId: row.recordId, fields: row.fields as string[] };
+  });
+}
+
+export async function loadThemeText(
+  request: ThemeTextRequest, fetcher: Fetcher = fetch,
+): Promise<{ status: "ok"; data: ThemeTextChunk } | ThemeViewerError> {
+  if (!isThemeTextRequest(request)) return invalidResponseResult("本文の指定が不正です。");
+  const query = new URLSearchParams({ offset: String(request.offset) });
+  if (request.revision) query.set("revision", request.revision);
+  const path = [request.themeId, "text", request.section, request.recordId, request.field].map(encodeURIComponent).join("/");
+  const response = await requestViewerJson(`/viewer/themes/${path}?${query}`, "detail", fetcher);
+  if (response.ok === false) return viewerError(response);
+  try { return { status: "ok", data: validateThemeTextChunk(response.body, request) }; }
+  catch { return invalidResponseResult("本文の続きが正しくありません。最初から読み直してください。"); }
+}

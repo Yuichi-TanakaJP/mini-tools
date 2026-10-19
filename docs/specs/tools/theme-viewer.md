@@ -150,3 +150,18 @@ MiniToolsのloaderは1リクエストにつき1ページだけを取得する。
 - Decision Log: [一覧413とページ分割](../../decision-log/2026-10-18-theme-viewer-pagination.md)
 - Decision Log: [テーマViewerの読み取り契約と責任境界](../../decision-log/2026-08-27-theme-viewer-read-model.md)
 - Docs Writing Workflow: [docs作成ルール](../../docs-writing-workflow.md)
+
+
+## 本文の全文取得（2026-10-20、導入PRの仕様）
+
+テーマ詳細 `/premium/themes/[themeId]#full-text` のタイトル直下に「本文を全文で読む」を設ける。既存の概要/履歴は短縮表示を維持し、全文は項目選択→「全文を読み始める」→「次の2,000文字を読む」で取得済み文章へ追記する。先読みや全件自動取得はしない。「取得済み/全文の文字数」と末尾到達時の「全文表示済み」を表示する。本文が空なら取得後に登録なしを表示する。
+
+詳細APIの加算項目 `textSources` が対象record/fieldを列挙する。分析body、結論/根拠/懸念、仮説の文字列/配列、根拠、関連メモ、taxonomy、metrics、actionの対応fieldを選べる。配列は全要素のJSON文字列として表示する。詳細APIの既存件数上限内で返されたrecordが対象。セクションの11件目以降を全件取得する機能ではない。旧APIのmetadata未提供は「全文取得APIはまだ対応していません」と明示する。
+
+ブラウザーは `GET /api/premium/themes/text?themeId=...&section=...&recordId=...&field=...&offset=0` を呼ぶ。Premium Cookieを検証後、server-only tokenでstock-notes `GET /viewer/themes/{themeId}/text/{section}/{recordId}/{field}` を中継する。契約 `theme-viewer-text.v1` は `text/offset/nextOffset/totalChars/revision/hasMore` と要求の識別情報を持つ。Unicode code pointで最大2,000文字、続きはSHA-256 revision必須。受信位置、識別情報、版、文字数、終端を検証し、不整合を全文完了にしない。
+
+待機中は即時「本文を取得中」と中断操作を表示する。既取得本文を保持し、失敗/12秒timeout/中断後は同じoffsetを再試行する。項目変更/画面離脱は古い要求をabortし結果を破棄する。更新409は異なる版を結合せず、最初から読み直す。HTTP private/no-storeに加えPWAでも当該APIはNetworkOnlyとする。tokenや上流エラー本文はブラウザーへ出さない。
+
+**文字数の訂正:** 当初の413は一覧応答全体の60,000文字ガードであり、本文6,000文字の制限ではなかった。これと本文750文字省略は別問題。6,000文字超は今回の回帰試験条件として扱い、実データの存在や検証成功を推測しない。実施結果・対象環境・文字数・未検証項目はPR本文に記録する。
+
+stock-notes APIを先に配備し、その後MiniToolsを配備する。API内部ではDBから単一field全文を読みメモリで切り分けるため、Supabaseからの転送やDB読取自体のstreamingではない。既存の60,000文字ガードは緩和しない。判断理由は[全文を別取得する設計](../../decision-log/2026-10-20-theme-viewer-full-text.md)。

@@ -1,3 +1,4 @@
+import FullTextReader from "./FullTextReader";
 import RetryButton from "@/components/navigation/RetryButton";
 import type { CSSProperties, ReactNode } from "react";
 import Link from "@/components/navigation/Link";
@@ -738,6 +739,8 @@ export function ThemeDetailView({ result, listHref = "/premium/themes" }: { resu
                 confidence: result.data.theme.provenance.confidence,
               }} />
             </ViewerHero>
+
+            <FullTextReader themeId={result.data.theme.id} sources={result.data.textSources} />
 
             <div style={styles.detailGrid}>
               <OverviewSection data={result.data} />

@@ -1083,6 +1083,20 @@
         "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
       ],
       "coverage": "entry-only"
+    },
+    {
+      "id": "Q13",
+      "from": "テーマ詳細「本文を全文で読む」未取得/取得途中/失敗",
+      "to": "同じ本文の次2,000文字／項目変更で未取得／409で最初から",
+      "details": [
+        "ブラウザー→同origin proxy→stock-notes GET各1回/操作。本文最大2,000 Unicode文字（UTF-8最大8KB＋JSON metadata）。DB→APIは単一field全文。",
+        "即時pending、取得済み本文保持、12秒timeout・中断・同offset retry。版不一致は読み直し。統計未測定。"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#full text reads >6000 chars to end with pending, retained retry, revision restart and cancellation",
+        "app/premium/themes/text-contract.test.ts#reconstructs >6000 Unicode characters including the final marker"
+      ],
+      "coverage": "partial"
     }
   ],
   "sources": {
@@ -2451,6 +2465,17 @@
       "exceptions": {
         "native-link": "保守時のdata-transfer案内とサインイン案内。保全/認証へのdocument移動を維持し、rootで受付する。"
       }
+    },
+    "app/premium/themes/FullTextReader.tsx": {
+      "transitions": [
+        "Q13"
+      ],
+      "sites": [
+        {
+          "kind": "client-request",
+          "signature": "fetch(`/api/premium/themes/text?${params}`, { cache: \"no-store\", signal: controller.signal })"
+        }
+      ]
     }
   },
   "tables": [

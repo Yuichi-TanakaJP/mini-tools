@@ -44,3 +44,14 @@ describe("PWA authenticated API cache boundary", () => {
     ).toBe(false);
   });
 });
+
+
+it("never caches private theme text reads authenticated by Cookie", () => {
+  expect(isSensitiveApiGet({ request: new Request("https://example.com/api/premium/themes/text?offset=0"), url: new URL("https://example.com/api/premium/themes/text?offset=0") })).toBe(true);
+});
+
+
+it.each(["/api/premium/themes/text/", "/api/premium/themes/text///"])("never caches redirect variants of private theme text: %s", (pathname) => {
+  const href = `https://example.com${pathname}?offset=0`;
+  expect(isSensitiveApiGet({ request: new Request(href), url: new URL(href) })).toBe(true);
+});

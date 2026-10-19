@@ -243,6 +243,7 @@ export type ThemeDetailData = {
   taxonomyMap: ThemeTaxonomyMap;
   metrics: ThemeMetrics;
   openActions: ThemeOpenAction[];
+  textSources?: ThemeTextSource[];
   availability: Record<ThemeSectionKey, ThemeSectionAvailability>;
 };
 
@@ -274,3 +275,11 @@ export type ThemeDetailLoadResult =
   | { status: "ok"; data: ThemeDetailData }
   | { status: "empty" }
   | ThemeViewerError;
+
+export type ThemeTextSource = { section: string; recordId: string; fields: string[] };
+export type ThemeTextChunk = {
+  schemaVersion: "theme-viewer-text.v1";
+  themeId: string; section: string; recordId: string; field: string;
+  text: string; offset: number; nextOffset: number | null; totalChars: number;
+  revision: string; hasMore: boolean;
+};
