@@ -305,3 +305,100 @@ test("full text reads >6000 chars to end with pending, retained retry, revision 
   await expect(region.getByRole("status")).toContainText("2,000 / 8,004");
   expect(offsets.at(-1)).toBe(0);
 });
+
+
+for (const mobile of [false, true]) test(`full text readability ${mobile ? "mobile" : "desktop"}: raw, pending, failure, keyboard and end`, async ({ page }, testInfo) => {
+  if (mobile) await page.setViewportSize({ width:390, height:844 });
+  const source = "# 調査の記録\\n\\n## 論点\\n- 根拠A\\n- 根拠B\\n\\n" + "読み進めるための段落。".repeat(220) + "\\n\\n## 結論\\n本文の末尾です。";
+  const points=Array.from(source);let fail=false, delay=1000;const offsets:number[]=[];
+  await page.route("**/api/premium/themes/text?*", async route => {
+    const url=new URL(route.request().url());const offset=Number(url.searchParams.get("offset"));offsets.push(offset);
+    await new Promise(resolve=>setTimeout(resolve,delay));
+    if(fail){await route.fulfill({status:503,body:"{}"});return;}
+    const text=points.slice(offset,offset+2000).join("");const end=offset+Array.from(text).length;
+    await route.fulfill({json:{schemaVersion:"theme-viewer-text.v1",themeId:url.searchParams.get("themeId"),recordId:url.searchParams.get("recordId"),section:url.searchParams.get("section"),field:url.searchParams.get("field"),text,offset,totalChars:points.length,revision:"a".repeat(64),hasMore:end<points.length,nextOffset:end<points.length?end:null}});
+  });
+  await page.goto("/premium/themes/00000000-0000-4000-8000-000000000001");
+  const region=page.getByRole("region",{name:"本文を全文で読む",exact:true});
+  const select=region.getByRole("combobox",{name:"全文を読む項目"});
+  await expect(select.locator("option").first()).toContainText("2026/08/26 21:52");
+  await select.press("Tab"); await expect(region.getByRole("button",{name:"整形表示",exact:true})).toBeFocused();
+  await page.keyboard.press("Tab"); await expect(region.getByRole("button",{name:"原文表示",exact:true})).toBeFocused();
+  await page.keyboard.press("Tab");
+  const load=region.getByRole("button",{name:"全文を読み始める",exact:true}); await expect(load).toBeFocused(); await page.keyboard.press("Enter");
+  await expect(region.getByRole("status")).toContainText("本文を取得中");
+  await page.screenshot({path:testInfo.outputPath("loading.png")});
+  await expect(region.getByRole("status")).toContainText("2,000 /");
+  await expect(region.getByRole("heading",{name:"調査の記録",exact:true})).toBeVisible();
+  await expect(region.getByRole("listitem").filter({hasText:"根拠A"})).toBeVisible();
+  fail=true;delay=200;
+  await region.getByRole("button",{name:"次の2,000文字を読む",exact:true}).press("Enter");
+  await expect(region.getByRole("alert")).toContainText("本文を取得できませんでした");
+  const retry=region.getByRole("button",{name:"同じ続きから再試行",exact:true});await expect(retry).toBeFocused();
+  await region.getByRole("alert").scrollIntoViewIfNeeded();
+  await page.screenshot({path:testInfo.outputPath("failure.png")});
+  fail=false;delay=0;const beforeAppend=await page.evaluate(()=>window.scrollY);await retry.press("Enter");
+  await expect(region.getByRole("status")).toContainText("全文表示済み");
+  await expect(region.getByText(`✓ 本文はここまでです（全${points.length.toLocaleString()}文字）`,{exact:true})).toBeVisible();
+  await expect(region.getByRole("button",{name:"全文表示済み",exact:true})).toBeFocused();
+  expect(Math.abs((await page.evaluate(()=>window.scrollY))-beforeAppend)).toBeLessThan(50);
+  expect(offsets).toEqual([0,2000,2000]);
+  await region.getByText(`✓ 本文はここまでです（全${points.length.toLocaleString()}文字）`,{exact:true}).scrollIntoViewIfNeeded();
+  await page.screenshot({path:testInfo.outputPath("end.png")});
+  await region.getByRole("button",{name:"本文の先頭へ",exact:true}).press("Enter");
+  await expect(region.getByRole("heading",{name:"本文を全文で読む",exact:true})).toBeFocused();
+  await page.screenshot({path:testInfo.outputPath("formatted.png")});
+  await region.getByRole("heading",{name:"調査の記録",exact:true}).scrollIntoViewIfNeeded();
+  await page.screenshot({path:testInfo.outputPath("formatted-body.png")});
+  await region.getByRole("button",{name:"原文表示",exact:true}).press("Enter");
+  expect(await region.getByTestId("full-text-content").textContent()).toBe(source);
+  await page.screenshot({path:testInfo.outputPath("raw.png")});
+  await region.getByRole("button",{name:"整形表示",exact:true}).press("Enter");
+  expect(offsets).toEqual([0,2000,2000]);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  const buttonSize=await region.getByRole("button",{name:"原文表示",exact:true}).boundingBox();expect(buttonSize!.height).toBeGreaterThanOrEqual(44);
+});
+
+test("full text readability: slow and timeout retain text for retry", async ({ page }, testInfo) => {
+  const source="記録。".repeat(800);const points=Array.from(source);let stalled=false;
+  await page.route("**/api/premium/themes/text?*",async route=>{
+    const url=new URL(route.request().url());const offset=Number(url.searchParams.get("offset"));
+    if(stalled) { await new Promise(resolve=>setTimeout(resolve,15000));await route.abort().catch(()=>{});return; }
+    const text=points.slice(offset,offset+2000).join("");const end=offset+Array.from(text).length;
+    await route.fulfill({json:{schemaVersion:"theme-viewer-text.v1",themeId:url.searchParams.get("themeId"),recordId:url.searchParams.get("recordId"),section:url.searchParams.get("section"),field:url.searchParams.get("field"),text,offset,totalChars:points.length,revision:"a".repeat(64),hasMore:end<points.length,nextOffset:end<points.length?end:null}});
+  });
+  await page.goto("/premium/themes/00000000-0000-4000-8000-000000000001");
+  const region=page.getByRole("region",{name:"本文を全文で読む",exact:true});
+  await region.getByRole("button",{name:"全文を読み始める",exact:true}).click();await expect(region.getByRole("status")).toContainText("2,000 /");
+  stalled=true;await region.getByRole("button",{name:"次の2,000文字を読む",exact:true}).click();
+  await expect(region.getByRole("status")).toContainText("取得に時間がかかっています",{timeout:5000});await region.getByRole("status").scrollIntoViewIfNeeded();await page.screenshot({path:testInfo.outputPath("slow.png")});
+  await expect(region.getByRole("alert")).toContainText("取得が時間内に完了しませんでした",{timeout:11000});
+  expect(await region.getByTestId("full-text-content").textContent()).toBe(points.slice(0,2000).join(""));
+  stalled=false;await region.getByRole("button",{name:"同じ続きから再試行",exact:true}).click();await expect(region.getByRole("status")).toContainText("全文表示済み");
+});
+
+
+test("full text readability: response-body deadline reports timeout and retries", async ({ page }) => {
+  await page.addInitScript(() => {
+    const original=window.fetch.bind(window);let stalled=false;
+    window.fetch=(input,init)=>{
+      if (String(input).startsWith("/api/premium/themes/text?") && !stalled) {
+        stalled=true;
+        return Promise.resolve(new Response(new ReadableStream({start(controller){
+          init?.signal?.addEventListener("abort",()=>controller.error(new DOMException("Aborted","AbortError")),{once:true});
+        }}),{headers:{"content-type":"application/json"}}));
+      }
+      return original(input,init);
+    };
+  });
+  await page.route("**/api/premium/themes/text?*",async route=>{
+    const url=new URL(route.request().url());
+    await route.fulfill({json:{schemaVersion:"theme-viewer-text.v1",themeId:url.searchParams.get("themeId"),recordId:url.searchParams.get("recordId"),section:url.searchParams.get("section"),field:url.searchParams.get("field"),text:"回復",offset:0,totalChars:2,revision:"a".repeat(64),hasMore:false,nextOffset:null}});
+  });
+  await page.goto("/premium/themes/00000000-0000-4000-8000-000000000001");
+  const region=page.getByRole("region",{name:"本文を全文で読む",exact:true});
+  await region.getByRole("button",{name:"全文を読み始める",exact:true}).click();
+  await expect(region.getByRole("alert")).toContainText("取得が時間内に完了しませんでした",{timeout:15000});
+  await region.getByRole("button",{name:"同じ続きから再試行",exact:true}).click();
+  await expect(region.getByRole("status")).toContainText("全文表示済み");
+});

@@ -1090,11 +1090,13 @@
       "to": "同じ本文の次2,000文字／項目変更で未取得／409で最初から",
       "details": [
         "ブラウザー→同origin proxy→stock-notes GET各1回/操作。本文最大2,000 Unicode文字（UTF-8最大8KB＋JSON metadata）。DB→APIは単一field全文。",
-        "即時pending、取得済み本文保持、12秒timeout・中断・同offset retry。版不一致は読み直し。統計未測定。"
+        "即時pending、取得済み本文保持、12秒timeout・中断・同offset retry。版不一致は読み直し。統計未測定。 整形/原文はlocal切替、原文不変。日時付き選択、末尾完了と残数。追加時focus/scroll保持、先頭操作で見出しへfocus。"
       ],
       "tests": [
         "tests/ui-smoke/navigation.spec.ts#full text reads >6000 chars to end with pending, retained retry, revision restart and cancellation",
-        "app/premium/themes/text-contract.test.ts#reconstructs >6000 Unicode characters including the final marker"
+        "app/premium/themes/text-contract.test.ts#reconstructs >6000 Unicode characters including the final marker",
+        "tests/ui-smoke/navigation.spec.ts#full text readability ${mobile ? \"mobile\" : \"desktop\"}: raw, pending, failure, keyboard and end",
+        "tests/ui-smoke/navigation.spec.ts#full text readability: slow and timeout retain text for retry"
       ],
       "coverage": "partial"
     }

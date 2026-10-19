@@ -740,7 +740,9 @@ export function ThemeDetailView({ result, listHref = "/premium/themes" }: { resu
               }} />
             </ViewerHero>
 
-            <FullTextReader themeId={result.data.theme.id} sources={result.data.textSources} />
+            <FullTextReader themeId={result.data.theme.id} sources={result.data.textSources} recordLabels={Object.fromEntries(
+              result.data.analysisHistory.map((analysis) => [`analysisHistory/${analysis.id}`, `${formatDateTime(analysis.asOf ?? analysis.createdAt)} · ${analysis.analysisType}`]),
+            )} />
 
             <div style={styles.detailGrid}>
               <OverviewSection data={result.data} />
