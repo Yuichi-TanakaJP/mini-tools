@@ -225,3 +225,5 @@ PR マージ後・リリース前の確認観点をツールごとにまとめ�
 - ファイル名は `YYYY-MM-DD-内容.md` 形式
 
 - [遷移契約の機械検証と共通Skill](./decision-log/2026-10-19-navigation-contract-checks.md)
+
+- [国内相場の日付品質判断](decision-log/2026-10-20-market-date-quality.md) / [管理画面UAT](uat/admin-dashboard.md)

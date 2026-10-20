@@ -121,6 +121,7 @@ SLA 一覧では対象週を `Latest week`、鮮度計算に使った公開日�
 | FRESH | age ≤ 2日 |
 | RECENT | 2日 < age ≤ `schedule.expectedMaxDays` |
 | STALE | age > `schedule.expectedMaxDays` |
+| UNKNOWN | 国内相場3ソースの取引日未確認、または不正/未来日付 |
 | FAILED | API 取得失敗 / `latest` が null |
 | N/A | `latest === undefined` (ローカル保存のみ) |
 
@@ -183,3 +184,10 @@ SLA違反と `STALE` が同じタイミングで発生する。
   - `docs/reference/policy_decision_log.md`
   - `docs/reference/publish_contract_inventory.md`
   - `docs/reference/cli_inventory.md`
+
+
+### 国内相場の日付品質（2026-10-20）
+
+国内ランキング・日経寄与度・TOPIX33は、現行producerが取得日をdateに入れるため、最新日だけで実取引日を証明しない。desktop全viewとmobileへ共通パネルを表示し、API最新日、API生成時刻（UTC表記のまま）、週末履歴件数、最新平日（祝日未判定）を区別する。3ソースはAPI取得成功でもUNKNOWNとする。これは公開データの修復や最新平日を実取引日と認定する処理ではない。追加HTTPは発生しない。
+
+不正日付・未来日付をage=0やRECENTへ補正せずUNKNOWNとする。期待スケジュールと実ジョブ状態は別の情報。原ページの日付証拠とproducer契約が整った段階で、未確認扱い解除の条件を別途実装する。
