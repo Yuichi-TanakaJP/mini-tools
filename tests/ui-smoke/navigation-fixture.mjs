@@ -4,7 +4,11 @@ let next = {delay:0,status:200};
 const theme = i => ({id:`theme-${i}`,slug:`fixture-${i}`,displayName:`Fixture Theme ${i}`,status:"draft",summary:`Fixture summary ${i}`});
 const server=http.createServer(async(req,res)=>{
  const url=new URL(req.url,"http://127.0.0.1:18841");
- url.pathname=url.pathname.replace(/^\/calendar-fixture(?=\/)/, "");
+ url.pathname=url.pathname.replace(/^\/(calendar-fixture|market-quality-fixture)(?=\/)/, "");
+ if(process.env.NAVIGATION_MARKET_QUALITY_FIXTURE === "1" && ["/ranking/manifest","/nikkei/manifest","/topix33/manifest"].includes(url.pathname)) {
+  res.setHeader("content-type","application/json");res.end(JSON.stringify({dates:["2026-10-20","2026-10-18","2026-10-17","2026-09-24"],latest:"2026-10-20",latest_date:"2026-10-20",generated_at:"2026-10-19T15:51:19Z"}));return;
+ }
+ if(process.env.NAVIGATION_MARKET_QUALITY_FIXTURE === "1" && /^\/(ranking|nikkei|topix33)\//.test(url.pathname)) {res.statusCode=404;res.end("{}");return;}
  if(url.pathname==="/health") {res.end("ok");return;}
  if(url.pathname==="/control") {next={delay:Number(url.searchParams.get("delay")||0),status:Number(url.searchParams.get("status")||200)};res.end("ok");return;}
  const mode=url.pathname.startsWith("/viewer/") ? next : {delay:0,status:200}; if(url.pathname.startsWith("/viewer/")) next={delay:0,status:200};
@@ -24,7 +28,7 @@ const server=http.createServer(async(req,res)=>{
  if(url.pathname.startsWith("/viewer/themes/")){
   res.end(JSON.stringify({schemaVersion:"theme-viewer.v1",theme:theme(Number(url.pathname.split("-").at(-1))||1),currentThesis:null,analysisHistory:[],evidence:[],directLinks:[],taxonomyMap:{nodes:[],themeLinks:[],stockLinks:[],edges:[]},metrics:{definitions:[],snapshots:[],values:[]},openActions:[]}));return;
  }
- if(process.env.NAVIGATION_CALENDAR_FIXTURE === "1") res.statusCode=404;
+ if(process.env.NAVIGATION_CALENDAR_FIXTURE === "1" || process.env.NAVIGATION_MARKET_QUALITY_FIXTURE === "1") res.statusCode=404;
  res.end(JSON.stringify({dates:[],weeks:[],latest:null,items:[]}));
 });
 server.listen(18841,"127.0.0.1",()=>console.log("fixture API ready"));

@@ -402,3 +402,23 @@ test("full text readability: response-body deadline reports timeout and retries"
   await region.getByRole("button",{name:"同じ続きから再試行",exact:true}).click();
   await expect(region.getByRole("status")).toContainText("全文表示済み");
 });
+
+
+for (const mobile of [false, true]) test(`admin market date quality ${mobile ? "mobile" : "desktop"}`, async ({ page }, testInfo) => {
+  test.skip(process.env.NAVIGATION_MARKET_QUALITY_FIXTURE !== "1", "requires market quality fixture");
+  if (mobile) await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/admin");
+  const panel = page.getByRole("region", { name: "国内相場の日付品質" }).filter({visible:true});
+  await expect(panel).toBeVisible();
+  await expect(panel).toContainText("国内相場：取引日未確認");
+  await expect(panel).toContainText("2026-10-19T15:51:19Z");
+  await expect(panel.getByText("履歴内の週末：2件", {exact:true})).toHaveCount(3);
+  await expect(panel).toContainText("ランキング：未確認");
+  await page.screenshot({ path: testInfo.outputPath("date-quality.png") });
+  expect(await panel.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  if (!mobile) {
+    await expect(page.getByText("UNKNOWN", {exact:true}).filter({visible:true}).first()).toBeVisible();
+    await page.getByRole("link", { name: /14-day Heatmap/ }).click();
+    await expect(panel).toBeVisible();
+  }
+});

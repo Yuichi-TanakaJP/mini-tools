@@ -1,3 +1,4 @@
+import { MarketDateQuality, UNVERIFIED_MARKET_SOURCES } from "./market-date-quality";
 import type { Metadata } from "next";
 import type { CSSProperties, ReactNode } from "react";
 import Link from "@/components/navigation/Link";
@@ -48,6 +49,7 @@ type ToolRow = {
   latest?: string | null;
   freshnessDate?: string | null;
   fetchedAt?: string;
+  generatedAt?: string | null;
   /** manifest が dates[]/weeks[] を持つ場合の実履歴 (YYYY-MM-DD)。空配列 = 履歴なし */
   history?: string[];
 };
@@ -59,10 +61,10 @@ async function fetchManifestLatest(
   pick: (json: unknown) => string | null,
   pickHistory?: (json: unknown) => string[],
   options: { cache?: RequestCache; pickFreshnessDate?: (json: unknown) => string | null } = {},
-): Promise<{ latest: string | null; freshnessDate: string | null; fetchedAt: string; history: string[] }> {
+): Promise<{ latest: string | null; freshnessDate: string | null; fetchedAt: string; history: string[]; generatedAt: string | null }> {
   const apiBase = getApiBaseUrl();
   const fetchedAt = new Date().toISOString();
-  if (!apiBase) return { latest: null, freshnessDate: null, fetchedAt, history: [] };
+  if (!apiBase) return { latest: null, freshnessDate: null, fetchedAt, history: [], generatedAt: null };
   try {
     // 管理画面なので fresh 性より通信量を優先: 10 分 (600s) キャッシュ。
     // 1 ユーザー (= ほぼ自分のみ) が連続でタブを切替えても、各 manifest は 10 分に 1 回しか実 API を叩かない。
@@ -71,12 +73,13 @@ async function fetchManifestLatest(
     const json = await fetchJson<unknown>(`${apiBase}${endpoint}`, 600, { cache: options.cache });
     return {
       latest: pick(json),
+      generatedAt: pickString(json, "generated_at"),
       freshnessDate: options.pickFreshnessDate?.(json) ?? null,
       fetchedAt,
       history: pickHistory ? pickHistory(json) : [],
     };
   } catch {
-    return { latest: null, freshnessDate: null, fetchedAt, history: [] };
+    return { latest: null, freshnessDate: null, fetchedAt, history: [], generatedAt: null };
   }
 }
 
@@ -203,9 +206,9 @@ async function loadRows(): Promise<ToolRow[]> {
   ]);
 
   return [
-    { category: "stocks", name: "TOPIX33業種", href: "/tools/topix33", source: "/topix33/manifest", rule: SCHED_MANUAL_NAITO.description, schedule: SCHED_MANUAL_NAITO, latest: topix33.latest, fetchedAt: topix33.fetchedAt, history: topix33.history },
-    { category: "stocks", name: "日経225寄与度", href: "/tools/nikkei-contribution", source: "/nikkei/manifest", rule: SCHED_MANUAL_NAITO.description, schedule: SCHED_MANUAL_NAITO, latest: nikkei.latest, fetchedAt: nikkei.fetchedAt, history: nikkei.history },
-    { category: "stocks", name: "株価ランキング", href: "/tools/stock-ranking", source: "/ranking/manifest", rule: SCHED_MANUAL_NAITO.description, schedule: SCHED_MANUAL_NAITO, latest: stockRanking.latest, fetchedAt: stockRanking.fetchedAt, history: stockRanking.history },
+    { category: "stocks", name: "TOPIX33業種", href: "/tools/topix33", source: "/topix33/manifest", rule: SCHED_MANUAL_NAITO.description, schedule: SCHED_MANUAL_NAITO, latest: topix33.latest, fetchedAt: topix33.fetchedAt, generatedAt: topix33.generatedAt, history: topix33.history },
+    { category: "stocks", name: "日経225寄与度", href: "/tools/nikkei-contribution", source: "/nikkei/manifest", rule: SCHED_MANUAL_NAITO.description, schedule: SCHED_MANUAL_NAITO, latest: nikkei.latest, fetchedAt: nikkei.fetchedAt, generatedAt: nikkei.generatedAt, history: nikkei.history },
+    { category: "stocks", name: "株価ランキング", href: "/tools/stock-ranking", source: "/ranking/manifest", rule: SCHED_MANUAL_NAITO.description, schedule: SCHED_MANUAL_NAITO, latest: stockRanking.latest, fetchedAt: stockRanking.fetchedAt, generatedAt: stockRanking.generatedAt, history: stockRanking.history },
     { category: "stocks", name: "米国株ランキング", href: "/tools/us-stock-ranking", source: "/us-ranking/manifest", rule: "生成は --with-us-ranking。publish 運用は要確認。", schedule: SCHED_AD_HOC, latest: usRanking.latest, fetchedAt: usRanking.fetchedAt, history: usRanking.history },
     { category: "stocks", name: "市場ランキング (時価総額)", href: "/tools/market-rankings", source: "/market-rankings/market-cap/manifest", rule: SCHED_MONTHLY.description, schedule: SCHED_MONTHLY, latest: marketCap.latest, fetchedAt: marketCap.fetchedAt },
     { category: "stocks", name: "市場ランキング (配当利回り)", href: "/tools/market-rankings", source: "/market-rankings/dividend-yield/manifest", rule: SCHED_MONTHLY.description, schedule: SCHED_MONTHLY, latest: dividendYield.latest, fetchedAt: dividendYield.fetchedAt },
@@ -247,6 +250,7 @@ const CATEGORY_META: Record<Category, { label: string; accent: string }> = {
 };
 
 const FRESHNESS_META: Record<Freshness, { label: string; bg: string; fg: string; border: string; dot: string }> = {
+  unknown: { label: "UNKNOWN", bg: "rgba(245,158,11,0.14)", fg: "#fbbf24", border: "rgba(245,158,11,0.4)", dot: "#f59e0b" },
   fresh: { label: "FRESH", bg: "rgba(16,185,129,0.12)", fg: "#34d399", border: "rgba(16,185,129,0.35)", dot: "#10b981" },
   recent: { label: "RECENT", bg: "rgba(59,130,246,0.12)", fg: "#60a5fa", border: "rgba(59,130,246,0.35)", dot: "#3b82f6" },
   stale: { label: "STALE", bg: "rgba(245,158,11,0.14)", fg: "#fbbf24", border: "rgba(245,158,11,0.4)", dot: "#f59e0b" },
@@ -255,6 +259,7 @@ const FRESHNESS_META: Record<Freshness, { label: string; bg: string; fg: string;
 };
 
 function classifyFreshness(row: ToolRow): Freshness {
+  if (UNVERIFIED_MARKET_SOURCES.has(row.source) && row.latest) return "unknown";
   return classifyFreshnessDate(
     row.freshnessDate ?? row.latest,
     row.schedule.expectedMaxDays,
@@ -1016,6 +1021,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
           </nav>
 
           {/* View body */}
+          <MarketDateQuality rows={rows} />
           {view === "sla" ? <SlaView rows={rows} /> : null}
           {view === "heatmap" ? <HeatmapView rows={rows} /> : null}
           {view === "schedule" ? <ScheduleView rows={rows} /> : null}
@@ -1023,7 +1029,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: Promi
 
           {/* Footer */}
           <footer style={{ marginTop: 32, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)", fontSize: 11, color: "#64748b", lineHeight: 1.8 }}>
-            <div>FRESH ≤ 2日 · RECENT ≤ 7日 · STALE &gt; 7日 · FAILED = 取得不可 · N/A = ローカル保存のみ</div>
+            <div>FRESH ≤ 2日 · RECENT ≤ 7日 · STALE &gt; 7日 · FAILED = 取得不可 · UNKNOWN = 日付未確認/不正/未来 · N/A = ローカル保存のみ</div>
             <div>SLA 判定は schedule.expectedMaxDays を上限に age と比較。manual / ad-hoc / user-input は SLA 対象外。</div>
             <div style={{ marginTop: 4 }}>出典: market_info repo の docs/operations/monthly_operations.md / docs/reference/policy_decision_rules.md / policy_decision_log.md / publish_contract_inventory.md / cli_inventory.md</div>
           </footer>
@@ -1094,6 +1100,7 @@ function MobileAdmin({ rows, apiBase, nowIso }: { rows: ToolRow[]; apiBase: stri
         </div>
       </header>
 
+      <MarketDateQuality rows={rows} />
       {categories.map((cat) => {
         const catRows = rows.filter((r) => r.category === cat);
         if (catRows.length === 0) return null;

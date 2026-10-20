@@ -16,3 +16,16 @@ describe("admin freshness", () => {
     expect(classifyFreshnessDate("2026-05-10T23:34:27Z", 35, "2026-06-15")).toBe("stale");
   });
 });
+
+
+describe("unknown date evidence", () => {
+  it.each(["", "garbage", "2026-02-30", "2026-13-01", "2026-10-21"])("does not mark %s healthy", value => {
+    expect(getAgeDaysFromDate(value, "2026-10-20")).toBeNull();
+    expect(classifyFreshnessDate(value, 7, "2026-10-20")).toBe("unknown");
+  });
+  it("keeps failed, absent and valid dates separate", () => {
+    expect(classifyFreshnessDate(null, 7, "2026-10-20")).toBe("failed");
+    expect(classifyFreshnessDate(undefined, 7, "2026-10-20")).toBe("none");
+    expect(classifyFreshnessDate("2026-10-20", 7, "2026-10-20")).toBe("fresh");
+  });
+});
