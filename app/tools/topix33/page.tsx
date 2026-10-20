@@ -3,10 +3,6 @@ import ToolClient from "./ToolClient";
 import { loadTopix33DayData, loadTopix33Manifest } from "./data-loader";
 import type { Topix33PageData } from "./types";
 import { loadJpxMarketClosedData } from "@/lib/jpx-market-closed";
-import {
-  filterVisibleTradingDates,
-  findFirstUsableDayData,
-} from "@/lib/market-trading-dates";
 
 export const metadata: Metadata = {
   title: "TOPIX33業種 | mini-tools",
@@ -23,14 +19,8 @@ async function loadData(): Promise<Topix33PageData> {
     loadJpxMarketClosedData(),
   ]);
 
-  const visibleDates = filterVisibleTradingDates(manifest.dates, holidays);
-  const { matched } = await findFirstUsableDayData(
-    visibleDates,
-    loadTopix33DayData,
-    (dayData): dayData is NonNullable<Topix33PageData["initialDayData"]> =>
-      !!dayData && dayData.sectors.length > 0,
-  );
-  const initialDayData = matched?.dayData ?? null;
+  const visibleDates = manifest.dates;
+  const initialDayData = visibleDates[0] ? await loadTopix33DayData(visibleDates[0]) : null;
 
   const filteredManifest = {
     ...manifest,

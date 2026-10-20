@@ -1,5 +1,7 @@
 "use client";
 
+import { MarketObservationNotice } from "@/app/tools/_shared/market-observation";
+
 import { useMemo, useState } from "react";
 import styles from "./ToolClient.module.css";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -222,12 +224,7 @@ export default function ToolClient({ data }: { data: Topix33PageData }) {
     return new Map((holidays?.days ?? []).map((day) => [day.date, day]));
   }, [holidays]);
 
-  const displayDates = useMemo(() => {
-    return manifest.dates.filter((date) => {
-      if (isMarketClosedDate(date, holidayMap)) return false;
-      return !isWeekendDate(date);
-    });
-  }, [holidayMap, manifest.dates]);
+  const displayDates = manifest.dates;
 
   const currentSelectedDate = displayDates.includes(selectedDate)
     ? selectedDate
@@ -261,6 +258,8 @@ export default function ToolClient({ data }: { data: Topix33PageData }) {
 
   return (
     <main style={{ maxWidth: 960, margin: "0 auto", padding: "0 16px 64px" }}>
+      {dayData ? <MarketObservationNotice observation={dayData.observation} savedDate={dayData.date} generatedAt={dayData.generated_at} /> : null}
+
       {/* ヘッダー */}
       <section style={{ padding: "32px 0 24px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>

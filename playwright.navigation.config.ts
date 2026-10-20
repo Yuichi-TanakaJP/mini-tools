@@ -13,7 +13,7 @@ export default defineConfig({
     { command: "node tests/ui-smoke/start-navigation-app.mjs", url: "http://127.0.0.1:18842", reuseExistingServer: false, timeout: 180000,
       env: { ...process.env, PREMIUM_ACCESS_PASSWORD: "fixture-password", PREMIUM_ACCESS_SECRET: "fixture-premium-secret",
         STOCK_NOTES_API_BASE_URL: "http://127.0.0.1:18841", STOCK_NOTES_API_TOKEN: "fixture-token",
-        MARKET_INFO_API_BASE_URL: process.env.NAVIGATION_MARKET_QUALITY_FIXTURE === "1" ? "http://127.0.0.1:18841/market-quality-fixture" : "", MINI_TOOLS_ENABLE_LOCAL_DATA_FALLBACK: "1", NEXT_PUBLIC_SUPABASE_URL: "", NEXT_PUBLIC_SUPABASE_ANON_KEY: "", NEXT_PUBLIC_GA_ID: "" } },
+        MARKET_INFO_API_BASE_URL: process.env.NAVIGATION_MARKET_DATA_FILE ? "http://127.0.0.1:18841/market-observation-real-fixture" : process.env.NAVIGATION_MARKET_QUALITY_FIXTURE === "1" ? "http://127.0.0.1:18841/market-quality-fixture" : "", MINI_TOOLS_ENABLE_LOCAL_DATA_FALLBACK: "1", NEXT_PUBLIC_SUPABASE_URL: "", NEXT_PUBLIC_SUPABASE_ANON_KEY: "", NEXT_PUBLIC_GA_ID: "" } },
   ],
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 });

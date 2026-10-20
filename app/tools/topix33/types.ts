@@ -1,3 +1,4 @@
+import type { MarketObservation } from "@/lib/market-observation";
 import type { JpxMarketClosedResponse } from "@/app/tools/_shared/market-calendar-types";
 
 export type Topix33SectorRecord = {
@@ -22,6 +23,7 @@ export type Topix33Summary = {
 };
 
 export type Topix33DayData = {
+  observation?: MarketObservation | null;
   date: string;
   index: "topix33";
   generated_at?: string;
@@ -34,6 +36,7 @@ export type Topix33DayData = {
 };
 
 export type Topix33Manifest = {
+  observation?: MarketObservation | null;
   dates: string[];
   latest_date: string | null;
   generated_at?: string;

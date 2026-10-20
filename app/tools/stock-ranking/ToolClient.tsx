@@ -1,5 +1,7 @@
 "use client";
 
+import { MarketObservationNotice } from "@/app/tools/_shared/market-observation";
+
 import { useMemo, useState } from "react";
 import type { RankingDayData, RankingManifest, RankingMarket, RankingType, RankingRecord } from "./types";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -180,6 +182,8 @@ export default function ToolClient({
 
   return (
     <main style={{ maxWidth: 900, margin: "0 auto", padding: "0 16px 64px" }}>
+      {currentDayData ? <MarketObservationNotice observation={currentDayData.observation} savedDate={currentDayData.date} generatedAt={currentDayData.generated_at} /> : null}
+
       {/* ヘッダー */}
       <section style={{ padding: "32px 0 24px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>

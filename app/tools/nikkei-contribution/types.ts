@@ -1,3 +1,4 @@
+import type { MarketObservation } from "@/lib/market-observation";
 import type { JpxMarketClosedResponse } from "@/app/tools/_shared/market-calendar-types";
 
 export type NikkeiContributionRecord = {
@@ -31,6 +32,7 @@ export type NikkeiContributionSummary = {
 };
 
 export type NikkeiContributionDayData = {
+  observation?: MarketObservation | null;
   date: string;
   index: "nikkei225";
   generated_at?: string;
@@ -43,6 +45,7 @@ export type NikkeiContributionDayData = {
 };
 
 export type NikkeiContributionManifest = {
+  observation?: MarketObservation | null;
   dates: string[];
   latest_date: string | null;
 };

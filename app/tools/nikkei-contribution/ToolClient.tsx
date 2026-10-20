@@ -1,5 +1,7 @@
 "use client";
 
+import { MarketObservationNotice } from "@/app/tools/_shared/market-observation";
+
 import { useEffect, useMemo, useState } from "react";
 import styles from "./ToolClient.module.css";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -775,24 +777,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
   const holidayMap = useMemo(() => {
     return new Map((holidays?.days ?? []).map((day) => [day.date, day]));
   }, [holidays]);
-  const displayDates = useMemo(() => {
-    return manifest.dates.filter((date) => {
-      if (isMarketClosedDate(date, holidayMap)) {
-        return false;
-      }
-
-      if (isWeekendDate(date)) {
-        return false;
-      }
-
-      const loaded = loadedDays[date];
-      if (!loaded) {
-        return true;
-      }
-
-      return !isLikelyMarketClosed(loaded);
-    });
-  }, [holidayMap, loadedDays, manifest.dates]);
+  const displayDates = manifest.dates;
   const currentSelectedDate = displayDates.includes(selectedDate)
     ? selectedDate
     : displayDates[0] ?? "";
@@ -865,6 +850,8 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
   }, [dayData]);
   return (
     <main style={{ maxWidth: 1180, margin: "0 auto", padding: "0 16px 64px" }}>
+      {dayData ? <MarketObservationNotice observation={dayData.observation} savedDate={dayData.date} generatedAt={dayData.generated_at} /> : null}
+
       <section style={{ padding: "32px 0 24px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
           <span style={{ fontSize: 26 }}>🗺️</span>
