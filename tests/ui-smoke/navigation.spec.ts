@@ -410,7 +410,7 @@ for (const mobile of [false, true]) test(`admin market date quality ${mobile ? "
   await page.goto("/admin");
   const panel = page.getByRole("region", { name: "国内相場の日付品質" }).filter({visible:true});
   await expect(panel).toBeVisible();
-  await expect(panel).toContainText("国内相場：取引日未確認");
+  await expect(panel).toContainText("国内相場：日付の整合");
   await expect(panel).toContainText("2026-10-19T15:51:19Z");
   await expect(panel.getByText("履歴内の週末：2件", {exact:true})).toHaveCount(3);
   await expect(panel).toContainText("ランキング：未確認");
@@ -421,4 +421,42 @@ for (const mobile of [false, true]) test(`admin market date quality ${mobile ? "
     await page.getByRole("link", { name: /14-day Heatmap/ }).click();
     await expect(panel).toBeVisible();
   }
+});
+
+
+for (const tool of ["stock-ranking", "topix33", "nikkei-contribution"]) test(`market observation day alignment ${tool}`, async ({page}, testInfo) => {
+  test.skip(process.env.NAVIGATION_MARKET_QUALITY_FIXTURE !== "1", "requires market quality fixture");
+  await page.setViewportSize({width:390,height:844});
+  const startedAt = Date.now();
+  await page.goto(`/tools/${tool}`);
+  const notice = page.getByRole("region", {name:"表示データの日付"});
+  await expect(notice).toContainText("保存日：2026-10-20");
+  await expect(notice).toContainText("UNKNOWN");
+  if (process.env.NAVIGATION_MARKET_DATA_FILE) {
+    const { readFile } = await import("node:fs/promises");
+    const saved = JSON.parse(await readFile(process.env.NAVIGATION_MARKET_DATA_FILE, "utf8"));
+    const family = tool === "stock-ranking" ? "ranking" : tool === "nikkei-contribution" ? "nikkei" : "topix33";
+    const payload = saved[`/${family}/2026-10-20`];
+    const name = tool === "topix33" ? payload.sectors[0].sector_name : payload.records[0].name;
+    await expect(page.getByText(name, {exact:false}).first()).toBeVisible();
+    await testInfo.attach("real-data-local-timing", {body: JSON.stringify({tool,localNavigationToContentMs:Date.now()-startedAt,marketDate:null,displayedSaveDate:payload.date}), contentType:"application/json"});
+  }
+  const select = page.getByRole("combobox").first();
+  await expect(select.locator('option[value="2026-10-18"]')).toHaveCount(1);
+  let fail = true;
+  await page.route(`**/tools/${tool}/data/2026-10-18`, async route => {
+    await new Promise(resolve=>setTimeout(resolve,600));
+    if (fail) {await route.fulfill({status:503,json:{error:"synthetic failure"}});return;}
+    const response = await route.fetch();
+    await route.fulfill({response});
+  });
+  await select.focus();
+  await select.selectOption("2026-10-18");
+  await expect(notice).toContainText("保存日：2026-10-20");
+  await expect(page.getByRole("button",{name:"同じ日で再試行"})).toBeVisible();
+  fail=false;
+  await page.getByRole("button",{name:"同じ日で再試行"}).focus();
+  await page.keyboard.press("Enter");
+  await expect(notice).toContainText("保存日：2026-10-18");
+  expect(await notice.evaluate(el=>el.scrollWidth <= el.clientWidth)).toBe(true);
 });

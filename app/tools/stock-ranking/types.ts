@@ -1,3 +1,4 @@
+import type { MarketObservation } from "@/lib/market-observation";
 import type { JpxMarketClosedResponse } from "@/app/tools/_shared/market-calendar-types";
 
 export type RankingMarket = "プライム" | "スタンダード" | "グロース";
@@ -20,11 +21,14 @@ export type RankingRecord = {
 };
 
 export type RankingDayData = {
+  generated_at?: string;
+  observation?: MarketObservation | null;
   date: string;
   records: RankingRecord[];
 };
 
 export type RankingManifest = {
+  observation?: MarketObservation | null;
   dates: string[];
   latest: string;
 };

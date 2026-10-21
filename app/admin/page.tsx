@@ -1,3 +1,4 @@
+import { confirmedMarketDate, parseMarketObservation, type MarketObservation } from "@/lib/market-observation";
 import { MarketDateQuality, UNVERIFIED_MARKET_SOURCES } from "./market-date-quality";
 import type { Metadata } from "next";
 import type { CSSProperties, ReactNode } from "react";
@@ -50,6 +51,7 @@ type ToolRow = {
   freshnessDate?: string | null;
   fetchedAt?: string;
   generatedAt?: string | null;
+  observation?: MarketObservation | null;
   /** manifest が dates[]/weeks[] を持つ場合の実履歴 (YYYY-MM-DD)。空配列 = 履歴なし */
   history?: string[];
 };
@@ -61,7 +63,7 @@ async function fetchManifestLatest(
   pick: (json: unknown) => string | null,
   pickHistory?: (json: unknown) => string[],
   options: { cache?: RequestCache; pickFreshnessDate?: (json: unknown) => string | null } = {},
-): Promise<{ latest: string | null; freshnessDate: string | null; fetchedAt: string; history: string[]; generatedAt: string | null }> {
+): Promise<{ latest: string | null; freshnessDate: string | null; fetchedAt: string; history: string[]; generatedAt: string | null; observation?: MarketObservation | null }> {
   const apiBase = getApiBaseUrl();
   const fetchedAt = new Date().toISOString();
   if (!apiBase) return { latest: null, freshnessDate: null, fetchedAt, history: [], generatedAt: null };
@@ -74,6 +76,7 @@ async function fetchManifestLatest(
     return {
       latest: pick(json),
       generatedAt: pickString(json, "generated_at"),
+      observation: parseMarketObservation((json as Record<string, unknown>)?.observation),
       freshnessDate: options.pickFreshnessDate?.(json) ?? null,
       fetchedAt,
       history: pickHistory ? pickHistory(json) : [],
@@ -206,9 +209,9 @@ async function loadRows(): Promise<ToolRow[]> {
   ]);
 
   return [
-    { category: "stocks", name: "TOPIX33業種", href: "/tools/topix33", source: "/topix33/manifest", rule: SCHED_MANUAL_NAITO.description, schedule: SCHED_MANUAL_NAITO, latest: topix33.latest, fetchedAt: topix33.fetchedAt, generatedAt: topix33.generatedAt, history: topix33.history },
-    { category: "stocks", name: "日経225寄与度", href: "/tools/nikkei-contribution", source: "/nikkei/manifest", rule: SCHED_MANUAL_NAITO.description, schedule: SCHED_MANUAL_NAITO, latest: nikkei.latest, fetchedAt: nikkei.fetchedAt, generatedAt: nikkei.generatedAt, history: nikkei.history },
-    { category: "stocks", name: "株価ランキング", href: "/tools/stock-ranking", source: "/ranking/manifest", rule: SCHED_MANUAL_NAITO.description, schedule: SCHED_MANUAL_NAITO, latest: stockRanking.latest, fetchedAt: stockRanking.fetchedAt, generatedAt: stockRanking.generatedAt, history: stockRanking.history },
+    { category: "stocks", name: "TOPIX33業種", href: "/tools/topix33", source: "/topix33/manifest", rule: SCHED_MANUAL_NAITO.description, schedule: SCHED_MANUAL_NAITO, latest: topix33.latest, fetchedAt: topix33.fetchedAt, generatedAt: topix33.generatedAt, observation: topix33.observation, freshnessDate: confirmedMarketDate(topix33.observation), history: topix33.history },
+    { category: "stocks", name: "日経225寄与度", href: "/tools/nikkei-contribution", source: "/nikkei/manifest", rule: SCHED_MANUAL_NAITO.description, schedule: SCHED_MANUAL_NAITO, latest: nikkei.latest, fetchedAt: nikkei.fetchedAt, generatedAt: nikkei.generatedAt, observation: nikkei.observation, freshnessDate: confirmedMarketDate(nikkei.observation), history: nikkei.history },
+    { category: "stocks", name: "株価ランキング", href: "/tools/stock-ranking", source: "/ranking/manifest", rule: SCHED_MANUAL_NAITO.description, schedule: SCHED_MANUAL_NAITO, latest: stockRanking.latest, fetchedAt: stockRanking.fetchedAt, generatedAt: stockRanking.generatedAt, observation: stockRanking.observation, freshnessDate: confirmedMarketDate(stockRanking.observation), history: stockRanking.history },
     { category: "stocks", name: "米国株ランキング", href: "/tools/us-stock-ranking", source: "/us-ranking/manifest", rule: "生成は --with-us-ranking。publish 運用は要確認。", schedule: SCHED_AD_HOC, latest: usRanking.latest, fetchedAt: usRanking.fetchedAt, history: usRanking.history },
     { category: "stocks", name: "市場ランキング (時価総額)", href: "/tools/market-rankings", source: "/market-rankings/market-cap/manifest", rule: SCHED_MONTHLY.description, schedule: SCHED_MONTHLY, latest: marketCap.latest, fetchedAt: marketCap.fetchedAt },
     { category: "stocks", name: "市場ランキング (配当利回り)", href: "/tools/market-rankings", source: "/market-rankings/dividend-yield/manifest", rule: SCHED_MONTHLY.description, schedule: SCHED_MONTHLY, latest: dividendYield.latest, fetchedAt: dividendYield.fetchedAt },
@@ -259,7 +262,7 @@ const FRESHNESS_META: Record<Freshness, { label: string; bg: string; fg: string;
 };
 
 function classifyFreshness(row: ToolRow): Freshness {
-  if (UNVERIFIED_MARKET_SOURCES.has(row.source) && row.latest) return "unknown";
+  if (UNVERIFIED_MARKET_SOURCES.has(row.source) && row.latest && !confirmedMarketDate(row.observation)) return "unknown";
   return classifyFreshnessDate(
     row.freshnessDate ?? row.latest,
     row.schedule.expectedMaxDays,

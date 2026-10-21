@@ -1,0 +1,7 @@
+# 国内相場の取得記録と日付
+
+market_info→R2→market-info-api→mini-toolsで同じ取得記録を渡す。保存日は従来URL互換のlookup keyであり、取引日の保証には使わない。source-boundな明示相場日のみ確認済み、未提供はUNKNOWNで表示を保持する。同日再取得はproducerの不変snapshotへ分離しAPIはmanifest参照を使う。過去データのmtimeや別指数から日付を補完せず、利用者のretry操作を前提にしない。
+
+3画面の選択一覧は週末保存分も含む。保存日A→Bの待機/失敗時にはA本文とA記録をセットで残す。初回失敗は過去日の正常結果で隠さない。固定UNKNOWNをper-observation判定へ置換。既存6時間manifestキャッシュによる自動反映遅延は残り、即時反映とは呼ばない。
+
+対象producerの3テーブルに明示年月日が保存されていない場合はUNKNOWNが続く。日経指数summaryのZXDは指数自身の日付として保持され、寄与度やランキングの確認には流用しない。原データへの後付け・本番公開・scheduler変更は本PRの検証に含めない。

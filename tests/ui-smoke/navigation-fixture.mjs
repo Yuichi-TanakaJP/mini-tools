@@ -1,14 +1,25 @@
 // Synthetic loopback-only read API for navigation tests; no live credentials or DB access.
 import http from "node:http";
+import { readFileSync } from "node:fs";
+const recordedMarketData = process.env.NAVIGATION_MARKET_DATA_FILE ? JSON.parse(readFileSync(process.env.NAVIGATION_MARKET_DATA_FILE, "utf8")) : null;
 let next = {delay:0,status:200};
 const theme = i => ({id:`theme-${i}`,slug:`fixture-${i}`,displayName:`Fixture Theme ${i}`,status:"draft",summary:`Fixture summary ${i}`});
 const server=http.createServer(async(req,res)=>{
  const url=new URL(req.url,"http://127.0.0.1:18841");
- url.pathname=url.pathname.replace(/^\/(calendar-fixture|market-quality-fixture)(?=\/)/, "");
+ url.pathname=url.pathname.replace(/^\/(calendar-fixture|market-quality-fixture|market-observation-real-fixture)(?=\/)/, "");
+ if(recordedMarketData && recordedMarketData[url.pathname]) {res.setHeader("content-type","application/json");res.end(JSON.stringify(recordedMarketData[url.pathname]));return;}
  if(process.env.NAVIGATION_MARKET_QUALITY_FIXTURE === "1" && ["/ranking/manifest","/nikkei/manifest","/topix33/manifest"].includes(url.pathname)) {
   res.setHeader("content-type","application/json");res.end(JSON.stringify({dates:["2026-10-20","2026-10-18","2026-10-17","2026-09-24"],latest:"2026-10-20",latest_date:"2026-10-20",generated_at:"2026-10-19T15:51:19Z"}));return;
  }
- if(process.env.NAVIGATION_MARKET_QUALITY_FIXTURE === "1" && /^\/(ranking|nikkei|topix33)\//.test(url.pathname)) {res.statusCode=404;res.end("{}");return;}
+ if(process.env.NAVIGATION_MARKET_QUALITY_FIXTURE === "1" && /^\/(ranking|nikkei|topix33)\/\d{4}-\d{2}-\d{2}$/.test(url.pathname)) {
+  const date=url.pathname.split("/").at(-1);
+  const observation={snapshot_id:"a".repeat(32),source:"fixture",market_date:null,date_basis:"unknown",source_observed_at:null,collected_at:"2026-10-20T00:50:00Z",generated_at:"2026-10-20T00:51:00Z",input_sha256:"b".repeat(64)};
+  res.setHeader("content-type","application/json");
+  if(url.pathname.startsWith("/ranking/")) res.end(JSON.stringify({date,observation,records:[]}));
+  else if(url.pathname.startsWith("/topix33/")) res.end(JSON.stringify({date,observation,index:"topix33",summary:{advancers:1,decliners:0,unchanged:0},top_positive:[],top_negative:[],sectors:[{sector_code:"fixture",sector_name:"Fixture",chg_pct:1,chg:1}]}));
+  else res.end(JSON.stringify({date,observation,index:"nikkei225",summary:{total_contribution:1,advancers:1,decliners:0,unchanged:0},top_positive:[],top_negative:[],records:[{code:"0000",name:"Fixture",sector:"Fixture",price:1,minashi:1,weight_pct:1,chg_pct:1,chg:1,contribution:1,size_value:1,color_value:1}]}));
+  return;
+ }
  if(url.pathname==="/health") {res.end("ok");return;}
  if(url.pathname==="/control") {next={delay:Number(url.searchParams.get("delay")||0),status:Number(url.searchParams.get("status")||200)};res.end("ok");return;}
  const mode=url.pathname.startsWith("/viewer/") ? next : {delay:0,status:200}; if(url.pathname.startsWith("/viewer/")) next={delay:0,status:200};

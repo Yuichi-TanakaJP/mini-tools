@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import ToolClient from "./ToolClient";
 import { loadRankingDayData, loadRankingManifest } from "./data-loader";
 import type { RankingPageData } from "./types";
-import { loadJpxMarketClosedData } from "@/lib/jpx-market-closed";
-import { filterVisibleTradingDates } from "@/lib/market-trading-dates";
 
 export const metadata: Metadata = {
   title: "株価ランキング | mini-tools",
@@ -15,16 +13,13 @@ export const metadata: Metadata = {
 };
 
 async function loadData(): Promise<RankingPageData> {
-  const [manifest, holidays] = await Promise.all([
-    loadRankingManifest(),
-    loadJpxMarketClosedData(),
-  ]);
+  const manifest = await loadRankingManifest();
 
   if (!manifest) {
     return { manifest: null, initialDayData: null };
   }
 
-  const visibleDates = filterVisibleTradingDates(manifest.dates, holidays);
+  const visibleDates = manifest.dates;
   const latest = visibleDates[0] ?? manifest.latest;
   const initialDayData = latest ? await loadRankingDayData(latest) : null;
 

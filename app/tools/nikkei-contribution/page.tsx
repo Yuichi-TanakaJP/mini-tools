@@ -3,10 +3,6 @@ import ToolClient from "./ToolClient";
 import { loadContributionDayData, loadContributionManifest } from "./data-loader";
 import type { NikkeiContributionPageData } from "./types";
 import { loadJpxMarketClosedData } from "@/lib/jpx-market-closed";
-import {
-  filterVisibleTradingDates,
-  findFirstUsableDayData,
-} from "@/lib/market-trading-dates";
 
 export const metadata: Metadata = {
   title: "日経225寄与度 | mini-tools",
@@ -17,33 +13,16 @@ export const metadata: Metadata = {
   },
 };
 
-function isLikelyMarketClosed(dayData: NikkeiContributionPageData["initialDayData"]) {
-  if (!dayData || dayData.records.length === 0) {
-    return false;
-  }
-
-  return !dayData.records.some(
-    (record) => record.chg !== 0 || record.chg_pct !== 0 || record.contribution !== 0,
-  );
-}
-
 async function loadData(): Promise<NikkeiContributionPageData> {
   const [manifest, holidays] = await Promise.all([
     loadContributionManifest(),
     loadJpxMarketClosedData(),
   ]);
 
-  const visibleDates = filterVisibleTradingDates(manifest.dates, holidays);
-  const { matched, skippedDates } = await findFirstUsableDayData(
-    visibleDates,
-    loadContributionDayData,
-    (dayData): dayData is NonNullable<NikkeiContributionPageData["initialDayData"]> =>
-      !!dayData && !isLikelyMarketClosed(dayData),
-  );
-  const initialDayData = matched?.dayData ?? null;
-  const excludedLeadingDates = new Set(skippedDates);
+  const visibleDates = manifest.dates;
+  const initialDayData = visibleDates[0] ? await loadContributionDayData(visibleDates[0]) : null;
+  const filteredDates = visibleDates;
 
-  const filteredDates = visibleDates.filter((date) => !excludedLeadingDates.has(date));
   const filteredManifest = {
     ...manifest,
     dates: filteredDates,
