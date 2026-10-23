@@ -55,3 +55,12 @@ it.each(["/api/premium/themes/text/", "/api/premium/themes/text///"])("never cac
   const href = `https://example.com${pathname}?offset=0`;
   expect(isSensitiveApiGet({ request: new Request(href), url: new URL(href) })).toBe(true);
 });
+
+it.each(["stock-ranking", "topix33", "nikkei-contribution"])("never caches live market page, RSC or day requests: %s", tool => {
+  for (const suffix of ["", "?_rsc=fixture", "/data/2026-10-23"]) {
+    const href = `https://example.com/tools/${tool}${suffix}`;
+    expect(isSensitiveApiGet({ request: new Request(href), url: new URL(href) })).toBe(true);
+  }
+  const href = `https://example.com/tools/${tool}-other`;
+  expect(isSensitiveApiGet({ request: new Request(href), url: new URL(href) })).toBe(false);
+});

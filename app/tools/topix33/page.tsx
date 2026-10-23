@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import type { Metadata } from "next";
 import ToolClient from "./ToolClient";
 import { loadTopix33DayData, loadTopix33Manifest } from "./data-loader";

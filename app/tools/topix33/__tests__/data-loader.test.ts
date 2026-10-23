@@ -68,7 +68,7 @@ describe("loadTopix33Manifest", () => {
     expect(result).toEqual(SAMPLE_MANIFEST);
     expect(fetch).toHaveBeenCalledWith(
       "https://api.example.com/topix33/manifest",
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      expect.objectContaining({ signal: expect.any(AbortSignal), cache: "no-store" }),
     );
   });
 
@@ -155,7 +155,7 @@ describe("loadTopix33DayData", () => {
     expect(result).toEqual(SAMPLE_DAY_DATA);
     expect(fetch).toHaveBeenCalledWith(
       "https://api.example.com/topix33/2025-04-02",
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      expect.objectContaining({ signal: expect.any(AbortSignal), cache: "no-store" }),
     );
   });
 

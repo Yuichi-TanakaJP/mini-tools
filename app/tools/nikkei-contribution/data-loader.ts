@@ -39,7 +39,7 @@ export async function loadContributionManifest(): Promise<NikkeiContributionMani
   }
 
   try {
-    return await fetchJson<NikkeiContributionManifest>(`${apiBase}/nikkei/manifest`);
+    return await fetchJson<NikkeiContributionManifest>(`${apiBase}/nikkei/manifest`, 0, { cache: "no-store", timeoutMs: 10_000 });
   } catch {
     return canUseLocalFallback ? loadLocalManifest() : EMPTY_MANIFEST;
   }
@@ -58,7 +58,7 @@ export async function loadContributionDayData(dateStr: string): Promise<NikkeiCo
   }
 
   try {
-    return await fetchJson<NikkeiContributionDayData>(`${apiBase}/nikkei/${dateStr}`);
+    return await fetchJson<NikkeiContributionDayData>(`${apiBase}/nikkei/${dateStr}`, 0, { cache: "no-store", timeoutMs: 10_000 });
   } catch {
     return canUseLocalFallback ? loadLocalDayData(dateStr) : null;
   }

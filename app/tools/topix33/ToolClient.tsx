@@ -244,6 +244,7 @@ export default function ToolClient({ data }: { data: Topix33PageData }) {
   } = useDailyMarketData<Topix33DayData>({
     activeDate: currentSelectedDate,
     initialDayData,
+    refreshIntervalMs: 60_000,
     routePrefix: "/tools/topix33/data",
   });
 

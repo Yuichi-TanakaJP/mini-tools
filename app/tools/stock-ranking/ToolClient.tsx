@@ -163,6 +163,7 @@ export default function ToolClient({
   const { currentDayData, isPreviousData, isLoading, loadError, retry } = useDailyMarketData<RankingDayData>({
     activeDate: selectedDate,
     initialDayData,
+    refreshIntervalMs: 60_000,
     routePrefix: "/tools/stock-ranking/data",
   });
 

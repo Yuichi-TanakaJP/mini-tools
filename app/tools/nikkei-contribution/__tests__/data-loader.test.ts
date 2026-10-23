@@ -67,7 +67,7 @@ describe("loadContributionManifest", () => {
     expect(result).toEqual(SAMPLE_MANIFEST);
     expect(fetch).toHaveBeenCalledWith(
       "https://api.example.com/nikkei/manifest",
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      expect.objectContaining({ signal: expect.any(AbortSignal), cache: "no-store" }),
     );
   });
 
@@ -154,7 +154,7 @@ describe("loadContributionDayData", () => {
     expect(result).toEqual(SAMPLE_DAY_DATA);
     expect(fetch).toHaveBeenCalledWith(
       "https://api.example.com/nikkei/2025-04-02",
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      expect.objectContaining({ signal: expect.any(AbortSignal), cache: "no-store" }),
     );
   });
 

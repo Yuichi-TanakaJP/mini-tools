@@ -11,6 +11,7 @@ type RouteContext = {
 
 export function buildDateDataRoute<T>(
   loader: (date: string) => Promise<T | null>,
+  options: { cacheControl?: string } = {},
 ) {
   return async function GET(_request: Request, context: RouteContext) {
     const { date } = await context.params;
@@ -26,7 +27,7 @@ export function buildDateDataRoute<T>(
 
     return NextResponse.json(dayData, {
       headers: {
-        "Cache-Control": CACHE_CONTROL_HEADER,
+        "Cache-Control": options.cacheControl ?? CACHE_CONTROL_HEADER,
       },
     });
   };

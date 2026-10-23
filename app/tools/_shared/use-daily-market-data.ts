@@ -5,9 +5,10 @@ import { readNavigationJson } from "@/lib/navigation-read";
 
 type DatedDayData = { date: string };
 type UseDailyMarketDataParams<T extends DatedDayData> = {
-  activeDate: string; initialDayData: T | null; routePrefix: string; errorMessage?: string;
+  activeDate: string; initialDayData: T | null; routePrefix: string; errorMessage?: string; refreshIntervalMs?: number;
 };
 export function useDailyMarketData<T extends DatedDayData>({ activeDate, initialDayData, routePrefix,
+  refreshIntervalMs = 0,
   errorMessage = "データを読み込めませんでした。時間をおいて再度お試しください。",
 }: UseDailyMarketDataParams<T>) {
   const [loadedDays, setLoadedDays] = useState<Record<string, T>>(() => initialDayData ? { [initialDayData.date]: initialDayData } : {});
@@ -27,7 +28,7 @@ export function useDailyMarketData<T extends DatedDayData>({ activeDate, initial
     setObservedDate(activeDate);
     if (failure?.key === key) setFailure(null);
   }
-  const loadError = !cached && failure?.key === key ? failure.message : null;
+  const loadError = failure?.key === key ? failure.message : null;
   const isLoading = Boolean(activeDate && !cached && !loadError);
   useEffect(() => {
     if (!activeDate || loadedDays[activeDate]) return;
@@ -41,6 +42,29 @@ export function useDailyMarketData<T extends DatedDayData>({ activeDate, initial
       .catch(() => { if (!controller.signal.aborted) setFailure({ key, message: errorMessage }); });
     return () => controller.abort();
   }, [activeDate, key, errorMessage, loadedDays, routePrefix, storeDayData]);
+  const hasCached = Boolean(cached);
+  useEffect(() => {
+    if (!refreshIntervalMs || !activeDate || !hasCached) return;
+    const controller = new AbortController();
+    let running = false;
+    const refresh = async () => {
+      if (running || document.visibilityState === "hidden") return;
+      running = true;
+      try {
+        const day = await readNavigationJson<T>(`${routePrefix}/${activeDate}`, { signal: controller.signal, cache: "no-store" });
+        if (controller.signal.aborted) return;
+        if (day.date !== activeDate) throw new Error("選択日と応答日が一致しません。");
+        storeDayData(day);
+      } catch {
+        if (!controller.signal.aborted) setFailure({ key: `${activeDate}:${attempt}`, message: "最新データの確認に失敗しました。表示中のデータを保持し、自動で再試行します。" });
+      } finally { running = false; }
+    };
+    if (attempt > 0) void refresh();
+    const timer = setInterval(() => void refresh(), refreshIntervalMs);
+    const visible = () => { if (document.visibilityState === "visible") void refresh(); };
+    document.addEventListener("visibilitychange", visible);
+    return () => { controller.abort(); clearInterval(timer); document.removeEventListener("visibilitychange", visible); };
+  }, [activeDate, attempt, hasCached, refreshIntervalMs, routePrefix, storeDayData]);
   const currentDayData = activeDate ? loadedDays[activeDate] ?? lastGood : null;
   return { loadedDays, isLoading, loadError, currentDayData, storeDayData,
     isPreviousData: currentDayData !== null && currentDayData.date !== activeDate,

@@ -41,7 +41,7 @@ export async function loadRankingManifest(): Promise<RankingManifest | null> {
   }
 
   try {
-    return await fetchJson<RankingManifest>(`${apiBase}/ranking/manifest`);
+    return await fetchJson<RankingManifest>(`${apiBase}/ranking/manifest`, 0, { cache: "no-store", timeoutMs: 10_000 });
   } catch {
     return canUseLocalFallback ? loadLocalRankingManifest() : null;
   }
@@ -56,7 +56,7 @@ export async function loadRankingDayData(dateStr: string): Promise<RankingDayDat
   }
 
   try {
-    return await fetchJson<RankingDayData>(`${apiBase}/ranking/${dateStr}`);
+    return await fetchJson<RankingDayData>(`${apiBase}/ranking/${dateStr}`, 0, { cache: "no-store", timeoutMs: 10_000 });
   } catch {
     return canUseLocalFallback ? loadLocalRankingDayData(dateStr) : null;
   }

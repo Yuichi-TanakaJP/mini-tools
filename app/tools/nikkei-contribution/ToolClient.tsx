@@ -772,6 +772,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
   } = useDailyMarketData<NikkeiContributionDayData>({
     activeDate: selectedDate,
     initialDayData,
+    refreshIntervalMs: 60_000,
     routePrefix: "/tools/nikkei-contribution/data",
   });
   const holidayMap = useMemo(() => {

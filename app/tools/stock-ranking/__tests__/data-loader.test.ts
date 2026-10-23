@@ -53,7 +53,7 @@ describe("loadRankingManifest", () => {
     expect(result).toEqual(SAMPLE_MANIFEST);
     expect(fetch).toHaveBeenCalledWith(
       "https://api.example.com/ranking/manifest",
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      expect.objectContaining({ signal: expect.any(AbortSignal), cache: "no-store" }),
     );
   });
 
@@ -162,7 +162,7 @@ describe("loadRankingDayData", () => {
     expect(result).toEqual(SAMPLE_DAY_DATA);
     expect(fetch).toHaveBeenCalledWith(
       "https://api.example.com/ranking/2025-04-02",
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      expect.objectContaining({ signal: expect.any(AbortSignal), cache: "no-store" }),
     );
   });
 
