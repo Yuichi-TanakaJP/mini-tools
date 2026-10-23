@@ -45,13 +45,13 @@ export async function loadContributionManifest(): Promise<NikkeiContributionMani
   }
 }
 
-export async function loadContributionDayData(dateStr: string): Promise<NikkeiContributionDayData | null> {
+export async function loadContributionDayData(dateStr: string, options: { allowLocalFallback?: boolean } = {}): Promise<NikkeiContributionDayData | null> {
   if (!dateStr) {
     return null;
   }
 
   const apiBase = getApiBaseUrl();
-  const canUseLocalFallback = canUseLocalMarketDataFallback();
+  const canUseLocalFallback = options.allowLocalFallback !== false && canUseLocalMarketDataFallback();
 
   if (!apiBase) {
     return canUseLocalFallback ? loadLocalDayData(dateStr) : null;

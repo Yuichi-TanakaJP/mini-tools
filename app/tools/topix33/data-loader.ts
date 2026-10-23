@@ -45,13 +45,13 @@ export async function loadTopix33Manifest(): Promise<Topix33Manifest> {
   }
 }
 
-export async function loadTopix33DayData(dateStr: string): Promise<Topix33DayData | null> {
+export async function loadTopix33DayData(dateStr: string, options: { allowLocalFallback?: boolean } = {}): Promise<Topix33DayData | null> {
   if (!dateStr) {
     return null;
   }
 
   const apiBase = getApiBaseUrl();
-  const canUseLocalFallback = canUseLocalMarketDataFallback();
+  const canUseLocalFallback = options.allowLocalFallback !== false && canUseLocalMarketDataFallback();
 
   if (!apiBase) {
     return canUseLocalFallback ? loadLocalDayData(dateStr) : null;

@@ -202,3 +202,14 @@ describe("loadTopix33DayData", () => {
     expect(result).toBeNull();
   });
 });
+
+it("fresh refresh never returns bundled fallback after upstream failure", async () => {
+  vi.clearAllMocks();
+  vi.stubEnv("MARKET_INFO_API_BASE_URL", "https://api.example.com");
+  vi.stubEnv("NODE_ENV", "test");
+  vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+  try {
+    expect(await loadTopix33DayData("2026-10-20", { allowLocalFallback: false })).toBeNull();
+    expect(mockReadFile).not.toHaveBeenCalled();
+  } finally { vi.unstubAllGlobals(); vi.unstubAllEnvs(); }
+});

@@ -1,4 +1,4 @@
 import { loadRankingDayData } from "../../data-loader";
 import { buildDateDataRoute } from "@/app/tools/_shared/date-data-route";
 
-export const GET = buildDateDataRoute(loadRankingDayData, { cacheControl: "no-store" });
+export const GET = buildDateDataRoute(loadRankingDayData, { cacheControl: "no-store", refreshLoader: date => loadRankingDayData(date, { allowLocalFallback: false }) });

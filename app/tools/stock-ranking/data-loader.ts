@@ -47,9 +47,9 @@ export async function loadRankingManifest(): Promise<RankingManifest | null> {
   }
 }
 
-export async function loadRankingDayData(dateStr: string): Promise<RankingDayData | null> {
+export async function loadRankingDayData(dateStr: string, options: { allowLocalFallback?: boolean } = {}): Promise<RankingDayData | null> {
   const apiBase = getApiBaseUrl();
-  const canUseLocalFallback = canUseLocalMarketDataFallback();
+  const canUseLocalFallback = options.allowLocalFallback !== false && canUseLocalMarketDataFallback();
 
   if (!apiBase) {
     return canUseLocalFallback ? loadLocalRankingDayData(dateStr) : null;

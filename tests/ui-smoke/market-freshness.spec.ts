@@ -72,3 +72,22 @@ test("ranking: hidden tabs pause polling; foreground and retry deduplicate reque
   expect(calls).toBe(1);
   release();
 });
+
+test("ranking: successful uncached retry sends no redundant refresh", async ({ page, request }) => {
+  await page.goto("/tools/stock-ranking");
+  const current = await (await request.get("/tools/stock-ranking/data/2026-10-20")).json();
+  let fail = true; let calls = 0;
+  await page.route("**/tools/stock-ranking/data/2026-09-24", async route => {
+    calls++;
+    if (fail) return route.fulfill({ status: 503, body: "offline" });
+    return route.fulfill({ json: { ...current, date: "2026-09-24" } });
+  });
+  await page.locator("select").first().selectOption("2026-09-24");
+  await expect(page.getByRole("button", { name: "同じ日で再試行" })).toBeVisible();
+  expect(calls).toBe(1); fail = false;
+  await page.getByRole("button", { name: "同じ日で再試行" }).click();
+  await expect(page.getByRole("region", { name: "表示データの日付" })).toContainText("保存日：2026-09-24");
+  // Let fetch continuations and passive effects settle, without advancing the 60s timer.
+  await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 100)));
+  expect(calls).toBe(2);
+});

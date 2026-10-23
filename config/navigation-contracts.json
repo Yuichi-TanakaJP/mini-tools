@@ -1000,7 +1000,7 @@
       "tests": [
         "tests/ui-smoke/navigation.spec.ts#date switching cancels stale work, retains the labeled good day, and retries",
         "tests/ui-smoke/navigation.spec.ts#failed date can be reselected after a cached date without stale errors",
-        "tests/ui-smoke/market-freshness.spec.ts"
+        "tests/ui-smoke/market-freshness.spec.ts#${tool}: same-day update, failed refresh and recovery without reload"
       ],
       "coverage": "partial"
     },
@@ -2269,7 +2269,7 @@
         },
         {
           "kind": "client-request",
-          "signature": "readNavigationJson<T>(`${routePrefix}/${activeDate}`, { signal: controller.signal, cache: \"no-store\" })"
+          "signature": "readNavigationJson<T>(`${routePrefix}/${activeDate}`, { signal: controller.signal, cache: \"no-store\", headers: { \"x-market-refresh\": \"1\" } })"
         }
       ]
     },

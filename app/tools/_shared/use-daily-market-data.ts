@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { readNavigationJson } from "@/lib/navigation-read";
 
 type DatedDayData = { date: string };
@@ -15,6 +15,8 @@ export function useDailyMarketData<T extends DatedDayData>({ activeDate, initial
   const [lastGood, setLastGood] = useState<T | null>(initialDayData);
   const [failure, setFailure] = useState<{ key: string; message: string } | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [refreshAttempt, setRefreshAttempt] = useState(0);
+  const consumedRefresh = useRef(0);
   const [observedDate, setObservedDate] = useState(activeDate);
   const storeDayData = useCallback((day: T) => {
     setLoadedDays(current => ({ ...current, [day.date]: day }));
@@ -51,7 +53,7 @@ export function useDailyMarketData<T extends DatedDayData>({ activeDate, initial
       if (running || document.visibilityState === "hidden") return;
       running = true;
       try {
-        const day = await readNavigationJson<T>(`${routePrefix}/${activeDate}`, { signal: controller.signal, cache: "no-store" });
+        const day = await readNavigationJson<T>(`${routePrefix}/${activeDate}`, { signal: controller.signal, cache: "no-store", headers: { "x-market-refresh": "1" } });
         if (controller.signal.aborted) return;
         if (day.date !== activeDate) throw new Error("選択日と応答日が一致しません。");
         storeDayData(day);
@@ -59,15 +61,18 @@ export function useDailyMarketData<T extends DatedDayData>({ activeDate, initial
         if (!controller.signal.aborted) setFailure({ key: `${activeDate}:${attempt}`, message: "最新データの確認に失敗しました。表示中のデータを保持し、自動で再試行します。" });
       } finally { running = false; }
     };
-    if (attempt > 0) void refresh();
+    if (refreshAttempt !== consumedRefresh.current) {
+      consumedRefresh.current = refreshAttempt;
+      void refresh();
+    }
     const timer = setInterval(() => void refresh(), refreshIntervalMs);
     const visible = () => { if (document.visibilityState === "visible") void refresh(); };
     document.addEventListener("visibilitychange", visible);
     return () => { controller.abort(); clearInterval(timer); document.removeEventListener("visibilitychange", visible); };
-  }, [activeDate, attempt, hasCached, refreshIntervalMs, routePrefix, storeDayData]);
+  }, [activeDate, attempt, refreshAttempt, hasCached, refreshIntervalMs, routePrefix, storeDayData]);
   const currentDayData = activeDate ? loadedDays[activeDate] ?? lastGood : null;
   return { loadedDays, isLoading, loadError, currentDayData, storeDayData,
     isPreviousData: currentDayData !== null && currentDayData.date !== activeDate,
-    retry: () => setAttempt(value => value + 1),
+    retry: () => cached ? setRefreshAttempt(value => value + 1) : setAttempt(value => value + 1),
   };
 }
