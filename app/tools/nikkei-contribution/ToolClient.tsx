@@ -1060,9 +1060,10 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
       {dayData && dayData.date !== currentSelectedDate ? <p role="status">表示中: {dayData.date}。要求中の選択日とは異なります。</p> : null}
       {loadError ? (
         <div style={{ padding: "20px 0", color: "var(--color-text-muted)" }}>{loadError} <button type="button" onClick={retry}>同じ日で再試行</button></div>
-      ) : isDataLoading && !dayData ? (
+      ) : null}
+      {isDataLoading && !dayData ? (
         <LoadingSpinner />
-      ) : !dayData ? (
+      ) : !dayData && !loadError ? (
         <div
           style={{
             background: "var(--color-bg-card)",
@@ -1075,7 +1076,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
         >
           データはまだ登録されていません。`market_info` 側で JSON が配置されると、このページから日付別に確認できるようになります。
         </div>
-      ) : (
+      ) : dayData ? (
         <>
           <div style={{ marginBottom: 6 }}>
             <ImpactMap
@@ -1185,7 +1186,7 @@ export default function ToolClient({ data }: { data: NikkeiContributionPageData 
             ※ 表示データは market_info で生成した JSON をもとにしています。投資判断はご自身でご確認ください。
           </p>
         </>
-      )}
+      ) : null}
     </main>
   );
 }

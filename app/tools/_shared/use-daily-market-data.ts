@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { readNavigationJson } from "@/lib/navigation-read";
 
-type DatedDayData = { date: string };
+type DatedDayData = { date: string; generated_at?: string; observation?: { collected_at?: string | null; generated_at?: string | null } | null };
+const snapshotTime = (day: DatedDayData) => Date.parse(day.observation?.collected_at ?? day.observation?.generated_at ?? day.generated_at ?? "");
 type UseDailyMarketDataParams<T extends DatedDayData> = {
   activeDate: string; initialDayData: T | null; routePrefix: string; errorMessage?: string; refreshIntervalMs?: number;
 };
@@ -12,6 +13,7 @@ export function useDailyMarketData<T extends DatedDayData>({ activeDate, initial
   errorMessage = "データを読み込めませんでした。時間をおいて再度お試しください。",
 }: UseDailyMarketDataParams<T>) {
   const [loadedDays, setLoadedDays] = useState<Record<string, T>>(() => initialDayData ? { [initialDayData.date]: initialDayData } : {});
+  const acceptedDays = useRef<Record<string, T>>(initialDayData ? { [initialDayData.date]: initialDayData } : {});
   const [lastGood, setLastGood] = useState<T | null>(initialDayData);
   const [failure, setFailure] = useState<{ key: string; message: string } | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -19,6 +21,9 @@ export function useDailyMarketData<T extends DatedDayData>({ activeDate, initial
   const consumedRefresh = useRef(0);
   const [observedDate, setObservedDate] = useState(activeDate);
   const storeDayData = useCallback((day: T) => {
+    const previous = acceptedDays.current[day.date];
+    if (previous && snapshotTime(day) < snapshotTime(previous)) throw new Error("以前のsnapshotでは表示を更新しません。");
+    acceptedDays.current[day.date] = day;
     setLoadedDays(current => ({ ...current, [day.date]: day }));
     setLastGood(day);
     setFailure(previous => previous?.key.startsWith(`${day.date}:`) ? null : previous);

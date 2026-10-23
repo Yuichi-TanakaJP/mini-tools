@@ -10,15 +10,17 @@ for (const tool of ["stock-ranking", "topix33", "nikkei-contribution"]) {
     expect(response.headers()["cache-control"]).toBe("no-store");
     const current = await response.json();
     let fail = true;
+    let stamp = "2026-10-20T01:50:00Z";
     let requests = 0;
     await page.route(`**/tools/${tool}/data/2026-10-20`, async route => {
       requests++;
       if (fail) return route.fulfill({ status: 503, body: "offline" });
-      return route.fulfill({ json: { ...current, observation: { ...current.observation, snapshot_id: "c".repeat(32), collected_at: "2026-10-20T01:50:00Z" } } });
+      return route.fulfill({ json: { ...current, observation: { ...current.observation, snapshot_id: "c".repeat(32), collected_at: stamp } } });
     });
     await page.clock.fastForward(60_000);
     await expect(page.getByText("最新データの確認に失敗しました。", { exact: false })).toBeVisible();
     await expect(notice).toContainText("2026-10-20T00:50:00Z");
+    if (tool === "nikkei-contribution") await expect(page.getByRole("heading", { name: "影響度マップ" })).toBeVisible();
     fail = false;
     await page.clock.fastForward(60_000);
     await expect(notice).toContainText("2026-10-20T01:50:00Z");
@@ -28,8 +30,12 @@ for (const tool of ["stock-ranking", "topix33", "nikkei-contribution"]) {
     const dateSelect = page.locator("select").first();
     await dateSelect.focus();
     await expect(dateSelect).toBeFocused();
+    stamp = "2026-10-20T00:50:00Z";
     await page.clock.fastForward(60_000);
     await expect.poll(() => requests).toBe(3);
+    await expect(page.getByText("最新データの確認に失敗しました。", { exact: false })).toBeVisible();
+    await expect(notice).toContainText("2026-10-20T01:50:00Z");
+    if (tool === "nikkei-contribution") await expect(page.getByRole("heading", { name: "影響度マップ" })).toBeVisible();
     await expect(dateSelect).toBeFocused();
   });
 }
