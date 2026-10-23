@@ -9,13 +9,16 @@ for (const tool of ["stock-ranking", "topix33", "nikkei-contribution"]) {
     const response = await request.get(`/tools/${tool}/data/2026-10-20`);
     expect(response.headers()["cache-control"]).toBe("no-store");
     const current = await response.json();
+    const updated = tool === "stock-ranking" ? { ...current, records: [{ market: "プライム", ranking: "値上がり率", rank: 1, name: "Updated Fixture", code: "0001", marketLabel: "プライム", industry: "Fixture", price: 100, time: "15:30", change: 1, changeRate: 1, volume: 10, value: 1000 }] }
+      : tool === "topix33" ? { ...current, sectors: current.sectors.map((row: Record<string, unknown>) => ({ ...row, sector_name: "Updated Fixture" })) }
+      : { ...current, records: current.records.map((row: Record<string, unknown>) => ({ ...row, name: "Updated Fixture" })) };
     let fail = true;
-    let stamp = "2026-10-20T01:50:00Z";
+    let stamp: string | null = "2026-10-20T01:50:00Z";
     let requests = 0;
     await page.route(`**/tools/${tool}/data/2026-10-20`, async route => {
       requests++;
       if (fail) return route.fulfill({ status: 503, body: "offline" });
-      return route.fulfill({ json: { ...current, observation: { ...current.observation, snapshot_id: "c".repeat(32), collected_at: stamp } } });
+      return route.fulfill({ json: { ...(stamp === "2026-10-20T01:50:00Z" ? updated : current), generated_at: stamp === null ? undefined : current.generated_at, observation: stamp === null ? undefined : { ...current.observation, snapshot_id: "c".repeat(32), collected_at: stamp } } });
     });
     await page.clock.fastForward(60_000);
     await expect(page.getByText("最新データの確認に失敗しました。", { exact: false })).toBeVisible();
@@ -24,19 +27,27 @@ for (const tool of ["stock-ranking", "topix33", "nikkei-contribution"]) {
     fail = false;
     await page.clock.fastForward(60_000);
     await expect(notice).toContainText("2026-10-20T01:50:00Z");
+    await expect(page.getByText("Updated Fixture", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("最新データの確認に失敗しました。", { exact: false })).toHaveCount(0);
     expect(requests).toBe(2);
     await page.setViewportSize({ width: 390, height: 844 });
     const dateSelect = page.locator("select").first();
     await dateSelect.focus();
     await expect(dateSelect).toBeFocused();
-    stamp = "2026-10-20T00:50:00Z";
+    stamp = null; // Timestamp-less responses must not erase the accepted freshness watermark.
     await page.clock.fastForward(60_000);
     await expect.poll(() => requests).toBe(3);
     await expect(page.getByText("最新データの確認に失敗しました。", { exact: false })).toBeVisible();
     await expect(notice).toContainText("2026-10-20T01:50:00Z");
+    await expect(page.getByText("Updated Fixture", { exact: true }).first()).toBeVisible();
     if (tool === "nikkei-contribution") await expect(page.getByRole("heading", { name: "影響度マップ" })).toBeVisible();
     await expect(dateSelect).toBeFocused();
+    stamp = "2026-10-20T00:50:00Z";
+    await page.clock.fastForward(60_000);
+    await expect.poll(() => requests).toBe(4);
+    await page.clock.runFor(100);
+    await expect(notice).toContainText("2026-10-20T01:50:00Z");
+    await expect(page.getByText("Updated Fixture", { exact: true }).first()).toBeVisible();
   });
 }
 

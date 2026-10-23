@@ -22,7 +22,9 @@ export function useDailyMarketData<T extends DatedDayData>({ activeDate, initial
   const [observedDate, setObservedDate] = useState(activeDate);
   const storeDayData = useCallback((day: T) => {
     const previous = acceptedDays.current[day.date];
-    if (previous && snapshotTime(day) < snapshotTime(previous)) throw new Error("以前のsnapshotでは表示を更新しません。");
+    const previousTime = previous ? snapshotTime(previous) : NaN;
+    const incomingTime = snapshotTime(day);
+    if (Number.isFinite(previousTime) && (!Number.isFinite(incomingTime) || incomingTime < previousTime)) throw new Error("取得時刻を確認できない、または以前のsnapshotでは表示を更新しません。");
     acceptedDays.current[day.date] = day;
     setLoadedDays(current => ({ ...current, [day.date]: day }));
     setLastGood(day);
