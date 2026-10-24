@@ -3,6 +3,7 @@
 import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
 import Link from "@/components/navigation/Link";
+import { useLiveInvestorFlow } from "./use-live-data";
 import type {
   InvestorFlowAnalysisPayload,
   InvestorFlowCompositionItem,
@@ -973,7 +974,12 @@ function FlowOverview({
   );
 }
 
-export default function ToolClient({ data }: { data: InvestorFlowPageData }) {
+export default function ToolClient({ data, startDate, endDate }: { data: InvestorFlowPageData; startDate?: string; endDate?: string }) {
+  return <LiveToolClient initialData={data} startDate={startDate} endDate={endDate} />;
+}
+
+function LiveToolClient({ initialData, startDate, endDate }: { initialData: InvestorFlowPageData; startDate?: string; endDate?: string }) {
+  const { data, error, checking, retry } = useLiveInvestorFlow(initialData, startDate, endDate);
   const records = useMemo(() => sortRecords(data.payload?.records ?? []), [data.payload]);
   const overseas = getRecord(records, "海外投資家");
   const individual = getRecord(records, "個人");
@@ -1004,6 +1010,9 @@ export default function ToolClient({ data }: { data: InvestorFlowPageData }) {
           ) : null}
         </section>
 
+        <div role="status" aria-live="polite" aria-busy={checking}>
+          {error ? <p>最新データの確認に失敗しました。表示中の週と金額を保持し、自動で再試行します。 <button type="button" onClick={retry} disabled={checking}>更新を再試行</button></p> : checking ? "公開更新を確認中…" : "公開更新を自動で確認します。"}
+        </div>
         {!data.manifest ? (
           <article style={styles.emptyCard}>
             <div style={styles.emptyTitle}>データ取得先が未接続です</div>
