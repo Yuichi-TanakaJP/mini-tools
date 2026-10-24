@@ -63,6 +63,17 @@ export default async function PremiumPortfolioPage() {
             ← Premium ホーム
           </Link>
           <Link
+            href="/tools/tdnet-disclosures?range=7&holdings=1"
+            style={{
+              color: "var(--color-text-sub)",
+              textDecoration: "none",
+              fontSize: 13,
+              fontWeight: 800,
+            }}
+          >
+            保有銘柄のTDNET開示
+          </Link>
+          <Link
             href="/tools/yutai-memo"
             style={{
               color: "var(--color-text-sub)",

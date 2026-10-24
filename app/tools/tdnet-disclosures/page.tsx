@@ -14,17 +14,18 @@ export const metadata: Metadata = {
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string; range?: string }>;
+  searchParams: Promise<{ date?: string; range?: string; holdings?: string }>;
 }) {
-  const { date, range } = await searchParams;
+  const { date, range, holdings } = await searchParams;
   const data = await loadTdnetDisclosures(date, range);
 
   return (
     <ToolClient
-      key={`${date ?? data?.target_date ?? "latest"}-${range ?? "1"}`}
+      key={`${date ?? data?.target_date ?? "latest"}-${range ?? "1"}-${holdings ?? "all"}`}
       data={data}
       requestedDate={date}
       requestedRange={range}
+      initialHoldingsOnly={holdings === "1"}
     />
   );
 }

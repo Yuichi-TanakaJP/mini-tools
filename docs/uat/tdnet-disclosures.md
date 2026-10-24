@@ -54,3 +54,28 @@
 
 - [TDNET適時開示一覧 仕様](../specs/tools/tdnet-disclosures.md)
 - [TDNET適時開示一覧の初期実装方針](../decision-log/2026-05-16-tdnet-disclosures-page.md)
+
+
+## 保有銘柄だけ（PR #696 / V1追加のUAT）
+
+本機能の前提は **Market Info全開示** と、本人Premium認証下の **Stock Notes Portfolio保有銘柄** の既存読取を突き合わせること。Routerに分類が無い書類も除外しない。チェックはPreview実画面で行い、実施証跡はPR本文に記録する。DB・Cloud・通知・配当Factの書込み操作は必要ない。
+
+### 正常系
+
+- [ ] PreviewのPremiumへログインし、Portfolioの「保有銘柄のTDNET開示」導線から開くと、holdings=1 の「保有銘柄だけ」が有効になる
+- [ ] 本人Supabase AuthでPortfolio audienceを取得した際、保有銘柄数とPortfolio基準日が表示される。旧Snapshotを今日の保有と誤認させない
+- [ ] ?date=2026-10-09&range=7&holdings=1 で2026-10-08/09の公開済みSourceを含む場合、2026-09-21の既知Portfolio Snapshotでは**保有2銘柄・4開示**が表示対象となる（Router未分類の主要株主異動と決算補足も含む）。本人保有Snapshotが新しくなっていれば件数は変動し、基準日と変更理由を記録する
+- [ ] 会社名などの曖昧一致では追加されず、正式な4桁銘柄コード↔TDNET5桁末尾0の変換で一致する。4桁コードが0で終わるものと英数字コードもテストで確認する
+- [ ] 「保有銘柄だけ」を外すと同じ全開示Sourceの市場全体の開示が表示される
+- [ ] 日付を前後させる／表示ボタン／7日または30日範囲に変更する操作で、保有絞り込みが維持される。ブラウザーを更新した際にはURLパラメータで保有絞り込み状態を復元できるかも確認
+- [ ] スマートフォン幅でチェックボックス・開示タイトル・公式PDFリンクが操作できる
+
+### 失敗時／プライバシー
+
+- [ ] Premium未ログイン／Supabase未ログインの場合、保有0件と誤表示せず認証案内を出す
+- [ ] Portfolio未登録・ready Snapshotなし・Audience API失敗も「保有がない」とは区別して表示する
+- [ ] TDNET Source取得失敗時は既存の取得失敗表示が出て、保有銘柄の開示が本当に0件だったと誤認しない
+- [ ] Watch-onlyの銘柄が混入しない。保有数量、口座、アクセストークン、ユーザーIDがTDNET公開APIへ送信されない
+- [ ] 過去の全市場開示データを再収集/再公開したり、配当/正式Fact/取引を自動更新しない
+
+**状態：** PR #696 はCI・Previewの自動検証まで。Premium＋Supabase認証付きの実画面UAT結果およびマージ・Production表示は、本PRがDraftの間は未証明。保有銘柄の実名称・数量を公開PRコメントへ転載しない。
