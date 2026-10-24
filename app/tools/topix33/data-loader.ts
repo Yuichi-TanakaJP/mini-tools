@@ -39,26 +39,26 @@ export async function loadTopix33Manifest(): Promise<Topix33Manifest> {
   }
 
   try {
-    return await fetchJson<Topix33Manifest>(`${apiBase}/topix33/manifest`);
+    return await fetchJson<Topix33Manifest>(`${apiBase}/topix33/manifest`, 0, { cache: "no-store", timeoutMs: 10_000 });
   } catch {
     return canUseLocalFallback ? loadLocalManifest() : EMPTY_MANIFEST;
   }
 }
 
-export async function loadTopix33DayData(dateStr: string): Promise<Topix33DayData | null> {
+export async function loadTopix33DayData(dateStr: string, options: { allowLocalFallback?: boolean } = {}): Promise<Topix33DayData | null> {
   if (!dateStr) {
     return null;
   }
 
   const apiBase = getApiBaseUrl();
-  const canUseLocalFallback = canUseLocalMarketDataFallback();
+  const canUseLocalFallback = options.allowLocalFallback !== false && canUseLocalMarketDataFallback();
 
   if (!apiBase) {
     return canUseLocalFallback ? loadLocalDayData(dateStr) : null;
   }
 
   try {
-    return await fetchJson<Topix33DayData>(`${apiBase}/topix33/${dateStr}`);
+    return await fetchJson<Topix33DayData>(`${apiBase}/topix33/${dateStr}`, 0, { cache: "no-store", timeoutMs: 10_000 });
   } catch {
     return canUseLocalFallback ? loadLocalDayData(dateStr) : null;
   }

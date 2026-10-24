@@ -41,22 +41,22 @@ export async function loadRankingManifest(): Promise<RankingManifest | null> {
   }
 
   try {
-    return await fetchJson<RankingManifest>(`${apiBase}/ranking/manifest`);
+    return await fetchJson<RankingManifest>(`${apiBase}/ranking/manifest`, 0, { cache: "no-store", timeoutMs: 10_000 });
   } catch {
     return canUseLocalFallback ? loadLocalRankingManifest() : null;
   }
 }
 
-export async function loadRankingDayData(dateStr: string): Promise<RankingDayData | null> {
+export async function loadRankingDayData(dateStr: string, options: { allowLocalFallback?: boolean } = {}): Promise<RankingDayData | null> {
   const apiBase = getApiBaseUrl();
-  const canUseLocalFallback = canUseLocalMarketDataFallback();
+  const canUseLocalFallback = options.allowLocalFallback !== false && canUseLocalMarketDataFallback();
 
   if (!apiBase) {
     return canUseLocalFallback ? loadLocalRankingDayData(dateStr) : null;
   }
 
   try {
-    return await fetchJson<RankingDayData>(`${apiBase}/ranking/${dateStr}`);
+    return await fetchJson<RankingDayData>(`${apiBase}/ranking/${dateStr}`, 0, { cache: "no-store", timeoutMs: 10_000 });
   } catch {
     return canUseLocalFallback ? loadLocalRankingDayData(dateStr) : null;
   }

@@ -25,10 +25,10 @@ export function canUseLocalMarketDataFallback(): boolean {
 export async function fetchJson<T>(
   url: string,
   revalidate = 300,
-  options: { cache?: RequestCache } = {},
+  options: { cache?: RequestCache; timeoutMs?: number } = {},
 ): Promise<T> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  const timeoutId = setTimeout(() => controller.abort(), options.timeoutMs ?? 5000);
 
   try {
     const res = await fetch(url, {

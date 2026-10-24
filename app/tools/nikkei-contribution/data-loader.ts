@@ -39,26 +39,26 @@ export async function loadContributionManifest(): Promise<NikkeiContributionMani
   }
 
   try {
-    return await fetchJson<NikkeiContributionManifest>(`${apiBase}/nikkei/manifest`);
+    return await fetchJson<NikkeiContributionManifest>(`${apiBase}/nikkei/manifest`, 0, { cache: "no-store", timeoutMs: 10_000 });
   } catch {
     return canUseLocalFallback ? loadLocalManifest() : EMPTY_MANIFEST;
   }
 }
 
-export async function loadContributionDayData(dateStr: string): Promise<NikkeiContributionDayData | null> {
+export async function loadContributionDayData(dateStr: string, options: { allowLocalFallback?: boolean } = {}): Promise<NikkeiContributionDayData | null> {
   if (!dateStr) {
     return null;
   }
 
   const apiBase = getApiBaseUrl();
-  const canUseLocalFallback = canUseLocalMarketDataFallback();
+  const canUseLocalFallback = options.allowLocalFallback !== false && canUseLocalMarketDataFallback();
 
   if (!apiBase) {
     return canUseLocalFallback ? loadLocalDayData(dateStr) : null;
   }
 
   try {
-    return await fetchJson<NikkeiContributionDayData>(`${apiBase}/nikkei/${dateStr}`);
+    return await fetchJson<NikkeiContributionDayData>(`${apiBase}/nikkei/${dateStr}`, 0, { cache: "no-store", timeoutMs: 10_000 });
   } catch {
     return canUseLocalFallback ? loadLocalDayData(dateStr) : null;
   }

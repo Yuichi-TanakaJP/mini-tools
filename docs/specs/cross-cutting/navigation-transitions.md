@@ -257,3 +257,7 @@ npm run navigation:docs
 - normal checkは読み取り専用。`navigation:docs` だけが明示操作で仕様書の表を更新する。いずれも通信・秘密情報参照・DB書込み・CI起動・配備を行わない。既存workflowや強制checkは変更しない。
 
 共通Skillは `claude-skills/.claude/skills/navigation-design-review/SKILL.md`。各製品の時間/容量予算と権限は当該リポジトリの契約・AGENTSに従う。
+
+## 市場3画面の自動更新
+
+2026-10-24: [鮮度契約](../../decision-log/2026-10-24-market-freshness.md)と[UAT](../../uat/market-freshness.md)を適用する。対象画面の再読み込みは更新の前提にしない。
