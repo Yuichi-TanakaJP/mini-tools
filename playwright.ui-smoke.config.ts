@@ -5,6 +5,7 @@ const basePort = new URL(baseURL).port || "80";
 
 export default defineConfig({
   testDir: "./tests/ui-smoke",
+  testIgnore: "**/investor-flow-refresh.spec.ts", // Dedicated fixture-backed production config.
   timeout: 30_000,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,

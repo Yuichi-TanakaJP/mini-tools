@@ -54,3 +54,19 @@
 - [投資主体別売買動向 仕様](../specs/tools/investor-flow.md)
 - [Market Tools データ取得経路一覧](../specs/cross-cutting/market-tools-data-fetch-paths.md)
 - [2026-06-01 投資主体別売買動向の分析API優先表示](../decision-log/2026-06-01-investor-flow-analysis-api-view.md)
+
+
+## 公開更新の自動反映
+
+| From → To | 通信・待機・失敗・復旧 |
+|---|---|
+| 最新週を表示中 → 新しい公開週 | visible時60秒、復帰時にno-storeのdataルートを確認。10秒タイムアウト。週・本文・分析を一緒に更新し、document reloadしない |
+| 過去週を表示中 → 背景確認 | start/endを維持し、最新週へ勝手に移動しない |
+| 通信失敗 → 自動/手動retry | 旧週・旧金額とラベルを保持。確認失敗を表示し、自動次回とキーボード操作可能なretryを提供 |
+| 履歴へ移動・unmount → 前の応答完了 | 前の要求をabortし、新しい画面へ書き込まない |
+
+API TTL30秒と画面60秒を合わせた通常公開反映目標は約90秒＋通信時間。HTTP応答・ブラウザー表示完了・fixture加速試験を区別する。背景1回の転送は本文/分析と直近選択肢のみ（目安100KB以下、実測はPR）。非表示タブでは停止。非同期処理中はaria-busy/statusで伝え、失敗を0件表示にしない。
+
+テスト: `npm exec -- vitest run app/tools/investor-flow/__tests__`、`npm exec -- playwright test tests/ui-smoke/investor-flow-refresh.spec.ts --config=playwright.investor-flow.config.ts`。合成APIで新週公開・失敗→Enter retry・hidden/foreground・過去週固定・mobileを確認。本番更新・Cloud定期実行は別のリリース受入。
+
+専用Playwright configは合成APIとproduction build/serverを起動する。外部API設定は不要。既存ブラウザーを使う環境では`UI_SMOKE_EXECUTABLE_PATH`に実行ファイルを指定できる。PWA非経由の状態テストに加え、NetworkOnly除外の単体回帰と、Service Worker有効のoffline試験を行う。

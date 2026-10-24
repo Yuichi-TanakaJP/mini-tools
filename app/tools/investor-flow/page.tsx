@@ -19,5 +19,5 @@ export default async function Page({
   const { start, end } = await searchParams;
   const data = await loadInvestorFlowPageData(start, end);
 
-  return <ToolClient data={data} />;
+  return <ToolClient data={data} startDate={start} endDate={end} />;
 }

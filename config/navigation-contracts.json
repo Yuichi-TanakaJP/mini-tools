@@ -1100,6 +1100,20 @@
         "tests/ui-smoke/navigation.spec.ts#full text readability: slow and timeout retain text for retry"
       ],
       "coverage": "partial"
+    },
+    {
+      "id": "L90",
+      "from": "`/tools/investor-flow` 最新週/過去週を表示中",
+      "to": "同画面の公開更新確認",
+      "details": [
+        "GET data。本文・分析・直近12/13週。目安100KB以下、10秒timeout。",
+        "visible時60秒/復帰時。旧表示保持、失敗通知・retry、過去週固定、abort。"
+      ],
+      "tests": [
+        "tests/ui-smoke/investor-flow-refresh.spec.ts#weekly update changes the body without reload; failure retains data and retry recovers",
+        "tests/ui-smoke/investor-flow-refresh.spec.ts#history stays pinned and hidden tabs do not poll"
+      ],
+      "coverage": "interaction"
     }
   ],
   "sources": {
@@ -2481,6 +2495,17 @@
         {
           "kind": "client-request",
           "signature": "fetch(`/api/premium/themes/text?${params}`, { cache: \"no-store\", signal: controller.signal })"
+        }
+      ]
+    },
+    "app/tools/investor-flow/use-live-data.ts": {
+      "transitions": [
+        "L90"
+      ],
+      "sites": [
+        {
+          "kind": "client-request",
+          "signature": "readNavigationJson<InvestorFlowPageData>(`/tools/investor-flow/data${query}`, { signal: controller.signal, cache: \"no-store\" })"
         }
       ]
     }
