@@ -10,6 +10,8 @@
 
 ## Repository-specific workflow
 
+- Production release gate: vercel.json disables Git auto-deployments for main. Keep preview branches enabled. Do not remove this guard, deploy/promote production, or change production tracking without explicit user approval. A merge approval alone does not authorize a production release.
+
 - Keep implementation PRs and generated-data-update PRs separate for every size/format; in particular do not mix large JSON/CSV diffs with implementation. Do not commit incidental next-env.d.ts changes.
 - Record settled specification/operational decisions in docs; when such decisions change, follow [the writing workflow](docs/docs-writing-workflow.md), including decision-log applicability.
 - Follow stacked-PR order and the existing merge-commit strategy; do not fold cleanup into merge automatically. Before browser verification, launching `codex review` or approved branch cleanup, read [operation notes](docs/agent-operation-notes.md).
