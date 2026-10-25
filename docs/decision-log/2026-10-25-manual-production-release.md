@@ -1,3 +1,17 @@
+# Superseded: temporary manual production release gate
+
+Status: superseded on 2026-10-25 by the owner's explicit request to restore main auto-deployment. The historical decision below no longer governs current releases.
+
+## Current decision and reason
+
+Remove the temporary vercel.json, whose only behavior was git.deploymentEnabled.main=false. Use the existing Vercel Git integration: main merges automatically build and publish production; feature branches continue producing Previews. The owner requested this familiar operation to avoid a separate, confusing merge/deploy step. Merge approval must be understood to include that automatic production effect; unrelated manual production operations still require approval.
+
+No application, dependency, environment-variable, database, domain, credential or scheduler settings change. Verify local full tests/build, independent release-control review and latest-head CI/Preview before merging. After merge, verify a Git-triggered production deployment for the exact merge SHA reaches READY and the public alias resolves to it. A manual deployment is not evidence that automatic publishing works.
+
+Rollback baseline before this restoration: dpl_CdQER5wLQB5uxL2JFDtDSugorMR1 (commit 70afdf68aa616d0d3e995c01d04cf932585d907d). If release health fails, use an explicitly authorized rollback to that existing patched artifact; investigate and repair the pipeline before resuming. Vercel rollback can disable automatic domain assignment, so verify that state before considering normal operation restored.
+
+## Historical decision (superseded)
+
 # 2026-10-25: merge security patches without publishing production
 
 The user authorized merging a verified security patch while explicitly withholding production-release approval. The current production deployment tracks main; merging without a guard would otherwise publish automatically.
