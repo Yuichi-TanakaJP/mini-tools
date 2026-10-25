@@ -10,7 +10,7 @@
 
 ## Repository-specific workflow
 
-- Production release gate: vercel.json disables Git auto-deployments for main. Keep preview branches enabled. Do not remove this guard, deploy/promote production, or change production tracking without explicit user approval. A merge approval alone does not authorize a production release.
+- Production workflow (owner decision, 2026-10-25): merging to main automatically deploys to production through the existing Vercel Git integration. Keep branch Previews enabled. Explain that main merges publish production and complete required validation/review before merge. The owner explicitly requested restoring this normal operation; do not reintroduce a separate manual deployment gate unless requested. Preserve approval requirements for merge and unrelated production operations.
 
 - Keep implementation PRs and generated-data-update PRs separate for every size/format; in particular do not mix large JSON/CSV diffs with implementation. Do not commit incidental next-env.d.ts changes.
 - Record settled specification/operational decisions in docs; when such decisions change, follow [the writing workflow](docs/docs-writing-workflow.md), including decision-log applicability.

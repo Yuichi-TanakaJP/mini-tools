@@ -1,6 +1,6 @@
 # 2026-10 security dependency update
 
-Production deployment and default-branch merge require explicit approval.
+Main merges automatically publish production through Vercel. Obtain merge approval with that production effect understood; the owner explicitly authorized restoring this operation on 2026-10-25. Unrelated manual production operations require explicit approval.
 
 ## Acceptance checks
 
@@ -13,7 +13,7 @@ Production deployment and default-branch merge require explicit approval.
 
 ## Rollback and release gate
 
-Keep the existing production revision until approval. If deployment is later approved and regression occurs, roll back to the previously deployed artifact/revision; restoring vulnerable dependency versions is an emergency measure and requires renewed security assessment. No database migration or configuration change is part of this patch.
+After approved main merge and automatic deployment, if regression occurs, roll back to the previously deployed artifact/revision; restoring vulnerable dependency versions is an emergency measure and requires renewed security assessment. No database migration or configuration change is part of this patch.
 
 Local checks do not establish Linux/glibc runtime coverage, live database correctness, browser UAT, or production deployment. These must remain explicit release limitations.
 
@@ -23,4 +23,4 @@ Known existing integration limitation: next-pwa 5.6.0 injects registration into 
 
 NetworkOnly regression coverage uses an online synthetic HTTP 200 response, asserts that it is not persisted, seeds stale responses in matching runtime cache names, then blocks network traffic before repeating the authenticated fetch. The test was also checked against a temporary NetworkFirst mutation of the disposable generated worker; the mutation failed the test and the restored worker passed. No production artifact was altered.
 
-Follow-up dependency cleanup uses Vitest/coverage/mocker 4.1.12, Babel 7.29.7, humanfs 0.16.8 and patched Ajv versions; all npm audit severities must be zero. The manual-production-release decision log defines the main-branch deployment guard and before/after production readback required for a merge without publication.
+Follow-up dependency cleanup uses Vitest/coverage/mocker 4.1.12, Babel 7.29.7, humanfs 0.16.8 and patched Ajv versions; all npm audit severities must be zero. The current decision in [the release workflow log](../decision-log/2026-10-25-manual-production-release.md) supersedes the temporary guard: verify latest-head CI/Preview, then confirm the main merge creates a Git-triggered production deployment at the exact merge SHA and the public alias serves it. Check public pages, static assets and unauthenticated protected-API rejection without writing live data.
