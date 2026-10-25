@@ -89,7 +89,7 @@ describe("GET /api/yutai/stock-prices", () => {
     const response = await GET(request());
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("cache-control")).toBe("private, max-age=86400");
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(response.headers.get("vary")).toBe("Cookie");
     await expect(response.json()).resolves.toEqual(payload);
     expect(fetchMock).toHaveBeenCalledOnce();
@@ -122,7 +122,7 @@ describe("GET /api/yutai/stock-prices", () => {
     expect(response.headers.get("cache-control")).toBe("private, no-store");
   });
 
-  it("要求月が一致しても画面が解釈できないschemaはキャッシュしない", async () => {
+  it("画面が解釈できないschemaは502で拒否する", async () => {
     setSession(createPremiumSessionValue());
     vi.stubGlobal(
       "fetch",
@@ -134,7 +134,7 @@ describe("GET /api/yutai/stock-prices", () => {
 
     const response = await GET(request("2026-07"));
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(502);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
   });
 
