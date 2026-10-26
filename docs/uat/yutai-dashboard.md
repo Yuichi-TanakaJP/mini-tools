@@ -92,3 +92,10 @@
 - Decision Log: [2026-07-20 優待効率へのPrivate実株価適用](../decision-log/2026-07-20-yutai-dashboard-live-stock-price-efficiency.md)
 - Decision Log: [2026-07-20 優待株価JSONの24時間private HTTPキャッシュ](../decision-log/2026-07-20-yutai-stock-price-private-http-cache.md)
 - Decision Log: [2026-07-12 取得＝仕込みの一本化と権利年ライフサイクル](../decision-log/2026-07-12-yutai-acquisition-equals-prep-lifecycle.md)
+
+### 株価の鮮度と自動更新（#448）
+- 当月と異なるsnapshotを返す場合、古い株価を使用しない旨が表示され、実株価として計算されない。
+- 同じ月でも35日超・未来・不正な価格基準日／未来・不正な取得日時は除外される。週末の直前金曜終値は使用できる。
+- 正常データから取得失敗へ変わった場合、古い実株価を保持し続けない。概算を使う場合は既存の概算表示を確認する。
+- Private R2更新後、APIの30秒キャッシュと画面の60秒再取得を経て、再読み込みなしで更新する。低速時も取得は重複させない。
+- 確認環境と実施結果はPR本文に記録する。

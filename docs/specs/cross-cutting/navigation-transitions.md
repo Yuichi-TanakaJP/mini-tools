@@ -101,7 +101,7 @@ JS/CSSの「追加/初回」はKiB。実際のFromがホーム以外の場合の
 | R33 | P・D | `/tools/total` | 6.5 / 229.9 | C1 | 業務API 0 |
 | R34 | P・D | `/tools/us-stock-ranking` | 3.7 / 227.1 | S2 | manifest+有効日探索 最大6 API |
 | R35 | P・D・通常下部ナビ | `/tools/yutai-candidates` | 28.3 / 251.7 | S3 | manifest/在庫/月データ 通常4 API、本人DBは別 |
-| R36 | P・D | `/tools/yutai-dashboard` | 40.1 / 263.5 | S3 | 月表示通常4 API、全月m+3 API、本人DBは別 |
+| R36 | P・D | `/tools/yutai-dashboard` | 40.1 / 263.5 | S3 | 月表示通常4 API、全月m+3 API、本人DBは別。株価は完了後60秒で再取得（失敗も再試行、月不一致・古い実株価は採用しない）。更新時の通信量・実測時間は未測定 |
 | R37 | P・D | `/tools/yutai-expiry` | 64.5 / 287.9 | C2 | 認証/DBまたはlocal版（回数未計測） |
 | R38 | D（PoC、通常入口なし） | `/tools/yutai-expiry/scan-poc` | 6.6 / 230.1 | C1 | 入口API 0。画像送信は遷移外 |
 | R39 | P・D | `/tools/yutai-memo` | 37.2 / 260.6 | C2 | 認証/DBまたはlocal版、信用参照（回数未計測） |

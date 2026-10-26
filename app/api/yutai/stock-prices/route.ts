@@ -8,7 +8,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PRIVATE_NO_STORE = "private, no-store";
-const PRIVATE_MONTH_CACHE = "private, max-age=86400";
 const UPSTREAM_PATH = "/yutai/stock-prices/latest";
 const UPSTREAM_TIMEOUT_MS = 5_000;
 
@@ -20,12 +19,6 @@ function json(body: unknown, status = 200, cacheControl = PRIVATE_NO_STORE) {
       Vary: "Cookie",
     },
   });
-}
-
-function getScopeMonth(value: unknown) {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
-  const scopeMonth = (value as Record<string, unknown>).scope_month;
-  return typeof scopeMonth === "string" ? scopeMonth : null;
 }
 
 async function isAuthorized() {
@@ -75,12 +68,14 @@ export async function GET(request: Request) {
   try {
     const payload: unknown = await upstream.json();
     const requestedMonth = new URL(request.url).searchParams.get("month");
-    const cacheControl = requestedMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth)
-      && getScopeMonth(payload) === requestedMonth
-      && parseYutaiStockPriceSnapshot(payload)
-      ? PRIVATE_MONTH_CACHE
-      : PRIVATE_NO_STORE;
-    return json(payload, 200, cacheControl);
+    if (!parseYutaiStockPriceSnapshot(payload)) {
+      return json({ error: "優待株価APIの応答形式が不正です。" }, 502);
+    }
+    if (!requestedMonth || !/^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth)) {
+      return json({ error: "対象月はYYYY-MMで指定してください。" }, 400);
+    }
+    // Return the payload for diagnostics; the consumer excludes mismatched months.
+    return json(payload);
   } catch {
     return json({ error: "優待株価APIの応答形式が不正です。" }, 502);
   }

@@ -498,7 +498,7 @@
       "details": [
         "40.1 / 263.5",
         "S3",
-        "月表示通常4 API、全月m+3 API、本人DBは別"
+        "月表示通常4 API、全月m+3 API、本人DBは別。株価は完了後60秒で再取得（失敗も再試行、月不一致・古い実株価は採用しない）。更新時の通信量・実測時間は未測定"
       ],
       "tests": [
         "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
@@ -1969,7 +1969,7 @@
         },
         {
           "kind": "client-request",
-          "signature": "fetch(`/api/yutai/stock-prices?month=${stockPriceScopeMonth}`, {\n    cache: \"default\",\n    signal: controller.signal,\n})"
+          "signature": "fetch(`/api/yutai/stock-prices?month=${stockPriceScopeMonth}`, {\n    cache: \"no-store\",\n    signal: controller.signal,\n})"
         },
         {
           "kind": "native-link",

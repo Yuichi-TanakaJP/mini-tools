@@ -22,7 +22,10 @@ function isPositiveFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
-export function parseYutaiStockPriceSnapshot(value: unknown): YutaiStockPriceSnapshot | null {
+export function parseYutaiStockPriceSnapshot(
+  value: unknown,
+  expected?: { scopeMonth: string; now: Date },
+): YutaiStockPriceSnapshot | null {
   if (!isRecord(value) || value.schema_version !== 1 || !Array.isArray(value.records)) return null;
   if (
     typeof value.generated_at !== "string" ||
@@ -33,6 +36,7 @@ export function parseYutaiStockPriceSnapshot(value: unknown): YutaiStockPriceSna
   ) {
     return null;
   }
+  if (expected && value.scope_month !== expected.scopeMonth) return null;
 
   const quotes: YutaiStockPriceQuote[] = [];
   for (const record of value.records) {
@@ -46,6 +50,17 @@ export function parseYutaiStockPriceSnapshot(value: unknown): YutaiStockPriceSna
       typeof record.fetched_at !== "string"
     ) {
       continue;
+    }
+    if (expected) {
+      const priceTime = Date.parse(`${record.price_date}T00:00:00+09:00`);
+      const fetchedTime = Date.parse(record.fetched_at);
+      // The existing 30-code rotation can take a calendar month. Allow 35 days,
+      // while excluding invalid, future, and older successful observations.
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(record.price_date)
+        || !Number.isFinite(priceTime) || !Number.isFinite(fetchedTime)
+        || new Date(priceTime + 9 * 60 * 60 * 1000).toISOString().slice(0, 10) !== record.price_date
+        || priceTime > expected.now.getTime() || fetchedTime > expected.now.getTime()
+        || expected.now.getTime() - priceTime > 35 * 24 * 60 * 60 * 1000) continue;
     }
     quotes.push({
       code: record.code,

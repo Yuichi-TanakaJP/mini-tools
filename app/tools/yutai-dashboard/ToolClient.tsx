@@ -461,12 +461,14 @@ function DashboardView({
     async function loadStockPrices() {
       try {
         const response = await fetch(`/api/yutai/stock-prices?month=${stockPriceScopeMonth}`, {
-          cache: "default",
+          cache: "no-store",
           signal: controller.signal,
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const snapshot = parseYutaiStockPriceSnapshot(await response.json());
-        if (!snapshot) throw new Error("invalid payload");
+        const snapshot = parseYutaiStockPriceSnapshot(await response.json(), {
+          scopeMonth: stockPriceScopeMonth, now: new Date(),
+        });
+        if (!snapshot) throw new Error("対象月の株価が届いていません。古い株価は計算に使用しません。");
         if (active) setStockPriceState({ status: "ready", snapshot });
       } catch (error) {
         if (active && !controller.signal.aborted) {
@@ -478,9 +480,16 @@ function DashboardView({
       }
     }
 
-    void loadStockPrices();
+    // Serialize refreshes so slow requests cannot replace a newer response.
+    let refreshTimer: ReturnType<typeof setTimeout>;
+    async function refreshStockPrices() {
+      await loadStockPrices();
+      if (active) refreshTimer = setTimeout(refreshStockPrices, 60_000);
+    }
+    void refreshStockPrices();
     return () => {
       active = false;
+      clearTimeout(refreshTimer);
       controller.abort();
     };
   }, [stockPriceScopeMonth]);
@@ -1369,8 +1378,8 @@ function DashboardView({
               株価（{stockPriceProvider}）: {stockPriceState.status === "loading"
                 ? "読み込み中"
                 : stockPriceState.status === "ready"
-                  ? `${stockPriceState.snapshot.quotes.length}件・${formatGeneratedAt(stockPriceState.snapshot.generatedAt)}`
-                  : "取得できません"}
+                  ? `${stockPriceState.snapshot.quotes.length}件・${formatGeneratedAt(stockPriceState.snapshot.generatedAt)}${stockPriceState.snapshot.successCount > stockPriceState.snapshot.quotes.length ? "・古い/不正な株価を除外" : ""}`
+                  : "未取得・古い株価は使用しません"}
             </span>
             {data.selectedMonthKenriLastDate ? (
               <span style={styles.metaChip}>権利付き最終日: {data.selectedMonthKenriLastDate.slice(5).replace("-", "/")}</span>
