@@ -36,6 +36,12 @@
 | ポートフォリオ | `/premium/portfolio` | [portfolio.md](./tools/portfolio.md) |
 | テーマViewer | `/premium/themes` | [theme-viewer.md](./tools/theme-viewer.md) |
 
+## 管理画面仕様
+
+| 画面 | URL パス | ドキュメント |
+|---|---|---|
+| 管理ダッシュボード | /admin | [admin-dashboard.md](./tools/admin-dashboard.md) |
+
 ## テンプレート
 
 新しいツール別仕様を追加するときは、[_template.md](./tools/_template.md) をコピーして使います。
@@ -46,4 +52,4 @@
 - 仕様変更 PR では、対象ツールの仕様書更新要否を確認する
 - UAT と仕様書の内容がずれた場合は、仕様書を正、UAT を確認手順として補正する
 - ツール別仕様には、対応する UAT、関連 Decision Log、関連実装へのリンクを置く
-- ツール別仕様を新規追加したら、`docs/index.md` の Specs にも主要リンクを追加する
+- ツール別・管理画面の仕様一覧はこの index を正とする。`docs/index.md` には主要な仕様へのリンクを置き、全件の重複掲載は必須にしない（[Docs Writing Workflow](../docs-writing-workflow.md)）。

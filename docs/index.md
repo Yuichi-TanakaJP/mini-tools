@@ -153,6 +153,8 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
   - [メモ帳DB基本編集の隔離判断](./decision-log/2026-09-09-yutai-memo-db-basics.md)
   - [メモ帳タグのDB接続](./decision-log/2026-09-09-yutai-tags-db.md)
   - [優待カレンダー 仕様](./specs/tools/yutai-candidates.md)
+  - [優待ダッシュボード 仕様](./specs/tools/yutai-dashboard.md)
+  - [管理ダッシュボード 仕様](./specs/tools/admin-dashboard.md)
   - [カレンダーDB接続の段階導入判断](./decision-log/2026-09-09-yutai-calendar-db-connection.md)
   - [決算カレンダー 仕様](./specs/tools/earnings-calendar.md)
   - [TDNET適時開示一覧 仕様](./specs/tools/tdnet-disclosures.md)
@@ -183,6 +185,9 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
   - [ペンギンシューター新ゲーム作成計画](./plans/penguin-shooter-new-game-plan.md)
   - [プロジェクト継続・撤退判断基準](./plans/project-continuation-criteria.md)
   - [株価ランキング外部データ移行計画](./plans/stock-ranking-external-data-migration-plan.md)
+  - [優待統合ダッシュボード実装計画](./plans/yutai-dashboard-plan.md)
+  - [優待券カメラ画像認識計画](./plans/yutai-expiry-image-capture-plan.md)
+  - [Phase 1 クロスデバイス同期計画](./plans/phase1-cross-device-sync-plan.md)
 
 ---
 
@@ -191,6 +196,8 @@ docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./
 - [Backlog インデックス](./backlog/index.md)
   - [TDNET 複数日検索 range API 化 検討メモ](./backlog/tdnet-range-api-architecture.md)
   - [yutai-expiry UI / data model backlog](./backlog/yutai-expiry-ui-data-model.md)
+  - [優待期限帳ユースケース](./backlog/yutai-expiry-usecases.md)
+  - [優待期限帳の優待パターン](./backlog/yutai-expiry-benefit-types.md)
 
 ---
 
@@ -211,6 +218,7 @@ PR マージ後・リリース前の確認観点をツールごとにまとめ�
   - [優待カレンダー](./uat/yutai-candidates.md)
   - [株主優待期限帳](./uat/yutai-expiry.md)
   - [優待銘柄メモ帳](./uat/yutai-memo.md)
+  - [優待ダッシュボード](./uat/yutai-dashboard.md)
   - [ペンギンシューター](./uat/penguin-shooter.md)
   - [テーマViewer](./uat/theme-viewer.md)
   - [業界マップ](./uat/industry-map.md)
