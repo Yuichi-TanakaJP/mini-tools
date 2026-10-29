@@ -64,7 +64,7 @@ import {
   saveCodeSet,
   type CalendarCardMemo,
 } from "@/app/tools/_shared/yutai-selection";
-import { calculateSimpleYutaiEfficiency } from "@/app/tools/_shared/yutai-efficiency";
+import { calculateSimpleYutaiEfficiency, calculateYutaiPurchaseCapital } from "@/app/tools/_shared/yutai-efficiency";
 import {
   calculateNikkoCrossFee,
   resolveCrossSellSide,
@@ -749,6 +749,13 @@ function DashboardView({
       : data.selectedMonthId;
   const selectedLaunchDisplay = selectedRow?.candidate ? launchDisplayByKey.get(`${selectedRow.code}:${selectedRow.candidate.month}`) : undefined;
   const selectedLaunchHint = getLaunchDisplayHint(selectedLaunchDisplay);
+  const selectedCapital = selectedRow?.candidate && !selectedRow.key.startsWith("memo:")
+    ? calculateYutaiPurchaseCapital({
+        minimumInvestmentYen: selectedRow.candidate.minimum_investment_yen,
+        sharePriceYen: selectedStockPriceQuote?.priceYen,
+        requiredShares: selectedCardMemo?.requiredShares ?? selectedLaunchHint?.requiredShares,
+      })
+    : null;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -1849,15 +1856,15 @@ function DashboardView({
                 ) : null}
 
 
-                {selectedEfficiency ? (
+                {selectedCapital ? (
                   <div style={styles.efficiencyResult}>
-                    <strong style={styles.efficiencyResultValue}>
+                    {selectedEfficiency ? <strong style={styles.efficiencyResultValue}>
                       {formatEfficiencyPercent(selectedEfficiency.efficiencyPercent)}
-                    </strong>
-                    <span>必要資金 {formatYen(selectedEfficiency.requiredCapitalYen)}</span>
+                    </strong> : null}
+                    <span>必要購入金額 {formatYen(selectedCapital.requiredCapitalYen)}</span>
                     <span>
-                      {selectedEfficiency.sharePriceSource === "market" ? "株価" : "概算株価"}{" "}
-                      {formatYen(selectedEfficiency.sharePriceYen)}
+                      {selectedCapital.sharePriceSource === "market" ? "株価" : "概算株価"}{" "}
+                      {formatYen(selectedCapital.sharePriceYen)}
                     </span>
                   </div>
                 ) : null}
@@ -1891,14 +1898,20 @@ function DashboardView({
                       )}
                       {selectedLaunchDisplay.programs.length > 0 ? (
                         <div style={styles.launchProgramList}>
-                          {selectedLaunchDisplay.programs.slice(0, 3).map((program) => (
+                          {selectedLaunchDisplay.programs.map((program) => (
                             <div key={program.programId} style={styles.launchProgramItem}>
                               <div style={styles.launchProgramTitle}>{program.label}</div>
-                              {program.tiers.slice(0, 3).map((tier) => (
-                                <div key={`${program.programId}:${tier.minimumShares}:${tier.requiredHoldingMonths}`} style={styles.launchTierText}>
+                              {program.tiers.map((tier) => {
+                                const capital = calculateYutaiPurchaseCapital({
+                                  minimumInvestmentYen: selectedRow.candidate?.minimum_investment_yen,
+                                  sharePriceYen: selectedStockPriceQuote?.priceYen,
+                                  requiredShares: tier.minimumShares,
+                                });
+                                return <div key={`${program.programId}:${tier.minimumShares}:${tier.requiredHoldingMonths}`} style={styles.launchTierText}>
                                   {tier.minimumShares.toLocaleString("ja-JP")}株{tier.requiredHoldingMonths > 0 ? ` / ${tier.requiredHoldingMonths}ヶ月保有` : ""}: {tier.groups.flatMap((group) => group.items).slice(0, 4).map(formatBenefitItem).join("、")}
-                                </div>
-                              ))}
+                                  {capital ? <span> / 必要購入金額 {formatYen(capital.requiredCapitalYen)}{capital.sharePriceSource === "estimated" ? "（概算）" : ""}</span> : <span> / 必要購入金額 未算出（株価未取得）</span>}
+                                </div>;
+                              })}
                             </div>
                           ))}
                         </div>
@@ -1952,14 +1965,10 @@ function DashboardView({
                       </div>
                       {selectedEfficiency ? null : (
                         <p style={styles.detailSub}>
-                          公式条件または手入力の必要株数・優待価値と、株価または最低投資金額が揃うと計算します。
+                          必要購入金額は必要株数と株価から計算します。簡易優待効率は優待価値も揃うと計算します。
                         </p>
                       )}
-                      <p style={styles.efficiencyNote}>
-                        {selectedEfficiency?.sharePriceSource === "market" && selectedStockPriceQuote
-                          ? `株価基準日 ${selectedStockPriceQuote.priceDate.replaceAll("-", "/")}（${stockPriceProvider}）。手数料・配当・株価変動は未反映です。`
-                          : "実株価未取得時は最低投資金額を100株分として概算。手数料・配当・株価変動は未反映です。"}
-                      </p>
+
                     </>
                   ) : (
                     <p style={styles.detailSub}>
@@ -1967,6 +1976,12 @@ function DashboardView({
                     </p>
                   )}
                 </section>
+
+                      <p style={styles.efficiencyNote}>
+                        {selectedStockPriceQuote
+                          ? `株価基準日 ${selectedStockPriceQuote.priceDate.replaceAll("-", "/")}（${stockPriceProvider}）。手数料・配当・株価変動は未反映です。`
+                          : "実株価未取得時は最低投資金額を100株分として概算。手数料・配当・株価変動は未反映です。"}
+                      </p>
 
                 <section style={styles.detailSection}>
                   <h3 style={styles.detailSectionTitle}>日興 一般信用</h3>
