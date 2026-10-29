@@ -8,7 +8,7 @@ for (const disrupted of [false, true]) test(`dashboard DB saves and preserves le
     entry_timing: null, default_preparation_months_before: null, tenure_rule: null, related_url: null, official_benefit_url: null,
     revision: 1, created_at: date, updated_at: date };
   const months = [8, 9].map(month => ({ id: `m${month}`, profile_id: "p", entitlement_month: month, preparation_months_before: month === 9 ? 0 : null,
-    required_shares: month === 9 ? 200 : 100, benefit_value_yen: 5000, long_term_required: false, long_term_benefit: true, month_memo: "keep", revision: 1, created_at: date, updated_at: date }));
+    required_shares: month === 9 ? 200 : 100, benefit_value_yen: month === 9 ? null : 5000, long_term_required: false, long_term_benefit: true, month_memo: "keep", revision: 1, created_at: date, updated_at: date }));
   const selections = [{ id: "global", stock_code: "1234", entitlement_month: null as number | null, selection_status: "picked", revision: 1, created_at: date, updated_at: date }];
   const cycles = [{ id: "old", profile_id: "p", entitlement_year: 2025, entitlement_month: 9, status: "received", planned_at: null,
     prepared_at: "2025-08-01T00:00:00Z", rights_secured_at: null, settled_at: null, received_at: null, skipped_at: null,
@@ -25,8 +25,24 @@ for (const disrupted of [false, true]) test(`dashboard DB saves and preserves le
   ]);
   await page.addInitScript(() => { for (const key of ["monthly_yutai_picks_v1", "monthly_yutai_passes_v1", "monthly_yutai_card_memos_v1", "yutai_memo_items_v1", "yutai_memo_archives_v1"]) localStorage.setItem(key, "legacy-sentinel"); });
   await page.route("**/api/sync**", route => { if (route.request().method() !== "GET") legacyWrites++; return route.fulfill({ json: { items: [] } }); });
-  await page.route("**/api/yutai/stock-prices**", route => route.fulfill({ status: 503, json: {} }));
-  await page.route("**/api/yutai/launch-display**", route => route.fulfill({ status: 503, json: {} }));
+  if (disrupted) await page.setViewportSize({ width: 390, height: 844 });
+  await page.route("**/api/yutai/stock-prices**", route => {
+    const now = new Date();
+    const scope = new URL(route.request().url()).searchParams.get("month");
+    return route.fulfill({ json: { schema_version: 1, generated_at: now.toISOString(), scope_month: scope,
+      provider: "synthetic", record_count: 1, success_count: 1,
+      records: [{code: "1234", price: 2139, price_date: now.toISOString().slice(0, 10), fetched_at: now.toISOString(), status: "ok"}] } });
+  });
+  await page.route("**/api/yutai/launch-display**", route => route.fulfill({ json: {
+    schema_version: 1, generated_at: date, month: "2026-09", record_count: 1,
+    counts: {conditions_available: 1, auto_calculable: 0, requires_user_valuation: 1},
+    records: [{month: "2026-09", code: "1234", company_name: "接続テスト銘柄",
+      display_status: "conditions_available", calculation_status: "user_input_required", requires_user_valuation: true,
+      programs: [{program_id: "synthetic", label: "合成条件", rights_months: [9],
+        tiers: [100, 300, 500, 1000].map(shares => ({minimum_shares: shares, required_holding_months: 0,
+          groups: [{mode: "all", allow_repeated_choices: false,
+            items: [{label: "評価未入力の品物", kind: "goods", valuation_policy: "user_estimate_required"}]}]}))}]}]
+  } }));
   await page.route("https://yutai-test.supabase.co/**", async route => {
     const url = route.request().url();
     if (url.includes("/auth/")) { await route.fulfill({ json: session.user }); return; }
@@ -60,8 +76,24 @@ for (const disrupted of [false, true]) test(`dashboard DB saves and preserves le
   expect(writes[0]).toMatchObject({ command_type: "set_selection", target: { entitlement_month: 9 }, expected_revision: 0 });
   if (disrupted) expect(writes[0]).toEqual(writes[1]);
   expect(selections[0].selection_status).toBe("picked");
-  await page.getByRole("row").filter({ hasText: "接続テスト銘柄" }).first().click();
+  await page.getByRole("cell", { name: "接続テスト銘柄", exact: true }).first().click();
   await expect(page.getByLabel("優待の必要株数")).toHaveValue("200");
+  await expect(page.getByText("必要購入金額 ¥427,800", { exact: true })).toBeVisible();
+  for (const shares of [100, 300, 500]) {
+    await page.getByLabel("優待の必要株数").fill(String(shares));
+    await page.getByLabel("優待の必要株数").press("Tab");
+    await expect(page.getByText(`必要購入金額 ¥${(2139 * shares).toLocaleString("ja-JP")}`, { exact: true })).toBeVisible();
+  }
+  await expect(page.getByLabel("優待価値（円）", { exact: true })).toHaveValue("");
+  await page.getByLabel("優待の必要株数").fill("");
+  await page.getByLabel("優待の必要株数").press("Tab");
+  await expect(page.getByText("必要購入金額 ¥1,069,500", { exact: true })).toHaveCount(0);
+  for (const shares of [100, 300, 500, 1000]) {
+    await expect(page.getByText(new RegExp(`${shares.toLocaleString("ja-JP")}株:.*必要購入金額 ¥${(2139 * shares).toLocaleString("ja-JP")}`))).toBeVisible();
+  }
+  await expect(page.getByText(/株価基準日.*synthetic/)).toBeVisible();
+  // Keep legacy save/conflict coverage at its original desktop viewport.
+  if (disrupted) await page.setViewportSize({ width: 1280, height: 720 });
   await page.getByLabel("優待価値（円）", { exact: true }).fill("6000.5");
   await page.getByLabel("優待価値（円）", { exact: true }).press("Tab");
   await expect.poll(() => months[1].benefit_value_yen).toBe(6000.5);
@@ -92,6 +124,11 @@ for (const disrupted of [false, true]) test(`dashboard DB saves and preserves le
   await expect(rows.nth(1).getByRole("button", { name: "パスを解除", exact: true })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "12ヶ月ビュー", exact: true }).click();
   await expect(page.getByRole("row").filter({ hasText: "接続テスト銘柄" })).toHaveCount(1);
+  await page.goto("/tools/yutai-dashboard?month=2026-09");
+  await page.getByLabel("表示軸").selectOption("preparation");
+  await page.getByRole("cell", { name: "接続テスト銘柄", exact: true }).first().click();
+  await expect(page.getByText(/1,000株:.*必要購入金額 ¥2,139,000/)).toBeVisible();
+  await expect(page.getByText(/株価基準日.*synthetic/)).toBeVisible();
   await page.screenshot({ path: `.tmp/yutai-dashboard-${disrupted}.png`, fullPage: true });
 });
 
