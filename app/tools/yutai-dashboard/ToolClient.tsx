@@ -1360,8 +1360,11 @@ function DashboardView({
 
   return (
     <main style={styles.page}>
-      {db && <YutaiConnectionStatus connection={db} scope="優待ダッシュボード" />}
-      <fieldset disabled={db?.blocked} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
+      {/* Keep recovery controls above disabled content, including fixed mobile details. */}
+      {db && <div style={db.blocked ? { position: "relative", zIndex: 1 } : undefined}>
+        <YutaiConnectionStatus connection={db} scope="優待ダッシュボード" />
+      </div>}
+      <fieldset disabled={db?.blocked} style={{ border: 0, margin: 0, padding: 0, minWidth: 0, isolation: db?.blocked ? "isolate" : undefined }}>
       <div style={styles.shell}>
         <section style={styles.hero}>
           <div style={styles.heroEyebrow}>
