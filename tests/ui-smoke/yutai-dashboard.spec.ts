@@ -110,10 +110,14 @@ for (const [disrupted, mobile, keyboard] of [[false, false, false], [true, false
   if (disrupted) {
     await page.getByRole("button", { name: "保存", exact: true }).click();
     await expect.poll(() => !!releaseProfileResponse).toBe(true);
+    await expect(page.locator("textarea")).toBeVisible();
+    await expect(page.locator("textarea")).toBeDisabled();
     await expect(page.locator("textarea")).toHaveValue("ダッシュボードで編集");
     await expect(page.getByRole("button", { name: "保存", exact: true })).toBeDisabled();
     releaseProfileResponse!();
     await expect(page.getByText(/今回の保存結果は不明/)).toBeVisible();
+    await expect(page.locator("textarea")).toBeVisible();
+    await expect(page.locator("textarea")).toBeDisabled();
     await expect(page.locator("textarea")).toHaveValue("ダッシュボードで編集");
     const mutationsBeforeRetry = writes.length;
     await page.getByRole("button", { name: "同じ要求を再確認・続行" }).click();
@@ -129,6 +133,8 @@ for (const [disrupted, mobile, keyboard] of [[false, false, false], [true, false
     await expect(page.getByRole("button", { name: "最新データを確認して編集をやり直す" })).toBeVisible();
     expect(profile.memo).toBe("別端末の更新");
     await expect(page.getByRole("button", { name: "保存", exact: true })).toBeDisabled();
+    await expect(page.locator("textarea")).toBeVisible();
+    await expect(page.locator("textarea")).toBeDisabled();
     await expect(page.locator("textarea")).toHaveValue("競合する編集内容");
     const mutationsBeforeReview = writes.length;
     const recover = page.getByRole("button", { name: "最新データを確認して編集をやり直す" });
@@ -144,6 +150,7 @@ for (const [disrupted, mobile, keyboard] of [[false, false, false], [true, false
     expect(profile.memo).toBe("別端末の更新");
     await page.getByRole("button", { name: "編集", exact: true }).click();
     await expect(page.locator("textarea")).toHaveValue("別端末の更新");
+    expect(writes).toHaveLength(mutationsBeforeReview);
   } else { await expect.poll(() => profile.memo).toBe("ダッシュボードで編集"); }
   expect(cycles[0]).toMatchObject({ entitlement_year: 2025, note: "前年履歴" });
   expect(legacyWrites).toBe(0);
