@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { createHmac } from "node:crypto";
 
+test.use({ hasTouch: true });
+
 for (const [disrupted, mobile, keyboard] of [[false, false, false], [true, false, false], [true, true, false], [true, true, true]]) test(`dashboard DB saves and preserves legacy data (disrupted: ${disrupted}, mobile: ${mobile}, keyboard: ${keyboard})`, async ({ page, context }) => {
   const date = "2026-09-09T00:00:00Z", owner = "00000000-0000-4000-8000-000000000001";
   const profile = { id: "p", stock_code: "1234", display_name: "接続テスト銘柄", portfolio_instrument_id: null,
@@ -120,7 +122,8 @@ for (const [disrupted, mobile, keyboard] of [[false, false, false], [true, false
     await expect(page.locator("textarea")).toBeDisabled();
     await expect(page.locator("textarea")).toHaveValue("ダッシュボードで編集");
     const mutationsBeforeRetry = writes.length;
-    await page.getByRole("button", { name: "同じ要求を再確認・続行" }).click();
+    const retry = page.getByRole("button", { name: "同じ要求を再確認・続行" });
+    if (mobile) await retry.tap(); else await retry.click();
     await expect(page.getByText("保存しました", { exact: true })).toBeVisible();
     expect(writes[mutationsBeforeRetry].request_id).toBe(writes[mutationsBeforeRetry - 1].request_id);
     expect(profile.memo).toBe("ダッシュボードで編集");
@@ -145,7 +148,8 @@ for (const [disrupted, mobile, keyboard] of [[false, false, false], [true, false
       }
       await expect(recover).toBeFocused();
       await page.keyboard.press("Enter");
-    } else await recover.click({ timeout: 5_000 });
+    } else if (mobile) await recover.tap({ timeout: 5_000 });
+    else await recover.click({ timeout: 5_000 });
     expect(writes).toHaveLength(mutationsBeforeReview);
     expect(profile.memo).toBe("別端末の更新");
     await page.getByRole("button", { name: "編集", exact: true }).click();
