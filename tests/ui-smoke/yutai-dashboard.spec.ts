@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { createHmac } from "node:crypto";
 
-for (const disrupted of [false, true]) test(`dashboard DB saves and preserves legacy data (disrupted: ${disrupted})`, async ({ page, context }) => {
+test.use({ hasTouch: true });
+
+for (const [disrupted, mobile, keyboard] of [[false, false, false], [true, false, false], [true, true, false], [true, true, true]]) test(`dashboard DB saves and preserves legacy data (disrupted: ${disrupted}, mobile: ${mobile}, keyboard: ${keyboard})`, async ({ page, context }) => {
   const date = "2026-09-09T00:00:00Z", owner = "00000000-0000-4000-8000-000000000001";
   const profile = { id: "p", stock_code: "1234", display_name: "接続テスト銘柄", portfolio_instrument_id: null,
     cross_strategy: "未設定", priority: 2, memo: "DBメモ", active: true, one_share_started_on: "2024-03-01", one_share_started_legacy_text: null,
@@ -16,6 +18,8 @@ for (const disrupted of [false, true]) test(`dashboard DB saves and preserves le
   const writes: { request_id: string; command_type: string; expected_revision: number; target: { id?: string; entitlement_month?: number }; payload: Record<string, unknown> }[] = [];
   const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
   let legacyWrites = 0;
+  let profileResponsePending = false;
+  let releaseProfileResponse: (() => void) | undefined;
   const token = [Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"), Buffer.from(JSON.stringify({ sub: owner, exp: 4_000_000_000, role: "authenticated" })).toString("base64url"), "synthetic"].join(".");
   const session = { access_token: token, refresh_token: "synthetic", expires_at: 4_000_000_000, expires_in: 3600, token_type: "bearer", user: { id: owner, aud: "authenticated", role: "authenticated", app_metadata: {}, user_metadata: {} } };
   const payload = `${Date.now()}.synthetic`;
@@ -25,7 +29,7 @@ for (const disrupted of [false, true]) test(`dashboard DB saves and preserves le
   ]);
   await page.addInitScript(() => { for (const key of ["monthly_yutai_picks_v1", "monthly_yutai_passes_v1", "monthly_yutai_card_memos_v1", "yutai_memo_items_v1", "yutai_memo_archives_v1"]) localStorage.setItem(key, "legacy-sentinel"); });
   await page.route("**/api/sync**", route => { if (route.request().method() !== "GET") legacyWrites++; return route.fulfill({ json: { items: [] } }); });
-  if (disrupted) await page.setViewportSize({ width: 390, height: 844 });
+  if (mobile) await page.setViewportSize({ width: 390, height: 844 });
   await page.route("**/api/yutai/stock-prices**", route => {
     const now = new Date();
     const scope = new URL(route.request().url()).searchParams.get("month");
@@ -50,13 +54,18 @@ for (const disrupted of [false, true]) test(`dashboard DB saves and preserves le
     if (url.endsWith("stock_notes_record_yutai_command")) {
       const c = args.p_input, replayed = writes.some(w => w.request_id === c.request_id); writes.push(c);
       const target = c.command_type === "update_profile" ? profile : months.find(m => m.id === c.target.id);
-      if (target && c.expected_revision !== target.revision) { await route.fulfill({ status: 409, json: { code: "40001", message: "REVISION_CONFLICT" } }); return; }
+      if (!replayed && target && c.expected_revision !== target.revision) { await route.fulfill({ status: 409, json: { code: "40001", message: "REVISION_CONFLICT" } }); return; }
       if (!replayed) {
         if (c.command_type === "set_selection") selections.push({ ...selections[0], id: "monthly", entitlement_month: c.target.entitlement_month, selection_status: c.payload.selection_status });
         else if (target) { Object.assign(target, c.payload); target.revision++; }
         else throw new Error(`Unexpected command ${c.command_type}`);
       }
       if (disrupted && writes.length === 1) { await route.abort("failed"); return; }
+      if (disrupted && c.command_type === "update_profile" && !replayed && !profileResponsePending) {
+        profileResponsePending = true;
+        await new Promise<void>(resolve => { releaseProfileResponse = resolve; });
+        await route.abort("failed"); return;
+      }
       await route.fulfill({ json: { schema_version: 1, command_type: c.command_type, request_id: c.request_id, target_id: c.target.id ?? "monthly", revision: target?.revision ?? 1, event_id: "audit", replayed, before: null, after: {} } }); return;
     }
     if (!url.endsWith("stock_notes_get_yutai_workspace")) { legacyWrites++; await route.fulfill({ json: [] }); return; }
@@ -92,8 +101,6 @@ for (const disrupted of [false, true]) test(`dashboard DB saves and preserves le
     await expect(page.getByText(new RegExp(`${shares.toLocaleString("ja-JP")}株:.*必要購入金額 ¥${(2139 * shares).toLocaleString("ja-JP")}`))).toBeVisible();
   }
   await expect(page.getByText(/株価基準日.*synthetic/)).toBeVisible();
-  // Keep legacy save/conflict coverage at its original desktop viewport.
-  if (disrupted) await page.setViewportSize({ width: 1280, height: 720 });
   await page.getByLabel("優待価値（円）", { exact: true }).fill("6000.5");
   await page.getByLabel("優待価値（円）", { exact: true }).press("Tab");
   await expect.poll(() => months[1].benefit_value_yen).toBe(6000.5);
@@ -102,14 +109,52 @@ for (const disrupted of [false, true]) test(`dashboard DB saves and preserves le
   // Labels in the legacy detailed editor are text headings; scope to its textarea.
   await expect(page.locator("textarea")).toHaveValue("DBメモ");
   await page.locator("textarea").fill("ダッシュボードで編集");
-  if (disrupted) { profile.memo = "別端末の更新"; profile.revision++; }
+  if (disrupted) {
+    await page.getByRole("button", { name: "保存", exact: true }).click();
+    await expect.poll(() => !!releaseProfileResponse).toBe(true);
+    await expect(page.locator("textarea")).toBeVisible();
+    await expect(page.locator("textarea")).toBeDisabled();
+    await expect(page.locator("textarea")).toHaveValue("ダッシュボードで編集");
+    await expect(page.getByRole("button", { name: "保存", exact: true })).toBeDisabled();
+    releaseProfileResponse!();
+    await expect(page.getByText(/今回の保存結果は不明/)).toBeVisible();
+    await expect(page.locator("textarea")).toBeVisible();
+    await expect(page.locator("textarea")).toBeDisabled();
+    await expect(page.locator("textarea")).toHaveValue("ダッシュボードで編集");
+    const mutationsBeforeRetry = writes.length;
+    const retry = page.getByRole("button", { name: "同じ要求を再確認・続行" });
+    if (mobile) await retry.tap(); else await retry.click();
+    await expect(page.getByText("保存しました", { exact: true })).toBeVisible();
+    expect(writes[mutationsBeforeRetry].request_id).toBe(writes[mutationsBeforeRetry - 1].request_id);
+    expect(profile.memo).toBe("ダッシュボードで編集");
+    await page.getByRole("button", { name: "編集", exact: true }).click();
+    await page.locator("textarea").fill("競合する編集内容");
+    profile.memo = "別端末の更新"; profile.revision++;
+  }
   await page.getByRole("button", { name: "保存", exact: true }).click();
   if (disrupted) {
     await expect(page.getByRole("button", { name: "最新データを確認して編集をやり直す" })).toBeVisible();
     expect(profile.memo).toBe("別端末の更新");
-    await page.getByRole("button", { name: "最新データを確認して編集をやり直す" }).click();
+    await expect(page.getByRole("button", { name: "保存", exact: true })).toBeDisabled();
+    await expect(page.locator("textarea")).toBeVisible();
+    await expect(page.locator("textarea")).toBeDisabled();
+    await expect(page.locator("textarea")).toHaveValue("競合する編集内容");
+    const mutationsBeforeReview = writes.length;
+    const recover = page.getByRole("button", { name: "最新データを確認して編集をやり直す" });
+    if (keyboard) {
+      for (let i = 0; i < 24; i++) {
+        if (await recover.evaluate(element => element === document.activeElement)) break;
+        await page.keyboard.press("Tab");
+      }
+      await expect(recover).toBeFocused();
+      await page.keyboard.press("Enter");
+    } else if (mobile) await recover.tap({ timeout: 5_000 });
+    else await recover.click({ timeout: 5_000 });
+    expect(writes).toHaveLength(mutationsBeforeReview);
+    expect(profile.memo).toBe("別端末の更新");
     await page.getByRole("button", { name: "編集", exact: true }).click();
     await expect(page.locator("textarea")).toHaveValue("別端末の更新");
+    expect(writes).toHaveLength(mutationsBeforeReview);
   } else { await expect.poll(() => profile.memo).toBe("ダッシュボードで編集"); }
   expect(cycles[0]).toMatchObject({ entitlement_year: 2025, note: "前年履歴" });
   expect(legacyWrites).toBe(0);
@@ -129,7 +174,13 @@ for (const disrupted of [false, true]) test(`dashboard DB saves and preserves le
   await page.getByRole("cell", { name: "接続テスト銘柄", exact: true }).first().click();
   await expect(page.getByText(/1,000株:.*必要購入金額 ¥2,139,000/)).toBeVisible();
   await expect(page.getByText(/株価基準日.*synthetic/)).toBeVisible();
-  await page.screenshot({ path: `.tmp/yutai-dashboard-${disrupted}.png`, fullPage: true });
+  await page.screenshot({ path: `.tmp/yutai-dashboard-${disrupted}-${mobile}-${keyboard}.png`, fullPage: true });
+  if (mobile) {
+    await page.mouse.click(8, 200);
+    await expect(page.locator("aside").filter({ hasText: "接続テスト銘柄" })).toHaveCount(0);
+    await page.getByRole("cell", { name: "接続テスト銘柄", exact: true }).first().click();
+    await expect(page.getByRole("heading", { name: "接続テスト銘柄", exact: true })).toBeVisible();
+  }
 });
 
 test("dashboard retains premium login protection", async ({ page }) => {
