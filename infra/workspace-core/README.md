@@ -37,7 +37,7 @@ The current origin follow-up adds data, not schema. The loader and [read-only ch
 
 See the [origin follow-up handoff and verification record](../../docs/devlog/2026-09-16-workspace-origin-followup-handoff.md) for input retrieval, application boundaries, tests, and remaining review/merge gates.
 
-The canonical existing program is `product-system-inventory-evolution-design-data-strategy` in the **mini-tools** database's `public.stock_notes_workstreams`, not a new Workstream in this project's `coordination` schema. Its broader scope includes map/UIUX, market-data sourcing, thought/chat capture, and issue inventory. Completing the V3 foundation or #583/#588 does not complete that whole program. Preserve the other milestones and existing decisions.
+Current Workstream authority (2026-10-31): the existing program `product-system-inventory-evolution-design-data-strategy` is accessed through **Workspace Core**'s integrated system-records readers. The five legacy `public.stock_notes_workstream*` tables in invest-prod (formerly mini-tools) were emptied after cutover on 2026-10-25 and are retained with their write guards. Do not use them or the legacy handoff view as the current source, and do not create a duplicate program. The broader program still includes map/UIUX, market-data sourcing, thought/chat capture, and issue inventory; completing the V3 foundation or #583/#588 does not complete it. Preserve existing milestones and decisions. See [the dated guidance correction](../../docs/decision-log/2026-10-31-workstream-authority-guidance.md).
 
 Current project:
 
@@ -50,7 +50,7 @@ Current project:
 - Observability schema: `observability` for Health Monitor cloud mirror and governance evidence
 - public read views: narrow `public.workspace_core_*_v` views with browser-role access revoked
 
-Do **not** apply this directory's Workspace Core SQL to the existing `mini-tools` Supabase project. The private Workstream replay-input lookup is a separate, explicitly labelled mini-tools read in the handoff document.
+Do **not** apply this directory's Workspace Core SQL to the existing `mini-tools` Supabase project. The handoff document's mini-tools replay-input lookup is historical; current system records and preserved migration input belong to Workspace Core. Do not rerun the old source-copy procedure against the now-empty legacy tables.
 
 ## Boundary
 
