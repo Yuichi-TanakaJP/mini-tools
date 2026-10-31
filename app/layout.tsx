@@ -37,6 +37,9 @@ export const metadata: Metadata = {
     description:
       "文字数カウント、合計計算、株主優待期限管理、優待銘柄メモをブラウザで使える無料ミニツール集。",
   },
+  icons: {
+    icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+  },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

@@ -82,3 +82,9 @@
 - 未登録siteのエラーを単純な再収集で消さず、From→To・例外理由・テストの確認範囲をレビューする。静的検出外のlocal switchや間接呼出しは、変更pathのREVIEWと共通Skillで確認する。
 
 このチェック追加は画面やAPIの実行コードを変更しない。全画面のbuild/E2Eや本番故障注入を、チェッカーの検証だけのために追加実行しない。将来のUI変更ではその変更に必要な確認を省略しない。
+
+## ブラウザータブfavicon
+
+- ホームと任意のツールのHTML headにrel=icon、href=/icons/icon-192.png、type=image/png、sizes=192x192が出力されること。
+- 画像URLがHTTP200/image/pngを返し、既存MiniToolsアイコンとして表示できること。
+- manifest/認証/ページ遷移は従来どおりであること。確認画面または本番の新しいタブで確認し、既存タブのfavicon cacheで旧アイコンが残る場合は再読込も確認すること。

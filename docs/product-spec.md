@@ -90,3 +90,7 @@
 - 仕様判断や運用判断が新しく固まったら、必要に応じて decision-log に残す
 - 確認観点が変わったら、UAT チェックリストも更新する
 - docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./docs-writing-workflow.md) に従う
+
+## ブラウザータブのアイコン（2026-11-01）
+
+サイト共通metadataのicons.iconへ既存の `/icons/icon-192.png` を指定する。PWA manifestだけではブラウザーのタブfavicon指定を代替しないため、ホーム・Premium・各ツールで同じMiniToolsアイコンを継承する。既存画像を再利用し、新規生成画像・DB・認証・ルーティング・manifestの変更は行わない。
