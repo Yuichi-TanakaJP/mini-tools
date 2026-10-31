@@ -82,3 +82,9 @@
 - 未登録siteのエラーを単純な再収集で消さず、From→To・例外理由・テストの確認範囲をレビューする。静的検出外のlocal switchや間接呼出しは、変更pathのREVIEWと共通Skillで確認する。
 
 このチェック追加は画面やAPIの実行コードを変更しない。全画面のbuild/E2Eや本番故障注入を、チェッカーの検証だけのために追加実行しない。将来のUI変更ではその変更に必要な確認を省略しない。
+
+## ブラウザータブfavicon
+
+- ホームと任意のツールのHTML headにrel=iconとして /favicon.ico（image/x-icon、16x16 32x32）と /icons/favicon.svg（image/svg+xml）が出力されること。
+- 両画像URLがHTTP200と対応するimage MIMEを返し、採用したタイルのfaviconとして表示できること。ICO内の16/32px PNGをデコードし、SVGにscript/外部参照がないこと。
+- manifest/認証/ページ遷移は従来どおりであること。確認画面または本番の新しいタブで確認し、既存タブのfavicon cacheで旧アイコンが残る場合は再読込も確認すること。

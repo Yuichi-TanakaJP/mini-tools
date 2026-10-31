@@ -90,3 +90,7 @@
 - 仕様判断や運用判断が新しく固まったら、必要に応じて decision-log に残す
 - 確認観点が変わったら、UAT チェックリストも更新する
 - docs の置き場所と相互リンクのルールは [Docs Writing Workflow](./docs-writing-workflow.md) に従う
+
+## ブラウザータブのアイコン（2026-11-01）
+
+ユーザーがClaude Opus 5.5と共同検討した3案から「アロケーション・タイル」を選択。サイト共通metadataのicons.iconへ `/icons/favicon.svg`（小サイズ調整済み）と `/favicon.ico`（16/32px PNGを内包）を指定する。ホーム・Premium・各ツールで同じfaviconを継承する。SVGは静的な幾何図形だけとし、フォント・スクリプト・外部参照を含めない。PWA manifestのアプリ用アイコンとは独立したブラウザータブ用の設定。DB・認証・ルーティングは変更しない。
