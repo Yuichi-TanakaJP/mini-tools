@@ -10,7 +10,9 @@ import {
 } from "./allocation";
 import type { PortfolioData } from "./types";
 
-const colors = ["var(--color-chart-1)", "var(--color-chart-2)", "var(--color-chart-3)", "var(--color-chart-4)", "var(--color-chart-5)", "var(--color-chart-6)"];
+function itemColor(item: PortfolioAllocationItem, index: number) {
+  return item.isUnclassified ? "var(--color-text-muted)" : `hsl(${(index * 137.508 + 220) % 360} 70% 62%)`;
+}
 const classificationDimensions = new Set<PortfolioAllocationDimension>(["sector_33", "cycle_profile", "income_profile", "market_cap_profile"]);
 
 function formatYen(value: number) {
@@ -27,25 +29,7 @@ function formatCompactYen(value: number) {
   return formatYen(value);
 }
 
-function compactItems(items: PortfolioAllocationItem[], maxItems = 12): PortfolioAllocationItem[] {
-  if (items.length <= maxItems) return items;
-  const visible = items.slice(0, maxItems - 1);
-  const rest = items.slice(maxItems - 1);
-  return [
-    ...visible,
-    {
-      key: "__other__",
-      label: `その他 ${rest.length}分類`,
-      marketValue: rest.reduce((sum, item) => sum + item.marketValue, 0),
-      percentage: rest.reduce((sum, item) => sum + item.percentage, 0),
-      positionCount: rest.reduce((sum, item) => sum + item.positionCount, 0),
-      instrumentCount: rest.reduce((sum, item) => sum + item.instrumentCount, 0),
-      isUnclassified: false,
-    },
-  ];
-}
-
-function DonutChart({ items, total }: { items: PortfolioAllocationItem[]; total: number }) {
+function DonutChart({ items, total, label }: { items: PortfolioAllocationItem[]; total: number; label: string }) {
   const radius = 18;
   const segments = items.reduce<Array<{ item: PortfolioAllocationItem; index: number; offset: number }>>((result, item, index) => {
     const previous = result.at(-1);
@@ -53,10 +37,10 @@ function DonutChart({ items, total }: { items: PortfolioAllocationItem[]; total:
     return [...result, { item, index, offset }];
   }, []);
   return (
-    <svg viewBox="0 0 52 52" width={220} height={220} role="img" aria-label={items.map((item) => `${item.label} ${formatPercent(item.percentage)}`).join("、")} style={{ maxWidth: "100%" }}>
+    <svg viewBox="0 0 52 52" width={220} height={220} role="img" aria-label={label + "。" + items.map((item) => `${item.label} ${formatPercent(item.percentage)}`).join("、")} style={{ maxWidth: "100%" }}>
       <circle cx={26} cy={26} r={radius} pathLength={100} fill="transparent" stroke="var(--color-bg-input)" strokeWidth={8} />
       {segments.map(({ item, index, offset: segmentOffset }) => (
-        <circle key={item.key} cx={26} cy={26} r={radius} pathLength={100} fill="transparent" stroke={item.isUnclassified ? "var(--color-chart-6)" : colors[index % colors.length]} strokeWidth={8} strokeDasharray={`${item.percentage} ${100 - item.percentage}`} strokeDashoffset={25 - segmentOffset}>
+        <circle key={item.key} cx={26} cy={26} r={radius} pathLength={100} fill="transparent" stroke={itemColor(item, index)} strokeWidth={8} strokeDasharray={`${item.percentage} ${100 - item.percentage}`} strokeDashoffset={25 - segmentOffset}>
           <title>{`${item.label} ${formatYen(item.marketValue)} / ${formatPercent(item.percentage)}`}</title>
         </circle>
       ))}
@@ -66,40 +50,21 @@ function DonutChart({ items, total }: { items: PortfolioAllocationItem[]; total:
   );
 }
 
-function BarChart({ items }: { items: PortfolioAllocationItem[] }) {
-  return (
-    <div style={{ display: "grid", gap: 11 }}>
-      {compactItems(items).map((item, index) => (
-        <div key={item.key}>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 12, marginBottom: 5, fontSize: 13 }}>
-            <span style={{ fontWeight: 800, overflowWrap: "anywhere" }}>{item.label}</span>
-            <span style={{ whiteSpace: "nowrap", color: "var(--color-text-sub)" }}>{formatPercent(item.percentage)} · {formatYen(item.marketValue)}</span>
-          </div>
-          <div style={{ height: 9, borderRadius: 999, background: "var(--color-bg-input)", overflow: "hidden" }}>
-            <div style={{ width: `${item.percentage}%`, minWidth: item.percentage > 0 ? 2 : 0, height: "100%", borderRadius: 999, background: item.isUnclassified ? "var(--color-chart-6)" : colors[index % colors.length] }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export default function PortfolioAnalysisCard({ data }: { data: PortfolioData }) {
-  const [dimension, setDimension] = useState<PortfolioAllocationDimension>("asset_type");
-  const [scope, setScope] = useState<PortfolioAllocationScope>("all");
+  const [dimension, setDimension] = useState<PortfolioAllocationDimension>("sector_33");
+  const [scope, setScope] = useState<PortfolioAllocationScope>("equity");
   const allocation = useMemo(() => getPortfolioAllocation({
     positions: data.positions,
     instrumentAnalysis: data.instrumentAnalysis,
     dimension,
     scope,
   }), [data.instrumentAnalysis, data.positions, dimension, scope]);
-  const chartType = portfolioAllocationDimensions[dimension].preferredChart === "bar" || allocation.items.length > 6 ? "bar" : "donut";
   const classificationUnavailable = classificationDimensions.has(dimension) && data.instrumentAnalysisStatus === "error";
 
   return (
     <div style={{ display: "grid", gap: 18 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 14, flexWrap: "wrap", alignItems: "end" }}>
-        <label style={{ display: "grid", gap: 6, minWidth: 220, fontSize: 12, fontWeight: 800, color: "var(--color-text-muted)" }}>
+        <label style={{ display: "grid", gap: 6, minWidth: "min(220px, 100%)", fontSize: 12, fontWeight: 800, color: "var(--color-text-muted)" }}>
           分析軸
           <select value={dimension} onChange={(event) => setDimension(event.target.value as PortfolioAllocationDimension)} style={{ minHeight: 40, border: "1px solid var(--color-border)", borderRadius: 8, padding: "0 10px", background: "var(--color-bg-card)", color: "var(--color-text)", fontWeight: 800 }}>
             {Object.entries(portfolioAllocationDimensions).map(([key, item]) => <option key={key} value={key}>{item.label}</option>)}
@@ -110,7 +75,7 @@ export default function PortfolioAnalysisCard({ data }: { data: PortfolioData })
           <div style={{ display: "flex", gap: 6 }}>
             {(["all", "equity"] as const).map((value) => (
               <button key={value} type="button" onClick={() => setScope(value)} aria-pressed={scope === value} style={{ minHeight: 40, border: scope === value ? "1px solid var(--color-accent)" : "1px solid var(--color-border)", borderRadius: 8, padding: "0 12px", background: scope === value ? "var(--color-info-bg)" : "var(--color-bg-card)", color: scope === value ? "var(--color-info-text)" : "var(--color-text-sub)", fontWeight: 800, cursor: "pointer" }}>
-                {value === "all" ? "全資産" : "個別株のみ"}
+                {value === "all" ? "登録保有全体" : "個別株のみ"}
               </button>
             ))}
           </div>
@@ -127,24 +92,22 @@ export default function PortfolioAnalysisCard({ data }: { data: PortfolioData })
             <span>分析対象額 <strong style={{ color: "var(--color-text)" }}>{formatYen(allocation.totalMarketValue)}</strong></span>
             <span>{allocation.items.length}分類</span>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: chartType === "donut" ? "repeat(auto-fit, minmax(250px, 1fr))" : "1fr", gap: 22, alignItems: "center" }}>
-            {chartType === "donut" ? <div style={{ display: "flex", justifyContent: "center" }}><DonutChart items={allocation.items} total={allocation.totalMarketValue} /></div> : null}
-            {chartType === "donut" ? (
-              <div style={{ display: "grid", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 250px), 1fr))", gap: 22, alignItems: "center" }}>
+            <div style={{ display: "flex", justifyContent: "center" }}><DonutChart items={allocation.items} total={allocation.totalMarketValue} label={`${portfolioAllocationDimensions[dimension].label} / ${scope === "equity" ? "個別株のみ" : "登録保有全体"}`} /></div>
+            <div style={{ display: "grid", gap: 10, maxHeight: 350, overflowY: "auto" }} tabIndex={0} role="region" aria-label="構成比の凡例">
                 {allocation.items.map((item, index) => (
                   <div key={item.key} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 10, alignItems: "center", borderBottom: "1px solid var(--color-border)", paddingBottom: 9 }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 800 }}><span aria-hidden="true" style={{ width: 11, height: 11, borderRadius: "50%", background: item.isUnclassified ? "var(--color-chart-6)" : colors[index % colors.length] }} />{item.label}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 800 }}><span aria-hidden="true" style={{ width: 11, height: 11, borderRadius: "50%", background: itemColor(item, index) }} />{item.label}</span>
                     <span style={{ textAlign: "right" }}><strong>{formatPercent(item.percentage)}</strong><br /><span style={{ color: "var(--color-text-muted)", fontSize: 12 }}>{formatYen(item.marketValue)}</span></span>
                   </div>
                 ))}
-              </div>
-            ) : <BarChart items={allocation.items} />}
+            </div>
           </div>
         </div>
       )}
 
       <div style={{ color: "var(--color-text-muted)", fontSize: 11, lineHeight: 1.6 }}>
-        評価額ベース。未分類も分母に含めます。{allocation.missingMarketValueCount > 0 ? ` 評価額未取得 ${allocation.missingMarketValueCount}件は構成比から除外しています。` : ""}
+        登録保有の評価額ベース（外部参照資産は対象外）。個別株のみは国内株・海外株を含みます。未分類も分母に含めます。{allocation.missingMarketValueCount > 0 ? ` 評価額未取得 ${allocation.missingMarketValueCount}件は構成比から除外しています。` : ""}
       </div>
     </div>
   );
