@@ -138,7 +138,7 @@ Profileは入口の表示責務に対応する。例えばC1のscan PoCは入口
 | E04 | `/premium/theme-company-network` | `/premium/industry-map`、`/premium/company-network` | 関連マップ。S3 |
 | E05 | `/premium/company-network` | `/premium/industry-map` | 関連マップ。S3 |
 | E06 | `/premium/industry-map` | `/premium/themes` | テーマ一覧。V1 |
-| E07 | `/premium/portfolio` | `/tools/yutai-memo`、`/premium/company-network`、`/account` | 関連ツール/認証案内。業務データの変更を伴わない遷移のみ |
+| E07 | `/premium/portfolio` | `/premium/company-network`、`/account` | 関連ツール/認証案内。業務データの変更を伴わない遷移のみ |
 | E08 | `/tools/stock-notes` | `/premium/portfolio`、`/account` | 保有全体/認証案内。S3/C2 |
 | E09 | `/tools/my-stocks` | `/premium/portfolio`、`/tools/stock-notes` | 旧画面の移行案内。S3/C2 |
 | E10 | `/tools/disclosure-radar` | `/tools/stock-notes` | ウォッチ管理。C2 |

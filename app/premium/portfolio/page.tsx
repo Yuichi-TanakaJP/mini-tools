@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "@/components/navigation/Link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import CompanyGroupExposureCard from "./CompanyGroupExposureCard";
@@ -50,31 +49,6 @@ export default async function PremiumPortfolioPage() {
   return (
     <main style={{ padding: "28px 16px 72px" }}>
       <section style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gap: 16 }}>
-        <nav style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <Link
-            href="/premium"
-            style={{
-              color: "var(--color-text-sub)",
-              textDecoration: "none",
-              fontSize: 13,
-              fontWeight: 800,
-            }}
-          >
-            ← Premium ホーム
-          </Link>
-          <Link
-            href="/tools/yutai-memo"
-            style={{
-              color: "var(--color-text-sub)",
-              textDecoration: "none",
-              fontSize: 13,
-              fontWeight: 800,
-            }}
-          >
-            優待銘柄メモ
-          </Link>
-        </nav>
-
         <PortfolioWorkspace data={portfolio} groupExposure={portfolio.authState === "authenticated" && portfolio.currentSnapshot ? (
           companyGroupExposureError ? (
             <section style={{ background: "var(--color-bg-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: 18 }}>

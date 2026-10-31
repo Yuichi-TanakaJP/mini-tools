@@ -18,13 +18,15 @@ function position(overrides: Partial<PortfolioPosition> = {}): PortfolioPosition
 }
 
 describe("配当の上部サマリーと構成グラフ", () => {
-  it("部分和を上部主値にせず、確認済み分としてだけ表示する", () => {
+  it("部分和を確認済み分と明記して主表示し、全体合計とは区別する", () => {
     const p = { ...source(), status: "incomplete" as const, expectedStocks: 2, projectedAnnualGross: null };
     expect(dividendDisplay(p)).toMatchObject({ confirmedGross: 4000, completeTotal: null, missingCount: 1 });
     const html = renderToStaticMarkup(createElement(PortfolioIncomeSummary, { projection: p }));
-    expect(html).toContain(`確認済み分 ${yen(4000)}`);
+    expect(html).toContain("年間予想配当（確認済み分）");
+    expect(html).toContain(`>${yen(4000)}</div>`);
+    expect(html).toContain("全体合計は未確定");
     expect(html).toContain("未確認 1銘柄");
-    expect(html).toContain(">—</div>");
+    expect(html).not.toContain(">—</div>");
   });
   it("完全合計はDB契約のready値だけを表示し、既知無配0円と未知を区別する", () => {
     const p = source(); p.projectedAnnualGross = 0; p.positions[0].annualGross = 0; p.positions[0].forecastDps = 0;
@@ -68,4 +70,14 @@ it("同じ分類の確認済み・未確認を区別し、棒の部分和と分�
   expect(html).toContain(`確認済み分 ${yen(1000)}`); expect(html).toContain(yen(3000));
   expect(html).toContain("25.0%"); expect(html).toContain("75.0%");
   expect(html).toContain("未確認 1銘柄"); expect(html).toContain("この表示範囲の年間合計は未確定");
+});
+
+it("上部は全確認なら全額、確認済みなし/取得失敗なら金額を作らない", () => {
+  const ready = renderToStaticMarkup(createElement(PortfolioIncomeSummary, { projection: source() }));
+  expect(ready).toContain("年間予想配当（国内株）"); expect(ready).not.toContain("年間予想配当（確認済み分）");
+  expect(ready).toContain(`>${yen(4000)}</div>`);
+  for (const status of ["error", "no_domestic_stocks", "no_snapshot"] as const) {
+    const html = renderToStaticMarkup(createElement(PortfolioIncomeSummary, { projection: { ...source(), status } }));
+    expect(html).toContain(">—</div>"); expect(html).not.toContain(`>${yen(4000)}</div>`);
+  }
 });
