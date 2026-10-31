@@ -15,6 +15,7 @@ function compact(value: number) { return value >= 10_000 ? `¥${new Intl.NumberF
 
 export type PortfolioAnalysisCardProps = {
   data: PortfolioData;
+  hideControls?: boolean;
   dimension: PortfolioAllocationDimension;
   scope: PortfolioAllocationScope;
   selectedKey: string | null;
@@ -26,7 +27,7 @@ export type PortfolioAnalysisCardProps = {
   onSelect: (key: string | null) => void;
 };
 
-export default function PortfolioAnalysisCard({ data, dimension, scope, selectedKey, groups, allGroups, total, onDimension, onScope, onSelect }: PortfolioAnalysisCardProps) {
+export default function PortfolioAnalysisCard({ data, hideControls = false, dimension, scope, selectedKey, groups, allGroups, total, onDimension, onScope, onSelect }: PortfolioAnalysisCardProps) {
   const clearRef = useRef<HTMLButtonElement>(null);
   const select = (key: string | null) => {
     if (key === "action:clear") { clearRef.current?.focus(); onSelect(null); }
@@ -40,14 +41,7 @@ export default function PortfolioAnalysisCard({ data, dimension, scope, selected
   const segments = groups.map((group, index) => ({ group, index, offset: groups.slice(0, index).reduce((sum, previous) => sum + previous.percentage, 0) }));
   const scopeName = scope === "all" ? "登録保有全体" : "個別株のみ";
   return <div style={{ display: "grid", gap: 14 }}>
-    <div className={styles.controls}>
-    <div role="group" aria-label="分析軸" className={styles.axes}>
-      {Object.entries(portfolioAllocationDimensions).map(([key, item]) => <button key={key} type="button" className={styles.choice} aria-pressed={dimension === key} onClick={() => onDimension(key as PortfolioAllocationDimension)}>{item.label}</button>)}
-    </div>
-    <div role="group" aria-label="分析対象" className={styles.axes}>
-      {(["all", "equity"] as const).map((key) => <button key={key} type="button" className={styles.choice} aria-pressed={scope === key} onClick={() => onScope(key)}>{key === "all" ? "登録保有全体" : "個別株のみ"}</button>)}
-    </div>
-    </div>
+    {!hideControls ? <PortfolioAnalysisControls dimension={dimension} scope={scope} onDimension={onDimension} onScope={onScope} /> : null}
     <div className={styles.context}>
       <span style={{ minWidth: 0 }}>分析対象額 <strong>{knownCount > 0 ? yen(total) : "—"}</strong> ／ {unavailable ? "分類未取得" : `${allGroups.length}分類`}<span title={`${scopeName} ／ ${selected?.label ?? "すべて"}`} style={{ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>表示範囲：{scopeName} ／ {selected?.label ?? "すべて"}</span></span>
       <button ref={clearRef} type="button" className={styles.choice} aria-pressed={!selected} onClick={() => onSelect(null)}>すべて表示</button>
@@ -71,4 +65,17 @@ export default function PortfolioAnalysisCard({ data, dimension, scope, selected
     {!unavailable ? <details key={`${dimension}:${scope}`}><summary style={{ cursor: "pointer", fontSize: 12 }}>分類の全明細（{allGroups.length}分類）</summary><div role="group" aria-label="すべての分類から選択" style={{ display: "grid", gap: 4, paddingTop: 10 }}>{allGroups.map((group) => <button key={group.key} type="button" className={styles.legendButton} aria-pressed={selectedKey === group.key} onClick={() => select(selectedKey === group.key ? null : group.key)}><span>{group.label}</span><span>{amount(group)}{group.missingValueCount > 0 ? "（未取得あり）" : ""} ／ {total > 0 ? pct(group.percentage) : "—"}</span></button>)}</div></details> : <div style={{ height: 20 }} />}
     <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 11, lineHeight: 1.6 }}>分類ボタンを押すと、下の配当・商品構成も同じ範囲になります。構成比の分母は分析対象全体を維持します。外部参照資産は対象外。未分類も分母に含めます。{missing > 0 ? ` 評価額未取得 ${missing}件はグラフから除外し、商品一覧には残します。` : ""}</p>
   </div>;
+}
+
+export function PortfolioAnalysisControls({ dimension, scope, onDimension, onScope }: Pick<PortfolioAnalysisCardProps, "dimension" | "scope" | "onDimension" | "onScope">) {
+  return (
+<div className={styles.controls}>
+    <div role="group" aria-label="分析軸" className={styles.axes}>
+      {Object.entries(portfolioAllocationDimensions).map(([key, item]) => <button key={key} type="button" className={styles.choice} aria-pressed={dimension === key} onClick={() => onDimension(key as PortfolioAllocationDimension)}>{item.label}</button>)}
+    </div>
+    <div role="group" aria-label="分析対象" className={styles.axes}>
+      {(["all", "equity"] as const).map((key) => <button key={key} type="button" className={styles.choice} aria-pressed={scope === key} onClick={() => onScope(key)}>{key === "all" ? "登録保有全体" : "個別株のみ"}</button>)}
+    </div>
+    </div>
+  );
 }

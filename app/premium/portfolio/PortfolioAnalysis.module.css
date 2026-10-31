@@ -23,3 +23,23 @@
   .legendValue { display:flex; gap:5px; align-items:baseline; white-space:nowrap; }
   .legendValue br { display:none; }
 }
+
+.dividendComposition { display:grid; gap:12px; }
+.dividendBars { display:grid; gap:8px; height:420px; overflow-y:auto; padding:3px; }
+.dividendBarButton { display:grid; gap:7px; width:100%; min-width:0; padding:10px; text-align:left; border:1px solid var(--color-border); border-radius:8px; background:transparent; color:var(--color-text); font:inherit; font-size:12px; cursor:pointer; }
+.dividendBarButton[aria-pressed="true"] { border-color:var(--color-accent); background:var(--color-info-bg); }
+.dividendBarButton:focus-visible { outline:2px solid var(--color-accent); outline-offset:2px; }
+.dividendBarHeading { display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px 12px; overflow-wrap:anywhere; }
+.dividendTrack { display:block; height:12px; border-radius:4px; background:var(--color-bg-input); overflow:hidden; }
+.dividendTrack > span { display:block; height:100%; background:var(--color-accent); border-radius:4px; }
+.dividendBarNote { color:var(--color-text-muted); font-size:11px; }
+
+.comparisonGrid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:24px; margin-top:18px; }
+.comparisonGrid > section { min-width:0; }
+.comparisonGrid .chartGrid { grid-template-columns:minmax(0,1fr); gap:12px; }
+.comparisonGrid .legend { height:240px; }
+@media (max-width:900px) { .comparisonGrid { grid-template-columns:minmax(0,1fr); } }
+
+.dividendComposition > div:first-child { min-height:120px; }
+@media (max-width:640px) { .dividendBars { height:304px; } .dividendComposition > div:first-child { min-height:168px; } }
+
