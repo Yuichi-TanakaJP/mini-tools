@@ -86,7 +86,7 @@ export function selectDividendProjection(source: DomesticDividendProjection | un
   return { ...source, status: complete ? "ready" : "incomplete", expectedStocks: selected.size, coveredStocks: scoped.length,
     projectedAnnualGross: complete ? wholeSelected && source.status === "ready" ? source.projectedAnnualGross : sum("annualGross") : null,
     priorRunRateGross: complete && scoped.every((p) => p.priorRunRateGross !== null) ? sum("priorRunRateGross") : null,
-    comparableRateEffectGross: complete && comparable.every((p) => p.rateEffectGross !== null) ? sum("rateEffectGross", comparable) : null,
+    comparableRateEffectGross: complete && comparable.length > 0 && comparable.every((p) => p.rateEffectGross !== null) ? sum("rateEffectGross", comparable) : null,
     comparableCount: comparable.length, increaseCount: scoped.filter((p) => p.changeType === "increase").length,
     decreaseCount: scoped.filter((p) => p.changeType === "decrease").length, unchangedCount: scoped.filter((p) => p.changeType === "unchanged").length,
     notComparableCount: scoped.length - comparable.length,

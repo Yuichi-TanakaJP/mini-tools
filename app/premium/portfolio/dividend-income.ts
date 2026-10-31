@@ -194,7 +194,7 @@ export function summarizeDomesticDividendProjection(
     priorRunRateGross: complete && fullPriorKnown
       ? positions.reduce((sum, row) => sum + (row.priorRunRateGross ?? 0), 0)
       : null,
-    comparableRateEffectGross: complete && comparableValid
+    comparableRateEffectGross: complete && comparable.length > 0 && comparableValid
       ? comparable.reduce((sum, row) => sum + (row.rateEffectGross ?? 0), 0)
       : null,
     comparableCount: comparable.length,

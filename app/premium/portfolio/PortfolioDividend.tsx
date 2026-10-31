@@ -46,7 +46,7 @@ export default function PortfolioDividend({ projection, scopeLabel, breakdown }:
           実際に入金された配当金ではありません。
         </p>
       </div>
-      {scopeLabel ? <p style={{ margin: 0, fontSize: 12, color: "var(--color-text-muted)" }}>表示範囲：{scopeLabel}。口座別の金額は、DBの補正済み配当額を保有数量で分けています。</p> : null}
+      {scopeLabel ? <p style={{ margin: 0, fontSize: 12, color: "var(--color-text-muted)" }}>表示範囲：{scopeLabel}。口座別の配当額は、選択した口座の保有株数に対応しています。</p> : null}
       {!data || data.status === "no_snapshot" ? (
         <p style={{ margin: 0 }}>公式readyスナップショットがないため、配当を計算できません。</p>
       ) : data.status === "no_domestic_stocks" ? (

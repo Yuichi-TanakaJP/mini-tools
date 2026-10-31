@@ -97,3 +97,10 @@ it("確認済み無配の選択範囲は0円を正しく保持する", () => {
   const zero = summarizeDomesticDividendProjection([sourceRow({ forecast_dps: 0, projected_annual_dividend_gross: 0, dividend_rate_effect_gross: -3200, dividend_change_type: "decrease" })], snapshot, ["i1"], totals({ confirmed_partial_total: 0, projected_annual_dividend_gross: 0 }));
   expect(selectDividendProjection(zero, positions, [positions[0]])).toMatchObject({ status: "ready", projectedAnnualGross: 0, comparableRateEffectGross: -800 });
 });
+
+it("年額が確認済みでも比較可能な銘柄が0件なら寄与を0円にしない", () => {
+  const noComparison = summarizeDomesticDividendProjection([sourceRow({ prior_actual_run_rate_gross: null, dividend_rate_effect_gross: null, dividend_change_type: "not_comparable" })], snapshot, ["i1"], totals());
+  expect(noComparison.status).toBe("ready");
+  expect(noComparison.comparableRateEffectGross).toBeNull();
+  expect(selectDividendProjection(noComparison, positions, [positions[0]])).toMatchObject({ status: "ready", projectedAnnualGross: 1000, comparableCount: 0, comparableRateEffectGross: null });
+});
