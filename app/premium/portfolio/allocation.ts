@@ -87,7 +87,7 @@ const profileLabels: Record<string, string> = {
 
 const equityAssetTypes = new Set(["domestic_stock", "foreign_stock"]);
 
-function bucketFor(
+export function getPositionAllocationBucket(
   position: PortfolioPosition,
   dimension: PortfolioAllocationDimension,
   analysis: PortfolioInstrumentAnalysis | undefined,
@@ -142,7 +142,7 @@ export function getPortfolioAllocation({
       continue;
     }
 
-    const bucket = bucketFor(position, dimension, analyses.get(position.instrumentId));
+    const bucket = getPositionAllocationBucket(position, dimension, analyses.get(position.instrumentId));
     const current = groups.get(bucket.key) ?? {
       label: bucket.label,
       marketValue: 0,

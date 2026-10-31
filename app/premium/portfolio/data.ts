@@ -756,6 +756,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
       accountType: account?.account_type ?? null,
       institutionName: account?.institution_name ?? null,
       quantity: numberOrZero(row.quantity),
+      quantityKnown: row.quantity !== null && (typeof row.quantity !== "string" || row.quantity.trim() !== "") && numberOrNull(row.quantity) !== null,
       unitCost: numberOrNull(row.unit_cost),
       quotedPrice: numberOrNull(row.quoted_price),
       quoteUnit: numberOrZero(row.quote_unit) || 1,

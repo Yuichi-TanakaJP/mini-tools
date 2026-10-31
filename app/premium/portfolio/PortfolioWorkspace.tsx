@@ -7,8 +7,8 @@ import { summarizePortfolioDbResult } from "./db-check";
 import { isUnresolvedExternalInstrument } from "./external-assets";
 import { summarizePortfolioValuation } from "./valuation-summary";
 import PortfolioDecision from "./PortfolioDecision";
-import PortfolioDividend from "./PortfolioDividend";
-import PortfolioAnalysisCard from "./PortfolioAnalysisCard";
+
+import PortfolioHoldingsAnalysis from "./PortfolioHoldingsAnalysis";
 
 type Tab = "decision" | "overview" | "record" | "policy" | "history" | "db";
 
@@ -512,7 +512,7 @@ export default function PortfolioWorkspace({ data, groupExposure }: { data: Port
   const [tab, setTab] = useState<Tab>("decision");
   const grouped = useMemo(() => aggregatePortfolioPositions(data.positions), [data.positions]);
   const valuation = useMemo(() => summarizePortfolioValuation(data.positions, data.externalAssets), [data.externalAssets, data.positions]);
-  const totalValue = valuation.officialMarketValue;
+
   const totalCost = sumNullable(data.positions.map((position) => position.costBasis));
   const totalPnl = sumNullable(data.positions.map((position) => position.unrealizedPnl));
   const pnlRate = totalCost && totalPnl !== null ? (totalPnl / totalCost) * 100 : null;
@@ -572,30 +572,7 @@ export default function PortfolioWorkspace({ data, groupExposure }: { data: Port
             <Metric label="含み損益（公式保有）" value={formatYen(totalPnl)} sub={pnlRate === null ? "損益率 —" : `損益率 ${formatNumber(pnlRate, 2)}%`} />
             <Metric label="全ポジション" value={`${valuation.officialPositionCount + valuation.externalPositionCount}件`} sub={`公式 ${valuation.officialPositionCount}件 / 外部 ${valuation.externalPositionCount}件`} />
           </div>
-          <Section title="保有資産の構成">
-            <PortfolioAnalysisCard data={data} />
-          </Section>
-          <PortfolioDividend projection={data.domesticDividends} />
-          <Section title="公式保有の商品別構成">
-            {grouped.length === 0 ? <EmptyState>商品データがありません。</EmptyState> : (
-              <div style={{ display: "grid", gap: 12 }}>
-                {grouped.map((item) => {
-                  const percent = totalValue && item.marketValue !== null ? (item.marketValue / totalValue) * 100 : 0;
-                  return (
-                    <div key={item.instrumentId}>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13 }}>
-                        <span><strong>{item.identifier}</strong> {item.name}</span>
-                        <span style={{ fontWeight: 800 }}>{formatYen(item.marketValue)} / {formatNumber(percent, 1)}%</span>
-                      </div>
-                      <div style={{ height: 8, marginTop: 5, borderRadius: 999, background: "var(--color-neutral-bg)", overflow: "hidden" }}><div style={{ height: "100%", width: `${Math.min(100, Math.max(0, percent))}%`, background: "#2563eb" }} /></div>
-                      <div style={{ marginTop: 4, color: "var(--color-text-sub)", fontSize: 11 }}>数量: {formatNumber(item.quantity, 2)} / 取得額: {formatYen(item.costBasis)} / 損益: {formatYen(item.unrealizedPnl)}</div>
-                      <div style={{ marginTop: 4, color: "var(--color-text-muted)", fontSize: 11 }}>口座: {item.accounts.join(" / ")}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Section>
+          <PortfolioHoldingsAnalysis data={data} />
         </>
       ) : null}
 

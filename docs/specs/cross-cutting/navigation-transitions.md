@@ -266,3 +266,7 @@ npm run navigation:docs
 ### Portfolio構成軸のlocal切替（2026-10-31）
 
 From: 保有一覧の業種／個別株のみ。To: 同画面の7分析軸・登録保有全体／個別株のみ。L01/L0に該当し、取得済みpositionsとinstrumentAnalysisの再集計のみ（追加request 0、追加転送0）。選択値と凡例・対象額を同じrenderで確定し、pendingやretry通信はない。空・0円は図を描かず、分類errorは説明と利用可能な軸を示す。資産クラスへ変更すれば分類エラーのない集計へ戻れる。キーボードはnative selectとaria-pressed付きbuttonを使用。初回取得・認証・再読込は既存routeの契約を維持する。回帰: allocation-donut.test.tsxとportfolio UAT。操作時間の実測は未測定。
+
+### Portfolio連動分析（2026-10-31）
+
+L01/L0: From保有一覧の軸/scope/分類 → To同pathの新しい共通選択。取得済みpositions・分類・配当viewだけで同期集計し、追加request/転送0。軸/scope変更は分類選択解除、同条件再押下は保持。分類の再押下/全体表示で解除。graph/配当/商品で同じscopeと選択を同時確定し、URL・Back履歴は追加しない。native buttonとaria-pressed・表示範囲のstatusを用い、通信spinnerを追加しない。通常の軸切替ではcard高を維持し、全明細は明示展開、軸/scope変更で閉じる。初期の読取待機/失敗/retryは既存route契約。分類errorは図・分類内訳を保留し、非分類軸へ戻れる。配当source/数量の不整合は0円に置き換えず保留。回帰はlinked-analysis.test.ts、allocation-donut.test.tsxとportfolio UAT。単発の合成画面操作の確認と、本番実測/認証UATを区別する。

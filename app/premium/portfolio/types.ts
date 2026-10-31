@@ -35,6 +35,7 @@ export type PortfolioPosition = {
   accountType: PortfolioAccountType;
   institutionName: string;
   quantity: number;
+  quantityKnown?: boolean;
   unitCost: number | null;
   quotedPrice: number | null;
   quoteUnit: number;
@@ -192,6 +193,7 @@ export type PortfolioDbPosition = {
   accountType: PortfolioAccountType | null;
   institutionName: string | null;
   quantity: number;
+  quantityKnown?: boolean;
   unitCost: number | null;
   quotedPrice: number | null;
   quoteUnit: number;
