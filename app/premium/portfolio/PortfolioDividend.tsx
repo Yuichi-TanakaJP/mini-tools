@@ -1,5 +1,6 @@
 "use client";
 
+import { dividendCoverageNote, dividendDisplay, dividendExclusionLabel, reportedPeriodDividend } from "./dividend-display";
 import type { ReactNode } from "react";
 import type { DomesticDividendProjection, DomesticDividendPosition } from "./dividend-income";
 
@@ -37,11 +38,12 @@ export default function PortfolioDividend({ projection, scopeLabel, breakdown, e
 }) {
   const data = projection;
   const isReady = data?.status === "ready";
-  const card = { background: "var(--color-bg-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: 18 };
+  const coverage = dividendDisplay(data);
+  const card = { background: "var(--color-bg-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: 18, minWidth: 0 };
   return (
     <section style={{ ...card, display: "grid", gap: 14 }} aria-label="国内株の予想配当">
       <div>
-        <h2 style={{ margin: 0, fontSize: 19 }}>国内株の予想配当（税引前・年換算）</h2>
+        <h2 style={{ margin: 0, fontSize: 19 }}>国内株の予想配当（税引前）</h2>
         <p style={{ color: "var(--color-text-sub)", fontSize: 13, margin: "6px 0 0", lineHeight: 1.6 }}>
           登録保有の国内個別株のみ。ETF・投資信託・MMF・預金利息は含みません。
           実際に入金された配当金ではありません。
@@ -60,11 +62,11 @@ export default function PortfolioDividend({ projection, scopeLabel, breakdown, e
         <>
           <div style={{ fontSize: 12, color: "var(--color-text-muted)", lineHeight: 1.6 }}>
             保有基準日 {date(data.asOf)} ／ 会社予想の最も新しい確認日 {date(data.latestForecastAsOf)} ／
-            明細取得 {data.coveredStocks}/{data.expectedStocks}銘柄 ／ 株数基準確認済み {data.positions.filter((p) => p.cashProjectionStatus === "resolved" && p.annualGross !== null).length}/{data.expectedStocks}銘柄
+            明細取得 {data.coveredStocks}/{data.expectedStocks}銘柄 ／ 年間集計確認済み {coverage.confirmedCount}/{data.expectedStocks}銘柄{coverage.excludedCount > 0 ? ` ／ 年間集計対象外 ${coverage.excludedCount}銘柄` : ""}
           </div>
           {!isReady ? (
             <p role="status" style={{ margin: 0, color: "var(--color-warning)" }}>
-              株数基準・予想配当・保有数量・基準日の一部が未確認です。年間合計は未確定のため表示しません。確認済みの部分和を全体額に置き換えません。
+              {dividendCoverageNote(coverage) || "配当の確認条件を満たしていません"}。年間合計は未確定です（12か月ベース）。対象期間付きの公表予想は明細で確認でき、年間額へ換算・加算しません。
             </p>
           ) : null}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
@@ -86,36 +88,40 @@ export default function PortfolioDividend({ projection, scopeLabel, breakdown, e
       )}
       {breakdown}
       {data && (data.status === "ready" || data.status === "incomplete") ? (
-          <details open={expandDetails}>
+          <details open={expandDetails} style={{ minWidth: 0 }}>
             <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
               銘柄別の配当予想を確認（{data.positions.length}件）
             </summary>
-            <div style={{ overflowX: "auto", marginTop: 12 }}>
-              <table style={{ width: "100%", minWidth: 760, borderCollapse: "collapse", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>
+            <div style={{ overflowX: "auto", minWidth: 0, maxWidth: "100%", marginTop: 12 }}>
+              <table style={{ width: "100%", minWidth: 1050, borderCollapse: "collapse", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--color-border)", textAlign: "left" }}>
-                    {["銘柄", "数量", "直近実績DPS", "会社予想DPS", "株数基準", "年間予想", "増減区分", "寄与額"].map((s) => (
+                    {["銘柄", "数量", "直近実績DPS", "会社予想DPS", "対象期間", "対象期予想額", "年間集計", "年間予想", "増減区分・比較条件", "寄与額"].map((s) => (
                       <th key={s} scope="col" style={{ padding: "8px 6px" }}>{s}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {data.positions.map((p) => (
+                  {data.positions.map((p) => {
+                    const reported = reportedPeriodDividend(data, p);
+                    return (
                     <tr key={p.instrumentId} style={{ borderBottom: "1px solid var(--color-border)" }}>
                       <td style={{ padding: "8px 6px", whiteSpace: "nowrap" }}>
                         <strong>{p.ticker ?? "不明"}</strong> {p.name ?? ""}
                       </td>
                       <td style={{ padding: "8px 6px" }}>{number(p.quantity)}</td>
                       <td style={{ padding: "8px 6px" }}>{yen(p.actualDps, 2)}</td>
-                      <td style={{ padding: "8px 6px" }}>{yen(p.forecastDps, 2)}</td>
+                      <td style={{ padding: "8px 6px" }}>{yen(reported?.dps ?? p.forecastDps, 2)}</td>
+                      <td style={{ padding: "8px 6px" }}>{reported ? <>{date(reported.start)}～{date(reported.end)}<br />{reported.months}か月</> : p.forecastPeriodMonths === 12 ? "12か月" : "—"}</td>
+                      <td style={{ padding: "8px 6px" }}>{yen(reported?.gross ?? null)}</td>
                       <td style={{ padding: "8px 6px" }} title={p.cashProjectionStatus ?? "未確認"}>
-                        {p.cashProjectionStatus === "resolved" ? "確認済み" : "基準未確認"}
+                        {p.cashProjectionStatus === "resolved" ? "確認済み" : reported ? "期間確認済み・年間対象外" : p.cashProjectionStatus?.includes("basis") ? "基準未確認" : "未確認"}
                       </td>
                       <td style={{ padding: "8px 6px" }}>{yen(p.annualGross)}</td>
-                      <td style={{ padding: "8px 6px" }}>{changeLabel(p.changeType)}</td>
+                      <td style={{ padding: "8px 6px", minWidth: 160 }}>{changeLabel(p.changeType)}{!["increase", "decrease", "unchanged"].includes(p.changeType ?? "") ? <><br />{dividendExclusionLabel(p.comparisonExclusionReason ?? p.annualExclusionReason)}</> : null}</td>
                       <td style={{ padding: "8px 6px" }}>{yen(p.rateEffectGross)}</td>
                     </tr>
-                  ))}
+                  ); })}
                 </tbody>
               </table>
             </div>
