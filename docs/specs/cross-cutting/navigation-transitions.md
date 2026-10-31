@@ -287,3 +287,8 @@ L01/L0: From保有一覧の軸/scope/分類 → To同pathの新しい共通選�
 ### 保有サマリーの対象／表示形式切替（2026-11-01）
 
 L01/L0: 同一pathの上部4カード→対応する資産／配当と正規軸・scope・分類。グラフ／一覧button→同じ選択範囲の表示形式のみを変更。取得済みpropsの同期再集計で追加request・転送0、URL/history・新しい待機／retryなし。カード変更は表示形式を維持し、同カードでも分類絞込み中なら全範囲へ戻す。失敗・未取込・未知・対象なしの既存状態を維持し、分類errorは非分類軸へ復帰可能。native button、aria-pressed、範囲status、継続表示する解除buttonを使う。回帰はsummary-selection.test.tsx、allocation-donut.test.tsxとportfolio UAT。
+
+
+### 配当対象期間と操作階層の整理（2026-11-01）
+
+L01/L0: 上部の表示対象カード→表示形式→分類条件の順へ配置を整理する。同じlocal stateを同renderで反映し、7軸の常時到達、範囲保持、解除、native button/aria-pressedを維持。クリックで新しい通信・URL/history・pendingを追加しない。期間付き公表額は取得済みpropsの検証済み値のみで描画し、未知・失敗・年額除外を区別する。初回DB読取のoptional列が42703の場合のみ同条件で既存列を再読取し、その分1回のreadが増える。権限拒否は従来errorから回復を案内する。回帰はdividend-period.test.tsx、data.test.tsとportfolio UAT。

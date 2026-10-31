@@ -70,6 +70,8 @@ export function selectDividendProjection(source: DomesticDividendProjection | un
     const scale = (value: number | null) => value !== null && Number.isFinite(value) && ratio !== null ? value * ratio : null;
     scoped.push({ ...original, forecastDps: valid ? original.forecastDps : null, actualDps: valid ? original.actualDps : null, quantity: Number.isFinite(quantity) ? quantity : null,
       annualGross: valid && original.cashProjectionStatus === "resolved" ? scale(original.annualGross) : null,
+      reportedForecastDps: valid ? original.reportedForecastDps : null,
+      reportedForecastGross: valid ? scale(original.reportedForecastGross ?? null) : null,
       priorRunRateGross: scale(original.priorRunRateGross), rateEffectGross: scale(original.rateEffectGross),
       cashProjectionStatus: valid ? original.cashProjectionStatus : "selection_quantity_or_source_unverified",
       changeType: valid ? original.changeType : "not_comparable",

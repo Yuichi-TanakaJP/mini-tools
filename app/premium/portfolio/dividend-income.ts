@@ -17,6 +17,13 @@ export type DividendProjectionRow = {
   forecast_metric_basis_id: string | null;
   forecast_fact_basis_id: string | null;
   forecast_as_of: string | null;
+  forecast_period_start?: string | null;
+  forecast_period_end?: string | null;
+  forecast_period_months?: number | string | null;
+  reported_forecast_dps?: number | string | null;
+  reported_forecast_dividend_gross?: number | string | null;
+  annual_projection_exclusion_reason?: string | null;
+  dividend_comparison_exclusion_reason?: string | null;
   projected_annual_dividend_gross: number | string | null;
   prior_actual_run_rate_gross: number | string | null;
   dividend_rate_effect_gross: number | string | null;
@@ -44,6 +51,13 @@ export type DomesticDividendPosition = {
   rawForecastDps: number | null;
   cashProjectionStatus: string | null;
   forecastAsOf: string | null;
+  forecastPeriodStart?: string | null;
+  forecastPeriodEnd?: string | null;
+  forecastPeriodMonths?: number | null;
+  reportedForecastDps?: number | null;
+  reportedForecastGross?: number | null;
+  annualExclusionReason?: string | null;
+  comparisonExclusionReason?: string | null;
   annualGross: number | null;
   priorRunRateGross: number | null;
   rateEffectGross: number | null;
@@ -118,14 +132,21 @@ export function summarizeDomesticDividendProjection(
     name: row.instrument_name,
     quantity: amount(row.quantity),
     actualDps: amount(row.latest_actual_dps),
-    forecastDps: row.cash_projection_status === "resolved" ? amount(row.forecast_dps) : null,
+    forecastDps: row.cash_projection_status === "resolved" && !row.annual_projection_exclusion_reason ? amount(row.forecast_dps) : null,
     rawForecastDps: amount(row.raw_forecast_dps),
     cashProjectionStatus: row.cash_projection_status ?? null,
     forecastAsOf: row.forecast_as_of,
-    annualGross: row.cash_projection_status === "resolved" ? amount(row.projected_annual_dividend_gross) : null,
-    priorRunRateGross: amount(row.prior_actual_run_rate_gross),
-    rateEffectGross: row.cash_projection_status === "resolved" ? amount(row.dividend_rate_effect_gross) : null,
-    changeType: row.dividend_change_type,
+    forecastPeriodStart: row.forecast_period_start ?? null,
+    forecastPeriodEnd: row.forecast_period_end ?? null,
+    forecastPeriodMonths: amount(row.forecast_period_months ?? null),
+    reportedForecastDps: amount(row.reported_forecast_dps ?? null),
+    reportedForecastGross: amount(row.reported_forecast_dividend_gross ?? null),
+    annualExclusionReason: row.annual_projection_exclusion_reason ?? null,
+    comparisonExclusionReason: row.dividend_comparison_exclusion_reason ?? null,
+    annualGross: row.cash_projection_status === "resolved" && !row.annual_projection_exclusion_reason ? amount(row.projected_annual_dividend_gross) : null,
+    priorRunRateGross: row.dividend_comparison_exclusion_reason ? null : amount(row.prior_actual_run_rate_gross),
+    rateEffectGross: row.cash_projection_status === "resolved" && !row.annual_projection_exclusion_reason && !row.dividend_comparison_exclusion_reason ? amount(row.dividend_rate_effect_gross) : null,
+    changeType: row.dividend_comparison_exclusion_reason || row.annual_projection_exclusion_reason ? "not_comparable" : row.dividend_change_type,
   }));
 
   const sourceIds = rows.map((row) => row.instrument_id);
