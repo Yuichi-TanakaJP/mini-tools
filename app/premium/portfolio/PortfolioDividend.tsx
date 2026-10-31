@@ -39,7 +39,7 @@ export default function PortfolioDividend({ projection, scopeLabel, breakdown, e
   const data = projection;
   const isReady = data?.status === "ready";
   const coverage = dividendDisplay(data);
-  const card = { background: "var(--color-bg-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: 18 };
+  const card = { background: "var(--color-bg-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: 18, minWidth: 0 };
   return (
     <section style={{ ...card, display: "grid", gap: 14 }} aria-label="国内株の予想配当">
       <div>
@@ -88,11 +88,11 @@ export default function PortfolioDividend({ projection, scopeLabel, breakdown, e
       )}
       {breakdown}
       {data && (data.status === "ready" || data.status === "incomplete") ? (
-          <details open={expandDetails}>
+          <details open={expandDetails} style={{ minWidth: 0 }}>
             <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
               銘柄別の配当予想を確認（{data.positions.length}件）
             </summary>
-            <div style={{ overflowX: "auto", marginTop: 12 }}>
+            <div style={{ overflowX: "auto", minWidth: 0, maxWidth: "100%", marginTop: 12 }}>
               <table style={{ width: "100%", minWidth: 1050, borderCollapse: "collapse", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--color-border)", textAlign: "left" }}>
