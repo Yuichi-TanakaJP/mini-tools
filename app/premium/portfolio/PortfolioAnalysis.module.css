@@ -42,4 +42,3 @@
 
 .dividendComposition > div:first-child { min-height:120px; }
 @media (max-width:640px) { .dividendBars { height:304px; } .dividendComposition > div:first-child { min-height:168px; } }
-
