@@ -161,3 +161,12 @@
 - Plan: [ポートフォリオ意思決定ワークスペース実装計画](../../plans/portfolio-decision-workspace-plan.md)
 - Cross-repository source: [stock-notes Portfolio V2](https://github.com/Yuichi-TanakaJP/stock-notes/blob/main/docs/portfolio-platform-v2.md)
 - Acceptance checklist: [stock-notes Portfolio V2 checklist](https://github.com/Yuichi-TanakaJP/stock-notes/blob/main/docs/portfolio-platform-v2-checklist.md)
+
+
+### 2026-10-31 配当の株数基準と完全合計（V2 Phase 6）
+
+同じ本人セッションで `stock_notes_portfolio_dividend_totals_v` をportfolio/snapshot限定で読む。
+年間合計は同snapshot・holding/confirmed件数一致・held_count=0・status=resolvedを確認したDBの完全合計だけを使用する。
+projection行のcash_projection_statusがresolvedでない場合、raw_forecast_dpsを計算や表示DPSへのfallbackに使わず「基準未確認」とする。
+完全合計NULL、totals欠落、DB未導入、権限失敗は未確認表示とし、旧viewの行合計・部分和・0円に置換しない。
+株数の自前調整やFact保存は行わない。今回の受入範囲はPhase 6の共有読取契約と保有表示の一致で、プラットフォーム全体完成ではない。

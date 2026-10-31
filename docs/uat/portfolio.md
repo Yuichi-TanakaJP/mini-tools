@@ -103,3 +103,20 @@
 - Decision Log: [外部資産の表示と公式集計の分離](../decision-log/2026-08-23-portfolio-external-assets-display.md)
 - Decision Log: [公式保有と外部参照資産の総資産評価額](../decision-log/2026-08-28-portfolio-total-assets-valuation.md)
 - Decision Log: [ポートフォリオ構成分析とExposureの分離](../decision-log/2026-09-07-portfolio-allocation-analysis.md)
+
+
+## 配当株数基準の完全性（2026-10-31 / V2 Phase 6）
+
+From: 認証済み `/premium/portfolio` → To: 保有一覧内の国内株配当。
+同じ公式ready snapshotへ読取を限定する。追加のtotals読取は本人RLSセッションを使う。
+読取待機は既存Portfolioロードに従い、失敗時は保有一覧を維持して配当取得失敗を表示する。再読込で同条件を再試行する。
+追加読取の本番応答時間は未測定。fixture試験と本番確認は別に記録する。
+
+- [ ] totals status=resolved、held_count=0、snapshot/count一致の場合のみDB完全合計と画面が一致する
+- [ ] 一部基準未確認では年間合計は「—」、銘柄行は「基準未確認」。raw DPSや確認済み部分和を完全合計として出さない
+- [ ] totals未導入/権限拒否/空行/別snapshot時は旧値にfallbackせず、未確認または取得失敗となる。保有一覧は維持する
+- [ ] 確認済み無配0円は「—」と区別する
+- [ ] PC/390px幅で株数基準列を含む明細を確認し、認証後の実データUAT結果をPRへ記録する（読み取りのみ）
+
+ローカル回帰: `npm test -- app/premium/portfolio/dividend-income.test.ts app/premium/portfolio/data.test.ts`。
+本番migration→consumer配備の順に確認する。旧consumerへ戻すと未解決基準の誤集計へ戻る恐れがあるため、DB保護を残しconsumerを修正前進する。

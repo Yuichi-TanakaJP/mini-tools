@@ -49,17 +49,17 @@ export default function PortfolioDividend({ projection }: {
         <p style={{ margin: 0 }}>対象の国内個別株がありません。配当0円の証明ではありません。</p>
       ) : data.status === "error" ? (
         <p role="status" style={{ margin: 0, color: "var(--color-warning)" }}>
-          配当データを読み取れませんでした。0円とは扱いません。保有一覧の表示は継続できます。
+          配当データを読み取れませんでした。株数基準・年間合計は未確認です。0円とは扱いません。保有一覧の表示は継続できます。
         </p>
       ) : (
         <>
           <div style={{ fontSize: 12, color: "var(--color-text-muted)", lineHeight: 1.6 }}>
             保有基準日 {date(data.asOf)} ／ 会社予想の最も新しい確認日 {date(data.latestForecastAsOf)} ／
-            対応 {data.coveredStocks}/{data.expectedStocks}銘柄
+            明細取得 {data.coveredStocks}/{data.expectedStocks}銘柄 ／ 株数基準確認済み {data.positions.filter((p) => p.cashProjectionStatus === "resolved" && p.annualGross !== null).length}/{data.expectedStocks}銘柄
           </div>
           {!isReady ? (
             <p role="status" style={{ margin: 0, color: "var(--color-warning)" }}>
-              一部の予想配当・保有数量・基準日が照合できません。合計金額は未確定として表示しません。
+              株数基準・予想配当・保有数量・基準日の一部が未確認です。年間合計は未確定のため表示しません。確認済みの部分和を全体額に置き換えません。
             </p>
           ) : null}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
@@ -84,7 +84,7 @@ export default function PortfolioDividend({ projection }: {
               <table style={{ width: "100%", minWidth: 760, borderCollapse: "collapse", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--color-border)", textAlign: "left" }}>
-                    {["銘柄", "数量", "直近実績DPS", "会社予想DPS", "年間予想", "増減区分", "寄与額"].map((s) => (
+                    {["銘柄", "数量", "直近実績DPS", "会社予想DPS", "株数基準", "年間予想", "増減区分", "寄与額"].map((s) => (
                       <th key={s} scope="col" style={{ padding: "8px 6px" }}>{s}</th>
                     ))}
                   </tr>
@@ -98,6 +98,9 @@ export default function PortfolioDividend({ projection }: {
                       <td style={{ padding: "8px 6px" }}>{number(p.quantity)}</td>
                       <td style={{ padding: "8px 6px" }}>{yen(p.actualDps, 2)}</td>
                       <td style={{ padding: "8px 6px" }}>{yen(p.forecastDps, 2)}</td>
+                      <td style={{ padding: "8px 6px" }} title={p.cashProjectionStatus ?? "未確認"}>
+                        {p.cashProjectionStatus === "resolved" ? "確認済み" : "基準未確認"}
+                      </td>
                       <td style={{ padding: "8px 6px" }}>{yen(p.annualGross)}</td>
                       <td style={{ padding: "8px 6px" }}>{changeLabel(p.changeType)}</td>
                       <td style={{ padding: "8px 6px" }}>{yen(p.rateEffectGross)}</td>

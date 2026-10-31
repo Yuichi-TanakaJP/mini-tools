@@ -12,11 +12,26 @@ export type DividendProjectionRow = {
   quantity: number | string | null;
   latest_actual_dps: number | string | null;
   forecast_dps: number | string | null;
+  raw_forecast_dps: number | string | null;
+  cash_projection_status: string | null;
+  forecast_metric_basis_id: string | null;
+  forecast_fact_basis_id: string | null;
   forecast_as_of: string | null;
   projected_annual_dividend_gross: number | string | null;
   prior_actual_run_rate_gross: number | string | null;
   dividend_rate_effect_gross: number | string | null;
   dividend_change_type: string | null;
+};
+
+export type DividendTotalsRow = {
+  snapshot_id: string;
+  snapshot_as_of: string;
+  holding_count: number | string | null;
+  confirmed_count: number | string | null;
+  held_count: number | string | null;
+  confirmed_partial_total: number | string | null;
+  projected_annual_dividend_gross: number | string | null;
+  status: string | null;
 };
 
 export type DomesticDividendPosition = {
@@ -26,6 +41,8 @@ export type DomesticDividendPosition = {
   quantity: number | null;
   actualDps: number | null;
   forecastDps: number | null;
+  rawForecastDps: number | null;
+  cashProjectionStatus: string | null;
   forecastAsOf: string | null;
   annualGross: number | null;
   priorRunRateGross: number | null;
@@ -86,6 +103,7 @@ export function summarizeDomesticDividendProjection(
   rows: DividendProjectionRow[],
   snapshot: { id: string; asOf: string },
   domesticInstrumentIds: readonly string[],
+  totals: DividendTotalsRow | null = null,
 ): DomesticDividendProjection {
   const expected = new Set(domesticInstrumentIds);
   if (expected.size === 0) {
@@ -98,11 +116,13 @@ export function summarizeDomesticDividendProjection(
     name: row.instrument_name,
     quantity: amount(row.quantity),
     actualDps: amount(row.latest_actual_dps),
-    forecastDps: amount(row.forecast_dps),
+    forecastDps: row.cash_projection_status === "resolved" ? amount(row.forecast_dps) : null,
+    rawForecastDps: amount(row.raw_forecast_dps),
+    cashProjectionStatus: row.cash_projection_status ?? null,
     forecastAsOf: row.forecast_as_of,
-    annualGross: amount(row.projected_annual_dividend_gross),
+    annualGross: row.cash_projection_status === "resolved" ? amount(row.projected_annual_dividend_gross) : null,
     priorRunRateGross: amount(row.prior_actual_run_rate_gross),
-    rateEffectGross: amount(row.dividend_rate_effect_gross),
+    rateEffectGross: row.cash_projection_status === "resolved" ? amount(row.dividend_rate_effect_gross) : null,
     changeType: row.dividend_change_type,
   }));
 
@@ -121,8 +141,16 @@ export function summarizeDomesticDividendProjection(
   const hasAllSourceDates = positions.every((row) => row.forecastAsOf
     && Number.isFinite(Date.parse(row.forecastAsOf))
     && Date.parse(row.forecastAsOf) <= snapshotAt);
+  const completeTotal = amount(totals?.projected_annual_dividend_gross ?? null);
+  const validTotals = totals?.status === "resolved"
+    && totals.snapshot_id === snapshot.id
+    && Date.parse(totals.snapshot_as_of) === snapshotAt
+    && amount(totals.holding_count) === expected.size
+    && amount(totals.confirmed_count) === expected.size
+    && amount(totals.held_count) === 0
+    && completeTotal !== null;
   const complete = completeCoverage && consistentSnapshot
-    && allAnnualAmountsKnown && hasAllSourceDates;
+    && allAnnualAmountsKnown && hasAllSourceDates && validTotals;
 
   const comparable = positions.filter((row) =>
     ["increase", "decrease", "unchanged"].includes(row.changeType ?? ""));
@@ -142,7 +170,7 @@ export function summarizeDomesticDividendProjection(
     expectedStocks: expected.size,
     coveredStocks: new Set(sourceIds.filter((id) => expected.has(id))).size,
     projectedAnnualGross: complete
-      ? positions.reduce((sum, row) => sum + (row.annualGross ?? 0), 0)
+      ? completeTotal
       : null,
     priorRunRateGross: complete && fullPriorKnown
       ? positions.reduce((sum, row) => sum + (row.priorRunRateGross ?? 0), 0)
