@@ -739,7 +739,7 @@
     {
       "id": "E07",
       "from": "`/premium/portfolio`",
-      "to": "`/tools/yutai-memo`、`/premium/company-network`、`/account`",
+      "to": "`/premium/company-network`、`/account`",
       "details": [
         "関連ツール/認証案内。業務データの変更を伴わない遷移のみ"
       ],
@@ -1434,16 +1434,7 @@
       "transitions": [
         "R10"
       ],
-      "sites": [
-        {
-          "kind": "link",
-          "signature": "\"/premium\""
-        },
-        {
-          "kind": "link",
-          "signature": "\"/tools/yutai-memo\""
-        }
-      ]
+      "sites": []
     },
     "app/premium/portfolio/PortfolioWorkspace.tsx": {
       "transitions": [
