@@ -29,10 +29,11 @@ function changeLabel(value: DomesticDividendPosition["changeType"]): string {
   return "比較不可";
 }
 
-export default function PortfolioDividend({ projection, scopeLabel, breakdown }: {
+export default function PortfolioDividend({ projection, scopeLabel, breakdown, expandDetails = false }: {
   projection: DomesticDividendProjection | undefined;
   scopeLabel?: string;
   breakdown?: ReactNode;
+  expandDetails?: boolean;
 }) {
   const data = projection;
   const isReady = data?.status === "ready";
@@ -42,7 +43,7 @@ export default function PortfolioDividend({ projection, scopeLabel, breakdown }:
       <div>
         <h2 style={{ margin: 0, fontSize: 19 }}>国内株の予想配当（税引前・年換算）</h2>
         <p style={{ color: "var(--color-text-sub)", fontSize: 13, margin: "6px 0 0", lineHeight: 1.6 }}>
-          登録済み公式保有の国内個別株のみ。ETF・投資信託・MMF・預金利息は含みません。
+          登録保有の国内個別株のみ。ETF・投資信託・MMF・預金利息は含みません。
           実際に入金された配当金ではありません。
         </p>
       </div>
@@ -85,7 +86,7 @@ export default function PortfolioDividend({ projection, scopeLabel, breakdown }:
       )}
       {breakdown}
       {data && (data.status === "ready" || data.status === "incomplete") ? (
-          <details>
+          <details open={expandDetails}>
             <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
               銘柄別の配当予想を確認（{data.positions.length}件）
             </summary>

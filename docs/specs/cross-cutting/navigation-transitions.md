@@ -282,3 +282,8 @@ L01/L0: From保有一覧の軸/scope/分類 → To同pathの新しい共通選�
 ### 保有分析のAll初期表示（2026-11-01）
 
 初回local stateを資産クラス/登録保有全体/分類未選択とする。従来の軸/scope/分類変更・解除と同じlocal切替で、追加通信なし。配当/商品と表示範囲を同renderで更新する。凡例は上揃えと通常ページスクロールを用い、先頭が隠れる内側の中央揃えスクロールを廃止する。回帰はportfolio UATを参照。
+
+
+### 保有サマリーの対象／表示形式切替（2026-11-01）
+
+L01/L0: 同一pathの上部4カード→対応する資産／配当と正規軸・scope・分類。グラフ／一覧button→同じ選択範囲の表示形式のみを変更。取得済みpropsの同期再集計で追加request・転送0、URL/history・新しい待機／retryなし。カード変更は表示形式を維持し、同カードでも分類絞込み中なら全範囲へ戻す。失敗・未取込・未知・対象なしの既存状態を維持し、分類errorは非分類軸へ復帰可能。native button、aria-pressed、範囲status、継続表示する解除buttonを使う。回帰はsummary-selection.test.tsx、allocation-donut.test.tsxとportfolio UAT。

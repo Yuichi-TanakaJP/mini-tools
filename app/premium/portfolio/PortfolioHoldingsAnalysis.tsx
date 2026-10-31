@@ -7,6 +7,8 @@ import { buildAnalysisGroups, resolveAnalysisSelection, selectDividendProjection
 import PortfolioAnalysisCard, { PortfolioAnalysisControls } from "./PortfolioAnalysisCard";
 import PortfolioDividend from "./PortfolioDividend";
 import PortfolioDividendComposition from "./PortfolioDividendComposition";
+import PortfolioSummaryCards from "./PortfolioSummaryCards";
+import { activeSummary, selectionForSummary, type AnalysisSelection, type SummaryTarget } from "./summary-selection";
 import type { PortfolioData } from "./types";
 import styles from "./PortfolioAnalysis.module.css";
 
@@ -18,11 +20,20 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
 }
 
 export default function PortfolioHoldingsAnalysis({ data }: { data: PortfolioData }) {
-  const [selection, setSelection] = useState<{ dimension: PortfolioAllocationDimension; scope: PortfolioAllocationScope; key: string | null }>({ dimension: "asset_type", scope: "all", key: null });
+  const [content, setContent] = useState<"assets" | "dividends">("assets");
+  const [view, setView] = useState<"graph" | "list">("graph");
+  const [selection, setSelection] = useState<AnalysisSelection>(selectionForSummary("assets"));
   const model = useMemo(() => buildAnalysisGroups(data.positions, data.instrumentAnalysis, selection.dimension, selection.scope), [data.positions, data.instrumentAnalysis, selection.dimension, selection.scope]);
   const unavailable = classifications.has(selection.dimension) && data.instrumentAnalysisStatus === "error";
   const resolved = useMemo(() => resolveAnalysisSelection(model, unavailable ? null : selection.key), [model, unavailable, selection.key]);
   const selected = resolved.selected;
+  const active = activeSummary(content, { ...selection, key: selected?.key ?? null });
+  const selectSummary = (target: SummaryTarget) => {
+    const next = selectionForSummary(target);
+    if (target === active && selection.dimension === next.dimension && selection.scope === next.scope && selection.key === next.key) return;
+    setContent(target === "dividends" ? "dividends" : "assets");
+    setSelection(next);
+  };
   const visibleGroups = useMemo(() => selected ? [selected] : model.visible, [selected, model.visible]);
   const selectedPositions = useMemo(() => (selected ? selected.positions : model.all.flatMap((group) => group.positions)), [selected, model.all]);
   const projection = useMemo(() => selectDividendProjection(data.domesticDividends, data.positions, selectedPositions), [data.domesticDividends, data.positions, selectedPositions]);
@@ -32,22 +43,30 @@ export default function PortfolioHoldingsAnalysis({ data }: { data: PortfolioDat
   const choose = (key: string | null) => setSelection((current) => ({ ...current, key: key === "action:clear" || current.key === key ? null : key }));
   const productGroups = unavailable ? [{ key: "unavailable", label: "登録保有（分類取得失敗）", positions: selectedPositions, missingValueCount: selectedPositions.filter((p) => p.marketValue === null).length }] : visibleGroups;
   return <div style={{ display: "grid", gap: 16 }}>
-    <Card title="資産と配当の構成">
+    <PortfolioSummaryCards data={data} active={active} onSelect={selectSummary} />
+    <Card title={content === "dividends" ? "配当を見る" : "資産を見る"}>
       <PortfolioAnalysisControls dimension={selection.dimension} scope={selection.scope}
         onDimension={(dimension) => setSelection((current) => current.dimension === dimension ? current : ({ ...current, dimension, key: null }))}
         onScope={(scope) => setSelection((current) => current.scope === scope ? current : ({ ...current, scope, key: null }))} />
-      <div className={styles.comparisonGrid}>
+      <div className={styles.viewControls}>
+        <div role="group" aria-label="表示形式" className={styles.axes}>{(["graph", "list"] as const).map((mode) => <button type="button" key={mode} className={styles.choice} aria-pressed={view === mode} onClick={() => setView(mode)}>{mode === "graph" ? "グラフ" : "一覧"}</button>)}</div>
+        <button type="button" className={styles.choice} aria-pressed={!selected} onClick={() => choose(null)}>絞り込みを解除</button>
+      </div>
+      <p style={{ fontSize: 12, color: "var(--color-text-sub)", lineHeight: 1.6 }}>表示範囲：{scopeLabel}。グラフ・一覧は登録保有が対象です（外部参照資産を除く）。上部金額は各カードの保有全体です。</p>
+      {view === "graph" ? <div className={content === "assets" ? styles.comparisonGrid : undefined}>
+      {content === "assets" ? <>
       <section aria-label="評価額の構成"><h3 style={{ fontSize: 16, margin: "0 0 10px" }}>資産評価額の構成</h3>
       <PortfolioAnalysisCard hideControls data={data} dimension={selection.dimension} scope={selection.scope} selectedKey={selected?.key ?? null} groups={resolved.chartGroups} allGroups={model.all} total={model.total}
         onDimension={(dimension) => setSelection((current) => current.dimension === dimension ? current : ({ ...current, dimension, key: null }))}
         onScope={(scope) => setSelection((current) => current.scope === scope ? current : ({ ...current, scope, key: null }))} onSelect={choose} />
-      </section>
-      <section aria-label="配当額の構成">{!unavailable && dividendGroups.length > 0 ? <PortfolioDividendComposition groups={dividendGroups} projection={projection} dimensionLabel={portfolioAllocationDimensions[selection.dimension].label} selectedKey={selected?.key ?? null} onSelect={choose} /> : <p role="status">{unavailable ? "分類情報を取得できないため、配当の分類グラフは保留しています。他の軸へ切り替えられます。" : "対象の保有がありません。"}</p>}</section>
-      </div>
+      </section></> : null}
+      <section aria-label="配当額の構成">
+        {projection?.status === "error" ? <p role="status">配当データの取得に失敗しました。金額は未確認です。</p> : !projection || projection.status === "no_snapshot" ? <p role="status">配当データは未取得です。</p> : projection.status === "no_domestic_stocks" ? <p role="status">この範囲に配当対象の国内個別株はありません。</p> : null}{!unavailable && dividendGroups.length > 0 ? <PortfolioDividendComposition groups={dividendGroups} projection={projection} dimensionLabel={portfolioAllocationDimensions[selection.dimension].label} selectedKey={selected?.key ?? null} onSelect={choose} /> : <p role="status">{unavailable ? "分類情報を取得できないため、配当の分類グラフは保留しています。他の軸へ切り替えられます。" : "対象の保有がありません。"}</p>}</section>
+      </div> : null}
     </Card>
     <div role="status" aria-live="polite" style={{ fontSize: 13, color: "var(--color-text-sub)", lineHeight: 1.6 }}>配当・商品構成の表示範囲：<strong>{scopeLabel}</strong>。上段の総資産評価額・年間予想配当は保有全体です。</div>
-    <PortfolioDividend projection={projection} scopeLabel={scopeLabel} />
-    <Card title="商品構成">
+    {view === "list" && content === "dividends" ? <PortfolioDividend projection={projection} scopeLabel={scopeLabel} expandDetails /> : null}
+    {view === "list" && content === "assets" ? <Card title="商品一覧">
       <p style={{ margin: "0 0 14px", color: "var(--color-text-muted)", fontSize: 12 }}>表示範囲：{scopeLabel} ／ 構成比はこの範囲の既知評価額を分母にしています。口座別の数量・金額も選択範囲だけです。</p>
       {unavailable ? <p role="status">分類別の表示は保留しています。商品明細は表示できます。</p> : null}
       {productGroups.length === 0 ? <p>対象の商品がありません。</p> : <div style={{ display: "grid", gap: 20 }}>{productGroups.map((group) => <section key={group.key} aria-label={`${group.label}の商品`}>
@@ -63,6 +82,6 @@ export default function PortfolioHoldingsAnalysis({ data }: { data: PortfolioDat
           </div>;
         })}</div>
       </section>)}</div>}
-    </Card>
+    </Card> : null}
   </div>;
 }
