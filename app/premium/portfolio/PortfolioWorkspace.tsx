@@ -5,7 +5,7 @@ import type { PortfolioData, PortfolioDbPosition, PortfolioExternalAssetPosition
 import { aggregatePortfolioPositions } from "./aggregates";
 import { summarizePortfolioDbResult } from "./db-check";
 import { isUnresolvedExternalInstrument } from "./external-assets";
-import { summarizePortfolioValuation, type PortfolioValuationSummary } from "./valuation-summary";
+import { summarizePortfolioValuation } from "./valuation-summary";
 import PortfolioDecision from "./PortfolioDecision";
 import PortfolioDividend from "./PortfolioDividend";
 import PortfolioAnalysisCard from "./PortfolioAnalysisCard";
@@ -144,95 +144,6 @@ function Metric({ label, value, sub }: { label: string; value: string; sub: stri
       <div style={{ color: "var(--color-text-muted)", fontSize: 12, fontWeight: 800 }}>{label}</div>
       <div style={{ marginTop: 7, fontSize: 24, fontWeight: 900 }}>{value}</div>
       <div style={{ marginTop: 5, color: "var(--color-text-muted)", fontSize: 11 }}>{sub}</div>
-    </div>
-  );
-}
-
-function AssetAllocationChart({ valuation, data }: { valuation: PortfolioValuationSummary; data: PortfolioData }) {
-  const total = valuation.totalMarketValue;
-  const rows = [
-    {
-      key: "official",
-      label: "公式保有",
-      value: valuation.officialMarketValue,
-      percentage: valuation.officialSharePct,
-      positionCount: valuation.officialPositionCount,
-      detail: `基準日 ${formatDate(data.currentSnapshot?.asOf)}`,
-      color: "var(--color-accent)",
-    },
-    {
-      key: "external",
-      label: "外部参照資産",
-      value: valuation.externalMarketValue,
-      percentage: valuation.externalSharePct,
-      positionCount: valuation.externalPositionCount,
-      detail: `${externalAssetStatusLabel(data.externalAssets.status)} / 基準日 ${formatDate(data.externalAssets.snapshot?.asOf)}`,
-      color: "var(--color-success)",
-    },
-  ];
-  const visibleRows = rows.filter(
-    (row): row is typeof row & { value: number; percentage: number } =>
-      row.value !== null && row.value > 0 && row.percentage !== null,
-  );
-
-  const radius = 18;
-  const canDrawChart = total !== null && total > 0 && visibleRows.length > 0;
-  const segments = visibleRows.map((row, index) => ({
-    row,
-    offset: visibleRows
-      .slice(0, index)
-      .reduce((sum, previous) => sum + previous.percentage, 0),
-  }));
-  const ariaLabel = `総資産の内訳。${visibleRows
-    .map((row) => `${row.label} ${formatNumber(row.percentage, 1)}パーセント`)
-    .join("、")}`;
-
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", alignItems: "center", gap: 24 }}>
-      <div style={{ display: "flex", justifyContent: "center" }}>
-        {canDrawChart ? <svg viewBox="0 0 52 52" width={220} height={220} role="img" aria-label={ariaLabel} style={{ maxWidth: "100%" }}>
-          <circle cx={26} cy={26} r={radius} pathLength={100} fill="transparent" stroke="var(--color-bg-input)" strokeWidth={8} />
-          {segments.map(({ row, offset }) => (
-            <circle
-              key={row.key}
-              cx={26}
-              cy={26}
-              r={radius}
-              pathLength={100}
-              fill="transparent"
-              stroke={row.color}
-              strokeWidth={8}
-              strokeDasharray={`${row.percentage} ${100 - row.percentage}`}
-              strokeDashoffset={25 - offset}
-            >
-              <title>{`${row.label} ${formatYen(row.value)} / ${formatNumber(row.percentage, 1)}%`}</title>
-            </circle>
-          ))}
-          <text x={26} y={25.2} textAnchor="middle" fontSize={3.5} fontWeight={800} fill="var(--color-text-muted)">総資産</text>
-          <text x={26} y={30} textAnchor="middle" fontSize={4.2} fontWeight={900} fill="var(--color-text)">100%</text>
-        </svg> : <div style={{ maxWidth: 260, textAlign: "center" }}><EmptyState>評価額が未取得または0円のため、構成比の図は表示できません。</EmptyState></div>}
-      </div>
-      <div style={{ display: "grid", gap: 14 }}>
-        {rows.map((row) => (
-          <div key={row.key} style={{ borderBottom: "1px solid var(--color-border)", paddingBottom: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 800 }}>
-                <span aria-hidden="true" style={{ width: 12, height: 12, borderRadius: "50%", background: row.color, flex: "0 0 auto" }} />
-                {row.label}
-              </span>
-              <strong style={{ fontSize: 18 }}>{row.percentage === null ? "—" : `${formatNumber(row.percentage, 1)}%`}</strong>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginTop: 6, color: "var(--color-text-sub)", fontSize: 13, flexWrap: "wrap" }}>
-              <span>{formatYen(row.value)}</span>
-              <span>{row.positionCount}ポジション</span>
-            </div>
-            <div style={{ marginTop: 5, color: "var(--color-text-muted)", fontSize: 11 }}>{row.detail}</div>
-          </div>
-        ))}
-        <div style={{ color: "var(--color-text-muted)", fontSize: 11, lineHeight: 1.6 }}>
-          区分ごとに基準日が異なる場合があります。明細は「口座・取込」で確認できます。
-        </div>
-      </div>
     </div>
   );
 }
@@ -661,13 +572,10 @@ export default function PortfolioWorkspace({ data, groupExposure }: { data: Port
             <Metric label="含み損益（公式保有）" value={formatYen(totalPnl)} sub={pnlRate === null ? "損益率 —" : `損益率 ${formatNumber(pnlRate, 2)}%`} />
             <Metric label="全ポジション" value={`${valuation.officialPositionCount + valuation.externalPositionCount}件`} sub={`公式 ${valuation.officialPositionCount}件 / 外部 ${valuation.externalPositionCount}件`} />
           </div>
-          <Section title="総資産の内訳">
-            <AssetAllocationChart valuation={valuation} data={data} />
-          </Section>
-          <PortfolioDividend projection={data.domesticDividends} />
-          <Section title="ポートフォリオ分析">
+          <Section title="保有資産の構成">
             <PortfolioAnalysisCard data={data} />
           </Section>
+          <PortfolioDividend projection={data.domesticDividends} />
           <Section title="公式保有の商品別構成">
             {grouped.length === 0 ? <EmptyState>商品データがありません。</EmptyState> : (
               <div style={{ display: "grid", gap: 12 }}>

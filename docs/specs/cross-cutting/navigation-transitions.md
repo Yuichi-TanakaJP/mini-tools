@@ -262,3 +262,7 @@ npm run navigation:docs
 ## 市場3画面の自動更新
 
 2026-10-24: [鮮度契約](../../decision-log/2026-10-24-market-freshness.md)と[UAT](../../uat/market-freshness.md)を適用する。対象画面の再読み込みは更新の前提にしない。
+
+### Portfolio構成軸のlocal切替（2026-10-31）
+
+From: 保有一覧の業種／個別株のみ。To: 同画面の7分析軸・登録保有全体／個別株のみ。L01/L0に該当し、取得済みpositionsとinstrumentAnalysisの再集計のみ（追加request 0、追加転送0）。選択値と凡例・対象額を同じrenderで確定し、pendingやretry通信はない。空・0円は図を描かず、分類errorは説明と利用可能な軸を示す。資産クラスへ変更すれば分類エラーのない集計へ戻れる。キーボードはnative selectとaria-pressed付きbuttonを使用。初回取得・認証・再読込は既存routeの契約を維持する。回帰: allocation-donut.test.tsxとportfolio UAT。操作時間の実測は未測定。
