@@ -12,7 +12,7 @@ import PortfolioHoldingsAnalysis from "./PortfolioHoldingsAnalysis";
 import PortfolioIncomeSummary from "./PortfolioIncomeSummary";
 import { selectDividendProjection } from "./linked-analysis";
 
-type Tab = "decision" | "overview" | "record" | "policy" | "history" | "db";
+type Tab = "decision" | "overview" | "record" | "policy" | "history" | "db" | "groups";
 
 const tabLabels: Record<Tab, string> = {
   decision: "意思決定",
@@ -21,6 +21,7 @@ const tabLabels: Record<Tab, string> = {
   policy: "方針",
   history: "履歴",
   db: "DB確認",
+  groups: "企業グループ",
 };
 
 const accountLabels: Record<string, string> = {
@@ -541,9 +542,9 @@ export default function PortfolioWorkspace({ data, groupExposure }: { data: Port
           ))}
         </div>
         <details>
-          <summary style={{ cursor: "pointer", color: "var(--color-text-on-emphasis)", fontSize: 13 }}>詳細メニュー{(["record", "policy", "db"] as Tab[]).includes(tab) ? `：${tabLabels[tab]}` : "（口座・方針・DB確認）"}</summary>
+          <summary style={{ cursor: "pointer", color: "var(--color-text-on-emphasis)", fontSize: 13 }}>詳細メニュー{(["record", "policy", "groups", "db"] as Tab[]).includes(tab) ? `：${tabLabels[tab]}` : "（口座・方針・企業グループなど）"}</summary>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-            {(["record", "policy", "db"] as Tab[]).map((key) => <button key={key} type="button" aria-pressed={tab === key} onClick={() => setTab(key)} style={{ padding: "8px 14px", cursor: "pointer", borderRadius: 8 }}>{tabLabels[key]}</button>)}
+            {(["record", "policy", "groups", "db"] as Tab[]).map((key) => <button key={key} type="button" aria-pressed={tab === key} onClick={() => setTab(key)} style={{ padding: "8px 14px", cursor: "pointer", borderRadius: 8 }}>{tabLabels[key]}</button>)}
           </div>
         </details>
       </section>
@@ -567,7 +568,6 @@ export default function PortfolioWorkspace({ data, groupExposure }: { data: Port
 
       {tab === "overview" ? (
         <>
-          {groupExposure ? <details><summary style={{ cursor: "pointer", padding: 12 }}>企業グループ集中の詳細</summary>{groupExposure}</details> : null}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
             <Metric label="総資産評価額" value={formatYen(valuation.totalMarketValue)} sub={`${valuation.officialPositionCount + valuation.externalPositionCount}ポジション ／ ${valuation.missingMarketValueCount > 0 ? `評価額未取得 ${valuation.missingMarketValueCount}件を除く` : "公式保有 + 外部参照資産"}`} />
             <PortfolioIncomeSummary projection={selectDividendProjection(data.domesticDividends, data.positions, data.positions)} />
@@ -577,6 +577,8 @@ export default function PortfolioWorkspace({ data, groupExposure }: { data: Port
           <PortfolioHoldingsAnalysis data={data} />
         </>
       ) : null}
+
+      {tab === "groups" ? (groupExposure ?? <Section title="企業グループ"><EmptyState>最新の公式保有がないため、企業グループの集中を表示できません。</EmptyState></Section>) : null}
 
       {tab === "record" ? (
         <>
