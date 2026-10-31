@@ -18,7 +18,7 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
 }
 
 export default function PortfolioHoldingsAnalysis({ data }: { data: PortfolioData }) {
-  const [selection, setSelection] = useState<{ dimension: PortfolioAllocationDimension; scope: PortfolioAllocationScope; key: string | null }>({ dimension: "sector_33", scope: "equity", key: null });
+  const [selection, setSelection] = useState<{ dimension: PortfolioAllocationDimension; scope: PortfolioAllocationScope; key: string | null }>({ dimension: "asset_type", scope: "all", key: null });
   const model = useMemo(() => buildAnalysisGroups(data.positions, data.instrumentAnalysis, selection.dimension, selection.scope), [data.positions, data.instrumentAnalysis, selection.dimension, selection.scope]);
   const unavailable = classifications.has(selection.dimension) && data.instrumentAnalysisStatus === "error";
   const resolved = useMemo(() => resolveAnalysisSelection(model, unavailable ? null : selection.key), [model, unavailable, selection.key]);

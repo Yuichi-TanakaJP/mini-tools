@@ -6,18 +6,18 @@
 .chartGrid { display:grid; grid-template-columns:minmax(260px,1fr) minmax(260px,1fr); align-items:center; gap:24px; min-height:360px; }
 .chart { display:flex; justify-content:center; align-items:center; height:360px; min-width:0; }
 .donut { width:320px; height:320px; max-width:100%; }
-.legend { display:grid; align-content:center; gap:4px; height:360px; overflow-y:auto; min-width:0; }
+.legend { display:grid; align-content:start; gap:4px; min-height:360px; height:auto; overflow:visible; min-width:0; }
 .legendButton { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:10px; width:100%; min-height:40px; padding:5px 7px; text-align:left; border:1px solid transparent; border-bottom-color:var(--color-border); border-radius:7px; background:transparent; color:var(--color-text); font:inherit; line-height:1.2; cursor:pointer; overflow-wrap:anywhere; }
 .legendButton[aria-pressed="true"] { border-color:var(--color-accent); background:var(--color-info-bg); }
 .legendName { display:flex; align-items:center; gap:8px; min-width:0; font-size:13px; font-weight:800; }
-.legendText { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.legendText { white-space:normal; overflow-wrap:anywhere; }
 .legendValue { text-align:right; font-size:12px; }
 .context { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; justify-content:space-between; align-items:center; min-height:64px; color:var(--color-text-sub); font-size:13px; }
 @media (max-width:640px) {
   .chartGrid { grid-template-columns:minmax(0,1fr); gap:12px; }
   .chart { height:300px; }
   .donut { width:300px; height:300px; }
-  .legend { height:304px; }
+  .legend { min-height:304px; }
   .choice { padding:7px 10px; }
   .legendButton { min-height:34px; padding:3px 5px; }
   .legendValue { display:flex; gap:5px; align-items:baseline; white-space:nowrap; }
@@ -38,8 +38,8 @@
 .comparisonGrid > section { min-width:0; }
 .comparisonGrid .chartGrid { grid-template-columns:minmax(0,1fr); gap:12px; }
 .comparisonGrid .chart { height:320px; }
-.comparisonGrid .legend { height:168px; }
+.comparisonGrid .legend { min-height:360px; height:auto; }
 @media (max-width:900px) { .comparisonGrid { grid-template-columns:minmax(0,1fr); } }
 
 .dividendComposition > div:first-child { min-height:120px; }
-@media (max-width:640px) { .comparisonGrid .chart { height:300px; } .dividendBars { height:304px; } .dividendComposition > div:first-child { min-height:168px; } }
+@media (max-width:640px) { .comparisonGrid .legend { min-height:304px; } .comparisonGrid .chart { height:300px; } .dividendBars { height:304px; } .dividendComposition > div:first-child { min-height:168px; } }

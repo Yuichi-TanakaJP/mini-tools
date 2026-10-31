@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import Card from "./PortfolioAnalysisCard";
+import Holdings from "./PortfolioHoldingsAnalysis";
 import { portfolioAllocationDimensions, type PortfolioAllocationDimension } from "./allocation";
 import { buildAnalysisGroups } from "./linked-analysis";
 import type { PortfolioData, PortfolioInstrumentAnalysis, PortfolioPosition } from "./types";
@@ -45,4 +46,16 @@ describe("保有構成ドーナツ", () => {
     expect(html).toContain('評価額未取得 1件');
     expect(html).toContain('商品一覧には残します');
   });
+});
+
+it("保有分析の初期表示は資産クラスAllで、株・投信・現金を対象にする", () => {
+  const assetTypes = ["domestic_stock", "foreign_stock", "investment_fund", "cash"];
+  const mixed = assetTypes.map((assetType, i) => ({ ...positions[0], id: `all${i}`, instrumentId: `all${i}`, assetType, name: `初期確認商品${i}`, quantityKnown: true }));
+  const data = { positions: mixed, instrumentAnalysis: [], instrumentAnalysisStatus: "loaded" } as unknown as PortfolioData;
+  const html = renderToStaticMarkup(createElement(Holdings, { data }));
+  expect(html).toMatch(/aria-pressed="true"[^>]*>資産クラス/);
+  expect(html).toMatch(/aria-pressed="true"[^>]*>登録保有全体/);
+  expect(html).toContain("登録保有全体 ／ 資産クラス ／ すべて");
+  for (let i = 0; i < mixed.length; i++) expect(html).toContain(`初期確認商品${i}`);
+  for (const label of ["国内株", "海外株", "投資信託", "現金"]) expect(html).toContain(label);
 });
