@@ -85,6 +85,6 @@
 
 ## ブラウザータブfavicon
 
-- ホームと任意のツールのHTML headにrel=icon、href=/icons/icon-192.png、type=image/png、sizes=192x192が出力されること。
-- 画像URLがHTTP200/image/pngを返し、既存MiniToolsアイコンとして表示できること。
+- ホームと任意のツールのHTML headにrel=iconとして /favicon.ico（image/x-icon、16x16 32x32）と /icons/favicon.svg（image/svg+xml）が出力されること。
+- 両画像URLがHTTP200と対応するimage MIMEを返し、採用したタイルのfaviconとして表示できること。ICO内の16/32px PNGをデコードし、SVGにscript/外部参照がないこと。
 - manifest/認証/ページ遷移は従来どおりであること。確認画面または本番の新しいタブで確認し、既存タブのfavicon cacheで旧アイコンが残る場合は再読込も確認すること。
