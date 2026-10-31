@@ -9,6 +9,8 @@ import { summarizePortfolioValuation } from "./valuation-summary";
 import PortfolioDecision from "./PortfolioDecision";
 
 import PortfolioHoldingsAnalysis from "./PortfolioHoldingsAnalysis";
+import PortfolioIncomeSummary from "./PortfolioIncomeSummary";
+import { selectDividendProjection } from "./linked-analysis";
 
 type Tab = "decision" | "overview" | "record" | "policy" | "history" | "db";
 
@@ -567,10 +569,10 @@ export default function PortfolioWorkspace({ data, groupExposure }: { data: Port
         <>
           {groupExposure ? <details><summary style={{ cursor: "pointer", padding: 12 }}>企業グループ集中の詳細</summary>{groupExposure}</details> : null}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-            <Metric label="総資産評価額" value={formatYen(valuation.totalMarketValue)} sub={valuation.missingMarketValueCount > 0 ? `評価額未取得 ${valuation.missingMarketValueCount}件を除く` : "公式保有 + 外部参照資産"} />
+            <Metric label="総資産評価額" value={formatYen(valuation.totalMarketValue)} sub={`${valuation.officialPositionCount + valuation.externalPositionCount}ポジション ／ ${valuation.missingMarketValueCount > 0 ? `評価額未取得 ${valuation.missingMarketValueCount}件を除く` : "公式保有 + 外部参照資産"}`} />
+            <PortfolioIncomeSummary projection={selectDividendProjection(data.domesticDividends, data.positions, data.positions)} />
             <Metric label="取得額（公式保有）" value={formatYen(totalCost)} sub={`${grouped.length}商品`} />
             <Metric label="含み損益（公式保有）" value={formatYen(totalPnl)} sub={pnlRate === null ? "損益率 —" : `損益率 ${formatNumber(pnlRate, 2)}%`} />
-            <Metric label="全ポジション" value={`${valuation.officialPositionCount + valuation.externalPositionCount}件`} sub={`公式 ${valuation.officialPositionCount}件 / 外部 ${valuation.externalPositionCount}件`} />
           </div>
           <PortfolioHoldingsAnalysis data={data} />
         </>

@@ -4,8 +4,9 @@ import { useMemo, useState, type ReactNode } from "react";
 import { aggregatePortfolioPositions } from "./aggregates";
 import { portfolioAllocationDimensions, type PortfolioAllocationDimension, type PortfolioAllocationScope } from "./allocation";
 import { buildAnalysisGroups, resolveAnalysisSelection, selectDividendProjection } from "./linked-analysis";
-import PortfolioAnalysisCard from "./PortfolioAnalysisCard";
+import PortfolioAnalysisCard, { PortfolioAnalysisControls } from "./PortfolioAnalysisCard";
 import PortfolioDividend from "./PortfolioDividend";
+import PortfolioDividendComposition from "./PortfolioDividendComposition";
 import type { PortfolioData } from "./types";
 import styles from "./PortfolioAnalysis.module.css";
 
@@ -31,18 +32,21 @@ export default function PortfolioHoldingsAnalysis({ data }: { data: PortfolioDat
   const choose = (key: string | null) => setSelection((current) => ({ ...current, key: key === "action:clear" || current.key === key ? null : key }));
   const productGroups = unavailable ? [{ key: "unavailable", label: "登録保有（分類取得失敗）", positions: selectedPositions, missingValueCount: selectedPositions.filter((p) => p.marketValue === null).length }] : visibleGroups;
   return <div style={{ display: "grid", gap: 16 }}>
-    <Card title="保有資産の構成">
-      <PortfolioAnalysisCard data={data} dimension={selection.dimension} scope={selection.scope} selectedKey={selected?.key ?? null} groups={resolved.chartGroups} allGroups={model.all} total={model.total}
+    <Card title="資産と配当の構成">
+      <PortfolioAnalysisControls dimension={selection.dimension} scope={selection.scope}
+        onDimension={(dimension) => setSelection((current) => current.dimension === dimension ? current : ({ ...current, dimension, key: null }))}
+        onScope={(scope) => setSelection((current) => current.scope === scope ? current : ({ ...current, scope, key: null }))} />
+      <div className={styles.comparisonGrid}>
+      <section aria-label="評価額の構成"><h3 style={{ fontSize: 16, margin: "0 0 10px" }}>資産評価額の構成</h3>
+      <PortfolioAnalysisCard hideControls data={data} dimension={selection.dimension} scope={selection.scope} selectedKey={selected?.key ?? null} groups={resolved.chartGroups} allGroups={model.all} total={model.total}
         onDimension={(dimension) => setSelection((current) => current.dimension === dimension ? current : ({ ...current, dimension, key: null }))}
         onScope={(scope) => setSelection((current) => current.scope === scope ? current : ({ ...current, scope, key: null }))} onSelect={choose} />
+      </section>
+      <section aria-label="配当額の構成">{!unavailable && dividendGroups.length > 0 ? <PortfolioDividendComposition groups={dividendGroups} projection={projection} dimensionLabel={portfolioAllocationDimensions[selection.dimension].label} selectedKey={selected?.key ?? null} onSelect={choose} /> : <p role="status">{unavailable ? "分類情報を取得できないため、配当の分類グラフは保留しています。他の軸へ切り替えられます。" : "対象の保有がありません。"}</p>}</section>
+      </div>
     </Card>
-    <div role="status" aria-live="polite" style={{ fontSize: 13, color: "var(--color-text-sub)", lineHeight: 1.6 }}>配当・商品構成の表示範囲：<strong>{scopeLabel}</strong>。上段の総資産評価額は保有全体です。</div>
-    <PortfolioDividend projection={projection} scopeLabel={scopeLabel} breakdown={!unavailable && dividendGroups.length > 0 ? <div aria-label="分類別の予想配当" style={{ display: "grid", gap: 6 }}>
-      <h3 style={{ margin: "0 0 3px", fontSize: 14 }}>{portfolioAllocationDimensions[selection.dimension].label}別の配当</h3>
-      {dividendGroups.map(({ group, projection: item }) => <button key={group.key} className={styles.legendButton} type="button" aria-pressed={selected?.key === group.key} onClick={() => choose(group.key)}>
-        <span>{group.label}</span><span style={{ textAlign: "right", fontSize: 12 }}>{item?.status === "no_domestic_stocks" ? "対象国内株なし" : item?.status === "ready" ? yen(item.projectedAnnualGross) : "未確定"}<br /><span style={{ color: "var(--color-text-muted)", fontSize: 11 }}>{item ? `${item.coveredStocks}/${item.expectedStocks}銘柄` : "未取得"}</span></span>
-      </button>)}
-    </div> : undefined} />
+    <div role="status" aria-live="polite" style={{ fontSize: 13, color: "var(--color-text-sub)", lineHeight: 1.6 }}>配当・商品構成の表示範囲：<strong>{scopeLabel}</strong>。上段の総資産評価額・年間予想配当は保有全体です。</div>
+    <PortfolioDividend projection={projection} scopeLabel={scopeLabel} />
     <Card title="商品構成">
       <p style={{ margin: "0 0 14px", color: "var(--color-text-muted)", fontSize: 12 }}>表示範囲：{scopeLabel} ／ 構成比はこの範囲の既知評価額を分母にしています。口座別の数量・金額も選択範囲だけです。</p>
       {unavailable ? <p role="status">分類別の表示は保留しています。商品明細は表示できます。</p> : null}
