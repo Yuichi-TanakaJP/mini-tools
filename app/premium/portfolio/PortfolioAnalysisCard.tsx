@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { portfolioAllocationDimensions, type PortfolioAllocationDimension, type PortfolioAllocationScope } from "./allocation";
 import type { AnalysisGroup } from "./linked-analysis";
 import type { PortfolioData } from "./types";
@@ -26,6 +27,11 @@ export type PortfolioAnalysisCardProps = {
 };
 
 export default function PortfolioAnalysisCard({ data, dimension, scope, selectedKey, groups, allGroups, total, onDimension, onScope, onSelect }: PortfolioAnalysisCardProps) {
+  const clearRef = useRef<HTMLButtonElement>(null);
+  const select = (key: string | null) => {
+    if (key === "action:clear") { clearRef.current?.focus(); onSelect(null); }
+    else onSelect(key);
+  };
   const selected = groups.find((group) => group.key === selectedKey);
   const unavailable = classificationDimensions.has(dimension) && data.instrumentAnalysisStatus === "error";
   const knownCount = allGroups.reduce((sum, group) => sum + group.positionCount - group.missingValueCount, 0);
@@ -44,7 +50,7 @@ export default function PortfolioAnalysisCard({ data, dimension, scope, selected
     </div>
     <div className={styles.context}>
       <span style={{ minWidth: 0 }}>分析対象額 <strong>{knownCount > 0 ? yen(total) : "—"}</strong> ／ {unavailable ? "分類未取得" : `${allGroups.length}分類`}<span title={`${scopeName} ／ ${selected?.label ?? "すべて"}`} style={{ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>表示範囲：{scopeName} ／ {selected?.label ?? "すべて"}</span></span>
-      <button type="button" className={styles.choice} aria-pressed={!selected} onClick={() => onSelect(null)}>すべて表示</button>
+      <button ref={clearRef} type="button" className={styles.choice} aria-pressed={!selected} onClick={() => onSelect(null)}>すべて表示</button>
     </div>
     {unavailable ? <div className={styles.chartGrid}><div className={styles.chart} role="status">分類情報を取得できませんでした。資産クラス・口座種別・銘柄別へ切り替えられます。</div><div className={styles.legend} /></div> : <div className={styles.chartGrid}>
       <div className={styles.chart}>
@@ -56,13 +62,13 @@ export default function PortfolioAnalysisCard({ data, dimension, scope, selected
         </svg> : <p style={{ color: "var(--color-text-muted)" }}>対象範囲に評価額を取得できる保有がありません。</p>}
       </div>
       <div className={styles.legend} role="group" aria-label="分類で絞り込み">
-        {groups.map((group, index) => <button key={group.key} type="button" className={styles.legendButton} aria-pressed={selectedKey === group.key} onClick={() => onSelect(selectedKey === group.key ? null : group.key)}>
+        {groups.map((group, index) => <button key={group.key} type="button" className={styles.legendButton} aria-pressed={selectedKey === group.key} onClick={() => select(selectedKey === group.key ? null : group.key)}>
           <span className={styles.legendName}><span aria-hidden="true" style={{ width: 11, height: 11, borderRadius: "50%", background: color(group, index), flexShrink: 0 }} /><span className={styles.legendText} title={group.label}>{group.label}</span></span>
           <span className={styles.legendValue}><strong>{total > 0 ? pct(group.percentage) : "—"}</strong><br />{amount(group)}{group.missingValueCount > 0 ? "（未取得あり）" : ""}</span>
         </button>)}
       </div>
     </div>}
-    {!unavailable ? <details key={`${dimension}:${scope}`}><summary style={{ cursor: "pointer", fontSize: 12 }}>分類の全明細（{allGroups.length}分類）</summary><div role="group" aria-label="すべての分類から選択" style={{ display: "grid", gap: 4, paddingTop: 10 }}>{allGroups.map((group) => <button key={group.key} type="button" className={styles.legendButton} aria-pressed={selectedKey === group.key} onClick={() => onSelect(selectedKey === group.key ? null : group.key)}><span>{group.label}</span><span>{amount(group)}{group.missingValueCount > 0 ? "（未取得あり）" : ""} ／ {total > 0 ? pct(group.percentage) : "—"}</span></button>)}</div></details> : <div style={{ height: 20 }} />}
+    {!unavailable ? <details key={`${dimension}:${scope}`}><summary style={{ cursor: "pointer", fontSize: 12 }}>分類の全明細（{allGroups.length}分類）</summary><div role="group" aria-label="すべての分類から選択" style={{ display: "grid", gap: 4, paddingTop: 10 }}>{allGroups.map((group) => <button key={group.key} type="button" className={styles.legendButton} aria-pressed={selectedKey === group.key} onClick={() => select(selectedKey === group.key ? null : group.key)}><span>{group.label}</span><span>{amount(group)}{group.missingValueCount > 0 ? "（未取得あり）" : ""} ／ {total > 0 ? pct(group.percentage) : "—"}</span></button>)}</div></details> : <div style={{ height: 20 }} />}
     <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 11, lineHeight: 1.6 }}>分類ボタンを押すと、下の配当・商品構成も同じ範囲になります。構成比の分母は分析対象全体を維持します。外部参照資産は対象外。未分類も分母に含めます。{missing > 0 ? ` 評価額未取得 ${missing}件はグラフから除外し、商品一覧には残します。` : ""}</p>
   </div>;
 }

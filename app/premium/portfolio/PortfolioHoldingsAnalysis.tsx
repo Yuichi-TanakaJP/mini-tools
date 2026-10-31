@@ -37,7 +37,7 @@ export default function PortfolioHoldingsAnalysis({ data }: { data: PortfolioDat
         onScope={(scope) => setSelection((current) => current.scope === scope ? current : ({ ...current, scope, key: null }))} onSelect={choose} />
     </Card>
     <div role="status" aria-live="polite" style={{ fontSize: 13, color: "var(--color-text-sub)", lineHeight: 1.6 }}>配当・商品構成の表示範囲：<strong>{scopeLabel}</strong>。上段の総資産評価額は保有全体です。</div>
-    <PortfolioDividend projection={projection} scopeLabel={scopeLabel} breakdown={!unavailable && dividendGroups.length > 1 ? <div aria-label="分類別の予想配当" style={{ display: "grid", gap: 6 }}>
+    <PortfolioDividend projection={projection} scopeLabel={scopeLabel} breakdown={!unavailable && dividendGroups.length > 0 ? <div aria-label="分類別の予想配当" style={{ display: "grid", gap: 6 }}>
       <h3 style={{ margin: "0 0 3px", fontSize: 14 }}>{portfolioAllocationDimensions[selection.dimension].label}別の配当</h3>
       {dividendGroups.map(({ group, projection: item }) => <button key={group.key} className={styles.legendButton} type="button" aria-pressed={selected?.key === group.key} onClick={() => choose(group.key)}>
         <span>{group.label}</span><span style={{ textAlign: "right", fontSize: 12 }}>{item?.status === "no_domestic_stocks" ? "対象国内株なし" : item?.status === "ready" ? yen(item.projectedAnnualGross) : "未確定"}<br /><span style={{ color: "var(--color-text-muted)", fontSize: 11 }}>{item ? `${item.coveredStocks}/${item.expectedStocks}銘柄` : "未取得"}</span></span>

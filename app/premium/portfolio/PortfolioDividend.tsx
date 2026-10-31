@@ -80,7 +80,11 @@ export default function PortfolioDividend({ projection, scopeLabel, breakdown }:
               </div>
             ))}
           </div>
-          {breakdown}
+
+        </>
+      )}
+      {breakdown}
+      {data && (data.status === "ready" || data.status === "incomplete") ? (
           <details>
             <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
               銘柄別の配当予想を確認（{data.positions.length}件）
@@ -119,8 +123,7 @@ export default function PortfolioDividend({ projection, scopeLabel, breakdown }:
               実際の受取額・税引後額は別の入金記録が必要です。
             </p>
           </details>
-        </>
-      )}
+      ) : null}
     </section>
   );
 }

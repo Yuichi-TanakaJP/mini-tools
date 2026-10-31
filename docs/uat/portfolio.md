@@ -144,3 +144,5 @@ From: 認証済み `/premium/portfolio` → To: 保有一覧内の国内株配�
 - 375px幅でも全ボタンと商品明細を読め、横はみ出しがない。配当の詳細表だけ既存の横スクロールを許容する。
 
 検証: `npx vitest run app/premium/portfolio`、変更TSX/TSのESLint、`npm run build`、`npm run check:navigation -- --base <base>`。操作確認は合成実コンポーネントと認証画面で別に記録する。
+
+- 分類別配当のbuttonをEnterで選択・解除しても、対象外メッセージへの切替でfocusがbodyへ落ちない。「ほかの分類（全体に戻る）」から戻った際は「すべて表示」へfocusが戻る。
