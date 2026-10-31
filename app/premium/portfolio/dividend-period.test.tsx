@@ -50,6 +50,18 @@ describe("対象期の公表予想と年間合計の分離", () => {
     const unknown = selectDividendProjection(source(), [position({ quantityKnown: false })], [position({ quantityKnown: false })])!;
     expect(reportedPeriodDividend(unknown, unknown.positions[0])).toBeNull();
   });
+  it("按分前の公表額が不整合なら、小口選択で誤差が縮んでも確認済みにしない", () => {
+    const p = source({ reported_forecast_dividend_gross: 2000.5 });
+    expect(reportedPeriodDividend(p, p.positions[0])).toBeNull();
+    expect(p.sourceIntegrity).toBe(true); // Annual totals do not certify the separate reported-period amount.
+    for (const quantity of [1, 25, 100]) {
+      const selected = position({ quantity });
+      const scoped = selectDividendProjection(p, [position()], [selected])!;
+      expect(reportedPeriodDividend(scoped, scoped.positions[0])).toBeNull();
+      expect(dividendDisplay(scoped)).toMatchObject({ excludedCount: 0, unverifiedCount: 1 });
+      expect(scoped.positions[0].reportedForecastGross).toBeNull();
+    }
+  });
   it.each([
     { forecast_as_of: "2026-11-01" }, { forecast_period_months: 12 }, { forecast_period_months: 0 }, { forecast_period_months: 9.5 },
     { forecast_period_end: null }, { forecast_period_end: "2027-12-31" }, { forecast_period_end: "2026-02-31" }, { forecast_period_start: "bad" }, { reported_forecast_dps: -1 }, { reported_forecast_dividend_gross: 2001 },
