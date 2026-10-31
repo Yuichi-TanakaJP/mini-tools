@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { DomesticDividendProjection, DomesticDividendPosition } from "./dividend-income";
 
 function yen(value: number | null, digits = 0): string {
@@ -28,8 +29,10 @@ function changeLabel(value: DomesticDividendPosition["changeType"]): string {
   return "比較不可";
 }
 
-export default function PortfolioDividend({ projection }: {
+export default function PortfolioDividend({ projection, scopeLabel, breakdown }: {
   projection: DomesticDividendProjection | undefined;
+  scopeLabel?: string;
+  breakdown?: ReactNode;
 }) {
   const data = projection;
   const isReady = data?.status === "ready";
@@ -43,6 +46,7 @@ export default function PortfolioDividend({ projection }: {
           実際に入金された配当金ではありません。
         </p>
       </div>
+      {scopeLabel ? <p style={{ margin: 0, fontSize: 12, color: "var(--color-text-muted)" }}>表示範囲：{scopeLabel}。口座別の金額は、DBの補正済み配当額を保有数量で分けています。</p> : null}
       {!data || data.status === "no_snapshot" ? (
         <p style={{ margin: 0 }}>公式readyスナップショットがないため、配当を計算できません。</p>
       ) : data.status === "no_domestic_stocks" ? (
@@ -76,6 +80,7 @@ export default function PortfolioDividend({ projection }: {
               </div>
             ))}
           </div>
+          {breakdown}
           <details>
             <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
               銘柄別の配当予想を確認（{data.positions.length}件）

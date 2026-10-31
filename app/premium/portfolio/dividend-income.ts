@@ -51,6 +51,7 @@ export type DomesticDividendPosition = {
 };
 
 export type DomesticDividendProjection = {
+  sourceIntegrity?: boolean;
   status: "no_snapshot" | "no_domestic_stocks" | "error" | "incomplete" | "ready";
   asOf: string | null;
   latestForecastAsOf: string | null;
@@ -68,7 +69,7 @@ export type DomesticDividendProjection = {
 };
 
 function amount(value: number | string | null): number | null {
-  if (value === null || value === "") return null;
+  if (value === null || (typeof value === "string" && value.trim() === "")) return null;
   const n = typeof value === "number" ? value : Number(value);
   return Number.isFinite(n) ? n : null;
 }
@@ -79,6 +80,7 @@ export function emptyDomesticDividendProjection(
 ): DomesticDividendProjection {
   return {
     status,
+    sourceIntegrity: false,
     asOf,
     latestForecastAsOf: null,
     expectedStocks: 0,
@@ -149,7 +151,23 @@ export function summarizeDomesticDividendProjection(
     && amount(totals.confirmed_count) === expected.size
     && amount(totals.held_count) === 0
     && completeTotal !== null;
-  const complete = completeCoverage && consistentSnapshot
+  const knownAmounts = positions.filter((row) => row.annualGross !== null);
+  const sumKnown = knownAmounts.reduce((sum, row) => sum + row.annualGross!, 0);
+  const partial = amount(totals?.confirmed_partial_total ?? null);
+  const partialMatches = knownAmounts.length === 0
+    ? partial === null || partial === 0
+    : partial !== null && Math.abs(partial - sumKnown) < 0.000001;
+  const sourceIntegrity = completeCoverage && consistentSnapshot && Boolean(totals)
+    && totals!.snapshot_id === snapshot.id
+    && Date.parse(totals!.snapshot_as_of) === snapshotAt
+    && amount(totals!.holding_count) === expected.size
+    && amount(totals!.confirmed_count) === knownAmounts.length
+    && amount(totals!.held_count) === expected.size - knownAmounts.length
+    && partialMatches
+    && ((totals!.status === "resolved" && knownAmounts.length === expected.size && completeTotal !== null)
+      || (totals!.status === "review_required" && knownAmounts.length < expected.size && completeTotal === null))
+    && (completeTotal === null || Math.abs(completeTotal - sumKnown) < 0.000001);
+  const complete = sourceIntegrity && completeCoverage && consistentSnapshot
     && allAnnualAmountsKnown && hasAllSourceDates && validTotals;
 
   const comparable = positions.filter((row) =>
@@ -163,6 +181,7 @@ export function summarizeDomesticDividendProjection(
 
   return {
     status: complete ? "ready" : "incomplete",
+    sourceIntegrity,
     asOf: snapshot.asOf,
     latestForecastAsOf: positions.map((row) => row.forecastAsOf)
       .filter((value): value is string => Boolean(value))

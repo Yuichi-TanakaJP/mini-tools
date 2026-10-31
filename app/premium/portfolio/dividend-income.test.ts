@@ -109,11 +109,12 @@ describe("国内株の配当予想（Stock Notes正本View）", () => {
   });
 });
 
-it("complete totalにはDB正本の値を使い、行を再集計しない", () => {
-  expect(summarizeDomesticDividendProjection([row()], snapshot, ["i1"],
-    totals({ projected_annual_dividend_gross: "6100" })).projectedAnnualGross).toBe(6100);
+it("DB totalsと行金額が不整合なら部分和にも正本額にも置換せず保留する", () => {
+  const result = summarizeDomesticDividendProjection([row()], snapshot, ["i1"],
+    totals({ projected_annual_dividend_gross: "6100" }));
+  expect(result.projectedAnnualGross).toBeNull();
+  expect(result.sourceIntegrity).toBe(false);
 });
-
 it.each([
   null,
   totals({ status: "review_required", held_count: 1, confirmed_count: 0,
