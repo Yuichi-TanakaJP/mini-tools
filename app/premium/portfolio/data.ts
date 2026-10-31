@@ -5,6 +5,7 @@ import {
   emptyDomesticDividendProjection,
   summarizeDomesticDividendProjection,
   type DividendProjectionRow,
+  type DividendTotalsRow,
 } from "./dividend-income";
 import type {
   PortfolioAccountType,
@@ -340,11 +341,20 @@ async function loadDomesticDividends(
 
   const rows: DividendProjectionRow[] = [];
   try {
+    const { data: totalRows, error: totalsError } = await supabase
+      .from("stock_notes_portfolio_dividend_totals_v")
+      .select("snapshot_id, snapshot_as_of, holding_count, confirmed_count, held_count, confirmed_partial_total, projected_annual_dividend_gross, status")
+      .eq("portfolio_id", portfolioId)
+      .eq("snapshot_id", snapshot.id)
+      .limit(2)
+      .returns<DividendTotalsRow[]>();
+    if (totalsError) return emptyDomesticDividendProjection("error", snapshot.asOf);
+    const totals = totalRows?.length === 1 ? totalRows[0] : null;
     for (let from = 0; from < 5000; from += dividendPageSize) {
       const { data, error } = await supabase
         .from("stock_notes_portfolio_current_dividend_projection_v")
         .select(
-          "snapshot_id, snapshot_as_of, instrument_id, ticker, instrument_name, quantity, latest_actual_dps, forecast_dps, forecast_as_of, projected_annual_dividend_gross, prior_actual_run_rate_gross, dividend_rate_effect_gross, dividend_change_type",
+          "snapshot_id, snapshot_as_of, instrument_id, ticker, instrument_name, quantity, latest_actual_dps, forecast_dps, forecast_as_of, projected_annual_dividend_gross, prior_actual_run_rate_gross, dividend_rate_effect_gross, dividend_change_type, cash_projection_status, raw_forecast_dps, forecast_metric_basis_id, forecast_fact_basis_id",
         )
         .eq("portfolio_id", portfolioId)
         .eq("snapshot_id", snapshot.id)
@@ -355,7 +365,7 @@ async function loadDomesticDividends(
       const page = data ?? [];
       rows.push(...page);
       if (page.length < dividendPageSize) {
-        return summarizeDomesticDividendProjection(rows, snapshot, domesticIds);
+        return summarizeDomesticDividendProjection(rows, snapshot, domesticIds, totals);
       }
     }
   } catch {

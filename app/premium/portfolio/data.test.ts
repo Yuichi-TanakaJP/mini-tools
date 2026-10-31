@@ -80,6 +80,7 @@ class QueryStub {
 function stubClient(results: Record<string, unknown>, queryLog: string[] = []) {
   return {
     from(table: string) {
+      queryLog.push(`from=${table}`);
       return new QueryStub(results[table] ?? { data: [], error: null }, queryLog);
     },
   } as unknown as SupabaseClient;
@@ -125,10 +126,14 @@ describe("portfolio data loader", () => {
           cost_basis: "1000", market_value: "1200", unrealized_pnl: "200",
           distribution_method: null },
       ], error: null },
+      stock_notes_portfolio_dividend_totals_v: { data: [{ snapshot_id: "s1", snapshot_as_of: date,
+        holding_count: "1", confirmed_count: "1", held_count: "0", confirmed_partial_total: "60",
+        projected_annual_dividend_gross: "60", status: "resolved" }], error: null },
       stock_notes_portfolio_current_dividend_projection_v: { data: [
         { snapshot_id: "s1", snapshot_as_of: date, instrument_id: "i1",
           ticker: "1111", instrument_name: "試験株", quantity: "10",
-          latest_actual_dps: "5", forecast_dps: "6",
+          latest_actual_dps: "5", forecast_dps: "6", raw_forecast_dps: "6",
+          cash_projection_status: "resolved", forecast_metric_basis_id: "basis-1", forecast_fact_basis_id: null,
           forecast_as_of: "2026-09-15T00:00:00Z",
           projected_annual_dividend_gross: "60",
           prior_actual_run_rate_gross: "50",
@@ -141,7 +146,7 @@ describe("portfolio data loader", () => {
     });
   });
 
-  it("配当Viewが読めなくても保有一覧を破壊せず、ゼロ円と表示しない", async () => {
+  it.each(["stock_notes_portfolio_current_dividend_projection_v", "stock_notes_portfolio_dividend_totals_v"])("配当View %s が読めなくても保有一覧を破壊せず、ゼロ円と表示しない", async (failedView) => {
     const date = "2026-09-21T04:08:00Z";
     const data = await loadPortfolio(stubClient({
       stock_notes_portfolios: { data: { id: "portfolio-1", name: "試験", base_currency: "JPY" }, error: null },
@@ -161,7 +166,7 @@ describe("portfolio data loader", () => {
           cost_basis: "1000", market_value: "1200", unrealized_pnl: "200",
           distribution_method: null },
       ], error: null },
-      stock_notes_portfolio_current_dividend_projection_v: {
+      [failedView]: {
         data: null, error: { message: "permission denied" },
       },
     }));
