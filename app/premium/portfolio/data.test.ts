@@ -613,3 +613,13 @@ describe("portfolio data loader", () => {
     expect(queryLog).toContain("status=open");
   });
 });
+
+it.each([[null, false], [" ", false], ["2", true]])("元数量%sの既知/未取得を表示用0とは別に維持する", async (quantity, known) => {
+  const data = await loadPortfolio(stubClient({
+    stock_notes_portfolios: { data: { id: "portfolio-qty", name: "合成", base_currency: "JPY" }, error: null },
+    stock_notes_portfolio_snapshots: { data: [{ id: "snapshot-qty", as_of: "2026-10-01T00:00:00Z", imported_at: "2026-10-01T00:00:00Z", source_type: "manual", status: "ready", portfolio_scope: "official" }], error: null },
+    stock_notes_portfolio_positions: { data: [{ id: "position-qty", snapshot_id: "snapshot-qty", account_id: "account-qty", instrument_id: "instrument-qty", quantity, unit_cost: null, quoted_price: null, quote_unit: 1, cost_basis: null, market_value: 100, unrealized_pnl: null, distribution_method: null }], error: null },
+  }));
+  expect(data.positions[0].quantityKnown).toBe(known);
+  expect(data.dbPositions[0].quantityKnown).toBe(known);
+});

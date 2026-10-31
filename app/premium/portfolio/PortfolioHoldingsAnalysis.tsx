@@ -54,7 +54,7 @@ export default function PortfolioHoldingsAnalysis({ data }: { data: PortfolioDat
           return <div key={item.instrumentId} style={{ borderBottom: "1px solid var(--color-border)", paddingBottom: 10 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 13 }}><span><strong>{item.identifier}</strong> {item.name}</span><span style={{ fontWeight: 800 }}>{yen(item.marketValue)} ／ {percent === null ? "—" : `${percent.toFixed(1)}%`}</span></div>
             {percent !== null ? <div style={{ height: 7, marginTop: 6, borderRadius: 999, background: "var(--color-bg-input)", overflow: "hidden" }}><div style={{ height: "100%", width: `${Math.min(100, Math.max(0, percent))}%`, background: "var(--color-accent)" }} /></div> : null}
-            <div style={{ marginTop: 5, color: "var(--color-text-sub)", fontSize: 11 }}>数量：{number(item.quantity)} ／ 取得額：{yen(item.costBasis)} ／ 損益：{yen(item.unrealizedPnl)}</div>
+            <div style={{ marginTop: 5, color: "var(--color-text-sub)", fontSize: 11 }}>数量：{group.positions.filter((p) => p.instrumentId === item.instrumentId).every((p) => p.quantityKnown === true) ? number(item.quantity) : "—"} ／ 取得額：{yen(item.costBasis)} ／ 損益：{yen(item.unrealizedPnl)}</div>
             <div style={{ marginTop: 4, color: "var(--color-text-muted)", fontSize: 11 }}>口座：{item.accounts.join(" ／ ")}</div>
           </div>;
         })}</div>

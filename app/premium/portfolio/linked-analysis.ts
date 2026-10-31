@@ -44,7 +44,7 @@ function quantities(positions: PortfolioPosition[]) {
   const result = new Map<string, number>();
   for (const p of positions.filter((p) => p.assetType === "domestic_stock")) {
     const previous = result.get(p.instrumentId) ?? 0;
-    result.set(p.instrumentId, Number.isFinite(p.quantity) && p.quantity >= 0 && Number.isFinite(previous) ? previous + p.quantity : NaN);
+    result.set(p.instrumentId, p.quantityKnown === true && Number.isFinite(p.quantity) && p.quantity >= 0 && Number.isFinite(previous) ? previous + p.quantity : NaN);
   }
   return result;
 }

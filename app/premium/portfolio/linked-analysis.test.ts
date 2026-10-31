@@ -3,7 +3,7 @@ import { buildAnalysisGroups, resolveAnalysisSelection, selectDividendProjection
 import { summarizeDomesticDividendProjection, type DividendProjectionRow, type DividendTotalsRow } from "./dividend-income";
 import type { PortfolioPosition } from "./types";
 const snapshot = { id: "snapshot", asOf: "2026-10-31T01:00:00Z" };
-function position(overrides: Partial<PortfolioPosition> = {}): PortfolioPosition { return { id: "p1", accountId: "a1", instrumentId: "i1", assetType: "domestic_stock", identifier: "TEST1", name: "合成株", accountName: "口座A", accountType: "taxable", institutionName: "証券", quantity: 100, unitCost: null, quotedPrice: null, quoteUnit: 1, costBasis: null, marketValue: 900, unrealizedPnl: null, distributionMethod: null, ...overrides }; }
+function position(overrides: Partial<PortfolioPosition> = {}): PortfolioPosition { return { id: "p1", accountId: "a1", instrumentId: "i1", assetType: "domestic_stock", identifier: "TEST1", name: "合成株", accountName: "口座A", accountType: "taxable", institutionName: "証券", quantity: 100, quantityKnown: true, unitCost: null, quotedPrice: null, quoteUnit: 1, costBasis: null, marketValue: 900, unrealizedPnl: null, distributionMethod: null, ...overrides }; }
 const positions = [position(), position({ id: "p2", accountId: "a2", accountName: "口座B", accountType: "nisa_growth", quantity: 300, marketValue: 100 })];
 function sourceRow(overrides: Partial<DividendProjectionRow> = {}): DividendProjectionRow { return { snapshot_id: snapshot.id, snapshot_as_of: snapshot.asOf, instrument_id: "i1", ticker: "TEST1", instrument_name: "合成株", quantity: 400, latest_actual_dps: 8, forecast_dps: 10, raw_forecast_dps: 10, cash_projection_status: "resolved", forecast_metric_basis_id: "basis", forecast_fact_basis_id: null, forecast_as_of: "2026-10-01", projected_annual_dividend_gross: 4000, prior_actual_run_rate_gross: 3200, dividend_rate_effect_gross: 800, dividend_change_type: "increase", ...overrides }; }
 function totals(overrides: Partial<DividendTotalsRow> = {}): DividendTotalsRow { return { snapshot_id: snapshot.id, snapshot_as_of: snapshot.asOf, holding_count: 1, confirmed_count: 1, held_count: 0, confirmed_partial_total: 4000, projected_annual_dividend_gross: 4000, status: "resolved", ...overrides }; }
@@ -103,4 +103,10 @@ it("年額が確認済みでも比較可能な銘柄が0件なら寄与を0円�
   expect(noComparison.status).toBe("ready");
   expect(noComparison.comparableRateEffectGross).toBeNull();
   expect(selectDividendProjection(noComparison, positions, [positions[0]])).toMatchObject({ status: "ready", projectedAnnualGross: 1000, comparableCount: 0, comparableRateEffectGross: null });
+});
+
+it.each([false, undefined])("表示用の0株が未取得なら証明済み数量に昇格しない（%s）", (quantityKnown) => {
+  const all = [position({ quantity: 400 }), position({ id: "unknown", quantity: 0, quantityKnown })];
+  expect(selectDividendProjection(source, all, [all[1]])?.projectedAnnualGross).toBeNull();
+  expect(selectDividendProjection(source, all, [all[0]])?.projectedAnnualGross).toBeNull();
 });
