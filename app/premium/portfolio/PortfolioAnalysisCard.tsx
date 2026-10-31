@@ -63,7 +63,7 @@ export default function PortfolioAnalysisCard({ data, hideControls = false, dime
       </div>
     </div>}
     {!unavailable ? <details key={`${dimension}:${scope}`}><summary style={{ cursor: "pointer", fontSize: 12 }}>分類の全明細（{allGroups.length}分類）</summary><div role="group" aria-label="すべての分類から選択" style={{ display: "grid", gap: 4, paddingTop: 10 }}>{allGroups.map((group) => <button key={group.key} type="button" className={styles.legendButton} aria-pressed={selectedKey === group.key} onClick={() => select(selectedKey === group.key ? null : group.key)}><span>{group.label}</span><span>{amount(group)}{group.missingValueCount > 0 ? "（未取得あり）" : ""} ／ {total > 0 ? pct(group.percentage) : "—"}</span></button>)}</div></details> : <div style={{ height: 20 }} />}
-    <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 11, lineHeight: 1.6 }}>分類ボタンを押すと、下の配当・商品構成も同じ範囲になります。構成比の分母は分析対象全体を維持します。外部参照資産は対象外。未分類も分母に含めます。{missing > 0 ? ` 評価額未取得 ${missing}件はグラフから除外し、商品一覧には残します。` : ""}</p>
+    <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: 11, lineHeight: 1.6 }}>分類ボタンで絞り込むと、配当・商品一覧も同じ範囲になります。構成比の分母は分析対象全体を維持します。外部参照資産は対象外。未分類も分母に含めます。{missing > 0 ? ` 評価額未取得 ${missing}件はグラフから除外し、商品一覧には残します。` : ""}</p>
   </div>;
 }
 

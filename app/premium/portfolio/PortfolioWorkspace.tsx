@@ -5,12 +5,9 @@ import type { PortfolioData, PortfolioDbPosition, PortfolioExternalAssetPosition
 import { aggregatePortfolioPositions } from "./aggregates";
 import { summarizePortfolioDbResult } from "./db-check";
 import { isUnresolvedExternalInstrument } from "./external-assets";
-import { summarizePortfolioValuation } from "./valuation-summary";
 import PortfolioDecision from "./PortfolioDecision";
 
 import PortfolioHoldingsAnalysis from "./PortfolioHoldingsAnalysis";
-import PortfolioIncomeSummary from "./PortfolioIncomeSummary";
-import { selectDividendProjection } from "./linked-analysis";
 
 type Tab = "decision" | "overview" | "record" | "policy" | "history" | "db" | "groups";
 
@@ -513,12 +510,6 @@ function DbCheckView({ data }: { data: PortfolioData }) {
 
 export default function PortfolioWorkspace({ data, groupExposure }: { data: PortfolioData; groupExposure?: ReactNode }) {
   const [tab, setTab] = useState<Tab>("decision");
-  const grouped = useMemo(() => aggregatePortfolioPositions(data.positions), [data.positions]);
-  const valuation = useMemo(() => summarizePortfolioValuation(data.positions, data.externalAssets), [data.externalAssets, data.positions]);
-
-  const totalCost = sumNullable(data.positions.map((position) => position.costBasis));
-  const totalPnl = sumNullable(data.positions.map((position) => position.unrealizedPnl));
-  const pnlRate = totalCost && totalPnl !== null ? (totalPnl / totalCost) * 100 : null;
   const hasSnapshotHistory = data.snapshots.some((snapshot) => snapshot.portfolioScope === "official");
 
   return (
@@ -568,12 +559,6 @@ export default function PortfolioWorkspace({ data, groupExposure }: { data: Port
 
       {tab === "overview" ? (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-            <Metric label="総資産評価額" value={formatYen(valuation.totalMarketValue)} sub={`${valuation.officialPositionCount + valuation.externalPositionCount}ポジション ／ ${valuation.missingMarketValueCount > 0 ? `評価額未取得 ${valuation.missingMarketValueCount}件を除く` : "公式保有 + 外部参照資産"}`} />
-            <PortfolioIncomeSummary projection={selectDividendProjection(data.domesticDividends, data.positions, data.positions)} />
-            <Metric label="取得額（公式保有）" value={formatYen(totalCost)} sub={`${grouped.length}商品`} />
-            <Metric label="含み損益（公式保有）" value={formatYen(totalPnl)} sub={pnlRate === null ? "損益率 —" : `損益率 ${formatNumber(pnlRate, 2)}%`} />
-          </div>
           <PortfolioHoldingsAnalysis data={data} />
         </>
       ) : null}

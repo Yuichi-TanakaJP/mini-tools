@@ -34,7 +34,7 @@ describe("保有構成ドーナツ", () => {
     const html = render(dimension);
     expect(html).toContain('<svg');
     expect(html).toContain('role="img"');
-    expect(html).toContain('下の配当・商品構成も同じ範囲');
+    expect(html).toContain('配当・商品一覧も同じ範囲');
   });
   it("分類取得失敗を未分類100%にせず、非分類軸で表示できる", () => {
     expect(render("sector_33", { instrumentAnalysisStatus: "error" })).not.toContain('<svg');
@@ -56,6 +56,6 @@ it("保有分析の初期表示は資産クラスAllで、株・投信・現金�
   expect(html).toMatch(/aria-pressed="true"[^>]*>資産クラス/);
   expect(html).toMatch(/aria-pressed="true"[^>]*>登録保有全体/);
   expect(html).toContain("登録保有全体 ／ 資産クラス ／ すべて");
-  for (let i = 0; i < mixed.length; i++) expect(html).toContain(`初期確認商品${i}`);
-  for (const label of ["国内株", "海外株", "投資信託", "現金"]) expect(html).toContain(label);
+  for (const label of ["国内株", "海外株", "投資信託", "現金"]) expect(html).toContain(`${label} 25.0%`);
+  expect(html).toMatch(/aria-pressed="true"[^>]*>グラフ/);
 });
