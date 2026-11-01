@@ -28,7 +28,7 @@ export const COLOR_LITERAL_BUDGET: Readonly<Record<string, number>> = {
   "app/premium/login/LoginForm.tsx": 3,
   "app/premium/market/page.tsx": 1,
   "app/premium/portfolio/PortfolioDashboard.tsx": 11,
-  // The existing chart color moved with the extracted analysis card.
+  // Transfer one chart color allowance from PortfolioWorkspace to the analysis card.
   "app/premium/portfolio/PortfolioAnalysisCard.tsx": 1,
   "app/premium/portfolio/PortfolioWorkspace.tsx": 2,
   "app/premium/routines/RoutinesView.tsx": 7,
