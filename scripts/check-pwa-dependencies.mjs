@@ -32,12 +32,13 @@ test('migration coverage rejects omitted public and static assets', () => {
   try {
     mkdirSync(path.join(dir, '.next/static/chunks'), { recursive: true });
     mkdirSync(path.join(dir, 'public'));
-    writeFileSync(path.join(dir, '.next/static/chunks/[page].js'), 'fixture');
+    for (const name of ['[page].js', 'manifest-widget.js', 'body.woff2']) writeFileSync(path.join(dir, '.next/static/chunks', name), 'fixture');
     writeFileSync(path.join(dir, 'public/icon.svg'), 'fixture');
     const validate = require('../tooling/pwa-manifest-coverage.cjs');
     const worker = urls => `self.precacheAndRoute(${JSON.stringify(urls.map(url => ({ url })))});`;
-    assert.equal(validate(dir, worker(['/_next/static/chunks/%5Bpage%5D.js', '/icon.svg'])).staticCount, 1);
-    for (const urls of [['/icon.svg'], ['/_next/static/chunks/%5Bpage%5D.js']]) assert.throws(() => validate(dir, worker(urls)), /Missing precache assets/);
+    const all = ['/_next/static/chunks/%5Bpage%5D.js', '/_next/static/chunks/manifest-widget.js', '/_next/static/chunks/body.woff2', '/icon.svg'];
+    assert.equal(validate(dir, worker(all)).staticCount, 3);
+    for (const missing of all) assert.throws(() => validate(dir, worker(all.filter(url => url !== missing))), /Missing precache assets/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

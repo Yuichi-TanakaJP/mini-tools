@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync, cpSync, linkSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync, cpSync, linkSync, renameSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -75,6 +75,7 @@ function withInstallerFixture(action) {
     mkdirSync(path.join(dir, 'tooling'), { recursive: true });
     writeFileSync(path.join(dir, 'scripts/install-minimatch-compat.cjs'), readFileSync('scripts/install-minimatch-compat.cjs'));
     writeFileSync(path.join(dir, 'tooling/minimatch-patches.json'), JSON.stringify(recipes));
+    cpSync('tooling/minimatch-bridge-hashes.json', path.join(dir, 'tooling/minimatch-bridge-hashes.json'));
     for (const recipe of recipes) {
       const file = path.join(dir, recipe.file);
       mkdirSync(path.dirname(file), { recursive: true });
@@ -150,4 +151,37 @@ test('an omitted development graph is a no-op, never a passing check', () => wit
   const script = path.join(dir, 'scripts/install-minimatch-compat.cjs');
   assert.equal(spawnSync(process.execPath, [script]).status, 0);
   assert.notEqual(spawnSync(process.execPath, [script, '--check']).status, 0);
+}));
+
+
+test('modern POSIX classes fail closed through both legacy parent entry points', async () => {
+  for (const { ConfigArray } of [require('@eslint/config-array'), await import('@eslint/config-array')]) {
+    const configs = new ConfigArray([{ files: ['**/*.js'] }, { ignores: ['[[:alpha:]]*.js'] }], { basePath: root });
+    configs.normalizeSync();
+    assert.throws(() => configs.getConfigStatus(path.join(root, 'main.js')), /MINIMATCH_LEGACY_POSIX_UNSUPPORTED/);
+  }
+});
+
+test('a bridge altered in both source and install is rejected by independent digests', () => withInstallerFixture(dir => {
+  for (const target of ['tooling/minimatch-legacy-bridge', 'node_modules/@local/minimatch-legacy-bridge']) {
+    const file = path.join(dir, target, 'index.cjs');
+    writeFileSync(file, readFileSync(file, 'utf8').replace('return new Minimatch(pattern, options).match(file);', 'return true;'));
+  }
+  const child = spawnSync(process.execPath, [path.join(dir, 'scripts/install-minimatch-compat.cjs'), '--check'], { encoding: 'utf8' });
+  assert.notEqual(child.status, 0);
+  assert.match(child.stderr, /Unreviewed minimatch bridge/);
+}));
+
+test('a redirected installation root is rejected before changing shared sources', () => withInstallerFixture(dir => {
+  const modules = path.join(dir, 'node_modules');
+  const shared = path.join(dir, 'shared-modules');
+  renameSync(modules, shared);
+  symlinkSync(shared, modules, process.platform === 'win32' ? 'junction' : 'dir');
+  const first = path.join(modules, recipes[0].file.slice('node_modules/'.length));
+  const original = readFileSync(first, 'utf8').replaceAll('@local/minimatch-legacy-bridge', 'minimatch');
+  writeFileSync(first, original);
+  const child = spawnSync(process.execPath, [path.join(dir, 'scripts/install-minimatch-compat.cjs')], { encoding: 'utf8' });
+  assert.notEqual(child.status, 0);
+  assert.match(child.stderr, /Redirected node_modules root/);
+  assert.equal(readFileSync(first, 'utf8'), original);
 }));

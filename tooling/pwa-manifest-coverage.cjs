@@ -26,7 +26,7 @@ module.exports = function validateManifest(directory, worker) {
   });
   const inventory = new Set(urls);
   const staticRoot = path.join(directory, '.next/static');
-  const staticUrls = files(staticRoot).map(file => '/_next/static/' + path.relative(staticRoot, file).split(path.sep).join('/')).filter(url => !url.endsWith('.map') && !/\.woff2$/.test(url.replace(/\.p\.woff2$/, '')) && !/^manifest.*\.js$/.test(path.basename(url)));
+  const staticUrls = files(staticRoot).map(file => '/_next/static/' + path.relative(staticRoot, file).split(path.sep).join('/')).filter(url => ![/\/_next\/static\/.*(?<!\.p)\.woff2/, /\.map$/, /^manifest.*\.js$/].some(exclude => exclude.test(url.slice('/_next/'.length))));
   const publicRoot = path.join(directory, 'public');
   const publicUrls = files(publicRoot).map(file => '/' + path.relative(publicRoot, file).split(path.sep).join('/')).filter(url => !url.startsWith('/noprecache/') && !/^\/(sw\.js(?:\.map)?|(?:workbox|fallback|swe-worker|worker)-.*\.js(?:\.map)?)$/.test(url));
   if (!staticUrls.length || !publicUrls.length) throw new Error('Empty PWA asset coverage');

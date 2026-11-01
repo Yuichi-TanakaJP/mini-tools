@@ -5,6 +5,7 @@ const crypto = require('node:crypto');
 const { createRequire } = require('node:module');
 const root = path.resolve(__dirname, '..');
 const recipes = require('../tooling/minimatch-patches.json');
+const bridgeDigests = require('../tooling/minimatch-bridge-hashes.json');
 const checkOnly = process.argv.includes('--check');
 const digest = value => crypto.createHash('sha256').update(value).digest('hex');
 const matcherImport = /(require\(['"]|from ['"])minimatch(['"]\)?)/g;
@@ -14,13 +15,18 @@ if (present.length === 0 && !checkOnly) {
   console.log('Minimatch compatibility: lint dependencies omitted');
 } else {
   if (present.length !== parents.length) throw new Error('Incomplete reviewed lint dependency graph');
-  const modules = fs.realpathSync(path.join(root, 'node_modules')) + path.sep;
+  const installRoot = path.join(root, 'node_modules');
+  const resolvedModules = fs.realpathSync(installRoot);
+  if (fs.lstatSync(installRoot).isSymbolicLink() || path.relative(path.join(fs.realpathSync(root), 'node_modules'), resolvedModules) !== '') throw new Error('Redirected node_modules root');
+  const modules = resolvedModules + path.sep;
   // Reject partial or substituted bridges before touching any parent source.
   const rootRequire = createRequire(path.join(root, 'package.json'));
   const bridge = rootRequire.resolve('@local/minimatch-legacy-bridge');
   const bridgeDirectory = path.dirname(bridge);
   for (const name of ['package.json', 'index.cjs', 'index.mjs']) {
-    if (digest(fs.readFileSync(path.join(bridgeDirectory, name))) !== digest(fs.readFileSync(path.join(root, 'tooling/minimatch-legacy-bridge', name)))) throw new Error('Unreviewed minimatch bridge');
+    // Git checkouts differ in line endings; pin the reviewed text independently.
+    const canonical = fs.readFileSync(path.join(bridgeDirectory, name), 'utf8').replace(/\r\n/g, '\n');
+    if (digest(canonical) !== bridgeDigests[name]) throw new Error('Unreviewed minimatch bridge');
   }
   for (const parent of parents) {
     const fromParent = createRequire(path.join(root, 'node_modules', parent, 'package.json'));

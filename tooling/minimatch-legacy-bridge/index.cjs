@@ -12,6 +12,8 @@ const unsupportedRegExp = () => {
 };
 class Minimatch extends modern.Minimatch {
   constructor(pattern, options) {
+    // Modern POSIX classes broaden legacy ignores; reject before selecting files.
+    if (typeof pattern === 'string' && pattern.includes('[[:')) throw new Error('MINIMATCH_LEGACY_POSIX_UNSUPPORTED: use a reviewed legacy character range');
     super(typeof pattern === 'string' ? pattern.trim() : pattern, optionsForLegacy(options));
   }
   makeRe() { return unsupportedRegExp(); }

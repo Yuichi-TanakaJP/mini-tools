@@ -3,7 +3,7 @@
 目的: 本番データや利用者のブラウザー状態を使わず、lint/glob更新による資産欠落とSW登録/cache契約の回帰を検査する。
 
 1. 対象branchと元baseを別々の同期対象外scratchへexportし、.env/.env.local/.env.production/.env.production.localを含めない。プロセスの環境はOS起動に必要な値だけにし、実認証/実DBの値を渡さない。
-2. 両方それぞれのlockで通常npm ci/buildする。候補でscriptsを無効にした場合はnpm run prepare:dependenciesが必要。npm run test:dependencies（11）とtest:pwa-dependencies（3）、npm test、lint/buildを実行する。Workbox getManifestの期待4assetが0件にならずignoreが効くことを確認する。
+2. 両方それぞれのlockで通常npm ci/buildする。候補でscriptsを無効にした場合はnpm run prepare:dependenciesが必要。npm run test:dependencies（14）とtest:pwa-dependencies（3）、npm test、lint/buildを実行する。Workbox getManifestの期待4assetが0件にならずignoreが効くことを確認する。
 3. baselineのpublic/sw.jsとworkbox-*.js、.next/staticを含む通常buildを保持し、PWA_BASELINE_DIRへその隔離ディレクトリを設定する。PLAYWRIGHT_BROWSERS_PATH/TMP/TEMPと--outputをtask scratchへ指定する。
 4. npm run test:pwa -- --output=<scratch>/normal-results。生成workerの起動、start page offline、認証GETがcacheされず既存staleも使われないことを確認する。
 5. npm run test:pwa-migration -- --output=<scratch>/migration-results。38220候補/38222元版/38221専用proxyを使用。HTTP200、既存のテーマ選択操作の成功、pageerrorなしを確認してから、通常App Router読込で旧新ともSW自動登録/controller/window.workboxが増えないことを確認する。
