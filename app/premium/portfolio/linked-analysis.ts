@@ -1,4 +1,5 @@
 import { getPositionAllocationBucket, type PortfolioAllocationDimension, type PortfolioAllocationItem, type PortfolioAllocationScope } from "./allocation";
+import { reportedPeriodDividend } from "./dividend-display";
 import { emptyDomesticDividendProjection, type DomesticDividendPosition, type DomesticDividendProjection } from "./dividend-income";
 import type { PortfolioInstrumentAnalysis, PortfolioPosition } from "./types";
 
@@ -66,10 +67,14 @@ export function selectDividendProjection(source: DomesticDividendProjection | un
       && fullQuantity !== undefined && Number.isFinite(fullQuantity) && fullQuantity > 0
       && Number.isFinite(quantity) && quantity >= 0 && quantity <= fullQuantity
       && original.quantity !== null && Math.abs(original.quantity - fullQuantity) < 0.00000001;
+    // Check the full reported amount before scaling; a small selection must not hide its error.
+    const reported = valid ? reportedPeriodDividend(source, original) : null;
     const ratio = valid ? quantity / fullQuantity! : null;
     const scale = (value: number | null) => value !== null && Number.isFinite(value) && ratio !== null ? value * ratio : null;
     scoped.push({ ...original, forecastDps: valid ? original.forecastDps : null, actualDps: valid ? original.actualDps : null, quantity: Number.isFinite(quantity) ? quantity : null,
       annualGross: valid && original.cashProjectionStatus === "resolved" ? scale(original.annualGross) : null,
+      reportedForecastDps: reported?.dps ?? null,
+      reportedForecastGross: reported ? scale(reported.gross) : null,
       priorRunRateGross: scale(original.priorRunRateGross), rateEffectGross: scale(original.rateEffectGross),
       cashProjectionStatus: valid ? original.cashProjectionStatus : "selection_quantity_or_source_unverified",
       changeType: valid ? original.changeType : "not_comparable",

@@ -43,14 +43,16 @@ export default function PortfolioHoldingsAnalysis({ data }: { data: PortfolioDat
   const choose = (key: string | null) => setSelection((current) => ({ ...current, key: key === "action:clear" || current.key === key ? null : key }));
   const productGroups = unavailable ? [{ key: "unavailable", label: "登録保有（分類取得失敗）", positions: selectedPositions, missingValueCount: selectedPositions.filter((p) => p.marketValue === null).length }] : visibleGroups;
   return <div style={{ display: "grid", gap: 16 }}>
-    <PortfolioSummaryCards data={data} active={active} onSelect={selectSummary} />
+    <div><p className={styles.controlLabel} style={{ margin: "0 0 8px" }}>表示する内容</p><PortfolioSummaryCards data={data} active={active} onSelect={selectSummary} /></div>
     <Card title={content === "dividends" ? "配当を見る" : "資産を見る"}>
+      <div className={styles.viewControls}>
+        <div className={styles.labeledControls}><span className={styles.controlLabel}>表示形式</span><div role="group" aria-label="表示形式" className={styles.axes}>{(["graph", "list"] as const).map((mode) => <button type="button" key={mode} className={styles.choice} aria-pressed={view === mode} onClick={() => setView(mode)}>{mode === "graph" ? "グラフ" : "一覧"}</button>)}</div></div>
+        <button type="button" className={styles.choice} aria-pressed={!selected} onClick={() => choose(null)}>絞り込みを解除</button>
+      </div>
+      <div className={styles.filterControls}><span className={styles.controlLabel}>分類条件</span>
       <PortfolioAnalysisControls dimension={selection.dimension} scope={selection.scope}
         onDimension={(dimension) => setSelection((current) => current.dimension === dimension ? current : ({ ...current, dimension, key: null }))}
         onScope={(scope) => setSelection((current) => current.scope === scope ? current : ({ ...current, scope, key: null }))} />
-      <div className={styles.viewControls}>
-        <div role="group" aria-label="表示形式" className={styles.axes}>{(["graph", "list"] as const).map((mode) => <button type="button" key={mode} className={styles.choice} aria-pressed={view === mode} onClick={() => setView(mode)}>{mode === "graph" ? "グラフ" : "一覧"}</button>)}</div>
-        <button type="button" className={styles.choice} aria-pressed={!selected} onClick={() => choose(null)}>絞り込みを解除</button>
       </div>
       <p style={{ fontSize: 12, color: "var(--color-text-sub)", lineHeight: 1.6 }}>表示範囲：{scopeLabel}。グラフ・一覧は登録保有が対象です（外部参照資産を除く）。上部金額は各カードの保有全体です。</p>
       {view === "graph" ? <div className={content === "assets" ? styles.comparisonGrid : undefined}>

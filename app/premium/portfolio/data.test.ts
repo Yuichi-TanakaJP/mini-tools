@@ -5,10 +5,12 @@ import { loadPortfolio, portfolioAuthRequired } from "./data";
 class QueryStub {
   private predicates: Array<{ column: string; matches: (value: unknown) => boolean }> = [];
   private rangeBounds: { from: number; to: number } | null = null;
+  private columns = "";
 
   constructor(private readonly result: unknown, private readonly queryLog: string[] = []) {}
 
-  select() {
+  select(columns = "") {
+    this.columns = columns;
     return this;
   }
 
@@ -62,7 +64,8 @@ class QueryStub {
   }
 
   private filteredResult() {
-    const result = this.result as { data?: unknown; error?: unknown };
+    const result = this.result as { data?: unknown; error?: unknown; periodColumnsUnavailable?: string };
+    if (result.periodColumnsUnavailable && this.columns.includes("forecast_period_start")) return { data: null, error: { code: result.periodColumnsUnavailable } };
     if (!Array.isArray(result.data)) return this.result;
     const filtered = this.predicates.length === 0 ? result.data : result.data.filter((row) => this.predicates.every(({ column, matches }) => {
         const record = row as Record<string, unknown>;
@@ -622,4 +625,23 @@ it.each([[null, false], [" ", false], ["2", true]])("元数量%sの既知/未取
   }));
   expect(data.positions[0].quantityKnown).toBe(known);
   expect(data.dbPositions[0].quantityKnown).toBe(known);
+});
+
+
+it.each(["42703", "42501"])("期間列の段階配備はundefined_columnのみ既存契約へ戻す（%s）", async (code) => {
+  const date = "2026-10-31T00:00:00Z";
+  const queryLog: string[] = [];
+  const data = await loadPortfolio(stubClient({
+    stock_notes_portfolios: { data: { id: "p", name: "合成", base_currency: "JPY" }, error: null },
+    stock_notes_portfolio_snapshots: { data: [{ id: "s", as_of: date, status: "ready", portfolio_scope: "official", source_type: "broker_csv", imported_at: date }], error: null },
+    stock_notes_portfolio_accounts: { data: [{ id: "a", account_name: "合成口座", account_type: "taxable", institution_name: "合成" }], error: null },
+    stock_notes_portfolio_instruments: { data: [{ id: "i", asset_type: "domestic_stock", identifier: "SYNTHETIC", name: "合成株" }], error: null },
+    stock_notes_portfolio_positions: { data: [{ id: "pos", snapshot_id: "s", account_id: "a", instrument_id: "i", quantity: "10", market_value: "100" }], error: null },
+    stock_notes_portfolio_dividend_totals_v: { data: [{ snapshot_id: "s", snapshot_as_of: date, holding_count: 1, confirmed_count: 1, held_count: 0, confirmed_partial_total: 20, projected_annual_dividend_gross: 20, status: "resolved" }], error: null },
+    stock_notes_portfolio_current_dividend_projection_v: { periodColumnsUnavailable: code, data: [{ snapshot_id: "s", snapshot_as_of: date, instrument_id: "i", ticker: "SYNTHETIC", instrument_name: "合成株", quantity: 10, forecast_dps: 2, raw_forecast_dps: 2, latest_actual_dps: null, cash_projection_status: "resolved", forecast_as_of: "2026-10-20", projected_annual_dividend_gross: 20, prior_actual_run_rate_gross: null, dividend_rate_effect_gross: null, dividend_change_type: "not_comparable" }], error: null },
+  }, queryLog));
+  expect(data.positions).toHaveLength(1);
+  expect(data.domesticDividends.status).toBe(code === "42703" ? "ready" : "error");
+  expect(queryLog.filter(entry => entry === "from=stock_notes_portfolio_current_dividend_projection_v")).toHaveLength(code === "42703" ? 2 : 1);
+  if (code === "42703") expect(data.domesticDividends.projectedAnnualGross).toBe(20);
 });

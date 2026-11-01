@@ -155,13 +155,13 @@ it("画面で未確認のraw DPS・部分和を完全合計や行金額へ戻さ
   const html = renderToStaticMarkup(createElement(PortfolioDividend, { projection }));
   expect(html).toContain("基準未確認");
   expect(html).toContain("明細取得 1/1銘柄");
-  expect(html).toContain("株数基準確認済み 0/1銘柄");
+  expect(html).toContain("年間集計確認済み 0/1銘柄");
   expect(html).toContain("年間合計は未確定");
   expect(html).not.toContain("￥6,000");
   expect(html).not.toContain("￥60");
 });
 
-it("画面で明細取得件数と株数基準確認済み件数を区別する", () => {
+it("画面で明細取得件数と整合証明済みの年間集計件数を区別する", () => {
   const projection = summarizeDomesticDividendProjection([
     row(),
     row({ instrument_id: "i2", cash_projection_status: "basis_missing" }),
@@ -170,6 +170,6 @@ it("画面で明細取得件数と株数基準確認済み件数を区別する"
   ], snapshot, ["i1", "i2", "i3", "i4"], null);
   const html = renderToStaticMarkup(createElement(PortfolioDividend, { projection }));
   expect(html).toContain("明細取得 4/4銘柄");
-  expect(html).toContain("株数基準確認済み 2/4銘柄");
+  expect(html).toContain("年間集計確認済み 0/4銘柄");
   expect(projection.projectedAnnualGross).toBeNull();
 });
