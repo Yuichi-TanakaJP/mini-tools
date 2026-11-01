@@ -3,11 +3,15 @@ import { expect, test } from '@playwright/test';
 test('ordinary App Router navigation preserves the original registration boundary', async ({ page, context, request, baseURL }) => {
   await context.route('**/*', route => new URL(route.request().url()).origin === baseURL ? route.continue() : route.abort());
   await request.post('/__pwa_test_network/on');
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
   for (const phase of ['old', 'new']) {
     await request.post(`/__pwa_test_phase/${phase}`);
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('load');
-    await page.waitForTimeout(500);
+    expect((await page.goto('/', { waitUntil: 'domcontentloaded' }))?.status()).toBe(200);
+    await page.getByRole('button', { name: /^表示テーマ:/ }).click();
+    await page.getByRole('group', { name: '表示テーマを選択' }).getByRole('button', { name: 'ダーク', exact: true }).click();
+    await expect(page.getByRole('button', { name: '表示テーマ: ダーク', exact: true })).toBeVisible();
+    expect(errors).toEqual([]);
     expect(await page.evaluate(async () => ({ registrations: (await navigator.serviceWorker.getRegistrations()).length, controlled: Boolean(navigator.serviceWorker.controller), workbox: 'workbox' in window }))).toEqual({ registrations: 0, controlled: false, workbox: false });
   }
 });
@@ -67,6 +71,12 @@ test('the original generated worker upgrades in place without using sensitive st
   await context.setOffline(true);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page).toHaveTitle(title);
+  for (const query of ['utm_source=fixture', 'fbclid=fixture']) {
+    expect(await page.evaluate(async ({ asset, query }) => {
+      try { const response = await fetch(`${asset}?${query}`, { headers: { authorization: 'Bearer synthetic-only' } }); return { kind: 'response', status: response.status }; }
+      catch { return { kind: 'network-failed' }; }
+    }, { asset: state.newOnly, query })).toEqual({ kind: 'network-failed' });
+  }
   expect(await page.evaluate(async () => {
     try {
       const response = await fetch('/api/pwa-synthetic-probe', { headers: { authorization: 'Bearer synthetic-only' } });

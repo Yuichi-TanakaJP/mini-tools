@@ -10,6 +10,7 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   disable: pwaDisabled,
   workboxOptions: {
     skipWaiting: true,
+    ignoreURLParametersMatching: [],
     runtimeCaching: [
     {
       urlPattern: isSensitiveApiGet,

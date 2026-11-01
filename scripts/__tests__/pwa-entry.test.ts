@@ -11,7 +11,7 @@ describe('PWA registration entry boundary', () => {
   it('retains Pages registration and the App Router application but removes the new fork entry', async () => {
     const pwa = '/synthetic/sw-entry.js';
     const config = preserve({ entry: async () => ({ 'main-app': [pwa, '/app-client.js'], 'main.js': [pwa, '/pages-client.js'] }) }, pwa);
-    expect(await config.entry()).toEqual({ 'main-app': ['/app-client.js'], 'main.js': [pwa, '/pages-client.js'] });
+    expect(await config.entry()).toEqual({ 'main-app': ['/app-client.js'], 'main.js': [expect.stringContaining('next-pwa-legacy-register.js'), '/pages-client.js'] });
   });
   it('rejects an unknown main-app entry shape', async () => {
     await expect(preserve({ entry: { 'main-app': '/app-client.js' } }, '/sw-entry.js').entry()).rejects.toThrow('Unreviewed PWA');

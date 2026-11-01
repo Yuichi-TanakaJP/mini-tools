@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync, cpSync, linkSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -67,7 +67,8 @@ test('unsupported RegExp rule is currently off and fails closed if enabled', asy
   await assert.rejects(eslint.lintText('import value from "fixture/private/file"; console.log(value);', { filePath: 'app/probe.tsx' }), /MINIMATCH_LEGACY_REGEXP_UNSUPPORTED/);
 });
 
-test('installer rejects altered dependency source before writing any files', () => {
+
+function withInstallerFixture(action) {
   const dir = temporary();
   try {
     mkdirSync(path.join(dir, 'scripts'), { recursive: true });
@@ -82,6 +83,19 @@ test('installer rejects altered dependency source before writing any files', () 
       writeFileSync(pkg, JSON.stringify({ version: recipe.version }));
       writeFileSync(file, readFileSync(path.join(root, recipe.file)));
     }
+    for (const target of ['tooling/minimatch-legacy-bridge', 'node_modules/@local/minimatch-legacy-bridge']) {
+      cpSync(path.join(root, 'tooling/minimatch-legacy-bridge'), path.join(dir, target), { recursive: true });
+    }
+    const backend = path.join(dir, 'node_modules/minimatch-modern');
+    mkdirSync(backend, { recursive: true });
+    writeFileSync(path.join(backend, 'package.json'), JSON.stringify({ name: 'minimatch', version: '11.0.3', main: 'index.cjs' }));
+    // This stub exercises installer loading only; matching uses real installed parents above.
+    writeFileSync(path.join(backend, 'index.cjs'), 'exports.Minimatch = class {};');
+    action(dir);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+}
+
+test('installer rejects altered dependency source before writing any files', () => withInstallerFixture(dir => {
     const first = path.join(dir, recipes[0].file);
     const originalFirst = readFileSync(first, 'utf8').replaceAll('@local/minimatch-legacy-bridge', 'minimatch');
     writeFileSync(first, originalFirst);
@@ -93,5 +107,47 @@ test('installer rejects altered dependency source before writing any files', () 
     assert.match(child.stderr, /Unreviewed dependency source/);
     assert.equal(readFileSync(file, 'utf8'), tampered);
     assert.equal(readFileSync(first, 'utf8'), originalFirst);
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+}));
+
+test('legacy dot-parent patterns do not broaden ignored files through CJS and ESM parents', async () => {
+  for (const { ConfigArray } of [require('@eslint/config-array'), await import('@eslint/config-array')]) {
+    const configs = new ConfigArray([{ files: ['**/*.js'] }, { ignores: ['fixtures/../*.js'] }], { basePath: root });
+    configs.normalizeSync();
+    assert.equal(configs.getConfigStatus(path.join(root, 'main.js')), 'matched');
+  }
 });
+
+test('missing bridge or backend fails before changing original or prepared parents', () => {
+  for (const missing of ['@local/minimatch-legacy-bridge', 'minimatch-modern']) {
+    for (const prepared of [false, true]) withInstallerFixture(dir => {
+      const first = path.join(dir, recipes[0].file);
+      if (!prepared) writeFileSync(first, readFileSync(first, 'utf8').replaceAll('@local/minimatch-legacy-bridge', 'minimatch'));
+      const before = readFileSync(first);
+      rmSync(path.join(dir, 'node_modules', missing), { recursive: true });
+      const child = spawnSync(process.execPath, [path.join(dir, 'scripts/install-minimatch-compat.cjs'), ...(prepared ? ['--check'] : [])], { encoding: 'utf8' });
+      assert.notEqual(child.status, 0);
+      assert.match(child.stderr, /MODULE_NOT_FOUND/);
+      assert.deepEqual(readFileSync(first), before);
+    });
+  }
+});
+
+test('shared hard-linked source is rejected without modifying either installation', () => withInstallerFixture(dir => {
+  const first = path.join(dir, recipes[0].file);
+  const original = readFileSync(first, 'utf8').replaceAll('@local/minimatch-legacy-bridge', 'minimatch');
+  writeFileSync(first, original);
+  const shared = path.join(dir, 'other-install.cjs');
+  linkSync(first, shared);
+  const child = spawnSync(process.execPath, [path.join(dir, 'scripts/install-minimatch-compat.cjs')], { encoding: 'utf8' });
+  assert.notEqual(child.status, 0);
+  assert.match(child.stderr, /Shared dependency source/);
+  assert.equal(readFileSync(shared, 'utf8'), original);
+  assert.equal(readFileSync(first, 'utf8'), original);
+}));
+
+test('an omitted development graph is a no-op, never a passing check', () => withInstallerFixture(dir => {
+  rmSync(path.join(dir, 'node_modules'), { recursive: true });
+  const script = path.join(dir, 'scripts/install-minimatch-compat.cjs');
+  assert.equal(spawnSync(process.execPath, [script]).status, 0);
+  assert.notEqual(spawnSync(process.execPath, [script, '--check']).status, 0);
+}));

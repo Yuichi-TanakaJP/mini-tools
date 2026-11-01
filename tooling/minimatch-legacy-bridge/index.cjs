@@ -4,6 +4,7 @@ const modern = require('minimatch-modern');
 // The reviewed v3 consumers normalize Windows separators unless explicitly escaped.
 const optionsForLegacy = options => ({
   ...options,
+  optimizationLevel: options?.optimizationLevel ?? 0,
   windowsPathsNoEscape: options?.windowsPathsNoEscape ?? (process.platform === 'win32' && options?.allowWindowsEscape !== true),
 });
 const unsupportedRegExp = () => {

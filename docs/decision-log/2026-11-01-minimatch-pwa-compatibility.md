@@ -20,7 +20,7 @@ forkの既定cacheは元版と異なり、API auth除外が狭まりRSC用cache�
 
 ## 検証・残件・復旧
 
-Windows標準clean ci/postinstall、lint（既存warning2）、依存7、Workbox/glob1、全suiteとbuild、型検査、PWA通常1/実移行2を実行。LinuxのCI install/明示prepare/互換8/lint/buildと別モデルの最終結果はPRへ記録する。Node^22.23.4はCIと整合。秘密/実DB/認証情報は使わない。
+Windows標準clean ci/postinstall、lint（既存warning2）、依存11、Workbox/PWA3、全suiteとbuild、型検査、PWA通常1/実移行2を実行。LinuxのCI install/明示prepare/互換8/lint/buildと別モデルの最終結果はPRへ記録する。Node^22.23.4はCIと整合。秘密/実DB/認証情報は使わない。
 
 npm auditは元29（low2/moderate27）→low5のみ、moderate/high/critical0、minimatch指摘0。残るlow5は既存のdeepmerge（deepmerge-tsとは別）1 advisoryと親4件への波及。新しいadvisory IDの追加なし。今回のminimatch解消を全指摘0とは記載しない。
 
@@ -28,4 +28,15 @@ npm auditは元29（low2/moderate27）→low5のみ、moderate/high/critical0、
 
 根拠（2026-11-01）: https://github.com/advisories/GHSA-g3hv-75wg-m249 、https://registry.npmjs.org/glob/14.0.3 、各親の公開npm配布と実行証拠。実装gpt-6.1-sol、security/API/PWA/cache/rollbackを別モデルで独立レビューする。
 
-最終実行記録: Windows標準ci/postinstall、依存7+Workbox1、lint（既存warning2）、全117files/1413tests、typecheck、build PASS。PWA通常1と実旧buildからの移行2がPASS。LinuxはCIと同じignore-scripts→明示prepare→依存8/lint/build PASS。最終UATは専用scratchのChromium、127.0.0.1だけで実施し、新・旧buildのworker/manifest、元public資産を照合した。未実施は本番配備、実利用者データ/DB、実rollback。
+最初のレビュー前の実行記録: Windows標準ci/postinstall、依存7+Workbox1、lint（既存warning2）、全117files/1413tests、typecheck、build PASS。PWA通常1と実旧buildからの移行2がPASS。LinuxはCIと同じignore-scripts→明示prepare→依存8/lint/build PASS。最終UATは専用scratchのChromium、127.0.0.1だけで実施し、新・旧buildのworker/manifest、元public資産を照合した。未実施は本番配備、実利用者データ/DB、実rollback。
+
+
+## 最終独立レビューからの修正
+
+旧globのdot-parent最適化を無効（optimizationLevel:0）にし、実CJS/ESM親APIで検証する。準備処理は全親から同じbridgeへの解決、保全sourceとのhash一致、公式backend11.0.3の版・解決先・ロードを先に検証する。共有hardlinkは書込み前に拒否し、通常npm ciで私有ファイルを再構築する。欠損・共有・dev省略・未知sourceを含め互換11件。
+
+旧版のquery string方針ignoreURLParametersMatching:[]を明示する。元next-pwa/register.jsもMIT表記付きで保全し、Pages main.jsだけで使用する。forkの登録処理では失われた初回installed時のstart-url温めとredirect応答処理を保つ。App Routerには登録entryを入れない。保全コードの直接依存workbox-window7.4.1を明示し、初回イベントだけでlanding応答が保存されることを検証する。
+
+移行proxyはASTで実worker manifestを読み、各ビルドの公開対象static/public資産の全件を照合する。異なるbuild間のhash付きファイル名の一致は求めない。通常App Routerの無登録検査はHTTP200・既存テーマ選択のclient操作・pageerrorなしを先に確認する。offline時のAuthorization付きprecache assetにutm_source/fbclidを付け、queryless precacheで回答しないことも検証する。修正後の実行結果と再レビューpairはPRに記録する。
+
+修正後Windows: clean ci/互換11、PWA境界3、entry4、full117files/1413tests、typecheck、lint（既存warning2）、build、実ブラウザー通常1/実旧SW更新2 PASS。manifestガードは旧新ともstatic132/public28を照合し、通常読込はテーマ操作でclient起動を確認済み。Linux最終結果と別モデル再レビューはPR本文へ追記する。

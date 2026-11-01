@@ -21,15 +21,16 @@
     "test:pwa-migration": "playwright test --config=playwright.pwa-migration.config.ts"
   },
   "dependencies": {
+    "@ducanh2912/next-pwa": "10.2.9",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.2",
     "next": "16.4.3",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3",
-    "@ducanh2912/next-pwa": "10.2.9"
+    "react-dom": "^19.2.3"
   },
   "devDependencies": {
+    "@local/minimatch-legacy-bridge": "file:tooling/minimatch-legacy-bridge",
     "@playwright/test": "^1.59.1",
     "@types/node": "25.0.3",
     "@types/react": "19.2.7",
@@ -39,7 +40,7 @@
     "eslint-config-next": "^16.1.1",
     "typescript": "5.9.3",
     "vitest": "^4.1.2",
-    "@local/minimatch-legacy-bridge": "file:tooling/minimatch-legacy-bridge"
+    "workbox-window": "7.4.1"
   },
   "overrides": {
     "serialize-javascript": "7.1.3",
