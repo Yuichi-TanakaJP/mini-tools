@@ -1,0 +1,3 @@
+# Portfolio抽出後の色予算の所在を同期
+
+minimatch対応時の全suiteで、元mainのPortfolioAnalysisCardへの抽出に色予算が追従せず2検査が失敗することを発見した。既存グラフ色の予算1をPortfolioWorkspaceの3から分離先へ移し、Workspaceを2にする。合計3を維持し、UI/source/色値は変更しない。セキュリティ依存PRへ混ぜず前提の小PRとする。
