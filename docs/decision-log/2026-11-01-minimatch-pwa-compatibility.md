@@ -20,7 +20,7 @@ forkの既定cacheは元版と異なり、API auth除外が狭まりRSC用cache�
 
 ## 検証・残件・復旧
 
-Windows標準clean ci/postinstall、lint（既存warning2）、依存11、Workbox/PWA3、全suiteとbuild、型検査、PWA通常1/実移行2を実行。LinuxのCI install/明示prepare/互換14+PWA3/lint/buildと別モデルの最終結果はPRへ記録する。Node^22.23.4はCIと整合。秘密/実DB/認証情報は使わない。
+Windows標準clean ci/postinstall、lint（既存warning2）、依存11、Workbox/PWA3、全suiteとbuild、型検査、PWA通常1/実移行2を実行。LinuxのCI install/明示prepare/互換15+PWA3/lint/buildと別モデルの最終結果はPRへ記録する。Node^22.23.4はCIと整合。秘密/実DB/認証情報は使わない。
 
 npm auditは元29（low2/moderate27）→low5のみ、moderate/high/critical0、minimatch指摘0。残るlow5は既存のdeepmerge（deepmerge-tsとは別）1 advisoryと親4件への波及。新しいadvisory IDの追加なし。今回のminimatch解消を全指摘0とは記載しない。
 
@@ -42,6 +42,8 @@ npm auditは元29（low2/moderate27）→low5のみ、moderate/high/critical0、
 修正後Windows: clean ci/互換11、PWA境界3、entry4、full117files/1413tests、typecheck、lint（既存warning2）、build、実ブラウザー通常1/実旧SW更新2 PASS。manifestガードは旧新ともstatic132/public28を照合し、通常読込はテーマ操作でclient起動を確認済み。Linux最終結果と別モデル再レビューはPR本文へ追記する。
 
 
-追加レビューの境界修正: bridgeの3ファイルを独立したtooling/minimatch-bridge-hashes.jsonへ固定する（GitのCRLF/LF差だけ正規化）。npmのfile linkでsourceとinstallが同一でも改変を検出する。node_modules rootのsymlink/junctionとrealpath相違を全書込み前に拒否し、共有hardlink拒否と合わせて他checkoutへの副作用を防ぐ。POSIX文字クラスはv3と11で判定が違うため、限定bridgeではMINIMATCH_LEGACY_POSIX_UNSUPPORTEDで明示停止する。bridge更新はhashだけを追従せず親APIの意味を再レビューする。回帰テストは14件（実CJS/ESM親、改変bridge、共有rootを含む）。
+追加レビューの境界修正: bridgeの3ファイルを独立したtooling/minimatch-bridge-hashes.jsonへ固定する（GitのCRLF/LF差だけ正規化）。npmのfile linkでsourceとinstallが同一でも改変を検出する。node_modules rootのsymlink/junctionとrealpath相違を全書込み前に拒否し、共有hardlink拒否と合わせて他checkoutへの副作用を防ぐ。POSIX文字クラスはv3と11で判定が違うため、限定bridgeではMINIMATCH_LEGACY_POSIX_UNSUPPORTEDで明示停止する。bridge更新はhashだけを追従せず親APIの意味を再レビューする。回帰テストは15件（実CJS/ESM親、改変bridge、共有rootを含む）。
 
 manifestの除外はWorkboxへ渡るfull asset.name（static/...）に同じ正規表現を適用する。basenameによるmanifest-widget.js除外やfont一括除外は行わない。両資産の欠落を拒否するテストを追加した。Pages/SW本体は前回検証から変更なし。
+
+最終境界: POSIXクラスの開token（`[:`）は位置によらず保守的に停止する。bridgeは既知のinstall slotにある3ファイルを独立hashで検証し、実際に解決されたentryがそのindex.cjsと同じrealpathであることをrequire前に照合する。代替exportsで正規ファイルの隣に未検証entryを置く回帰を含め、Windows互換15件PASS。最終Linux/preview/独立レビューの実pairと結果はPR本文に記録する。
