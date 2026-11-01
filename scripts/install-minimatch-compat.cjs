@@ -22,12 +22,13 @@ if (present.length === 0 && !checkOnly) {
   // Reject partial or substituted bridges before touching any parent source.
   const rootRequire = createRequire(path.join(root, 'package.json'));
   const bridge = rootRequire.resolve('@local/minimatch-legacy-bridge');
-  const bridgeDirectory = path.dirname(bridge);
+  const bridgeDirectory = path.join(root, 'node_modules', '@local/minimatch-legacy-bridge');
   for (const name of ['package.json', 'index.cjs', 'index.mjs']) {
     // Git checkouts differ in line endings; pin the reviewed text independently.
     const canonical = fs.readFileSync(path.join(bridgeDirectory, name), 'utf8').replace(/\r\n/g, '\n');
     if (digest(canonical) !== bridgeDigests[name]) throw new Error('Unreviewed minimatch bridge');
   }
+  if (fs.realpathSync(bridge) !== fs.realpathSync(path.join(bridgeDirectory, 'index.cjs'))) throw new Error('Unexpected minimatch bridge entry');
   for (const parent of parents) {
     const fromParent = createRequire(path.join(root, 'node_modules', parent, 'package.json'));
     if (fs.realpathSync(fromParent.resolve('@local/minimatch-legacy-bridge')) !== fs.realpathSync(bridge)) throw new Error('Unexpected parent bridge resolution');

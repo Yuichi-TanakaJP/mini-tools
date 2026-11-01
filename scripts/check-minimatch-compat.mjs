@@ -187,3 +187,19 @@ test('a redirected installation root is rejected before changing shared sources'
   assert.match(child.stderr, /Redirected node_modules root/);
   assert.equal(readFileSync(first, 'utf8'), original);
 }));
+
+
+test('altered exports cannot select an unreviewed entry beside approved bridge files', () => withInstallerFixture(dir => {
+  const slot = path.join(dir, 'node_modules/@local/minimatch-legacy-bridge');
+  const alternate = path.join(slot, 'alternate');
+  mkdirSync(alternate);
+  for (const file of ['package.json', 'index.cjs', 'index.mjs']) cpSync(path.join(slot, file), path.join(alternate, file));
+  writeFileSync(path.join(alternate, 'unreviewed.cjs'), 'console.log("UNREVIEWED_ENTRY_EXECUTED");module.exports = require("./index.cjs");');
+  const pkg = JSON.parse(readFileSync(path.join(slot, 'package.json'), 'utf8'));
+  pkg.exports['.'].require = './alternate/unreviewed.cjs';
+  writeFileSync(path.join(slot, 'package.json'), JSON.stringify(pkg));
+  const child = spawnSync(process.execPath, [path.join(dir, 'scripts/install-minimatch-compat.cjs'), '--check'], { encoding: 'utf8' });
+  assert.notEqual(child.status, 0);
+  assert.match(child.stderr, /Unreviewed minimatch bridge/);
+  assert.doesNotMatch(child.stdout, /UNREVIEWED_ENTRY_EXECUTED/);
+}));
