@@ -49,3 +49,10 @@ When adding/moving/reclassifying paths or changing CI/skip behavior, follow [the
 ## Navigation contract maintenance
 
 For page/link/router/form/data-condition/fallback changes, follow [navigation contracts](docs/specs/cross-cutting/navigation-transitions.md#9-遷移契約の変更時チェック) and run `npm run check:navigation -- --base <actual-base>` plus affected tests. Use the shared `navigation-design-review` Skill for state/condition/latency semantics that static checks cannot prove. Update canonical contracts, generated spec tables and affected test/UAT references together; do not approve a bulk inventory snapshot as behavioral evidence.
+
+## Reviewed minimatch and PWA dependency paths
+
+- Standard npm ci prepares the pinned lint imports via postinstall. With --ignore-scripts (including CI), run npm run prepare:dependencies, test:dependencies and test:pwa-dependencies before lint/build.
+- Parent API/source hashes are reviewed contracts. RegExp-based import/no-internal-modules patterns intentionally fail closed; do not enable them until the parent uses a supported matcher API.
+- Keep the preserved PWA cache list, NetworkOnly priority and App Router registration boundary. Use the isolated UAT in docs/uat/pwa-dependency-migration.md; never use live data or a user's browser profile.
+- Keep Node ^22.23.4 and install/build/rollback the dependency/configuration changes as a set. Audit separately: minimatch is fixed while an unrelated existing deepmerge low advisory may remain.

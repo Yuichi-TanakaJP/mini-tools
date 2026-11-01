@@ -1,14 +1,16 @@
 /** @type {import('next').NextConfig} */
 
-const defaultRuntimeCaching = require("next-pwa/cache");
+const defaultRuntimeCaching = require("./tooling/next-pwa-legacy-cache.cjs");
 const { isSensitiveApiGet } = require("./lib/uncached-api-request");
 
-const withPWA = require("next-pwa")({
+const pwaDisabled = process.env.NODE_ENV === "development";
+const withPWA = require("@ducanh2912/next-pwa").default({
   dest: "public",
   register: true,
-  skipWaiting: true,
-  disable: process.env.NODE_ENV === "development",
-  runtimeCaching: [
+  disable: pwaDisabled,
+  workboxOptions: {
+    skipWaiting: true,
+    runtimeCaching: [
     {
       urlPattern: isSensitiveApiGet,
       handler: "NetworkOnly",
@@ -32,7 +34,8 @@ const withPWA = require("next-pwa")({
       method: "GET",
     },
     ...defaultRuntimeCaching,
-  ],
+    ],
+  },
 });
 
 const nextConfig = {
@@ -62,4 +65,13 @@ const nextConfig = {
   },
 };
 
-module.exports = withPWA(nextConfig);
+const pwaConfig = withPWA(nextConfig);
+const upstreamWebpack = pwaConfig.webpack;
+if (!pwaDisabled && typeof upstreamWebpack === "function") {
+  const pwaEntry = require("node:path").join(
+    require("node:path").dirname(require.resolve("@ducanh2912/next-pwa")), "sw-entry.js",
+  );
+  const preserveAppRouterEntry = require("./tooling/preserve-pwa-entry.cjs");
+  pwaConfig.webpack = (config, context) => preserveAppRouterEntry(upstreamWebpack(config, context), pwaEntry);
+}
+module.exports = pwaConfig;

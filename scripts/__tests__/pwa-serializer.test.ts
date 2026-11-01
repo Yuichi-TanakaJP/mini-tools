@@ -4,8 +4,13 @@ import vm from 'node:vm';
 
 const rootRequire = createRequire(import.meta.url);
 // Exercise the module resolved by each real PWA minifier, not just a root alias.
-for (const consumer of ['rollup-plugin-terser', 'terser-webpack-plugin']) {
-  const consumerRequire = createRequire(rootRequire.resolve(consumer));
+const pwaRequire = createRequire(rootRequire.resolve('@ducanh2912/next-pwa'));
+const buildRequire = createRequire(pwaRequire.resolve('workbox-build'));
+for (const [consumer, consumerPath] of [
+  ['@rollup/plugin-terser', buildRequire.resolve('@rollup/plugin-terser')],
+  ['terser-webpack-plugin', rootRequire.resolve('terser-webpack-plugin')],
+]) {
+  const consumerRequire = createRequire(consumerPath);
   const serialize = consumerRequire('serialize-javascript');
   describe(`${consumer} serializer compatibility`, () => {
     it('round-trips worker options, functions and regular expressions', () => {

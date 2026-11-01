@@ -9,11 +9,14 @@ const port = 38220;
 const baseURL = `http://127.0.0.1:${port}`;
 const childEnv: Record<string, string> = Object.fromEntries(Object.keys(process.env).map(key => [key, '']));
 Object.assign(childEnv, { NODE_ENV: 'production', NEXT_TELEMETRY_DISABLED: '1' });
-for (const key of ['SystemRoot', 'WINDIR', 'PATH', 'PATHEXT', 'COMSPEC', 'TEMP', 'TMP', 'USERPROFILE', 'HOMEDRIVE', 'HOMEPATH', 'HOME']) {
-  if (process.env[key]) childEnv[key] = process.env[key]!;
+// Preserve Windows environment key casing so an empty alias cannot mask SystemRoot.
+const systemKeys = new Set(['SYSTEMROOT', 'SYSTEMDRIVE', 'WINDIR', 'PATH', 'PATHEXT', 'COMSPEC', 'TEMP', 'TMP', 'USERPROFILE', 'HOMEDRIVE', 'HOMEPATH', 'HOME', 'APPDATA', 'LOCALAPPDATA', 'PROGRAMDATA']);
+for (const [key, value] of Object.entries(process.env)) {
+  if (systemKeys.has(key.toUpperCase()) && value) childEnv[key] = value;
 }
 export default defineConfig({
   testDir: './tests/ui-smoke/pwa',
+  testIgnore: ['**/migration/**'],
   timeout: 45_000,
   workers: 1,
   retries: 0,

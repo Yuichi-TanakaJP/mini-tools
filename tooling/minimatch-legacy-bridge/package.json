@@ -1,0 +1,19 @@
+{
+  "name": "@local/minimatch-legacy-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Restricted bridge for the reviewed ESLint 9 matcher consumers; not a general v3 replacement",
+  "exports": {
+    ".": {
+      "require": "./index.cjs",
+      "import": "./index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "minimatch-modern": "npm:minimatch@11.0.3"
+  },
+  "engines": {
+    "node": "^22.23.4"
+  }
+}
