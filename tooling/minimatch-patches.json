@@ -1,0 +1,149 @@
+[
+  {
+    "file": "node_modules/@eslint/config-array/dist/cjs/index.cjs",
+    "package": "@eslint/config-array",
+    "version": "0.21.1",
+    "beforeSha256": "08dd66541357c22c47f2cd1d526abc836b21e4ad18835e2792c65f9b4cbad593",
+    "afterSha256": "154a7f751398848ddeeeb9ac27d7870d7ccdfa71c2bb4ebbc5aa478a9fd68f72"
+  },
+  {
+    "file": "node_modules/@eslint/config-array/dist/esm/index.js",
+    "package": "@eslint/config-array",
+    "version": "0.21.1",
+    "beforeSha256": "0e9b40905950dc84f4e69d53833a354787a4558e06aaf5446ac0dd5cf0788c24",
+    "afterSha256": "24cbc63f803038fb393479cbaec30eae437d4acd88b6cd938178981be4924afa"
+  },
+  {
+    "file": "node_modules/@eslint/eslintrc/dist/eslintrc.cjs",
+    "package": "@eslint/eslintrc",
+    "version": "3.3.3",
+    "beforeSha256": "fbae17e4d631d7f53288fd0dd7b334c114024181ba9e94e98388360863c7623f",
+    "afterSha256": "1ceeb981e1196f4a8d800a62f955c028c131345474dafd3ce709955017c209b0"
+  },
+  {
+    "file": "node_modules/@eslint/eslintrc/lib/config-array/override-tester.js",
+    "package": "@eslint/eslintrc",
+    "version": "3.3.3",
+    "beforeSha256": "2aef71cc401e776a9a9f531619ff6a7dbd90cfbbf46afad1c9bdeb566879e69c",
+    "afterSha256": "f5e5f75270ac5fd9a4e7f9f5afcc898a5f8599559024d14fd8d6873a5d68f6a3"
+  },
+  {
+    "file": "node_modules/eslint/lib/cli-engine/file-enumerator.js",
+    "package": "eslint",
+    "version": "9.39.2",
+    "beforeSha256": "3111ddbdce08b486cfd345e10230542b692a7c781058d0a5cb7085c3323a8d38",
+    "afterSha256": "95dad93cb1d4ed1506f534155884f34b29c66d07e27d8568e6cad04dccd94c9f"
+  },
+  {
+    "file": "node_modules/eslint/lib/eslint/eslint-helpers.js",
+    "package": "eslint",
+    "version": "9.39.2",
+    "beforeSha256": "82e8a293c3491a43361acb1f58c75aa823f4bd361aad63eb7500c22b4d532d8c",
+    "afterSha256": "6ce278b27daa228d6d51dd4c8b0a4176a4ac37eac2d03c7e670bcc11775d2511"
+  },
+  {
+    "file": "node_modules/eslint-plugin-import/lib/rules/extensions.js",
+    "package": "eslint-plugin-import",
+    "version": "2.32.0",
+    "beforeSha256": "fe98adecf33a02952d842227014535fc390f4d18c96a4944f4c90783d4af3945",
+    "afterSha256": "0084a6665e3ead6ddeed9399eb3501aea839f9b350409905b233660fc4db3a30"
+  },
+  {
+    "file": "node_modules/eslint-plugin-import/lib/rules/no-extraneous-dependencies.js",
+    "package": "eslint-plugin-import",
+    "version": "2.32.0",
+    "beforeSha256": "58e174298161b31c7dc4f345543cb2707346f3072a9145f78a0fd5e914484b19",
+    "afterSha256": "fa670815108d2686dca4d58bf4d416562c576883f5d060d6cad234feb6812331"
+  },
+  {
+    "file": "node_modules/eslint-plugin-import/lib/rules/no-import-module-exports.js",
+    "package": "eslint-plugin-import",
+    "version": "2.32.0",
+    "beforeSha256": "d83581c24ae4fb0fc00dce02f3deec9e0bdf4cc624bf1b7e374e2aee79d3ba66",
+    "afterSha256": "ecb5e7d600ae9c8ad19fa671cbd0a89e34a1cba7ce9e8eac4761a070275625b1"
+  },
+  {
+    "file": "node_modules/eslint-plugin-import/lib/rules/no-internal-modules.js",
+    "package": "eslint-plugin-import",
+    "version": "2.32.0",
+    "beforeSha256": "f36ab9b9b97cc2d8a49f8fe474c4200875db4fa357c5061fe71538b01db696a4",
+    "afterSha256": "1af3e29de2aa2c173dd122f36b40d925d5f14730f4373311ce3d827fa27a19e3"
+  },
+  {
+    "file": "node_modules/eslint-plugin-import/lib/rules/no-namespace.js",
+    "package": "eslint-plugin-import",
+    "version": "2.32.0",
+    "beforeSha256": "39d2140a547b9825ef630e922b680dc938786258af5029b02f47eea625013d84",
+    "afterSha256": "bc2290d0a75e1f83d1b0a5206010ea79a32fd3e161992cdf2bbac578fbd21e26"
+  },
+  {
+    "file": "node_modules/eslint-plugin-import/lib/rules/no-restricted-paths.js",
+    "package": "eslint-plugin-import",
+    "version": "2.32.0",
+    "beforeSha256": "abc65972e5c3d1bd95b472c0bae3c208671dbfb4c353c39d55cf6db7245dd04c",
+    "afterSha256": "2d215cbec4ca372053119c0adacb128fa5d897e81e9a5343cfcf0f781628723a"
+  },
+  {
+    "file": "node_modules/eslint-plugin-import/lib/rules/no-unassigned-import.js",
+    "package": "eslint-plugin-import",
+    "version": "2.32.0",
+    "beforeSha256": "e565350ae91b62d9c104c51c73ae88d58f4a2ef7caafc83755cf2887bb86d58c",
+    "afterSha256": "2b76a545d9a5770fa55cb2d48c4d29be990812866dd09aa9c39c458ea053034e"
+  },
+  {
+    "file": "node_modules/eslint-plugin-import/lib/rules/order.js",
+    "package": "eslint-plugin-import",
+    "version": "2.32.0",
+    "beforeSha256": "83fd2c12da1f437288b006abe4f0a9ffc68eca385964e4c1ea014a053730cfe6",
+    "afterSha256": "c058d76c53bc894dac7d71e63445cab6b6db1921acf202d7368abc98c525e141"
+  },
+  {
+    "file": "node_modules/eslint-plugin-jsx-a11y/lib/util/mayContainChildComponent.js",
+    "package": "eslint-plugin-jsx-a11y",
+    "version": "6.10.2",
+    "beforeSha256": "d2a7fd3e513a42ab781543d6529776950f240249f9367f94899dbc9258e198d0",
+    "afterSha256": "c27783007e8a69f880eaf12e88d0fbcc7e578ea5e623d0023dc02d4101ab053d"
+  },
+  {
+    "file": "node_modules/eslint-plugin-jsx-a11y/lib/util/mayHaveAccessibleLabel.js",
+    "package": "eslint-plugin-jsx-a11y",
+    "version": "6.10.2",
+    "beforeSha256": "e765378d87cca48ac64e76967edfb33c52a9423c6822fd048024c88296ba9a2b",
+    "afterSha256": "7a636282ce4c627ea7adbcd887f7ed4955ae7a36953664b6111eb51ca7324003"
+  },
+  {
+    "file": "node_modules/eslint-plugin-react/lib/rules/forbid-component-props.js",
+    "package": "eslint-plugin-react",
+    "version": "7.37.5",
+    "beforeSha256": "2f928750174f7c93846598ba7939cdc0844ebda46954be2c990b056c9ec662b6",
+    "afterSha256": "a727d87110eed207cf340e47f934433103e26db35d3129a7ce9785bb1ce5a44a"
+  },
+  {
+    "file": "node_modules/eslint-plugin-react/lib/rules/jsx-handler-names.js",
+    "package": "eslint-plugin-react",
+    "version": "7.37.5",
+    "beforeSha256": "2a0ffd32c997da581b9b7acecfec800b126774902fd06c09e08a8803e44155ca",
+    "afterSha256": "b36aa6b9051a714331ce2e3c3def9b556c28c936fe7f100a052709d21ddbe8d2"
+  },
+  {
+    "file": "node_modules/eslint-plugin-react/lib/rules/jsx-pascal-case.js",
+    "package": "eslint-plugin-react",
+    "version": "7.37.5",
+    "beforeSha256": "dc9cdba6bd5897142976cf0ce68bc3cb134c45da8c2883c88c1db9ba933f0f17",
+    "afterSha256": "c0999437a88243d1d229ef98bf6a54b702755cf47458b6ee1724e3b5646cb328"
+  },
+  {
+    "file": "node_modules/eslint-plugin-react/lib/rules/no-danger.js",
+    "package": "eslint-plugin-react",
+    "version": "7.37.5",
+    "beforeSha256": "61f9fd97581e959d75bfb7ef030e9fb7b74c2df224980bed89f6463d05d2734a",
+    "afterSha256": "3d7d03ddb01a17e01d72b4fd46673c08761e728531eb9c69c157c9fc7c7abb7c"
+  },
+  {
+    "file": "node_modules/eslint-plugin-react/lib/rules/no-unstable-nested-components.js",
+    "package": "eslint-plugin-react",
+    "version": "7.37.5",
+    "beforeSha256": "5ae81f553263438f6fc9e059872fb617519fa8de08777a78a06a738db12313e8",
+    "afterSha256": "460fe6b6699d6b1159484841e4af294015e34294e78c6312ff44fb1525de1077"
+  }
+]

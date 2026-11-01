@@ -34,6 +34,12 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      - name: Verify reviewed matcher compatibility
+        run: |
+          npm run prepare:dependencies
+          npm run test:dependencies
+          npm run test:pwa-dependencies
+
       - name: Lint
         run: npm run lint
 
