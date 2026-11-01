@@ -156,9 +156,11 @@ test('an omitted development graph is a no-op, never a passing check', () => wit
 
 test('modern POSIX classes fail closed through both legacy parent entry points', async () => {
   for (const { ConfigArray } of [require('@eslint/config-array'), await import('@eslint/config-array')]) {
-    const configs = new ConfigArray([{ files: ['**/*.js'] }, { ignores: ['[[:alpha:]]*.js'] }], { basePath: root });
-    configs.normalizeSync();
-    assert.throws(() => configs.getConfigStatus(path.join(root, 'main.js')), /MINIMATCH_LEGACY_POSIX_UNSUPPORTED/);
+    for (const pattern of ['[[:alpha:]]*.js', '[x[:alpha:]]*.js', '[![:digit:]]*.js', '[a[:digit:]]*.js']) {
+      const configs = new ConfigArray([{ files: ['**/*.js'] }, { ignores: [pattern] }], { basePath: root });
+      configs.normalizeSync();
+      assert.throws(() => configs.getConfigStatus(path.join(root, 'main.js')), /MINIMATCH_LEGACY_POSIX_UNSUPPORTED/);
+    }
   }
 });
 
