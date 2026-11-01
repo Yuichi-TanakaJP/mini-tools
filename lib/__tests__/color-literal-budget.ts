@@ -28,7 +28,9 @@ export const COLOR_LITERAL_BUDGET: Readonly<Record<string, number>> = {
   "app/premium/login/LoginForm.tsx": 3,
   "app/premium/market/page.tsx": 1,
   "app/premium/portfolio/PortfolioDashboard.tsx": 11,
-  "app/premium/portfolio/PortfolioWorkspace.tsx": 3,
+  // The existing chart color moved with the extracted analysis card.
+  "app/premium/portfolio/PortfolioAnalysisCard.tsx": 1,
+  "app/premium/portfolio/PortfolioWorkspace.tsx": 2,
   "app/premium/routines/RoutinesView.tsx": 7,
   "app/premium/shared/radial/RadialHierarchyCanvas.module.css": 3,
   "app/premium/theme-company-network/ThemeCompanyNetworkClient.tsx": 5,
