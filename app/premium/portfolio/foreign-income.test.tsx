@@ -6,7 +6,7 @@ import { emptyForeignIncome, foreignRowAmount, loadForeignIncome, selectForeignI
 import { emptyExternalAssets } from "./external-assets";
 import type { PortfolioExternalAssetPosition, PortfolioPosition, PortfolioSnapshot } from "./types";
 import PortfolioForeignIncome from "./PortfolioForeignIncome";
-import PortfolioIncomeSummary from "./PortfolioIncomeSummary";
+import PortfolioIncomeSummary, { PortfolioIncomeNotes } from "./PortfolioIncomeSummary";
 import { emptyDomesticDividendProjection } from "./dividend-income";
 
 const snapshot: PortfolioSnapshot = { id: "s", asOf: "2026-10-31T00:00:00Z", status: "ready", portfolioScope: "official", sourceType: "synthetic", importedAt: "2026-10-31", sourceLabel: null };
@@ -48,10 +48,34 @@ describe("外国株・ETFの参考インカム", () => {
     const html = renderToStaticMarkup(createElement(PortfolioForeignIncome, { projection: emptyForeignIncome(status, 2), view: "graph", scopeLabel: "全体" }));
     expect(html).not.toContain("￥0"); expect(html).not.toContain('role="img"');
   });
-  it("上部は国内予想を維持し、外国参考額と参考小計を区別する", () => {
-    const domestic = { ...emptyDomesticDividendProjection("ready"), projectedAnnualGross: 1000 };
-    const html = renderToStaticMarkup(createElement(PortfolioIncomeSummary, { projection: domestic, foreignIncome: projection([row()]) }));
-    expect(html).toContain("外国株・ETFの円換算参考額"); expect(html).toContain("小計・全体確定額ではありません");
+  it("カードの金額は国内と海外の総計1つにし、内訳・対象外条件を外へ出す", () => {
+    const domestic = { ...emptyDomesticDividendProjection("ready", "2026-10-31"), sourceIntegrity: true,
+      expectedStocks: 1, projectedAnnualGross: 1000,
+      positions: [{ instrumentId: "jp", ticker: "SYNJP", name: "合成国内", quantity: 10, actualDps: null, forecastDps: 100,
+        rawForecastDps: 100, cashProjectionStatus: "resolved", forecastAsOf: "2026-10-01", annualGross: 1000,
+        priorRunRateGross: null, rateEffectGross: null, changeType: "not_comparable" }] } as import("./dividend-income").DomesticDividendProjection;
+    const props = { projection: domestic, foreignIncome: projection([row()]) };
+    const html = renderToStaticMarkup(createElement(PortfolioIncomeSummary, props));
+    expect(html).toContain("年間配当見込み");
+    expect(html.match(/summaryValue/g)).toHaveLength(1);
+    expect(html).toContain("4,000");
+    expect(html).not.toContain("1,000"); expect(html).not.toContain("3,000");
+    expect(html).not.toContain("小計"); expect(html).not.toContain("税引前");
+    const notes = renderToStaticMarkup(createElement(PortfolioIncomeNotes, props));
+    expect(notes).toContain("1,000"); expect(notes).toContain("3,000");
+    expect(notes).toContain("過去12か月実績"); expect(notes).toContain("MMFは対象外");
+    const unknown = renderToStaticMarkup(createElement(PortfolioIncomeSummary, { ...props, foreignIncome: emptyForeignIncome("error", 1) }));
+    expect(unknown).toContain(">—</span>"); expect(unknown).not.toContain("1,000");
+    const onlyForeign = renderToStaticMarkup(createElement(PortfolioIncomeSummary, { projection: emptyDomesticDividendProjection("no_domestic_stocks"), foreignIncome: projection([row()]) }));
+    expect(onlyForeign).toContain("3,000");
+  });
+  it("集計対象なしは—、無配を確認した対象だけの総計は0円と区別する", () => {
+    const domestic = emptyDomesticDividendProjection("no_domestic_stocks");
+    const none = { projection: domestic, foreignIncome: emptyForeignIncome("empty") };
+    expect(renderToStaticMarkup(createElement(PortfolioIncomeSummary, none))).toContain(">—</span>");
+    expect(renderToStaticMarkup(createElement(PortfolioIncomeNotes, none))).toContain("対象となる株式・ETFはありません");
+    const zero = projection([row({ asset_type: "foreign_stock", income_basis: "no_dividend_policy", annual_income_per_unit: "0", native_annual_income: "0", annual_income_jpy: "0" })]);
+    expect(renderToStaticMarkup(createElement(PortfolioIncomeSummary, { projection: domestic, foreignIncome: zero }))).toContain(">￥0</span>");
   });
   it("position単位で口座を選択し、同一商品を口座全体へ拡大しない", () => {
     const source = projection([row(), row({ position_id: "other-account", account_id: "b", annual_income_jpy: "6000" })]);
@@ -78,7 +102,7 @@ describe("foreign income reader", () => {
     expect(summarizeForeignIncome(result).complete).toBe(3000);
     expect(log).toContain("snapshot_id=s");
     expect(log.join(" ")).not.toContain("retired");
-    const html = renderToStaticMarkup(createElement(PortfolioIncomeSummary, { projection: emptyDomesticDividendProjection("ready"), foreignIncome: result }));
+    const html = renderToStaticMarkup(createElement(PortfolioIncomeSummary, { projection: emptyDomesticDividendProjection("no_domestic_stocks"), foreignIncome: result }));
     expect(html).toContain("3,000");
   });
   it("置換済み外部snapshotしかない場合は保有未取得のままにする", async () => {

@@ -3,28 +3,37 @@ import type { DomesticDividendProjection } from "./dividend-income";
 import { dividendCoverageNote, dividendDisplay } from "./dividend-display";
 import styles from "./PortfolioAnalysis.module.css";
 
-const yen = (value: number) => new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY", maximumFractionDigits: 0 }).format(value);
-
-export default function PortfolioIncomeSummary({ projection, foreignIncome, selected, onSelect }: { projection: DomesticDividendProjection | undefined; foreignIncome?: ForeignIncomeProjection; selected?: boolean; onSelect?: () => void }) {
+const yen = (value: number | null) => value === null ? "—" : new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY", maximumFractionDigits: 0 }).format(value);
+type IncomeProps = { projection: DomesticDividendProjection | undefined; foreignIncome?: ForeignIncomeProjection };
+function incomeAmounts({ projection, foreignIncome }: IncomeProps) {
   const display = dividendDisplay(projection);
-  const partial = display.completeTotal === null && display.confirmedGross !== null;
-  const primary = display.completeTotal ?? display.confirmedGross;
-  const empty = projection?.status === "no_domestic_stocks";
-  const note = empty ? "対象国内株なし" : projection?.status === "error" ? "取得失敗・合計未確認"
-    : projection?.status === "no_snapshot" || !projection ? "保有・配当データ未取得"
-    : display.completeTotal !== null ? `確認済み ${display.confirmedCount}銘柄`
-    : display.confirmedGross !== null ? `確認済み ${display.confirmedCount}/${projection?.expectedStocks ?? 0}銘柄 ／ ${dividendCoverageNote(display)}。全体合計は未確定`
-    : display.excludedCount > 0 ? `${dividendCoverageNote(display)}。対象期予想はグラフ・一覧で確認できます。12か月合計は未確定`
-    : "合計未確定・確認済み額なし";
+  const domestic = projection?.status === "no_domestic_stocks" && foreignIncome ? 0 : display.completeTotal ?? display.confirmedGross;
   const foreign = summarizeForeignIncome(foreignIncome);
-  const subtotal = primary !== null && foreign.partial !== null ? primary + foreign.partial : null;
+  const noTargets = projection?.status === "no_domestic_stocks" && foreignIncome?.status === "empty";
+  const sum = noTargets ? null : foreignIncome ? domestic !== null && foreign.partial !== null ? domestic + foreign.partial : null : domestic;
+  return { display, domestic, foreign, total: sum !== null && Number.isFinite(sum) ? sum : null };
+}
+
+export default function PortfolioIncomeSummary({ projection, foreignIncome, selected, onSelect }: IncomeProps & { selected?: boolean; onSelect?: () => void }) {
+  const { total } = incomeAmounts({ projection, foreignIncome });
   const content = <>
-    <span className={styles.summaryLabel}>{partial ? "年間予想配当（確認済み分）" : "年間予想配当（国内株）"}</span>
-    <span className={styles.summaryValue}>{primary === null ? "—" : yen(primary)}</span>
-    <span className={styles.summaryNote}>{note}<br />国内株・税引前・保有全体 ／ 実際の受取額ではありません</span>
-    {foreignIncome ? <span className={styles.summaryNote}>外国株・ETFの円換算参考額：{foreign.partial === null ? "—（未確認）" : yen(foreign.partial)}{foreign.missing > 0 ? ` ／ 未確認 ${foreign.missing}件を除く` : ""}<br />国内確認分＋外国参考額：{subtotal === null ? "—" : yen(subtotal)}（小計・全体確定額ではありません）</span> : null}
+    <span className={styles.summaryLabel}>年間配当見込み</span>
+    <span className={styles.summaryValue}>{yen(total)}</span>
   </>;
   return <section aria-label="保有全体の年間予想配当" style={{ minWidth: 0, display: "grid" }}>
     {onSelect ? <button type="button" className={styles.summaryCard} aria-pressed={selected} onClick={onSelect}>{content}</button> : <div className={styles.summaryCard}>{content}</div>}
   </section>;
+}
+
+/** Explanations live below the whole card row, outside every selection button. */
+export function PortfolioIncomeNotes({ projection, foreignIncome }: IncomeProps) {
+  const { display, domestic, foreign } = incomeAmounts({ projection, foreignIncome });
+  const coverage = dividendCoverageNote(display);
+  const foreignMissing = foreignIncome && foreign.missing > 0 ? `海外未確認 ${foreign.missing}件` : "";
+  const unavailable = foreignIncome && !["loaded", "empty"].includes(foreignIncome.status) ? "海外分は取得・確認待ち。" : "";
+  if (projection?.status === "no_domestic_stocks" && foreignIncome?.status === "empty") return <p aria-label="配当の補足" className={styles.summaryNote}>配当集計の対象となる株式・ETFはありません。MMFは対象外です。</p>;
+  return <div aria-label="配当の補足" style={{ marginTop: 10, color: "var(--color-text-muted)", fontSize: 12, lineHeight: 1.7 }}>
+    <p style={{ margin: 0 }}>国内株予想 {yen(domestic)} ＋ 外国株・ETF参考 {yen(foreign.partial)}。税引前。</p>
+    <p style={{ margin: 0 }}>外国ETFは過去12か月実績。{[coverage, foreignMissing].filter(Boolean).join(" ／ ")}{coverage || foreignMissing ? "は含みません。" : ""}{unavailable}MMFは対象外です。</p>
+  </div>;
 }

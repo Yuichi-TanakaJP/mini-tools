@@ -53,3 +53,10 @@ it("外部参照の取得失敗を全体の完全評価額と誤認させない"
   expect(html).toContain("総資産評価額（取得分）");
   expect(html).toContain("外部参照は未取得・登録保有分のみ");
 });
+
+
+it("配当の補足はすべての選択カードより下に置く", () => {
+  const data = { positions, currentSnapshot: { id: "s" }, externalAssets: emptyExternalAssets() } as unknown as PortfolioData;
+  const html = renderToStaticMarkup(createElement(PortfolioSummaryCards, { data, active: "assets", onSelect: () => {} }));
+  expect(html.indexOf('aria-label="配当の補足"')).toBeGreaterThan(html.lastIndexOf("</button>"));
+});

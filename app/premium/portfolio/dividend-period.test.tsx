@@ -5,7 +5,7 @@ import { dividendDisplay, dividendExclusionLabel, reportedPeriodDividend } from 
 import { summarizeDomesticDividendProjection, type DividendProjectionRow } from "./dividend-income";
 import { selectDividendProjection, buildAnalysisGroups } from "./linked-analysis";
 import PortfolioDividend from "./PortfolioDividend";
-import PortfolioIncomeSummary from "./PortfolioIncomeSummary";
+import PortfolioIncomeSummary, { PortfolioIncomeNotes } from "./PortfolioIncomeSummary";
 import PortfolioDividendComposition from "./PortfolioDividendComposition";
 import type { PortfolioPosition } from "./types";
 
@@ -30,7 +30,7 @@ describe("対象期の公表予想と年間合計の分離", () => {
     expect(p.positions[0]).toMatchObject({ forecastPeriodStart: "2026-04-01", forecastPeriodEnd: "2026-12-31", forecastPeriodMonths: 9, reportedForecastDps: 20, reportedForecastGross: 2000, annualGross: null });
     expect(dividendDisplay(p)).toMatchObject({ confirmedGross: null, completeTotal: null, excludedCount: 1, unverifiedCount: 0 });
     expect(reportedPeriodDividend(p, p.positions[0])).toMatchObject({ dps: 20, gross: 2000, months: 9 });
-    const html = renderToStaticMarkup(createElement(PortfolioIncomeSummary, { projection: p }));
+    const html = renderToStaticMarkup(createElement(PortfolioIncomeSummary, { projection: p })) + renderToStaticMarkup(createElement(PortfolioIncomeNotes, { projection: p }));
     expect(html).toContain("年間集計対象外 1銘柄"); expect(html).not.toContain("未確認 1銘柄");
   });
   it("表とグラフの別枠に対象期・公表額と比較除外理由を表示する", () => {
