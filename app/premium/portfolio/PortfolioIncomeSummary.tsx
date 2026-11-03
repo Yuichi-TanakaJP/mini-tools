@@ -1,10 +1,11 @@
+import { summarizeForeignIncome, type ForeignIncomeProjection } from "./foreign-income";
 import type { DomesticDividendProjection } from "./dividend-income";
 import { dividendCoverageNote, dividendDisplay } from "./dividend-display";
 import styles from "./PortfolioAnalysis.module.css";
 
 const yen = (value: number) => new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY", maximumFractionDigits: 0 }).format(value);
 
-export default function PortfolioIncomeSummary({ projection, selected, onSelect }: { projection: DomesticDividendProjection | undefined; selected?: boolean; onSelect?: () => void }) {
+export default function PortfolioIncomeSummary({ projection, foreignIncome, selected, onSelect }: { projection: DomesticDividendProjection | undefined; foreignIncome?: ForeignIncomeProjection; selected?: boolean; onSelect?: () => void }) {
   const display = dividendDisplay(projection);
   const partial = display.completeTotal === null && display.confirmedGross !== null;
   const primary = display.completeTotal ?? display.confirmedGross;
@@ -15,10 +16,13 @@ export default function PortfolioIncomeSummary({ projection, selected, onSelect 
     : display.confirmedGross !== null ? `確認済み ${display.confirmedCount}/${projection?.expectedStocks ?? 0}銘柄 ／ ${dividendCoverageNote(display)}。全体合計は未確定`
     : display.excludedCount > 0 ? `${dividendCoverageNote(display)}。対象期予想はグラフ・一覧で確認できます。12か月合計は未確定`
     : "合計未確定・確認済み額なし";
+  const foreign = summarizeForeignIncome(foreignIncome);
+  const subtotal = primary !== null && foreign.partial !== null ? primary + foreign.partial : null;
   const content = <>
     <span className={styles.summaryLabel}>{partial ? "年間予想配当（確認済み分）" : "年間予想配当（国内株）"}</span>
     <span className={styles.summaryValue}>{primary === null ? "—" : yen(primary)}</span>
     <span className={styles.summaryNote}>{note}<br />国内株・税引前・保有全体 ／ 実際の受取額ではありません</span>
+    {foreignIncome ? <span className={styles.summaryNote}>外国株・ETFの円換算参考額：{foreign.partial === null ? "—（未確認）" : yen(foreign.partial)}{foreign.missing > 0 ? ` ／ 未確認 ${foreign.missing}件を除く` : ""}<br />国内確認分＋外国参考額：{subtotal === null ? "—" : yen(subtotal)}（小計・全体確定額ではありません）</span> : null}
   </>;
   return <section aria-label="保有全体の年間予想配当" style={{ minWidth: 0, display: "grid" }}>
     {onSelect ? <button type="button" className={styles.summaryCard} aria-pressed={selected} onClick={onSelect}>{content}</button> : <div className={styles.summaryCard}>{content}</div>}

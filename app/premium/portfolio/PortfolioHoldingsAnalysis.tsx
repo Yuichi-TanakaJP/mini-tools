@@ -1,5 +1,7 @@
 "use client";
 
+import PortfolioForeignIncome from "./PortfolioForeignIncome";
+import { selectForeignIncome } from "./foreign-income";
 import { useMemo, useState, type ReactNode } from "react";
 import { aggregatePortfolioPositions } from "./aggregates";
 import { portfolioAllocationDimensions, type PortfolioAllocationDimension, type PortfolioAllocationScope } from "./allocation";
@@ -39,6 +41,7 @@ export default function PortfolioHoldingsAnalysis({ data }: { data: PortfolioDat
   const projection = useMemo(() => selectDividendProjection(data.domesticDividends, data.positions, selectedPositions), [data.domesticDividends, data.positions, selectedPositions]);
   const dividendGroups = useMemo(() => visibleGroups.map((group) => ({ group, projection: selectDividendProjection(data.domesticDividends, data.positions, group.positions) })), [data.domesticDividends, data.positions, visibleGroups]);
   const scopeLabel = `${selection.scope === "equity" ? "個別株のみ" : "登録保有全体"} ／ ${portfolioAllocationDimensions[selection.dimension].label} ／ ${selected?.label ?? "すべて"}`;
+  const foreignProjection = useMemo(() => selectForeignIncome(data.foreignIncome, selectedPositions, data.externalAssets, selection.dimension, selection.scope, selected?.memberKeys ?? null), [data.foreignIncome, data.externalAssets, selectedPositions, selection.dimension, selection.scope, selected]);
   const selectedTotal = selected?.marketValue ?? model.total;
   const choose = (key: string | null) => setSelection((current) => ({ ...current, key: key === "action:clear" || current.key === key ? null : key }));
   const productGroups = unavailable ? [{ key: "unavailable", label: "登録保有（分類取得失敗）", positions: selectedPositions, missingValueCount: selectedPositions.filter((p) => p.marketValue === null).length }] : visibleGroups;
@@ -54,7 +57,7 @@ export default function PortfolioHoldingsAnalysis({ data }: { data: PortfolioDat
         onDimension={(dimension) => setSelection((current) => current.dimension === dimension ? current : ({ ...current, dimension, key: null }))}
         onScope={(scope) => setSelection((current) => current.scope === scope ? current : ({ ...current, scope, key: null }))} />
       </div>
-      <p style={{ fontSize: 12, color: "var(--color-text-sub)", lineHeight: 1.6 }}>表示範囲：{scopeLabel}。グラフ・一覧は登録保有が対象です（外部参照資産を除く）。上部金額は各カードの保有全体です。</p>
+      <p style={{ fontSize: 12, color: "var(--color-text-sub)", lineHeight: 1.6 }}>表示範囲：{scopeLabel}。資産・国内株配当のグラフ・一覧は登録保有が対象です。外国株・ETFの参考額には該当する外部参照も含みます。上部金額は各カードの保有全体です。</p>
       {view === "graph" ? <div className={content === "assets" ? styles.comparisonGrid : undefined}>
       {content === "assets" ? <>
       <section aria-label="評価額の構成"><h3 style={{ fontSize: 16, margin: "0 0 10px" }}>資産評価額の構成</h3>
@@ -68,6 +71,7 @@ export default function PortfolioHoldingsAnalysis({ data }: { data: PortfolioDat
     </Card>
     <div role="status" aria-live="polite" style={{ fontSize: 13, color: "var(--color-text-sub)", lineHeight: 1.6 }}>配当・商品構成の表示範囲：<strong>{scopeLabel}</strong>。上段の総資産評価額・年間予想配当は保有全体です。</div>
     {view === "list" && content === "dividends" ? <PortfolioDividend projection={projection} scopeLabel={scopeLabel} expandDetails /> : null}
+    {content === "dividends" ? <PortfolioForeignIncome projection={foreignProjection} view={view} scopeLabel={scopeLabel} /> : null}
     {view === "list" && content === "assets" ? <Card title="商品一覧">
       <p style={{ margin: "0 0 14px", color: "var(--color-text-muted)", fontSize: 12 }}>表示範囲：{scopeLabel} ／ 構成比はこの範囲の既知評価額を分母にしています。口座別の数量・金額も選択範囲だけです。</p>
       {unavailable ? <p role="status">分類別の表示は保留しています。商品明細は表示できます。</p> : null}
