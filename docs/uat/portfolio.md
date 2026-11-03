@@ -227,3 +227,9 @@ From: 認証済み `/premium/portfolio` → To: 保有一覧内の国内株配�
 6. MMFが参考額へ混入しないこと。外国ETFの過去分配を会社の将来予想や実入金として表示しないこと。
 
 回帰: `npm test -- app/premium/portfolio/foreign-income.test.tsx app/premium/portfolio/data.test.ts app/premium/portfolio/summary-selection.test.tsx`。
+
+
+### 置換済み外部参照と外国インカム
+
+- 現在の公式保有に外貨商品があり、過去の外部参照snapshotだけがsupersededの場合、公式保有の外国参考額が上部カード・グラフ・一覧へ表示されること。置換済み外部のIDや旧positionを新viewの対象件数に含めない。
+- 現在の公式保有がなく、外部参照も置換済みだけなら未取得を維持する。外部のerror/loadingは引き続き保留し、0として埋めない。

@@ -48,12 +48,15 @@ export function summarizeForeignIncome(projection: ForeignIncomeProjection | und
 const columns = "user_id,portfolio_id,snapshot_id,snapshot_as_of,portfolio_scope,position_id,account_id,instrument_id,ticker,instrument_name,asset_type,native_currency,quantity,metric_key,observation_as_of,period_start,period_end,source_title,source_url,source_as_of,value_origin,formula_version,annual_income_per_unit,native_annual_income,fx_rate,fx_as_of,fx_source,annual_income_jpy,income_basis,status,exclusion_reason";
 /** RLS plus explicit owner/portfolio/current-snapshot filters. Never use old data after failure. */
 export async function loadForeignIncome(db: SupabaseClient, userId: string | undefined, portfolioId: string, snapshot: PortfolioSnapshot | null, positions: PortfolioPosition[], external: PortfolioExternalAssets): Promise<ForeignIncomeProjection> {
-  if (!snapshot && !external.snapshot) return emptyForeignIncome("no_snapshot");
-  if (["error", "loading", "superseded"].includes(external.status)) return emptyForeignIncome("error");
-  const expected = [...(snapshot ? positions.filter((p) => (p.assetType === "foreign_stock" || (["equity_fund", "bond_fund"].includes(p.assetType) && p.nativeCurrency !== "JPY"))).map((p) => ({ id: p.id, snapshot: snapshot.id })) : []), ...external.positions.filter((p) => (p.assetType === "foreign_stock" || (["equity_fund", "bond_fund"].includes(p.assetType ?? "") && p.nativeCurrency !== "JPY"))).map((p) => ({ id: p.id, snapshot: external.snapshot!.id }))];
+  // Superseded is a retired source, not a failed read of current holdings.
+  const externalSnapshot = external.status === "superseded" ? null : external.snapshot;
+  const externalPositions = external.status === "superseded" ? [] : external.positions;
+  if (!snapshot && !externalSnapshot) return emptyForeignIncome("no_snapshot");
+  if (["error", "loading"].includes(external.status)) return emptyForeignIncome("error");
+  const expected = [...(snapshot ? positions.filter((p) => (p.assetType === "foreign_stock" || (["equity_fund", "bond_fund"].includes(p.assetType) && p.nativeCurrency !== "JPY"))).map((p) => ({ id: p.id, snapshot: snapshot.id })) : []), ...externalPositions.filter((p) => (p.assetType === "foreign_stock" || (["equity_fund", "bond_fund"].includes(p.assetType ?? "") && p.nativeCurrency !== "JPY"))).map((p) => ({ id: p.id, snapshot: externalSnapshot!.id }))];
   if (!expected.length) return emptyForeignIncome("empty");
   if (!userId) return emptyForeignIncome("error", expected.length);
-  const snapshots = new Map([...(snapshot ? [[snapshot.id, snapshot.asOf] as const] : []), ...(external.snapshot ? [[external.snapshot.id, external.snapshot.asOf] as const] : [])]);
+  const snapshots = new Map([...(snapshot ? [[snapshot.id, snapshot.asOf] as const] : []), ...(externalSnapshot ? [[externalSnapshot.id, externalSnapshot.asOf] as const] : [])]);
   const byPosition = new Map(expected.map((p) => [p.id, p.snapshot]));
   const scopes = new Map([...(snapshot ? [[snapshot.id, "official"] as const] : []), ...(external.snapshot ? [[external.snapshot.id, "external_reference"] as const] : [])]);
   const rows: ForeignIncomeRow[] = [];
