@@ -68,6 +68,32 @@ describe("外国株・ETFの参考インカム", () => {
 });
 
 describe("foreign income reader", () => {
+  it("置換済み外部snapshotを現在の取得失敗とせず、公式保有の参考配当を表示する", async () => {
+    const external = { ...emptyExternalAssets(), status: "superseded" as const,
+      snapshot: { ...snapshot, id: "retired", portfolioScope: "external_reference" as const, status: "superseded" as const },
+      positions: [{ ...position, id: "retired-position", nativeCurrency: "USD" } as unknown as PortfolioExternalAssetPosition] };
+    const log: string[] = [];
+    const result = await loadForeignIncome(db([row()], undefined, log), "u", "p", snapshot, [position], external);
+    expect(result.status).toBe("loaded");
+    expect(summarizeForeignIncome(result).complete).toBe(3000);
+    expect(log).toContain("snapshot_id=s");
+    expect(log.join(" ")).not.toContain("retired");
+    const html = renderToStaticMarkup(createElement(PortfolioIncomeSummary, { projection: emptyDomesticDividendProjection("ready"), foreignIncome: result }));
+    expect(html).toContain("3,000");
+  });
+  it("置換済み外部snapshotしかない場合は保有未取得のままにする", async () => {
+    const external = { ...emptyExternalAssets(), status: "superseded" as const,
+      snapshot: { ...snapshot, id: "retired", portfolioScope: "external_reference" as const, status: "superseded" as const } };
+    const result = await loadForeignIncome(db([]), "u", "p", null, [], external);
+    expect(result.status).toBe("no_snapshot");
+    expect(summarizeForeignIncome(result).partial).toBeNull();
+  });
+  it.each(["error", "loading"] as const)("現在の外部snapshotの%sは保留し、0で代用しない", async (status) => {
+    const result = await loadForeignIncome(db([row()]), "u", "p", snapshot, [position], { ...emptyExternalAssets(), status });
+    expect(result.status).toBe("error");
+    expect(summarizeForeignIncome(result).partial).toBeNull();
+  });
+
   it("本人・Portfolio・現在snapshotで限定し、行数とposition identityを照合する", async () => {
     const log: string[] = [];
     expect((await loadForeignIncome(db([row()], undefined, log), "u", "p", snapshot, [position], emptyExternalAssets())).status).toBe("loaded");
