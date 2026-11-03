@@ -70,7 +70,7 @@ describe("外国株・ETFの参考インカム", () => {
 describe("foreign income reader", () => {
   it("置換済み外部snapshotを現在の取得失敗とせず、公式保有の参考配当を表示する", async () => {
     const external = { ...emptyExternalAssets(), status: "superseded" as const,
-      snapshot: { ...snapshot, id: "retired", portfolioScope: "external_reference" as const, status: "superseded" },
+      snapshot: { ...snapshot, id: "retired", portfolioScope: "external_reference" as const, status: "superseded" as const },
       positions: [{ ...position, id: "retired-position", nativeCurrency: "USD" } as unknown as PortfolioExternalAssetPosition] };
     const log: string[] = [];
     const result = await loadForeignIncome(db([row()], undefined, log), "u", "p", snapshot, [position], external);
@@ -83,7 +83,7 @@ describe("foreign income reader", () => {
   });
   it("置換済み外部snapshotしかない場合は保有未取得のままにする", async () => {
     const external = { ...emptyExternalAssets(), status: "superseded" as const,
-      snapshot: { ...snapshot, id: "retired", portfolioScope: "external_reference" as const, status: "superseded" } };
+      snapshot: { ...snapshot, id: "retired", portfolioScope: "external_reference" as const, status: "superseded" as const } };
     const result = await loadForeignIncome(db([]), "u", "p", null, [], external);
     expect(result.status).toBe("no_snapshot");
     expect(summarizeForeignIncome(result).partial).toBeNull();
