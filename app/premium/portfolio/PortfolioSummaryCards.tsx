@@ -21,7 +21,7 @@ export default function PortfolioSummaryCards({ data, active, onSelect }: { data
       <span className={styles.summaryLabel}>総資産評価額{externalUnavailable || valuation.missingMarketValueCount ? "（取得分）" : ""}</span><span className={styles.summaryValue}>{yen(valuation.totalMarketValue)}</span>
       <span className={styles.summaryNote}>全体を見る ／ {externalUnavailable ? "外部参照は未取得・登録保有分のみ" : "登録保有＋外部参照"}{valuation.missingMarketValueCount ? ` ／ 評価未取得 ${valuation.missingMarketValueCount}件を除く` : ""}</span>
     </button>
-    <PortfolioIncomeSummary projection={wholeDividend} selected={active === "dividends"} onSelect={() => onSelect("dividends")} />
+    <PortfolioIncomeSummary foreignIncome={data.foreignIncome} projection={wholeDividend} selected={active === "dividends"} onSelect={() => onSelect("dividends")} />
     <button type="button" className={styles.summaryCard} aria-pressed={active === "equity"} onClick={() => onSelect("equity")}>
       <span className={styles.summaryLabel}>個別株の評価額{equity.missingCount ? "（評価取得分）" : ""}</span><span className={styles.summaryValue}>{yen(equity.amount)}</span><span className={styles.summaryNote}>{note(equity, "登録保有の国内・海外株")}</span>
     </button>

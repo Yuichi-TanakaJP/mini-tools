@@ -292,3 +292,8 @@ L01/L0: 同一pathの上部4カード→対応する資産／配当と正規軸�
 ### 配当対象期間と操作階層の整理（2026-11-01）
 
 L01/L0: 上部の表示対象カード→表示形式→分類条件の順へ配置を整理する。同じlocal stateを同renderで反映し、7軸の常時到達、範囲保持、解除、native button/aria-pressedを維持。クリックで新しい通信・URL/history・pendingを追加しない。期間付き公表額は取得済みpropsの検証済み値のみで描画し、未知・失敗・年額除外を区別する。初回DB読取のoptional列が42703の場合のみ同条件で既存列を再読取し、その分1回のreadが増える。権限拒否は従来errorから回復を案内する。回帰はdividend-period.test.tsx、data.test.tsとportfolio UAT。
+
+
+### Portfolio外国株・ETF参考額（2026-11-03）
+
+L01/L0: 配当カード→グラフ/一覧、分類条件の変更は同pathのlocal切替。初回SSRで本人ID・portfolio・現在snapshotに限定した外国インカムviewをページング取得し、表示操作時の追加request/転送は0。公式保有は選択position、外部参照は同じscopeと分類条件で同期し、未知の業種等は未分類に保持する。無配方針の既知0、参考額、未確認、取得失敗を区別する。view未適用は準備中、取得失敗・件数不足は金額保留。復旧は既存routeの再読み込みで同じ読取を再試行し、失敗を空データにしない。出典リンクはHTTP(S)のみ別タブで開き、既存画面を保持する。回帰はforeign-income.test.tsxとportfolio UAT。通信時間・操作時間の本番実測は未測定。

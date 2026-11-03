@@ -1,3 +1,4 @@
+import { emptyForeignIncome, loadForeignIncome } from "./foreign-income";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { selectPortfolio, selectReadySnapshot } from "@/lib/portfolio/holdings";
 import { emptyExternalAssets, externalAssetsError, externalAssetsLoading, loadedExternalAssets } from "./external-assets";
@@ -393,6 +394,7 @@ function emptyPortfolio(): PortfolioData {
     dbPositionSnapshot: null,
     externalAssets: emptyExternalAssets(),
     domesticDividends: emptyDomesticDividendProjection("no_snapshot"),
+    foreignIncome: emptyForeignIncome(),
     positions: [],
     instrumentAnalysis: [],
     instrumentAnalysisStatus: "loaded",
@@ -422,7 +424,7 @@ export function portfolioAuthRequired(): PortfolioData {
   return { ...emptyPortfolio(), authState: "required" };
 }
 
-export async function loadPortfolio(supabase: SupabaseClient): Promise<PortfolioData> {
+export async function loadPortfolio(supabase: SupabaseClient, userId?: string): Promise<PortfolioData> {
   const portfolio = await selectPortfolio(supabase);
   if (!portfolio) return emptyPortfolio();
 
@@ -480,7 +482,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     const { data: positionData, error: positionsError } = await supabase
       .from("stock_notes_portfolio_positions")
       .select(
-        "id, account_id, instrument_id, quantity, unit_cost, quoted_price, quote_unit, cost_basis, market_value, unrealized_pnl, distribution_method",
+        "id, account_id, instrument_id, quantity, unit_cost, quoted_price, quote_unit, cost_basis, market_value, unrealized_pnl, distribution_method, native_currency",
       )
       .eq("snapshot_id", dbPositionSnapshot.id)
       .returns<PositionRow[]>();
@@ -772,6 +774,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
       marketValue: numberOrNull(row.market_value),
       unrealizedPnl: numberOrNull(row.unrealized_pnl),
       distributionMethod: row.distribution_method,
+      nativeCurrency: row.native_currency ?? null,
     };
   });
   const positions: PortfolioPosition[] = dbPositions.map((position) => ({
@@ -784,9 +787,10 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     institutionName: position.institutionName ?? "不明",
   }));
 
-  const domesticDividends = await loadDomesticDividends(
-    supabase, portfolio.id, currentSnapshot, positions,
-  );
+  const [domesticDividends, foreignIncome] = await Promise.all([
+    loadDomesticDividends(supabase, portfolio.id, currentSnapshot, positions),
+    loadForeignIncome(supabase, userId, portfolio.id, currentSnapshot, positions, externalAssets),
+  ]);
 
   let review: PortfolioReview | null = null;
   if (reviewRow) {
@@ -905,6 +909,7 @@ export async function loadPortfolio(supabase: SupabaseClient): Promise<Portfolio
     },
     externalAssets,
     domesticDividends,
+    foreignIncome,
     source: currentSnapshot ? "server" : "empty",
   };
 }

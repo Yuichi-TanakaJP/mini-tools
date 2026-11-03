@@ -36,7 +36,7 @@ export default async function PremiumPortfolioPage() {
     } = await supabase.auth.getUser();
 
     if (user) {
-      portfolio = await loadPortfolio(supabase);
+      portfolio = await loadPortfolio(supabase, user.id);
       try {
         companyGroupExposure = await loadCompanyGroupExposure(supabase, portfolio.currentSnapshot?.id ?? null);
       } catch (error) {

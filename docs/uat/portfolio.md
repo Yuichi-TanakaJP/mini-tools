@@ -213,3 +213,17 @@ From: 認証済み `/premium/portfolio` → To: 保有一覧内の国内株配�
 
 ローカル回帰: `vitest run app/premium/portfolio`（期間/旧DB回帰を含む）、変更箇所ESLint、build、navigation checker。ブラウザー/実データUATはローカル回帰と分け、実施環境・HEADと結果をPRへ記録する。
 判断: [対象期間を保って表示する](../decision-log/2026-11-01-portfolio-period-disclosure.md)。
+
+
+## 外国株・ETFの参考年間インカム（Phase 6 / UI-3）
+
+環境: 合成fixtureのローカル/Preview、承認済み配備後に本人認証済み本番。個人保有・実画面をGitへ保存しない。
+
+1. 保有一覧を開き、国内株の年間予想カードに外国株・ETFの円換算参考額と参考小計が併記されること。全体確定額と混同する表記がないこと。
+2. 配当カード→グラフで、公表無配方針の既知0とETFの過去12か月参考額を区別できること。未確認額には棒を描かない。
+3. 一覧へ切替え、原通貨、円換算、為替日・出典、分配対象期間・根拠を確認する。375px幅では表内だけ横スクロールし、ページ全体を横へ押し出さない。
+4. 資産クラス・口座種別・銘柄・個別株scopeへ切替える。同一商品を複数口座で持っていても選択position以外を足さない。外部参照の業種等を国内分類へ推測せず未分類に保つ。
+5. view未適用、権限/通信失敗、現在position欠損、重複、旧snapshotを合成データで再現する。準備中/取得失敗/保留を区別し、0円や全体確定額にしない。国内株と保有画面は継続表示する。
+6. MMFが参考額へ混入しないこと。外国ETFの過去分配を会社の将来予想や実入金として表示しないこと。
+
+回帰: `npm test -- app/premium/portfolio/foreign-income.test.tsx app/premium/portfolio/data.test.ts app/premium/portfolio/summary-selection.test.tsx`。

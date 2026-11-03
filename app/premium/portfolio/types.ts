@@ -1,3 +1,4 @@
+import type { ForeignIncomeProjection } from "./foreign-income";
 import type { DomesticDividendProjection } from "./dividend-income";
 
 export type PortfolioAccountType =
@@ -36,6 +37,7 @@ export type PortfolioPosition = {
   institutionName: string;
   quantity: number;
   quantityKnown?: boolean;
+  nativeCurrency?: string | null;
   unitCost: number | null;
   quotedPrice: number | null;
   quoteUnit: number;
@@ -194,6 +196,7 @@ export type PortfolioDbPosition = {
   institutionName: string | null;
   quantity: number;
   quantityKnown?: boolean;
+  nativeCurrency?: string | null;
   unitCost: number | null;
   quotedPrice: number | null;
   quoteUnit: number;
@@ -265,6 +268,7 @@ export type PortfolioData = {
   dbPositionSnapshot: PortfolioSnapshot | null;
   externalAssets: PortfolioExternalAssets;
   domesticDividends?: DomesticDividendProjection;
+  foreignIncome?: ForeignIncomeProjection;
   positions: PortfolioPosition[];
   instrumentAnalysis: PortfolioInstrumentAnalysis[];
   instrumentAnalysisStatus: "loaded" | "error";
