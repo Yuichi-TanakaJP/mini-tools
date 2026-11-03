@@ -69,6 +69,14 @@ describe("外国株・ETFの参考インカム", () => {
     const onlyForeign = renderToStaticMarkup(createElement(PortfolioIncomeSummary, { projection: emptyDomesticDividendProjection("no_domestic_stocks"), foreignIncome: projection([row()]) }));
     expect(onlyForeign).toContain("3,000");
   });
+  it("集計対象なしは—、無配を確認した対象だけの総計は0円と区別する", () => {
+    const domestic = emptyDomesticDividendProjection("no_domestic_stocks");
+    const none = { projection: domestic, foreignIncome: emptyForeignIncome("empty") };
+    expect(renderToStaticMarkup(createElement(PortfolioIncomeSummary, none))).toContain(">—</span>");
+    expect(renderToStaticMarkup(createElement(PortfolioIncomeNotes, none))).toContain("対象となる株式・ETFはありません");
+    const zero = projection([row({ asset_type: "foreign_stock", income_basis: "no_dividend_policy", annual_income_per_unit: "0", native_annual_income: "0", annual_income_jpy: "0" })]);
+    expect(renderToStaticMarkup(createElement(PortfolioIncomeSummary, { projection: domestic, foreignIncome: zero }))).toContain(">￥0</span>");
+  });
   it("position単位で口座を選択し、同一商品を口座全体へ拡大しない", () => {
     const source = projection([row(), row({ position_id: "other-account", account_id: "b", annual_income_jpy: "6000" })]);
     expect(selectForeignIncome(source, [position], emptyExternalAssets(), "account_type", "all", ["bucket:taxable"])?.rows).toHaveLength(1);
