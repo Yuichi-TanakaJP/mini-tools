@@ -3,7 +3,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { dividendDisplay } from "./dividend-display";
 import { emptyDomesticDividendProjection, type DomesticDividendProjection } from "./dividend-income";
-import PortfolioIncomeSummary from "./PortfolioIncomeSummary";
+import PortfolioIncomeSummary, { PortfolioIncomeNotes } from "./PortfolioIncomeSummary";
 import PortfolioDividendComposition from "./PortfolioDividendComposition";
 import { buildAnalysisGroups, selectDividendProjection } from "./linked-analysis";
 import type { PortfolioPosition } from "./types";
@@ -18,14 +18,16 @@ function position(overrides: Partial<PortfolioPosition> = {}): PortfolioPosition
 }
 
 describe("配当の上部サマリーと構成グラフ", () => {
-  it("部分和を確認済み分と明記して主表示し、全体合計とは区別する", () => {
+  it("カードは金額1つ、未確認分の補足はカード外へ表示する", () => {
     const p = { ...source(), status: "incomplete" as const, expectedStocks: 2, projectedAnnualGross: null };
     expect(dividendDisplay(p)).toMatchObject({ confirmedGross: 4000, completeTotal: null, missingCount: 1 });
     const html = renderToStaticMarkup(createElement(PortfolioIncomeSummary, { projection: p }));
-    expect(html).toContain("年間予想配当（確認済み分）");
+    expect(html).toContain("年間配当見込み");
     expect(html).toContain(`>${yen(4000)}</span>`);
-    expect(html).toContain("全体合計は未確定");
-    expect(html).toContain("未確認 1銘柄");
+    expect(html).not.toContain("未確認");
+    const notes = renderToStaticMarkup(createElement(PortfolioIncomeNotes, { projection: p }));
+    expect(notes).toContain("未確認 1銘柄");
+    expect(notes).toContain("は含みません");
     expect(html).not.toContain(">—</span>");
   });
   it("完全合計はDB契約のready値だけを表示し、既知無配0円と未知を区別する", () => {
@@ -74,7 +76,7 @@ it("同じ分類の確認済み・未確認を区別し、棒の部分和と分�
 
 it("上部は全確認なら全額、確認済みなし/取得失敗なら金額を作らない", () => {
   const ready = renderToStaticMarkup(createElement(PortfolioIncomeSummary, { projection: source() }));
-  expect(ready).toContain("年間予想配当（国内株）"); expect(ready).not.toContain("年間予想配当（確認済み分）");
+  expect(ready).toContain("年間配当見込み");
   expect(ready).toContain(`>${yen(4000)}</span>`);
   for (const status of ["error", "no_domestic_stocks", "no_snapshot"] as const) {
     const html = renderToStaticMarkup(createElement(PortfolioIncomeSummary, { projection: { ...source(), status } }));
