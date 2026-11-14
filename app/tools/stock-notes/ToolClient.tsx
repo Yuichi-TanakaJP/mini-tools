@@ -22,7 +22,11 @@ import {
   isDuplicateStockError,
   isForeignKeyViolationError,
   updateStockCategory,
+  updateStockMonitoring,
 } from "./data";
+import StockMonitoringEditor from "./StockMonitoringEditor";
+import { monitoringLabel, WATCH_PURPOSE_LABELS } from "./monitoring";
+import type { StockMonitoringMetadata } from "./types";
 import type { StockNotesEarningsInfo } from "./earnings-types";
 import { invalidateStockNotesCache, readStockNotesCache, writeStockNotesCache } from "./cache";
 import type { StockNotesManifest } from "./delta";
@@ -676,6 +680,17 @@ export default function ToolClient() {
    * ここでそれを検出し、生のPostgRESTエラーではなく「アーカイブしてください」という
    * 次のアクションが分かる文言に変換する。
    */
+  async function handleMonitoringSave(stock: StockNoteStock, metadata: StockMonitoringMetadata) {
+    if (!supabase || !userId) throw new Error("ログインを確認してください。");
+    const authToken = authGuardRef.current.current();
+    setRowBusyStockId(stock.id);
+    try {
+      await updateStockMonitoring(supabase, userId, stock.id, metadata);
+      if (!authGuardRef.current.isCurrent(authToken)) throw new Error("認証が切り替わりました。");
+      await refetchAfterWrite(userId, authToken);
+    } finally { setRowBusyStockId(null); }
+  }
+
   async function handleDeleteStock(stock: StockNoteStock) {
     if (!supabase || !userId) return;
     if (!canDeleteStock(stock, analyses)) return;
@@ -905,6 +920,7 @@ export default function ToolClient() {
                       onLoadBody={loadBody}
                       busy={rowBusyStockId === stock.id}
                       onCategoryChange={(next) => handleCategoryChange(stock, next)}
+                      onMonitoringSave={(metadata) => handleMonitoringSave(stock, metadata)}
                       onDelete={() => handleDeleteStock(stock)}
                       showActionRequiredReasons={categoryTab === "action-required"}
                       onCopyPrompt={
@@ -1048,6 +1064,7 @@ function StockRow({
   onLoadBody,
   busy,
   onCategoryChange,
+  onMonitoringSave,
   onDelete,
   showActionRequiredReasons,
   onCopyPrompt,
@@ -1065,6 +1082,7 @@ function StockRow({
   onLoadBody: (analysisId: string) => void;
   busy: boolean;
   onCategoryChange: (next: StockNoteCategory) => void;
+  onMonitoringSave: (metadata: StockMonitoringMetadata) => Promise<void>;
   onDelete: () => void;
   /** 「要対応」タブで表示中かどうか。true のとき FreshnessBadge の代わりに理由バッジを出し、
    *  「分析用プロンプトをコピー」ボタンも行に表示する（この2つは要対応タブ専用）。 */
@@ -1110,6 +1128,8 @@ function StockRow({
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontWeight: 900, color: "var(--color-text)", fontSize: 14 }}>{stock.code}</span>
           <span style={{ color: "var(--color-text)", fontSize: 13 }}>{stock.name}</span>
+          {(stock.watchPurposes ?? []).map((purpose) => <span key={purpose} style={badgeStyle("var(--color-bg-input)", "var(--color-text-sub)")}>{WATCH_PURPOSE_LABELS[purpose]}</span>)}
+          <span style={{ fontSize: 11, color: "var(--color-text-sub)" }}>{stock.category === "archived" ? "信用残：対象外（アーカイブ）" : monitoringLabel(stock.creditMonitoringEnabled)}</span>
           {held && <span>Portfolio保有{stock.category === "archived" ? "・分析はアーカイブ" : ""}</span>}
           {thesis && (
             <span
@@ -1277,6 +1297,13 @@ function StockRow({
               ))
             )}
           </div>
+
+          <StockMonitoringEditor
+            initial={{ watchPurposes: stock.watchPurposes ?? [], creditMonitoringEnabled: stock.creditMonitoringEnabled ?? null }}
+            archived={stock.category === "archived"}
+            busy={busy}
+            onSave={onMonitoringSave}
+          />
 
           {/* 分類変更・アーカイブ・削除。アーカイブが基本、削除は例外
               （on delete cascade で分析・見立て・アクションが全部消えるため）。 */}

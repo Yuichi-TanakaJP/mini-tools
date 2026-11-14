@@ -221,3 +221,18 @@ describe("stock-notes cache", () => {
     expect(readStockNotesCache("user-1", now + 1000)).toBeNull();
   });
 });
+
+
+it("rejects the previous cache schema so missing monitoring fields are refreshed", () => {
+  vi.stubGlobal("window", { localStorage: makeMemoryLocalStorage() });
+  window.localStorage.setItem("stock_notes_dashboard_cache_v1_user-1", JSON.stringify({ version: 2, userId: "user-1", fetchedAt: new Date().toISOString(), data: emptyData }));
+  expect(readStockNotesCache("user-1")).toBeNull();
+  vi.unstubAllGlobals();
+});
+
+it("rejects malformed cached monitoring instead of displaying monitoring OFF", () => {
+  vi.stubGlobal("window", { localStorage: makeMemoryLocalStorage() });
+  writeStockNotesCache("u", { ...emptyData, stocks: [{ id: "s", watchPurposes: [], creditMonitoringEnabled: "false" } as never] });
+  expect(readStockNotesCache("u")).toBeNull();
+  vi.unstubAllGlobals();
+});

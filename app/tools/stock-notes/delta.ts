@@ -1,3 +1,4 @@
+import { parseMonitoringMetadata } from "./monitoring";
 import type { DashboardData } from "./load";
 import type {
   StockNoteAction,
@@ -19,6 +20,7 @@ export type StockNotesStockBundle = {
 
 export type StockNotesDelta = {
   version: 1;
+  monitoringMetadataVersion?: 1;
   complete: true;
   currentManifest: StockNotesManifest;
   changedStocks: StockNotesStockBundle[];
@@ -50,6 +52,7 @@ export function parseStockNotesDelta(value: unknown): StockNotesDelta {
     if (!isRecord(item) || !isRecord(item.stock) || typeof item.revision !== "string") {
       throw new Error("銘柄差分APIの変更データが不正です。");
     }
+    parseMonitoringMetadata(item.stock.watchPurposes, item.stock.creditMonitoringEnabled);
     if (!Array.isArray(item.analyses) || !Array.isArray(item.theses) || !Array.isArray(item.actions)) {
       throw new Error("銘柄差分APIの子データが不正です。");
     }

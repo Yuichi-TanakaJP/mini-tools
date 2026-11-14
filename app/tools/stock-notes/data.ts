@@ -3,6 +3,8 @@
 // 書き込み（insert/update/delete）は行わない。
 // - stock_notes_* は本人の行だけが RLS で見える（auth.uid() = user_id）。
 // - 保有は認証済み audience API から読み、Portfolioと選択ルールを共有する。
+import { parseMonitoringMetadata } from "./monitoring";
+import type { StockMonitoringMetadata } from "./types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isAudience, type Holding, type HoldingsState } from "@/lib/portfolio/holdings";
 import type { EarningsFoldEntry, StockNotesEarningsInfo } from "./earnings-types";
@@ -24,6 +26,8 @@ type StockRow = {
   category: StockNoteStock["category"];
   category_changed_at: string | null;
   category_change_reason: string | null;
+  watch_purposes: unknown;
+  credit_monitoring_enabled: unknown;
   created_at: string;
   updated_at: string;
 };
@@ -105,7 +109,7 @@ export function isSessionExpiredSupabaseError(error: unknown): boolean {
 export async function fetchStocks(supabase: SupabaseClient): Promise<StockNoteStock[]> {
   const { data, error } = await supabase
     .from("stock_notes_stocks")
-    .select("id, code, name, category, category_changed_at, category_change_reason, created_at, updated_at")
+    .select("id, code, name, category, category_changed_at, category_change_reason, watch_purposes, credit_monitoring_enabled, created_at, updated_at")
     .returns<StockRow[]>();
   if (error) throw error;
   return (data ?? []).map((row) => ({
@@ -115,6 +119,7 @@ export async function fetchStocks(supabase: SupabaseClient): Promise<StockNoteSt
     category: row.category,
     categoryChangedAt: row.category_changed_at,
     categoryChangeReason: row.category_change_reason,
+    ...parseMonitoringMetadata(row.watch_purposes, row.credit_monitoring_enabled),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }));
@@ -375,7 +380,7 @@ export async function insertStock(
       category: input.category,
       category_changed_at: nowIso,
     })
-    .select("id, code, name, category, category_changed_at, category_change_reason, created_at, updated_at")
+    .select("id, code, name, category, category_changed_at, category_change_reason, watch_purposes, credit_monitoring_enabled, created_at, updated_at")
     .single<StockRow>();
   if (error) throw error;
   return {
@@ -385,6 +390,7 @@ export async function insertStock(
     category: data.category,
     categoryChangedAt: data.category_changed_at,
     categoryChangeReason: data.category_change_reason,
+    ...parseMonitoringMetadata(data.watch_purposes, data.credit_monitoring_enabled),
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
@@ -476,4 +482,19 @@ export async function bulkInsertHoldingsAsStocks(
     }
   }
   return { succeeded, failed };
+}
+
+
+/** Preserve category/history and child records; JWT/RLS remains the write boundary. */
+export async function updateStockMonitoring(
+  supabase: SupabaseClient, userId: string, stockId: string, input: StockMonitoringMetadata,
+): Promise<void> {
+  const metadata = parseMonitoringMetadata(input.watchPurposes, input.creditMonitoringEnabled);
+  const { data, error } = await supabase.from("stock_notes_stocks").update({
+    watch_purposes: metadata.watchPurposes,
+    credit_monitoring_enabled: metadata.creditMonitoringEnabled,
+    updated_at: new Date().toISOString(),
+  }).eq("id", stockId).eq("user_id", userId).select("id").maybeSingle<{ id: string }>();
+  if (error) throw error;
+  if (!data || data.id !== stockId) throw new Error("更新対象を確認できません。再ログインして再取得してください。");
 }

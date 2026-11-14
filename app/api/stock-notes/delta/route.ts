@@ -1,3 +1,4 @@
+import { parseMonitoringMetadata } from "@/app/tools/stock-notes/monitoring";
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -27,6 +28,8 @@ type StockRow = {
   category: StockNoteStock["category"];
   category_changed_at: string | null;
   category_change_reason: string | null;
+  watch_purposes: unknown;
+  credit_monitoring_enabled: unknown;
   created_at: string;
   updated_at: string;
 };
@@ -108,6 +111,7 @@ function mapStock(row: StockRow): StockNoteStock {
     category: row.category,
     categoryChangedAt: row.category_changed_at,
     categoryChangeReason: row.category_change_reason,
+    ...parseMonitoringMetadata(row.watch_purposes, row.credit_monitoring_enabled),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -203,7 +207,9 @@ export async function POST(request: Request) {
     const rpcResult = await supabase.rpc("get_stock_notes_delta", {
       p_known_manifest: knownManifest,
     });
-    if (!rpcResult.error && rpcResult.data) {
+    // Old RPCs omit monitoring columns; their revisions cannot establish the
+    // current metadata contract, even when they return zero changed stocks.
+    if (!rpcResult.error && isRecord(rpcResult.data) && rpcResult.data.monitoringMetadataVersion === 1) {
       try {
         return json(parseStockNotesDelta(rpcResult.data));
       } catch (error) {
@@ -214,7 +220,7 @@ export async function POST(request: Request) {
     const [stocksResult, analysesResult, thesesResult, actionsResult] = await Promise.all([
       supabase
         .from("stock_notes_stocks")
-        .select("id, code, name, category, category_changed_at, category_change_reason, created_at, updated_at")
+        .select("id, code, name, category, category_changed_at, category_change_reason, watch_purposes, credit_monitoring_enabled, created_at, updated_at")
         .returns<StockRow[]>(),
       supabase
         .from("stock_notes_analyses")
@@ -271,6 +277,7 @@ export async function POST(request: Request) {
 
     const body: StockNotesDelta = {
       version: 1,
+      monitoringMetadataVersion: 1,
       complete: true,
       currentManifest,
       changedStocks,

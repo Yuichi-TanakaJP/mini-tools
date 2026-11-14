@@ -5,6 +5,14 @@
 // stock_notes_analyses / stock_notes_theses / stock_notes_actions への
 // INSERT/UPDATE/DELETE は行わない（分析はGPTの領域。詳細は decision-log 参照）。
 
+export type StockWatchPurpose =
+  | "shareholder_benefit" | "dividend" | "growth" | "recovery" | "event" | "value_improvement";
+
+export type StockMonitoringMetadata = {
+  watchPurposes: StockWatchPurpose[];
+  creditMonitoringEnabled: boolean | null;
+};
+
 export type StockNoteCategory = "holding" | "watch" | "research" | "archived";
 
 export type StockNoteAnalysisType = "earnings" | "financial" | "initial" | "news" | "other";
@@ -23,6 +31,9 @@ export type StockNoteStock = {
   category: StockNoteCategory;
   categoryChangedAt: string | null;
   categoryChangeReason: string | null;
+  /** Optional only for existing fixtures/old in-memory data; new reads validate the DB columns. */
+  watchPurposes?: StockWatchPurpose[];
+  creditMonitoringEnabled?: boolean | null;
   createdAt: string;
   updatedAt: string;
 };

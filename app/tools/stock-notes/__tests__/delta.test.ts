@@ -11,6 +11,8 @@ const base: DashboardData = {
       category: "holding",
       categoryChangedAt: null,
       categoryChangeReason: null,
+      watchPurposes: [],
+      creditMonitoringEnabled: null,
       createdAt: "2026-08-01T00:00:00.000Z",
       updatedAt: "2026-08-01T00:00:00.000Z",
     },
@@ -21,6 +23,8 @@ const base: DashboardData = {
       category: "watch",
       categoryChangedAt: null,
       categoryChangeReason: null,
+      watchPurposes: [],
+      creditMonitoringEnabled: null,
       createdAt: "2026-08-01T00:00:00.000Z",
       updatedAt: "2026-08-01T00:00:00.000Z",
     },
@@ -112,4 +116,19 @@ describe("stock-notes delta", () => {
   it("manifestに残っている銘柄を削除一覧に入れない", () => {
     expect(() => parseStockNotesDelta(delta({ deletedStockIds: ["s1"] }))).toThrow();
   });
+});
+
+
+it("rejects a changed stock that lacks monitoring fields", () => {
+  const invalid = delta();
+  invalid.changedStocks = [{ ...replacement, stock: { id: "s1" } as never }];
+  expect(() => parseStockNotesDelta(invalid)).toThrow();
+});
+
+it("preserves false rather than coercing string values in changed monitoring", () => {
+  const valid = delta();
+  valid.changedStocks = [{ ...replacement, stock: { ...replacement.stock, creditMonitoringEnabled: false } }];
+  expect(parseStockNotesDelta(valid).changedStocks[0].stock.creditMonitoringEnabled).toBe(false);
+  valid.changedStocks[0].stock.creditMonitoringEnabled = "false" as never;
+  expect(() => parseStockNotesDelta(valid)).toThrow();
 });

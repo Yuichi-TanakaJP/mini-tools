@@ -237,3 +237,14 @@
 ## 保有統合の補足（2026-09-18）
 
 旧category=holdingは互換データとして残し「旧分類: 保有」と表示するが、実保有の判定には使わない。手動分類の新規選択肢から保有を除く。旧一括登録・同期仕様から変更した理由は[統合判断](../../decision-log/2026-09-18-portfolio-holdings-authority.md)を優先する。
+
+
+## 注目目的・信用残監視（2026-11-14）
+
+銘柄一覧に注目目的（複数）と信用残の明示設定を表示する。展開した詳細で目的checkboxと信用残selectを編集し、専用保存buttonで確定する。目的は優待・配当・業績/成長・業績回復/事業転換・イベント/技術実用化・企業価値/資本効率改善。
+正本は既存stock_notes_stocksのwatch_purposesとnullable credit_monitoring_enabled。Portfolioのholding_purpose、保有/ウォッチ/新規調査/アーカイブ分類や分類理由は変更しない。
+未指定は実保有だけを既定対象にし、明示ONは新規調査も対象にできる。明示OFFは保有でも除外。アーカイブは必ず除外する。
+JWT/RLSの本人境界で、この2項目とupdated_atだけを更新する。0行更新・形式不正は失敗。旧キャッシュversion2を破棄し、直接読取と既存差分BFFの両方で新項目を取得する。
+同pathの保存操作でURL/historyは追加しない。編集中は通信なし、保存中は重複操作を無効化して「保存中…」、失敗時は入力を保持してalert、再保存または既存再取得で復旧する。通信時間は未計測。DB拡張→API→UIの順に配備する。
+
+旧get_stock_notes_delta RPCは新列の完全性を宣言しないため、monitoringMetadataVersion=1を宣言するまで既存4-table互換読取へfallbackする。旧RPCが変更0件を返しても信用残設定の完全性とは扱わない。当面はRPC確認1回＋既存4読取となるが、互換fingerprintは新項目とupdatedAtを含むため更新を見落とさない。
