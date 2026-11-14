@@ -56,7 +56,7 @@ describe("stock-notes cache", () => {
 
   it("書いた直後は同じ userId で読める", () => {
     const now = Date.now();
-    writeStockNotesCache("user-1", { ...emptyData, stocks: [{ id: "s1" } as never] }, now);
+    writeStockNotesCache("user-1", { ...emptyData, stocks: [{ id: "s1", watchPurposes: [], creditMonitoringEnabled: null } as never] }, now);
     const result = readStockNotesCache("user-1", now + 1000);
     expect(result).not.toBeNull();
     expect(result?.data.stocks).toHaveLength(1);
@@ -235,4 +235,18 @@ it("rejects malformed cached monitoring instead of displaying monitoring OFF", (
   writeStockNotesCache("u", { ...emptyData, stocks: [{ id: "s", watchPurposes: [], creditMonitoringEnabled: "false" } as never] });
   expect(readStockNotesCache("u")).toBeNull();
   vi.unstubAllGlobals();
+});
+
+
+describe("current cache metadata presence", () => {
+  beforeEach(() => vi.stubGlobal("window", { localStorage: makeMemoryLocalStorage() }));
+  afterEach(() => vi.unstubAllGlobals());
+  it.each([{ id: "s" }, { id: "s", watchPurposes: [] }, { id: "s", creditMonitoringEnabled: null }])("invalidates missing metadata %j", (stock) => {
+    writeStockNotesCache("u", { ...emptyData, stocks: [stock as never] });
+    expect(readStockNotesCache("u")).toBeNull();
+  });
+  it("preserves explicitly returned null rather than missing", () => {
+    writeStockNotesCache("u", { ...emptyData, stocks: [{ id: "s", watchPurposes: [], creditMonitoringEnabled: null } as never] });
+    expect(readStockNotesCache("u")?.data.stocks[0].creditMonitoringEnabled).toBeNull();
+  });
 });

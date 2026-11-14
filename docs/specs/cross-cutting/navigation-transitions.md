@@ -301,4 +301,4 @@ L01/L0: 配当カード→グラフ/一覧、分類条件の変更は同pathのl
 
 ### 銘柄注目目的・信用残監視の保存（2026-11-14）
 
-R29: `/tools/stock-notes`の展開済み銘柄詳細→同じ銘柄の監視設定保存。checkbox/select編集はlocal stateだけで追加通信なし、保存時だけ既存JWT/RLSで本人のstockを1 UPDATEし、既存差分再取得で表示を更新する。URL/history・新しいrouteは追加しない。保存中は受付を「保存中…」で示し二重操作を無効化、失敗時は入力保持/alertから同条件再試行できる。成功後の再取得失敗は前回表示と既存の再取得失敗案内を維持する。未指定/nullと明示OFFを区別し、アーカイブ除外は表示にも反映する。通信/体感時間は未計測。回帰はmonitoring.test.tsx、cache.test.ts、stock-notes UATを参照する。
+R29: `/tools/stock-notes`の展開済み銘柄詳細→同じ銘柄の監視設定保存。checkbox/select編集はlocal stateだけで追加通信なし、保存時だけ既存JWT/RLSで本人のstockを1 UPDATEし、既存差分再取得で表示を更新する。URL/history・新しいrouteは追加しない。保存中は受付を「保存中…」で示し二重操作を無効化、失敗時は入力保持/alertから同条件再試行できる。別画面更新時は編集開始値のCASで巻戻しを防止し、未編集は再取得へ追従、編集中は競合表示と保存停止から明示的な最新値読直しで復旧する。成功後の再取得失敗は前回表示と既存の再取得失敗案内を維持する。未指定/nullと明示OFFを区別し、アーカイブ除外は表示にも反映する。通信/体感時間は未計測。回帰はmonitoring.test.tsx、cache.test.ts、stock-notes UATを参照する。

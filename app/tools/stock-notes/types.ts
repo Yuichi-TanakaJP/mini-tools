@@ -13,6 +13,8 @@ export type StockMonitoringMetadata = {
   creditMonitoringEnabled: boolean | null;
 };
 
+export type StockMonitoringSnapshot = StockMonitoringMetadata & { updatedAt: string };
+
 export type StockNoteCategory = "holding" | "watch" | "research" | "archived";
 
 export type StockNoteAnalysisType = "earnings" | "financial" | "initial" | "news" | "other";

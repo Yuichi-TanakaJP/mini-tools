@@ -102,7 +102,7 @@ function isValidEnvelope(value: unknown, userId: string): value is StockNotesCac
     data.stocks.every((stock) => {
       if (!isPlainObject(stock)) return false;
       try {
-        parseMonitoringMetadata(stock.watchPurposes === undefined ? [] : stock.watchPurposes, stock.creditMonitoringEnabled === undefined ? null : stock.creditMonitoringEnabled);
+        parseMonitoringMetadata(stock.watchPurposes, stock.creditMonitoringEnabled);
         return true;
       } catch { return false; }
     }) &&

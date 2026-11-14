@@ -18,4 +18,11 @@
 
 DB additive migrationとStock Notes APIを先に準備し、その後UIを配備する。main mergeが既存Vercel Git連携による本番公開を起動するため、merge前に対象テスト・build・独立レビュー・承認を揃える。UI UATはdocs/uat/stock-notes.md参照。実認証/DB保存確認と合成UI確認は区別する。
 
-旧get_stock_notes_delta RPCは新列の完全性を宣言しないため、monitoringMetadataVersion=1を宣言するまで既存4-table互換読取へfallbackする。旧RPCが変更0件を返しても信用残設定の完全性とは扱わない。当面はRPC確認1回＋既存4読取となるが、互換fingerprintは新項目とupdatedAtを含むため更新を見落とさない。
+旧get_stock_notes_delta RPCは新列の完全性を宣言しないため、monitoringMetadataVersion=1を宣言するまで既存4-table互換読取へfallbackする。旧RPCが変更0件を返しても信用残設定の完全性とは扱わない。当面はRPC確認1回＋4テーブルの全ページ読取となるが、互換fingerprintは新項目とupdatedAtを含むため更新を見落とさない。
+
+
+### 独立レビューで追加した完全性・競合の保護
+
+- 直接読取と旧RPC互換読取のstocks/analyses/theses/open actionsすべてをid昇順でページ取得し、各ページのexact count、件数一致、重複、途中切断を検証する。サーバー上限がページ要求より小さくても実受信件数の続きから取得する。不完全な一覧でcomplete/deletedStockIdsを作らず、取得失敗として前回表示を維持する。これはDBの単一トランザクションsnapshotを保証するものではない。
+- 保存は編集開始時のupdated_atと元の2設定をCAS条件に含める。他画面の変更を片方の項目編集で巻き戻さない。未編集フォームは再取得に追従し、編集中のフォームは入力を保持して競合を表示、保存を停止する。「取得済みの最新設定を読み直す」で明示的に最新値を採用してから編集し直す。
+- current cache v3の各stockはwatchPurposes/creditMonitoringEnabled両方が必須。欠損を未指定に変換しない。client差分境界もmonitoringMetadataVersion=1を必須にし、変更0件の旧応答でも拒否する。明示されたnullのみ有効な未指定として扱う。

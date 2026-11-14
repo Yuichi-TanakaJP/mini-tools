@@ -20,7 +20,7 @@ export type StockNotesStockBundle = {
 
 export type StockNotesDelta = {
   version: 1;
-  monitoringMetadataVersion?: 1;
+  monitoringMetadataVersion: 1;
   complete: true;
   currentManifest: StockNotesManifest;
   changedStocks: StockNotesStockBundle[];
@@ -42,7 +42,7 @@ function isManifest(value: unknown): value is StockNotesManifest {
 
 /** 外部APIレスポンスを構造レベルで検証する。詳細な行値は既存の描画側防御に委ねる。 */
 export function parseStockNotesDelta(value: unknown): StockNotesDelta {
-  if (!isRecord(value) || value.version !== 1 || value.complete !== true) {
+  if (!isRecord(value) || value.version !== 1 || value.monitoringMetadataVersion !== 1 || value.complete !== true) {
     throw new Error("銘柄差分APIの応答形式が不正です。");
   }
   if (!isManifest(value.currentManifest) || !Array.isArray(value.changedStocks) || !Array.isArray(value.deletedStockIds)) {

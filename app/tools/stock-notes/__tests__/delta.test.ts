@@ -60,7 +60,7 @@ const replacement = {
 
 function delta(overrides: Partial<StockNotesDelta> = {}): StockNotesDelta {
   return {
-    version: 1,
+    version: 1, monitoringMetadataVersion: 1,
     complete: true,
     currentManifest: { s1: "rev-s1", s2: "rev-s2" },
     changedStocks: [replacement],
@@ -101,7 +101,7 @@ describe("stock-notes delta", () => {
   });
 
   it("不完全なレスポンスを受け付けない", () => {
-    expect(() => parseStockNotesDelta({ version: 1, complete: false })).toThrow();
+    expect(() => parseStockNotesDelta({ version: 1, monitoringMetadataVersion: 1, complete: false })).toThrow();
   });
 
   it("manifestにない変更銘柄を受け付けない", () => {
@@ -131,4 +131,14 @@ it("preserves false rather than coercing string values in changed monitoring", (
   expect(parseStockNotesDelta(valid).changedStocks[0].stock.creditMonitoringEnabled).toBe(false);
   valid.changedStocks[0].stock.creditMonitoringEnabled = "false" as never;
   expect(() => parseStockNotesDelta(valid)).toThrow();
+});
+
+
+it("rejects even an empty delta without the current metadata version", () => {
+  const current = delta({ changedStocks: [] });
+  expect(parseStockNotesDelta(current).changedStocks).toEqual([]);
+  const legacy = { ...current } as Record<string, unknown>;
+  delete legacy.monitoringMetadataVersion;
+  expect(() => parseStockNotesDelta(legacy)).toThrow();
+  expect(() => parseStockNotesDelta({ ...current, monitoringMetadataVersion: 0 })).toThrow();
 });

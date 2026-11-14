@@ -25,7 +25,7 @@ describe("loadDashboardData", () => {
   it("manifestが指定された場合は差分APIを使い、変更銘柄をキャッシュへ反映する", async () => {
     let fullFetchCalled = false;
     const delta: StockNotesDelta = {
-      version: 1,
+      version: 1, monitoringMetadataVersion: 1,
       complete: true,
       currentManifest: { s1: "rev-2" },
       changedStocks: [

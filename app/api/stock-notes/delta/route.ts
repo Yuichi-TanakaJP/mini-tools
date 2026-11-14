@@ -1,3 +1,4 @@
+import { readCompleteRows } from "@/app/tools/stock-notes/pagination";
 import { parseMonitoringMetadata } from "@/app/tools/stock-notes/monitoring";
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
@@ -217,35 +218,17 @@ export async function POST(request: Request) {
       }
     }
 
-    const [stocksResult, analysesResult, thesesResult, actionsResult] = await Promise.all([
-      supabase
-        .from("stock_notes_stocks")
-        .select("id, code, name, category, category_changed_at, category_change_reason, watch_purposes, credit_monitoring_enabled, created_at, updated_at")
-        .returns<StockRow[]>(),
-      supabase
-        .from("stock_notes_analyses")
-        .select("id, stock_id, analysis_type, conclusion, evidence, concerns, source, source_url, analyzed_at, created_at")
-        .returns<AnalysisRow[]>(),
-      supabase
-        .from("stock_notes_theses")
-        .select("id, stock_id, view, confidence, thesis, risks, next_check, buy_more_condition, exit_condition, as_of, created_at")
-        .returns<ThesisRow[]>(),
-      supabase
-        .from("stock_notes_actions")
-        .select("id, stock_id, action_type, title, detail, trigger_condition, due_date, status, created_at")
-        .eq("status", "open")
-        .returns<ActionRow[]>(),
+    const [stockRows, analysisRows, thesisRows, actionRows] = await Promise.all([
+      readCompleteRows<StockRow>(supabase, "stock_notes_stocks", "id, code, name, category, category_changed_at, category_change_reason, watch_purposes, credit_monitoring_enabled, created_at, updated_at"),
+      readCompleteRows<AnalysisRow>(supabase, "stock_notes_analyses", "id, stock_id, analysis_type, conclusion, evidence, concerns, source, source_url, analyzed_at, created_at"),
+      readCompleteRows<ThesisRow>(supabase, "stock_notes_theses", "id, stock_id, view, confidence, thesis, risks, next_check, buy_more_condition, exit_condition, as_of, created_at"),
+      readCompleteRows<ActionRow>(supabase, "stock_notes_actions", "id, stock_id, action_type, title, detail, trigger_condition, due_date, status, created_at", true),
     ]);
 
-    const firstError = [stocksResult.error, analysesResult.error, thesesResult.error, actionsResult.error].find(Boolean);
-    if (firstError) throw firstError;
-
-    const stocks = sortById(stocksResult.data ?? []).map(mapStock);
-    const analyses = sortById(analysesResult.data ?? []).map(mapAnalysis);
-    const theses = sortById(thesesResult.data ?? []).map(mapThesis);
-    const actions = sortById(actionsResult.data ?? [])
-      .filter((row) => row.status === "open")
-      .map(mapAction);
+    const stocks = sortById(stockRows).map(mapStock);
+    const analyses = sortById(analysisRows).map(mapAnalysis);
+    const theses = sortById(thesisRows).map(mapThesis);
+    const actions = sortById(actionRows).filter((row) => row.status === "open").map(mapAction);
     const analysesByStock = new Map<string, StockNoteAnalysis[]>();
     const thesesByStock = new Map<string, StockNoteThesis[]>();
     const actionsByStock = new Map<string, StockNoteAction[]>();

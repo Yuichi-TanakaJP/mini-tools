@@ -3,8 +3,9 @@
 // 書き込み（insert/update/delete）は行わない。
 // - stock_notes_* は本人の行だけが RLS で見える（auth.uid() = user_id）。
 // - 保有は認証済み audience API から読み、Portfolioと選択ルールを共有する。
+import { readCompleteRows } from "./pagination";
 import { parseMonitoringMetadata } from "./monitoring";
-import type { StockMonitoringMetadata } from "./types";
+import type { StockMonitoringMetadata, StockMonitoringSnapshot } from "./types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isAudience, type Holding, type HoldingsState } from "@/lib/portfolio/holdings";
 import type { EarningsFoldEntry, StockNotesEarningsInfo } from "./earnings-types";
@@ -107,11 +108,7 @@ export function isSessionExpiredSupabaseError(error: unknown): boolean {
 }
 
 export async function fetchStocks(supabase: SupabaseClient): Promise<StockNoteStock[]> {
-  const { data, error } = await supabase
-    .from("stock_notes_stocks")
-    .select("id, code, name, category, category_changed_at, category_change_reason, watch_purposes, credit_monitoring_enabled, created_at, updated_at")
-    .returns<StockRow[]>();
-  if (error) throw error;
+  const data = await readCompleteRows<StockRow>(supabase, "stock_notes_stocks", "id, code, name, category, category_changed_at, category_change_reason, watch_purposes, credit_monitoring_enabled, created_at, updated_at");
   return (data ?? []).map((row) => ({
     id: row.id,
     code: row.code,
@@ -127,13 +124,7 @@ export async function fetchStocks(supabase: SupabaseClient): Promise<StockNoteSt
 
 /** 一覧・タイムライン用。body は含めない。 */
 export async function fetchAnalyses(supabase: SupabaseClient): Promise<StockNoteAnalysis[]> {
-  const { data, error } = await supabase
-    .from("stock_notes_analyses")
-    .select(
-      "id, stock_id, analysis_type, conclusion, evidence, concerns, source, source_url, analyzed_at, created_at",
-    )
-    .returns<AnalysisRow[]>();
-  if (error) throw error;
+  const data = await readCompleteRows<AnalysisRow>(supabase, "stock_notes_analyses", "id, stock_id, analysis_type, conclusion, evidence, concerns, source, source_url, analyzed_at, created_at");
   return (data ?? []).map((row) => ({
     id: row.id,
     stockId: row.stock_id,
@@ -163,13 +154,7 @@ export async function fetchAnalysisBody(
 }
 
 export async function fetchTheses(supabase: SupabaseClient): Promise<StockNoteThesis[]> {
-  const { data, error } = await supabase
-    .from("stock_notes_theses")
-    .select(
-      "id, stock_id, view, confidence, thesis, risks, next_check, buy_more_condition, exit_condition, as_of, created_at",
-    )
-    .returns<ThesisRow[]>();
-  if (error) throw error;
+  const data = await readCompleteRows<ThesisRow>(supabase, "stock_notes_theses", "id, stock_id, view, confidence, thesis, risks, next_check, buy_more_condition, exit_condition, as_of, created_at");
   return (data ?? []).map((row) => ({
     id: row.id,
     stockId: row.stock_id,
@@ -187,12 +172,7 @@ export async function fetchTheses(supabase: SupabaseClient): Promise<StockNoteTh
 
 /** open のアクションだけを対象にする（アクション受信箱は未消化のみ表示するため）。 */
 export async function fetchOpenActions(supabase: SupabaseClient): Promise<StockNoteAction[]> {
-  const { data, error } = await supabase
-    .from("stock_notes_actions")
-    .select("id, stock_id, action_type, title, detail, trigger_condition, due_date, status, created_at")
-    .eq("status", "open")
-    .returns<ActionRow[]>();
-  if (error) throw error;
+  const data = await readCompleteRows<ActionRow>(supabase, "stock_notes_actions", "id, stock_id, action_type, title, detail, trigger_condition, due_date, status, created_at", true);
   return (data ?? []).map((row) => ({
     id: row.id,
     stockId: row.stock_id,
@@ -485,16 +465,25 @@ export async function bulkInsertHoldingsAsStocks(
 }
 
 
+export class StockMonitoringConflictError extends Error {
+  constructor() { super("他の画面で設定が更新されたか、更新対象がありません。最新設定を再取得してください。"); }
+}
+
 /** Preserve category/history and child records; JWT/RLS remains the write boundary. */
 export async function updateStockMonitoring(
-  supabase: SupabaseClient, userId: string, stockId: string, input: StockMonitoringMetadata,
+  supabase: SupabaseClient, userId: string, stockId: string, input: StockMonitoringMetadata, expected: StockMonitoringSnapshot,
 ): Promise<void> {
   const metadata = parseMonitoringMetadata(input.watchPurposes, input.creditMonitoringEnabled);
-  const { data, error } = await supabase.from("stock_notes_stocks").update({
+  const previous = parseMonitoringMetadata(expected.watchPurposes, expected.creditMonitoringEnabled);
+  if (!Number.isFinite(Date.parse(expected.updatedAt))) throw new Error("更新日時を確認できません。再取得してください。");
+  let query = supabase.from("stock_notes_stocks").update({
     watch_purposes: metadata.watchPurposes,
     credit_monitoring_enabled: metadata.creditMonitoringEnabled,
-    updated_at: new Date().toISOString(),
-  }).eq("id", stockId).eq("user_id", userId).select("id").maybeSingle<{ id: string }>();
+    updated_at: new Date(Math.max(Date.now(), Date.parse(expected.updatedAt) + 1)).toISOString(),
+  }).eq("id", stockId).eq("user_id", userId).eq("updated_at", expected.updatedAt)
+    .eq("watch_purposes", `{${previous.watchPurposes.join(",")}}`);
+  query = previous.creditMonitoringEnabled === null ? query.is("credit_monitoring_enabled", null) : query.eq("credit_monitoring_enabled", previous.creditMonitoringEnabled);
+  const { data, error } = await query.select("id").maybeSingle<{ id: string }>();
   if (error) throw error;
-  if (!data || data.id !== stockId) throw new Error("更新対象を確認できません。再ログインして再取得してください。");
+  if (!data || data.id !== stockId) throw new StockMonitoringConflictError();
 }

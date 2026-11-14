@@ -111,7 +111,7 @@
 - 保存内容: `app/tools/stock-notes/load.ts` の `DashboardData`（銘柄・分析サマリー・見立て・アクション・保有リスト・保有リスト同期日時・決算情報）＋取得時刻（`fetchedAt`）＋スキーマバージョン。会話原文（`body`）は一覧取得に元々含まれないため、キャッシュにも含まれない
 - キーにログインユーザーIDを含める（`stock_notes_dashboard_cache_v1_<userId>`）。別アカウントのキャッシュは読めない
 - TTL は15分。分析は週に数回しか増えず、`/api/stock-notes/earnings` は既に `Cache-Control: max-age=300`（5分）でキャッシュ済みのため。根拠: `app/tools/stock-notes/cache.ts` の `CACHE_TTL_MS` コメント、decision-log
-- スキーマバージョン（`version: 1`）を持つ。過去に `lastEarnings` の形式変更でキャッシュ互換性の問題を起こしたことがあるため、`DashboardData` の形を変えたら version を上げて古いキャッシュを無効化する
+- スキーマバージョン（`version: 3`）を持つ。過去に `lastEarnings` の形式変更でキャッシュ互換性の問題を起こしたことがあるため、`DashboardData` の形を変えたら version を上げて古いキャッシュを無効化する
 - 読み出しは防御的に行う。JSON parse 失敗・version不一致・userId不一致・形の不正（`earnings` の入れ子構造の不正も含む）・TTL超過のいずれでも例外を投げず `null` を返し、通常取得にフォールバックする。書き込み失敗（容量超過・プライベートモード等）も握りつぶす
 - `view` / `confidence` / `analysisType` のような enum 相当のフィールドは、キャッシュ層では構造レベルの検証にとどめ、個々の値の妥当性チェックはしない。想定外の値（キャッシュ由来・Supabaseからの直接取得由来の両方でありうる）は描画側（`ToolClient.tsx`）で安全な既定値にフォールバックする（`logic.ts` の `withFallback`）
 
@@ -247,4 +247,11 @@
 JWT/RLSの本人境界で、この2項目とupdated_atだけを更新する。0行更新・形式不正は失敗。旧キャッシュversion2を破棄し、直接読取と既存差分BFFの両方で新項目を取得する。
 同pathの保存操作でURL/historyは追加しない。編集中は通信なし、保存中は重複操作を無効化して「保存中…」、失敗時は入力を保持してalert、再保存または既存再取得で復旧する。通信時間は未計測。DB拡張→API→UIの順に配備する。
 
-旧get_stock_notes_delta RPCは新列の完全性を宣言しないため、monitoringMetadataVersion=1を宣言するまで既存4-table互換読取へfallbackする。旧RPCが変更0件を返しても信用残設定の完全性とは扱わない。当面はRPC確認1回＋既存4読取となるが、互換fingerprintは新項目とupdatedAtを含むため更新を見落とさない。
+旧get_stock_notes_delta RPCは新列の完全性を宣言しないため、monitoringMetadataVersion=1を宣言するまで既存4-table互換読取へfallbackする。旧RPCが変更0件を返しても信用残設定の完全性とは扱わない。当面はRPC確認1回＋4テーブルの全ページ読取となるが、互換fingerprintは新項目とupdatedAtを含むため更新を見落とさない。
+
+
+### 独立レビューで追加した完全性・競合の保護
+
+- 直接読取と旧RPC互換読取のstocks/analyses/theses/open actionsすべてをid昇順でページ取得し、各ページのexact count、件数一致、重複、途中切断を検証する。サーバー上限がページ要求より小さくても実受信件数の続きから取得する。不完全な一覧でcomplete/deletedStockIdsを作らず、取得失敗として前回表示を維持する。これはDBの単一トランザクションsnapshotを保証するものではない。
+- 保存は編集開始時のupdated_atと元の2設定をCAS条件に含める。他画面の変更を片方の項目編集で巻き戻さない。未編集フォームは再取得に追従し、編集中のフォームは入力を保持して競合を表示、保存を停止する。「取得済みの最新設定を読み直す」で明示的に最新値を採用してから編集し直す。
+- current cache v3の各stockはwatchPurposes/creditMonitoringEnabled両方が必須。欠損を未指定に変換しない。client差分境界もmonitoringMetadataVersion=1を必須にし、変更0件の旧応答でも拒否する。明示されたnullのみ有効な未指定として扱う。

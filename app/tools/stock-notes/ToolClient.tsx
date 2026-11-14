@@ -23,10 +23,11 @@ import {
   isForeignKeyViolationError,
   updateStockCategory,
   updateStockMonitoring,
+  StockMonitoringConflictError,
 } from "./data";
 import StockMonitoringEditor from "./StockMonitoringEditor";
 import { monitoringLabel, WATCH_PURPOSE_LABELS } from "./monitoring";
-import type { StockMonitoringMetadata } from "./types";
+import type { StockMonitoringMetadata, StockMonitoringSnapshot } from "./types";
 import type { StockNotesEarningsInfo } from "./earnings-types";
 import { invalidateStockNotesCache, readStockNotesCache, writeStockNotesCache } from "./cache";
 import type { StockNotesManifest } from "./delta";
@@ -673,6 +674,20 @@ export default function ToolClient() {
     }
   }
 
+  async function handleMonitoringSave(stock: StockNoteStock, metadata: StockMonitoringMetadata, expected: StockMonitoringSnapshot) {
+    if (!supabase || !userId) throw new Error("ログインを確認してください。");
+    const authToken = authGuardRef.current.current();
+    setRowBusyStockId(stock.id);
+    try {
+      await updateStockMonitoring(supabase, userId, stock.id, metadata, expected);
+      if (!authGuardRef.current.isCurrent(authToken)) throw new Error("認証が切り替わりました。");
+      await refetchAfterWrite(userId, authToken);
+    } catch (error) {
+      if (error instanceof StockMonitoringConflictError && authGuardRef.current.isCurrent(authToken)) await refetchAfterWrite(userId, authToken);
+      throw error;
+    } finally { setRowBusyStockId(null); }
+  }
+
   /**
    * 銘柄を削除する。canDeleteStock（logic.ts）はUX上の事前チェックにすぎず、正しさの担保は
    * DB側の外部キー制約（restrict）にある。事前チェックをすり抜けた場合（表示中のキャッシュが
@@ -680,17 +695,6 @@ export default function ToolClient() {
    * ここでそれを検出し、生のPostgRESTエラーではなく「アーカイブしてください」という
    * 次のアクションが分かる文言に変換する。
    */
-  async function handleMonitoringSave(stock: StockNoteStock, metadata: StockMonitoringMetadata) {
-    if (!supabase || !userId) throw new Error("ログインを確認してください。");
-    const authToken = authGuardRef.current.current();
-    setRowBusyStockId(stock.id);
-    try {
-      await updateStockMonitoring(supabase, userId, stock.id, metadata);
-      if (!authGuardRef.current.isCurrent(authToken)) throw new Error("認証が切り替わりました。");
-      await refetchAfterWrite(userId, authToken);
-    } finally { setRowBusyStockId(null); }
-  }
-
   async function handleDeleteStock(stock: StockNoteStock) {
     if (!supabase || !userId) return;
     if (!canDeleteStock(stock, analyses)) return;
@@ -920,7 +924,7 @@ export default function ToolClient() {
                       onLoadBody={loadBody}
                       busy={rowBusyStockId === stock.id}
                       onCategoryChange={(next) => handleCategoryChange(stock, next)}
-                      onMonitoringSave={(metadata) => handleMonitoringSave(stock, metadata)}
+                      onMonitoringSave={(metadata, expected) => handleMonitoringSave(stock, metadata, expected)}
                       onDelete={() => handleDeleteStock(stock)}
                       showActionRequiredReasons={categoryTab === "action-required"}
                       onCopyPrompt={
@@ -1082,7 +1086,7 @@ function StockRow({
   onLoadBody: (analysisId: string) => void;
   busy: boolean;
   onCategoryChange: (next: StockNoteCategory) => void;
-  onMonitoringSave: (metadata: StockMonitoringMetadata) => Promise<void>;
+  onMonitoringSave: (metadata: StockMonitoringMetadata, expected: StockMonitoringSnapshot) => Promise<void>;
   onDelete: () => void;
   /** 「要対応」タブで表示中かどうか。true のとき FreshnessBadge の代わりに理由バッジを出し、
    *  「分析用プロンプトをコピー」ボタンも行に表示する（この2つは要対応タブ専用）。 */
@@ -1299,7 +1303,7 @@ function StockRow({
           </div>
 
           <StockMonitoringEditor
-            initial={{ watchPurposes: stock.watchPurposes ?? [], creditMonitoringEnabled: stock.creditMonitoringEnabled ?? null }}
+            initial={{ watchPurposes: stock.watchPurposes ?? [], creditMonitoringEnabled: stock.creditMonitoringEnabled ?? null, updatedAt: stock.updatedAt }}
             archived={stock.category === "archived"}
             busy={busy}
             onSave={onMonitoringSave}
