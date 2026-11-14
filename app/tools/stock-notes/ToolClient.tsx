@@ -11,18 +11,20 @@ import { AUDIENCE_CHANGED } from "@/lib/portfolio/useAudience";
 import {
   deleteStockById,
   fetchAnalysisBody,
-  fetchAnalyses,
+  createStockNotesSnapshotFetchers,
   fetchEarnings,
   fetchHoldings,
-  fetchOpenActions,
   fetchStockNotesDelta,
-  fetchStocks,
-  fetchTheses,
   insertStock,
   isDuplicateStockError,
   isForeignKeyViolationError,
   updateStockCategory,
+  updateStockMonitoring,
+  StockMonitoringConflictError,
 } from "./data";
+import StockMonitoringEditor from "./StockMonitoringEditor";
+import { monitoringLabel, WATCH_PURPOSE_LABELS } from "./monitoring";
+import type { StockMonitoringMetadata, StockMonitoringSnapshot } from "./types";
 import type { StockNotesEarningsInfo } from "./earnings-types";
 import { invalidateStockNotesCache, readStockNotesCache, writeStockNotesCache } from "./cache";
 import type { StockNotesManifest } from "./delta";
@@ -302,17 +304,14 @@ export default function ToolClient() {
   );
 
   /**
-   * 差分APIを優先し、APIが未デプロイ・一時障害などの場合は既存のSupabase直接取得へ戻す。
+   * 差分APIを優先し、障害時も同じ原子的RPCを本人JWTで直接呼び出す。
    * 差分APIが401を返した場合は、loadDashboardDataがunauthorizedを返すためフォールバックしない。
    */
   const loadDashboard = useCallback(
     async (baseData: DashboardData | null, knownManifest: StockNotesManifest | null) => {
       if (!supabase) return { status: "error" as const, message: "Supabase client is not available" };
       const commonFetchers = {
-        fetchStocks: () => fetchStocks(supabase),
-        fetchAnalyses: () => fetchAnalyses(supabase),
-        fetchTheses: () => fetchTheses(supabase),
-        fetchOpenActions: () => fetchOpenActions(supabase),
+        ...createStockNotesSnapshotFetchers(supabase),
         fetchHoldings,
         fetchEarnings,
       };
@@ -669,6 +668,20 @@ export default function ToolClient() {
     }
   }
 
+  async function handleMonitoringSave(stock: StockNoteStock, metadata: StockMonitoringMetadata, expected: StockMonitoringSnapshot) {
+    if (!supabase || !userId) throw new Error("ログインを確認してください。");
+    const authToken = authGuardRef.current.current();
+    setRowBusyStockId(stock.id);
+    try {
+      await updateStockMonitoring(supabase, userId, stock.id, metadata, expected);
+      if (!authGuardRef.current.isCurrent(authToken)) throw new Error("認証が切り替わりました。");
+      await refetchAfterWrite(userId, authToken);
+    } catch (error) {
+      if (error instanceof StockMonitoringConflictError && authGuardRef.current.isCurrent(authToken)) await refetchAfterWrite(userId, authToken);
+      throw error;
+    } finally { setRowBusyStockId(null); }
+  }
+
   /**
    * 銘柄を削除する。canDeleteStock（logic.ts）はUX上の事前チェックにすぎず、正しさの担保は
    * DB側の外部キー制約（restrict）にある。事前チェックをすり抜けた場合（表示中のキャッシュが
@@ -905,6 +918,7 @@ export default function ToolClient() {
                       onLoadBody={loadBody}
                       busy={rowBusyStockId === stock.id}
                       onCategoryChange={(next) => handleCategoryChange(stock, next)}
+                      onMonitoringSave={(metadata, expected) => handleMonitoringSave(stock, metadata, expected)}
                       onDelete={() => handleDeleteStock(stock)}
                       showActionRequiredReasons={categoryTab === "action-required"}
                       onCopyPrompt={
@@ -1048,6 +1062,7 @@ function StockRow({
   onLoadBody,
   busy,
   onCategoryChange,
+  onMonitoringSave,
   onDelete,
   showActionRequiredReasons,
   onCopyPrompt,
@@ -1065,6 +1080,7 @@ function StockRow({
   onLoadBody: (analysisId: string) => void;
   busy: boolean;
   onCategoryChange: (next: StockNoteCategory) => void;
+  onMonitoringSave: (metadata: StockMonitoringMetadata, expected: StockMonitoringSnapshot) => Promise<void>;
   onDelete: () => void;
   /** 「要対応」タブで表示中かどうか。true のとき FreshnessBadge の代わりに理由バッジを出し、
    *  「分析用プロンプトをコピー」ボタンも行に表示する（この2つは要対応タブ専用）。 */
@@ -1110,6 +1126,8 @@ function StockRow({
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontWeight: 900, color: "var(--color-text)", fontSize: 14 }}>{stock.code}</span>
           <span style={{ color: "var(--color-text)", fontSize: 13 }}>{stock.name}</span>
+          {(stock.watchPurposes ?? []).map((purpose) => <span key={purpose} style={badgeStyle("var(--color-bg-input)", "var(--color-text-sub)")}>{WATCH_PURPOSE_LABELS[purpose]}</span>)}
+          <span style={{ fontSize: 11, color: "var(--color-text-sub)" }}>{stock.category === "archived" ? "信用残：対象外（アーカイブ）" : monitoringLabel(stock.creditMonitoringEnabled)}</span>
           {held && <span>Portfolio保有{stock.category === "archived" ? "・分析はアーカイブ" : ""}</span>}
           {thesis && (
             <span
@@ -1277,6 +1295,13 @@ function StockRow({
               ))
             )}
           </div>
+
+          <StockMonitoringEditor
+            initial={{ watchPurposes: stock.watchPurposes ?? [], creditMonitoringEnabled: stock.creditMonitoringEnabled ?? null, updatedAt: stock.updatedAt }}
+            archived={stock.category === "archived"}
+            busy={busy}
+            onSave={onMonitoringSave}
+          />
 
           {/* 分類変更・アーカイブ・削除。アーカイブが基本、削除は例外
               （on delete cascade で分析・見立て・アクションが全部消えるため）。 */}

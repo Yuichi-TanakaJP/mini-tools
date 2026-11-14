@@ -111,7 +111,7 @@
 - 保存内容: `app/tools/stock-notes/load.ts` の `DashboardData`（銘柄・分析サマリー・見立て・アクション・保有リスト・保有リスト同期日時・決算情報）＋取得時刻（`fetchedAt`）＋スキーマバージョン。会話原文（`body`）は一覧取得に元々含まれないため、キャッシュにも含まれない
 - キーにログインユーザーIDを含める（`stock_notes_dashboard_cache_v1_<userId>`）。別アカウントのキャッシュは読めない
 - TTL は15分。分析は週に数回しか増えず、`/api/stock-notes/earnings` は既に `Cache-Control: max-age=300`（5分）でキャッシュ済みのため。根拠: `app/tools/stock-notes/cache.ts` の `CACHE_TTL_MS` コメント、decision-log
-- スキーマバージョン（`version: 1`）を持つ。過去に `lastEarnings` の形式変更でキャッシュ互換性の問題を起こしたことがあるため、`DashboardData` の形を変えたら version を上げて古いキャッシュを無効化する
+- スキーマバージョン（`version: 3`）を持つ。過去に `lastEarnings` の形式変更でキャッシュ互換性の問題を起こしたことがあるため、`DashboardData` の形を変えたら version を上げて古いキャッシュを無効化する
 - 読み出しは防御的に行う。JSON parse 失敗・version不一致・userId不一致・形の不正（`earnings` の入れ子構造の不正も含む）・TTL超過のいずれでも例外を投げず `null` を返し、通常取得にフォールバックする。書き込み失敗（容量超過・プライベートモード等）も握りつぶす
 - `view` / `confidence` / `analysisType` のような enum 相当のフィールドは、キャッシュ層では構造レベルの検証にとどめ、個々の値の妥当性チェックはしない。想定外の値（キャッシュ由来・Supabaseからの直接取得由来の両方でありうる）は描画側（`ToolClient.tsx`）で安全な既定値にフォールバックする（`logic.ts` の `withFallback`）
 
@@ -125,7 +125,7 @@
 
 - 完全なmanifestとの差分で存在しなくなった銘柄は、キャッシュと画面から削除する。これは `stock_notes_stocks` の行が消えた場合だけであり、`category = archived` では削除しない
 - APIエラーや不正なレスポンスでは差分を適用せず、表示中のキャッシュを維持する
-- 差分APIが失敗した場合は、従来のSupabase直接取得へフォールバックする。初回・旧形式キャッシュ（manifestなし）は差分APIから全銘柄を受け取り、manifestを作成する
+- 差分APIが失敗した場合は、同じmetadata対応RPCを本人JWTで直接呼び出す。旧RPCや分割table読取へはフォールバックしない。初回・旧形式キャッシュ（manifestなし）は差分APIから全銘柄を受け取り、manifestを作成する
 - 決算情報と保有リストはSupabase銘柄差分とは別のデータ源なので、従来どおり個別に取得する
 - 分析本文 `body` は一覧取得・Revision対象に含めず、「原文を表示」操作時に個別取得する
 
@@ -153,7 +153,7 @@
 - `stock_notes_stocks` / `stock_notes_analyses` / `stock_notes_theses` / `stock_notes_actions`（Supabase、RLS で本人の行のみ）
   - `stock_notes_analyses` の一覧・タイムライン取得では `body`（会話原文、最大4.5万文字）を select しない。「原文を表示」を押したときだけ `id` 指定で `select("id, body")` を再クエリする
   - `stock_notes_actions` は `status='open'` のみ取得する
-  - 4テーブルは個別クエリで取得し、`stock_id` で突き合わせる（SQLのjoinは使わない。理由は [decision-log](../../decision-log/2026-08-11-stock-notes-dashboard-design.md) 参照）
+  - 4テーブルは単一SQL STABLE・SECURITY INVOKERの`get_stock_notes_delta`で同じsnapshotから構築する。旧個別クエリ方式は同数入替による欠落を防げないため廃止した（[変更理由](../../decision-log/2026-11-14-stock-monitoring-metadata.md)）。
 - 保有: `/api/stock-notes/audience`。Portfolioと同じ公式ready snapshotを選択し、国内株式のquantity > 0をコード単位で重複排除する。
 - 次回決算日・前回決算日: `app/api/stock-notes/earnings/route.ts`（サーバールート）が `{market-info-api}/earnings-calendar/domestic/monthly/{YYYY-MM}`（未来側は当月＋翌月＋翌々月分、過去側は当月＋過去3ヶ月分。決算またぎ判定と前回決算表示の両方に使うため、四半期決算の間隔（約3ヶ月）を取りこぼさない範囲にしている）を全て `Promise.all` で並列取得し、銘柄コードごとに畳み込んで返す。クライアントは `app/tools/stock-notes/data.ts` の `fetchEarnings` からこのルートを叩く（Supabase ではなく通常の fetch）。呼び出し側（`app/tools/stock-notes/load.ts`）は stocks・holdings 取得後に確定する対象銘柄コード（保有＋分析済み、通常は数十件）を `?codes=` クエリで渡し、サーバー側でその銘柄だけに絞り込んでもらう（全銘柄を返すと実測1,039銘柄・約140KBになるため）。`codes` が空（=表示する銘柄が無い）場合はこのルートを呼ばない
 
@@ -237,3 +237,24 @@
 ## 保有統合の補足（2026-09-18）
 
 旧category=holdingは互換データとして残し「旧分類: 保有」と表示するが、実保有の判定には使わない。手動分類の新規選択肢から保有を除く。旧一括登録・同期仕様から変更した理由は[統合判断](../../decision-log/2026-09-18-portfolio-holdings-authority.md)を優先する。
+
+
+## 注目目的・信用残監視（2026-11-14）
+
+銘柄一覧に注目目的（複数）と信用残の明示設定を表示する。展開した詳細で目的checkboxと信用残selectを編集し、専用保存buttonで確定する。目的は優待・配当・業績/成長・業績回復/事業転換・イベント/技術実用化・企業価値/資本効率改善。
+正本は既存stock_notes_stocksのwatch_purposesとnullable credit_monitoring_enabled。Portfolioのholding_purpose、保有/ウォッチ/新規調査/アーカイブ分類や分類理由は変更しない。
+未指定は実保有だけを既定対象にし、明示ONは新規調査も対象にできる。明示OFFは保有でも除外。アーカイブは必ず除外する。
+JWT/RLSの本人境界で、この2項目とupdated_atだけを更新する。0行更新・形式不正は失敗。旧キャッシュversion2を破棄し、直接読取と既存差分BFFの両方で新項目を取得する。
+同pathの保存操作でURL/historyは追加しない。編集中は通信なし、保存中は重複操作を無効化して「保存中…」、失敗時は入力を保持してalert、再保存または既存再取得で復旧する。通信時間は未計測。DB拡張→API→UIの順に配備する。
+
+get_stock_notes_delta RPCはmonitoringMetadataVersion=1と新2項目を返すDB内の単一SQL snapshotを必須とする。BFFはこのRPCを1回呼び、本人JWTの直接復旧経路も同じRPCの1回の全件応答を4readerで共有する。旧RPC・失敗・形式欠損は取得失敗とし、4テーブル分割読取への互換fallbackは行わない。metadata列migration→metadata対応RPC migration→API/UIの順に配備する。revisionはmetadataを含むbundle全体から計算される。
+
+
+### 独立レビューで追加した完全性・競合の保護
+
+- stocks/analyses/theses/open actionsは単一SQL STABLE・SECURITY INVOKER RPCで同じDB snapshotから構築する。offsetページ間で件数が同じまま入替わっても、存在し続ける行の欠落や誤削除を作らない。旧RPCへ戻る場合、UIも旧実装へ戻す必要があり、旧応答を黙って採用しない。
+- 保存は編集開始時のupdated_atと元の2設定をCAS条件に含める。他画面の変更を片方の項目編集で巻き戻さない。未編集フォームは再取得に追従し、編集中のフォームは入力を保持して競合を表示、保存を停止する。「取得済みの最新設定を読み直す」で明示的に最新値を採用してから編集し直す。
+- current cache v3の各stockはwatchPurposes/creditMonitoringEnabled両方が必須。欠損を未指定に変換しない。client差分境界もmonitoringMetadataVersion=1を必須にし、変更0件の旧応答でも拒否する。明示されたnullのみ有効な未指定として扱う。
+
+- 差分応答は実際に送信したknownManifestと照合し、revisionが異なる/新規のIDとchangedStocks、消えたIDとdeletedStockIdsが集合として完全一致することをBFF・client両境界で検証する。更新欠落を新しいmanifestだけで確定しない。
+- 送信knownManifestは最大2,000件とし、それを超える場合はclient/BFFの共通正規化で{}（全件要求）にする。DB応答・cacheの完全なmanifest上限は別に100,000件とするため、2,001件以上の初回/再取得も利用できる。照合は正規化後の実送manifestを使う。

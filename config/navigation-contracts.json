@@ -403,7 +403,8 @@
         "認証/DB/参照API（回数未計測）"
       ],
       "tests": [
-        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}"
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}",
+        "app/tools/stock-notes/__tests__/monitoring.test.tsx#renders an accessible multi-purpose form and preserves archived exclusion explanation"
       ],
       "coverage": "entry-only"
     },
@@ -2497,6 +2498,17 @@
         {
           "kind": "client-request",
           "signature": "readNavigationJson<InvestorFlowPageData>(`/tools/investor-flow/data${query}`, { signal: controller.signal, cache: \"no-store\" })"
+        }
+      ]
+    },
+    "app/tools/stock-notes/StockMonitoringEditor.tsx": {
+      "transitions": [
+        "R29"
+      ],
+      "sites": [
+        {
+          "kind": "form-submit",
+          "signature": "onSubmit={submit} style={{ display: \"grid\", gap: 10, borderTop: \"1px solid var(--color-border)\", paddingTop: 12 }} aria-label=\"注目目的・信用残監視\""
         }
       ]
     }

@@ -11,6 +11,8 @@ const base: DashboardData = {
       category: "holding",
       categoryChangedAt: null,
       categoryChangeReason: null,
+      watchPurposes: [],
+      creditMonitoringEnabled: null,
       createdAt: "2026-08-01T00:00:00.000Z",
       updatedAt: "2026-08-01T00:00:00.000Z",
     },
@@ -21,6 +23,8 @@ const base: DashboardData = {
       category: "watch",
       categoryChangedAt: null,
       categoryChangeReason: null,
+      watchPurposes: [],
+      creditMonitoringEnabled: null,
       createdAt: "2026-08-01T00:00:00.000Z",
       updatedAt: "2026-08-01T00:00:00.000Z",
     },
@@ -56,7 +60,7 @@ const replacement = {
 
 function delta(overrides: Partial<StockNotesDelta> = {}): StockNotesDelta {
   return {
-    version: 1,
+    version: 1, monitoringMetadataVersion: 1,
     complete: true,
     currentManifest: { s1: "rev-s1", s2: "rev-s2" },
     changedStocks: [replacement],
@@ -97,7 +101,7 @@ describe("stock-notes delta", () => {
   });
 
   it("不完全なレスポンスを受け付けない", () => {
-    expect(() => parseStockNotesDelta({ version: 1, complete: false })).toThrow();
+    expect(() => parseStockNotesDelta({ version: 1, monitoringMetadataVersion: 1, complete: false })).toThrow();
   });
 
   it("manifestにない変更銘柄を受け付けない", () => {
@@ -112,4 +116,35 @@ describe("stock-notes delta", () => {
   it("manifestに残っている銘柄を削除一覧に入れない", () => {
     expect(() => parseStockNotesDelta(delta({ deletedStockIds: ["s1"] }))).toThrow();
   });
+});
+
+
+it("rejects a changed stock that lacks monitoring fields", () => {
+  const invalid = delta();
+  invalid.changedStocks = [{ ...replacement, stock: { id: "s1" } as never }];
+  expect(() => parseStockNotesDelta(invalid)).toThrow();
+});
+
+it("preserves false rather than coercing string values in changed monitoring", () => {
+  const valid = delta();
+  valid.changedStocks = [{ ...replacement, stock: { ...replacement.stock, creditMonitoringEnabled: false } }];
+  expect(parseStockNotesDelta(valid, { s2: "rev-s2" }).changedStocks[0].stock.creditMonitoringEnabled).toBe(false);
+  valid.changedStocks[0].stock.creditMonitoringEnabled = "false" as never;
+  expect(() => parseStockNotesDelta(valid)).toThrow();
+});
+
+
+it("rejects even an empty delta without the current metadata version", () => {
+  const current = delta({ changedStocks: [] });
+  expect(parseStockNotesDelta(current, current.currentManifest).changedStocks).toEqual([]);
+  const legacy = { ...current } as Record<string, unknown>;
+  delete legacy.monitoringMetadataVersion;
+  expect(() => parseStockNotesDelta(legacy)).toThrow();
+  expect(() => parseStockNotesDelta({ ...current, monitoringMetadataVersion: 0 })).toThrow();
+});
+
+
+it("bounds complete output manifests independently of the request limit", () => {
+  const currentManifest = Object.fromEntries(Array.from({ length: 100001 }, (_, i) => [`s${i}`, "revision"]));
+  expect(() => parseStockNotesDelta(delta({ currentManifest, changedStocks: [] }))).toThrow("manifest");
 });

@@ -27,8 +27,8 @@ export type DashboardFetchers = {
    */
   fetchEarnings: (codes: string[]) => Promise<StockNotesEarningsInfo>;
   /**
-   * 任意。指定すると、4テーブルの全件取得ではなく銘柄単位の差分APIを使う。
-   * API障害時は呼び出し側が従来のfetchersへフォールバックする。
+   * 任意。指定すると、同一snapshotの全件取得ではなく銘柄単位の差分APIを使う。
+   * API障害時も呼び出し側のfetchersは同じ原子的RPCを使い、不正な旧RPCは失敗にする。
    */
   fetchStockNotesDelta?: (knownManifest: StockNotesManifest | null) => Promise<StockNotesDelta>;
   /** 差分適用の土台。キャッシュ表示中の再検証時だけ渡す。 */

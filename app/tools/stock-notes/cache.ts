@@ -14,11 +14,12 @@
 // - 読み出しは防御的に行う: JSON parse 失敗・バージョン不一致・userId不一致・形が壊れている
 //   ・TTL超過のいずれでも例外を投げず null を返し、呼び出し側は通常取得にフォールバックする。
 // - 書き込み失敗（localStorage の容量超過・プライベートモード等）も握りつぶす。
+import { parseMonitoringMetadata } from "./monitoring";
 import type { DashboardData } from "./load";
-import type { StockNotesManifest } from "./delta";
+import { MAX_STOCK_NOTES_OUTPUT_ENTRIES, type StockNotesManifest } from "./delta";
 
 const CACHE_KEY_PREFIX = "stock_notes_dashboard_cache_v1_";
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 
 /**
  * キャッシュの有効期限（ミリ秒）。根拠は本ファイル冒頭のコメントを参照。
@@ -56,7 +57,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function isValidManifest(value: unknown): value is StockNotesManifest {
   if (!isPlainObject(value)) return false;
-  if (Object.keys(value).length > 2_000) return false;
+  if (Object.keys(value).length > MAX_STOCK_NOTES_OUTPUT_ENTRIES) return false;
   return Object.entries(value).every(
     ([stockId, revision]) =>
       stockId.length > 0 && stockId.length <= 128 && typeof revision === "string" && revision.length > 0,
@@ -98,6 +99,13 @@ function isValidEnvelope(value: unknown, userId: string): value is StockNotesCac
   const data = value.data;
   return (
     Array.isArray(data.stocks) &&
+    data.stocks.every((stock) => {
+      if (!isPlainObject(stock)) return false;
+      try {
+        parseMonitoringMetadata(stock.watchPurposes, stock.creditMonitoringEnabled);
+        return true;
+      } catch { return false; }
+    }) &&
     Array.isArray(data.analyses) &&
     Array.isArray(data.theses) &&
     Array.isArray(data.actions) &&

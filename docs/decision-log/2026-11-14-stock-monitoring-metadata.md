@@ -1,0 +1,31 @@
+# 銘柄の注目目的と信用残監視を独立して管理する
+
+## 決めたこと
+
+既存stock masterへ複数の注目目的とnullable信用残監視設定を追加する。分類は追跡段階、目的は追う理由、信用残設定は取得可否として独立させる。銘柄詳細の中に専用フォームを置き、分類や分析を変更せず保存する。
+
+## 理由と範囲
+
+優待狙いのウォッチを信用残監視へ一括追加しないため。Portfolioの商品保有目的とは粒度と用途が異なるので、その情報はコピーしない。新規調査をwatchへ昇格させず信用残だけ明示ONにすることも可能にする。
+
+未指定/nullは既存実保有だけが対象となる互換設定、falseは明示除外、trueは明示対象。アーカイブは常に除外。未取得/不正値をfalseへ変換しない。
+
+## 表示と更新
+
+一覧に目的badgeと信用残設定を表示し、詳細フォームで複数選択/三状態selectを保存する。同path・URL/history追加なし。保存中は二重操作を防ぎ、失敗時は入力を保持して再試行を案内する。本人JWT/RLSで2項目とupdated_atのみ更新し、0行更新を成功にしない。直接DB読取と既存差分BFFの双方を拡張し、旧キャッシュは無効化する。
+
+## 配備と検証
+
+DB additive migrationとStock Notes APIを先に準備し、その後UIを配備する。main mergeが既存Vercel Git連携による本番公開を起動するため、merge前に対象テスト・build・独立レビュー・承認を揃える。UI UATはdocs/uat/stock-notes.md参照。実認証/DB保存確認と合成UI確認は区別する。
+
+get_stock_notes_delta RPCはmonitoringMetadataVersion=1と新2項目を返すDB内の単一SQL snapshotを必須とする。BFFはこのRPCを1回呼び、本人JWTの直接復旧経路も同じRPCの1回の全件応答を4readerで共有する。旧RPC・失敗・形式欠損は取得失敗とし、4テーブル分割読取への互換fallbackは行わない。metadata列migration→metadata対応RPC migration→API/UIの順に配備する。revisionはmetadataを含むbundle全体から計算される。
+
+
+### 独立レビューで追加した完全性・競合の保護
+
+- stocks/analyses/theses/open actionsは単一SQL STABLE・SECURITY INVOKER RPCで同じDB snapshotから構築する。offsetページ間で件数が同じまま入替わっても、存在し続ける行の欠落や誤削除を作らない。旧RPCへ戻る場合、UIも旧実装へ戻す必要があり、旧応答を黙って採用しない。
+- 保存は編集開始時のupdated_atと元の2設定をCAS条件に含める。他画面の変更を片方の項目編集で巻き戻さない。未編集フォームは再取得に追従し、編集中のフォームは入力を保持して競合を表示、保存を停止する。「取得済みの最新設定を読み直す」で明示的に最新値を採用してから編集し直す。
+- current cache v3の各stockはwatchPurposes/creditMonitoringEnabled両方が必須。欠損を未指定に変換しない。client差分境界もmonitoringMetadataVersion=1を必須にし、変更0件の旧応答でも拒否する。明示されたnullのみ有効な未指定として扱う。
+
+- 差分応答は実際に送信したknownManifestと照合し、revisionが異なる/新規のIDとchangedStocks、消えたIDとdeletedStockIdsが集合として完全一致することをBFF・client両境界で検証する。更新欠落を新しいmanifestだけで確定しない。
+- 送信knownManifestは最大2,000件とし、それを超える場合はclient/BFFの共通正規化で{}（全件要求）にする。DB応答・cacheの完全なmanifest上限は別に100,000件とするため、2,001件以上の初回/再取得も利用できる。照合は正規化後の実送manifestを使う。

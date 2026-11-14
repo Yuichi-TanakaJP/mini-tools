@@ -56,7 +56,7 @@ describe("stock-notes cache", () => {
 
   it("書いた直後は同じ userId で読める", () => {
     const now = Date.now();
-    writeStockNotesCache("user-1", { ...emptyData, stocks: [{ id: "s1" } as never] }, now);
+    writeStockNotesCache("user-1", { ...emptyData, stocks: [{ id: "s1", watchPurposes: [], creditMonitoringEnabled: null } as never] }, now);
     const result = readStockNotesCache("user-1", now + 1000);
     expect(result).not.toBeNull();
     expect(result?.data.stocks).toHaveLength(1);
@@ -220,4 +220,43 @@ describe("stock-notes cache", () => {
     );
     expect(readStockNotesCache("user-1", now + 1000)).toBeNull();
   });
+});
+
+
+it("rejects the previous cache schema so missing monitoring fields are refreshed", () => {
+  vi.stubGlobal("window", { localStorage: makeMemoryLocalStorage() });
+  window.localStorage.setItem("stock_notes_dashboard_cache_v1_user-1", JSON.stringify({ version: 2, userId: "user-1", fetchedAt: new Date().toISOString(), data: emptyData }));
+  expect(readStockNotesCache("user-1")).toBeNull();
+  vi.unstubAllGlobals();
+});
+
+it("rejects malformed cached monitoring instead of displaying monitoring OFF", () => {
+  vi.stubGlobal("window", { localStorage: makeMemoryLocalStorage() });
+  writeStockNotesCache("u", { ...emptyData, stocks: [{ id: "s", watchPurposes: [], creditMonitoringEnabled: "false" } as never] });
+  expect(readStockNotesCache("u")).toBeNull();
+  vi.unstubAllGlobals();
+});
+
+
+describe("current cache metadata presence", () => {
+  beforeEach(() => vi.stubGlobal("window", { localStorage: makeMemoryLocalStorage() }));
+  afterEach(() => vi.unstubAllGlobals());
+  it.each([{ id: "s" }, { id: "s", watchPurposes: [] }, { id: "s", creditMonitoringEnabled: null }])("invalidates missing metadata %j", (stock) => {
+    writeStockNotesCache("u", { ...emptyData, stocks: [stock as never] });
+    expect(readStockNotesCache("u")).toBeNull();
+  });
+  it("preserves explicitly returned null rather than missing", () => {
+    writeStockNotesCache("u", { ...emptyData, stocks: [{ id: "s", watchPurposes: [], creditMonitoringEnabled: null } as never] });
+    expect(readStockNotesCache("u")?.data.stocks[0].creditMonitoringEnabled).toBeNull();
+  });
+});
+
+
+it("round-trips a 2001-stock cache manifest independently of the outgoing request limit", () => {
+  vi.stubGlobal("window", { localStorage: makeMemoryLocalStorage() });
+  const ids = Array.from({ length: 2001 }, (_, i) => `s${i}`);
+  const manifest = Object.fromEntries(ids.map((id) => [id, `rev-${id}`]));
+  writeStockNotesCache("u", { ...emptyData, stocks: ids.map((id) => ({ id, watchPurposes: [], creditMonitoringEnabled: null } as never)) }, Date.now(), manifest);
+  expect(readStockNotesCache("u")?.manifest).toEqual(manifest);
+  vi.unstubAllGlobals();
 });
