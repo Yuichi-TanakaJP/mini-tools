@@ -250,3 +250,13 @@ describe("current cache metadata presence", () => {
     expect(readStockNotesCache("u")?.data.stocks[0].creditMonitoringEnabled).toBeNull();
   });
 });
+
+
+it("round-trips a 2001-stock cache manifest independently of the outgoing request limit", () => {
+  vi.stubGlobal("window", { localStorage: makeMemoryLocalStorage() });
+  const ids = Array.from({ length: 2001 }, (_, i) => `s${i}`);
+  const manifest = Object.fromEntries(ids.map((id) => [id, `rev-${id}`]));
+  writeStockNotesCache("u", { ...emptyData, stocks: ids.map((id) => ({ id, watchPurposes: [], creditMonitoringEnabled: null } as never)) }, Date.now(), manifest);
+  expect(readStockNotesCache("u")?.manifest).toEqual(manifest);
+  vi.unstubAllGlobals();
+});

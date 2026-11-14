@@ -7,7 +7,7 @@ import type { StockMonitoringMetadata, StockMonitoringSnapshot } from "./types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isAudience, type Holding, type HoldingsState } from "@/lib/portfolio/holdings";
 import type { EarningsFoldEntry, StockNotesEarningsInfo } from "./earnings-types";
-import { parseStockNotesDelta, type StockNotesDelta, type StockNotesManifest } from "./delta";
+import { normalizeStockNotesRequestManifest, parseStockNotesDelta, type StockNotesDelta, type StockNotesManifest } from "./delta";
 import type {
   NewStockNoteInput,
   StockNoteAnalysisBody,
@@ -210,15 +210,16 @@ export class StockNotesDeltaFetchError extends Error {
 export async function fetchStockNotesDelta(
   knownManifest: StockNotesManifest | null,
 ): Promise<StockNotesDelta> {
+  const sentManifest = normalizeStockNotesRequestManifest(knownManifest);
   const res = await fetch("/api/stock-notes/delta", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ knownManifest }),
+    body: JSON.stringify({ knownManifest: sentManifest }),
   });
   if (!res.ok) {
     throw new StockNotesDeltaFetchError(res.status, `銘柄差分の取得に失敗しました（HTTP ${res.status}）`);
   }
-  return parseStockNotesDelta((await res.json()) as unknown);
+  return parseStockNotesDelta((await res.json()) as unknown, sentManifest);
 }
 
 // ---------------------------------------------------------------------------

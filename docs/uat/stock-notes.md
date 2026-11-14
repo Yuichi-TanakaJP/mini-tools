@@ -161,3 +161,6 @@
 - Aで目的を編集中にBで信用残を変更して保存する。Aの未再取得の保存はCASで失敗し、Bの設定を戻さない。再取得したAは入力を保持して競合を示し、保存不可になる。「取得済みの最新設定を読み直す」後に最新信用残を確認して編集をやり直せる。目的と信用残の順序を逆にしても確認する。
 - version3キャッシュで片方のmetadataが欠けた場合は無効化する。変更0件でもmonitoringMetadataVersionがない差分応答は拒否する。明示nullは未指定として保持する。
 - 実DBを使わない二画面のブラウザー回帰は、外部scratchの出力先を指定し `node scripts/check-stock-monitoring-editor.mjs` を実行する。`STOCK_MONITORING_UAT_DIR`は必須、既存Chromiumを使う場合は`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`を指定する。fixtureは新規の使い捨てbrowser contextと合成保存callbackだけを使い、本人JWT/RLSの実DB確認を代替しない。
+
+- knownManifestのrevisionが変わったIDのbundleが欠けた応答、初回にstockが欠けた応答、削除IDの欠落/余分な削除はBFF/client双方で拒否する。前回表示を保持し、更新後manifestだけを保存しない。
+- 合成2,001銘柄で初回取得と再取得・cache往復を確認する。大きいknownManifestは共通正規化で{}を実送し、その全件要求に対する完全な応答として照合する。DB応答上限100,000件を超えるmanifestは拒否する。

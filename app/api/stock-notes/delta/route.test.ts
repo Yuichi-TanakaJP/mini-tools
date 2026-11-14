@@ -62,3 +62,33 @@ describe("atomic stock delta", () => {
     expect(state.calls).toEqual([]);
   });
 });
+
+
+it.each([
+  ["omitted update", { C: "old" }, { ...delta(), currentManifest: { C: "rev-C" }, changedStocks: [] }],
+  ["omitted initial stock", {}, { ...delta(), changedStocks: [] }],
+  ["omitted deletion", { Gone: "old" }, delta()],
+  ["extra unchanged stock", { A: "rev-A", B: "rev-B", C: "rev-C", D: "rev-D" }, delta()],
+  ["extra deletion", {}, { ...delta(), deletedStockIds: ["Gone"] }],
+])("rejects %s from RPC rather than persisting an incomplete manifest", async (_name, known, response) => {
+  const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+  state.rpcData = response;
+  expect((await POST(request(known))).status).toBe(502);
+  expect(state.reads).toBe(0);
+  spy.mockRestore();
+});
+it("accepts exactly requested changes and deletions from RPC", async () => {
+  state.rpcData = { ...delta(), changedStocks: [], deletedStockIds: ["Gone"] };
+  const response = await POST(request({ ...delta().currentManifest, Gone: "old" }));
+  expect(response.status).toBe(200);
+  expect((await response.json()).deletedStockIds).toEqual(["Gone"]);
+});
+it.each([false, true])("accepts 2001 stock output independently of the request limit, known=%s", async (hasKnown) => {
+  const ids = Array.from({ length: 2001 }, (_, i) => `s${i}`);
+  const currentManifest = Object.fromEntries(ids.map((id) => [id, `rev-${id}`]));
+  state.rpcData = { ...delta(), currentManifest, changedStocks: ids.map(bundle) };
+  const response = await POST(request(hasKnown ? currentManifest : {}));
+  expect(response.status).toBe(200);
+  expect((await response.json()).changedStocks).toHaveLength(2001);
+  expect(state.calls).toEqual([["get_stock_notes_delta", { p_known_manifest: {} }]]);
+});

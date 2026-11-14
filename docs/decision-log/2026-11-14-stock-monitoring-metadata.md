@@ -26,3 +26,6 @@ get_stock_notes_delta RPCはmonitoringMetadataVersion=1と新2項目を返すDB�
 - stocks/analyses/theses/open actionsは単一SQL STABLE・SECURITY INVOKER RPCで同じDB snapshotから構築する。offsetページ間で件数が同じまま入替わっても、存在し続ける行の欠落や誤削除を作らない。旧RPCへ戻る場合、UIも旧実装へ戻す必要があり、旧応答を黙って採用しない。
 - 保存は編集開始時のupdated_atと元の2設定をCAS条件に含める。他画面の変更を片方の項目編集で巻き戻さない。未編集フォームは再取得に追従し、編集中のフォームは入力を保持して競合を表示、保存を停止する。「取得済みの最新設定を読み直す」で明示的に最新値を採用してから編集し直す。
 - current cache v3の各stockはwatchPurposes/creditMonitoringEnabled両方が必須。欠損を未指定に変換しない。client差分境界もmonitoringMetadataVersion=1を必須にし、変更0件の旧応答でも拒否する。明示されたnullのみ有効な未指定として扱う。
+
+- 差分応答は実際に送信したknownManifestと照合し、revisionが異なる/新規のIDとchangedStocks、消えたIDとdeletedStockIdsが集合として完全一致することをBFF・client両境界で検証する。更新欠落を新しいmanifestだけで確定しない。
+- 送信knownManifestは最大2,000件とし、それを超える場合はclient/BFFの共通正規化で{}（全件要求）にする。DB応答・cacheの完全なmanifest上限は別に100,000件とするため、2,001件以上の初回/再取得も利用できる。照合は正規化後の実送manifestを使う。

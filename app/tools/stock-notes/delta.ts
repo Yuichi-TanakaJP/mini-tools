@@ -31,23 +31,32 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isManifest(value: unknown): value is StockNotesManifest {
+export const MAX_STOCK_NOTES_OUTPUT_ENTRIES = 100_000;
+const MAX_REQUEST_MANIFEST_ENTRIES = 2_000;
+
+function isManifest(value: unknown, maxEntries = MAX_STOCK_NOTES_OUTPUT_ENTRIES): value is StockNotesManifest {
   if (!isRecord(value)) return false;
-  if (Object.keys(value).length > 2_000) return false;
+  if (Object.keys(value).length > maxEntries) return false;
   return Object.entries(value).every(
     ([stockId, revision]) =>
-      stockId.length > 0 && stockId.length <= 128 && typeof revision === "string" && revision.length > 0,
+      stockId.length > 0 && stockId.length <= 128 && typeof revision === "string" && revision.length > 0 && revision.length <= 256,
   );
 }
 
+/** Oversized or malformed requests ask for a full snapshot; both callers use this exact wire manifest. */
+export function normalizeStockNotesRequestManifest(value: unknown): StockNotesManifest {
+  return isManifest(value, MAX_REQUEST_MANIFEST_ENTRIES) ? Object.fromEntries(Object.entries(value)) : {};
+}
+
 /** 外部APIレスポンスを構造レベルで検証する。詳細な行値は既存の描画側防御に委ねる。 */
-export function parseStockNotesDelta(value: unknown): StockNotesDelta {
+export function parseStockNotesDelta(value: unknown, knownManifest: StockNotesManifest = {}): StockNotesDelta {
   if (!isRecord(value) || value.version !== 1 || value.monitoringMetadataVersion !== 1 || value.complete !== true) {
     throw new Error("銘柄差分APIの応答形式が不正です。");
   }
   if (!isManifest(value.currentManifest) || !Array.isArray(value.changedStocks) || !Array.isArray(value.deletedStockIds)) {
     throw new Error("銘柄差分APIのmanifestが不正です。");
   }
+  const currentManifest = value.currentManifest;
   for (const item of value.changedStocks) {
     if (!isRecord(item) || !isRecord(item.stock) || typeof item.revision !== "string") {
       throw new Error("銘柄差分APIの変更データが不正です。");
@@ -63,7 +72,7 @@ export function parseStockNotesDelta(value: unknown): StockNotesDelta {
   const changedIds = new Set<string>();
   for (const item of value.changedStocks) {
     const stockId = (item.stock as { id?: unknown }).id;
-    if (typeof stockId !== "string" || changedIds.has(stockId) || value.currentManifest[stockId] !== item.revision) {
+    if (typeof stockId !== "string" || changedIds.has(stockId) || !Object.hasOwn(currentManifest, stockId) || currentManifest[stockId] !== item.revision) {
       throw new Error("銘柄差分APIのRevision対応が不正です。");
     }
     changedIds.add(stockId);
@@ -71,9 +80,16 @@ export function parseStockNotesDelta(value: unknown): StockNotesDelta {
   const deletedIds = new Set(value.deletedStockIds);
   if (
     deletedIds.size !== value.deletedStockIds.length ||
-    value.deletedStockIds.some((id) => value.currentManifest[id] !== undefined)
+    value.deletedStockIds.some((id) => Object.hasOwn(currentManifest, id))
   ) {
     throw new Error("銘柄差分APIの削除一覧が不正です。");
+  }
+  const expectedChanged = Object.keys(currentManifest).filter((id) =>
+    !Object.hasOwn(knownManifest, id) || knownManifest[id] !== currentManifest[id]);
+  const expectedDeleted = Object.keys(knownManifest).filter((id) => !Object.hasOwn(currentManifest, id));
+  if (changedIds.size !== expectedChanged.length || expectedChanged.some((id) => !changedIds.has(id)) ||
+    deletedIds.size !== expectedDeleted.length || expectedDeleted.some((id) => !deletedIds.has(id))) {
+    throw new Error("銘柄差分APIの変更・削除一覧が要求manifestと一致しません。");
   }
   return value as unknown as StockNotesDelta;
 }

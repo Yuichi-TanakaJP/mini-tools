@@ -16,7 +16,7 @@
 // - 書き込み失敗（localStorage の容量超過・プライベートモード等）も握りつぶす。
 import { parseMonitoringMetadata } from "./monitoring";
 import type { DashboardData } from "./load";
-import type { StockNotesManifest } from "./delta";
+import { MAX_STOCK_NOTES_OUTPUT_ENTRIES, type StockNotesManifest } from "./delta";
 
 const CACHE_KEY_PREFIX = "stock_notes_dashboard_cache_v1_";
 const CACHE_VERSION = 3;
@@ -57,7 +57,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function isValidManifest(value: unknown): value is StockNotesManifest {
   if (!isPlainObject(value)) return false;
-  if (Object.keys(value).length > 2_000) return false;
+  if (Object.keys(value).length > MAX_STOCK_NOTES_OUTPUT_ENTRIES) return false;
   return Object.entries(value).every(
     ([stockId, revision]) =>
       stockId.length > 0 && stockId.length <= 128 && typeof revision === "string" && revision.length > 0,

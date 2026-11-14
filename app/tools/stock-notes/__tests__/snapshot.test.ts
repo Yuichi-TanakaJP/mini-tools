@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createStockNotesSnapshotFetchers } from "../data";
+import { createStockNotesSnapshotFetchers, fetchStockNotesDelta } from "../data";
 
 function snapshot(ids = ["A", "B", "C", "D"]) {
   return {
@@ -29,10 +29,10 @@ describe("direct dashboard atomic snapshot", () => {
     expect((await createStockNotesSnapshotFetchers(clientWith(rpc)).fetchStocks()).map((row) => row.id)).toEqual(["B", "C", "D", "E"]);
   });
   it("does not impose the table row cap on a JSON RPC snapshot", async () => {
-    const rpc = vi.fn().mockResolvedValue({ data: snapshot(Array.from({ length: 1001 }, (_, i) => `s${i}`)), error: null });
+    const rpc = vi.fn().mockResolvedValue({ data: snapshot(Array.from({ length: 2001 }, (_, i) => `s${i}`)), error: null });
     const readers = createStockNotesSnapshotFetchers(clientWith(rpc));
-    expect(await readers.fetchStocks()).toHaveLength(1001);
-    expect(await readers.fetchAnalyses()).toHaveLength(1001);
+    expect(await readers.fetchStocks()).toHaveLength(2001);
+    expect(await readers.fetchAnalyses()).toHaveLength(2001);
     expect(rpc).toHaveBeenCalledTimes(1);
   });
   it.each([
@@ -51,5 +51,32 @@ describe("direct dashboard atomic snapshot", () => {
     const error = { code: "PGRST301", message: "JWT expired" };
     const readers = createStockNotesSnapshotFetchers(clientWith(vi.fn().mockResolvedValue({ data: null, error })));
     await expect(readers.fetchStocks()).rejects.toBe(error);
+  });
+});
+
+
+describe("HTTP delta coverage against the sent manifest", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it.each([
+    ["omitted update", { C: "old" }, { ...snapshot(["C"]), changedStocks: [] }],
+    ["omitted initial stock", null, { ...snapshot(["C"]), changedStocks: [] }],
+    ["omitted deletion", { Gone: "old" }, snapshot(["C"])],
+    ["extra unchanged stock", { C: "rev-C" }, snapshot(["C"])],
+    ["extra deletion", {}, { ...snapshot(["C"]), deletedStockIds: ["Gone"] }],
+  ])("rejects %s at the browser response boundary", async (_name, known, response) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(response))));
+    await expect(fetchStockNotesDelta(known)).rejects.toThrow("要求manifest");
+  });
+  it("accepts exactly the changed and deleted sets", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ ...snapshot(["C"]), changedStocks: [], deletedStockIds: ["Gone"] }))));
+    expect(await fetchStockNotesDelta({ C: "rev-C", Gone: "old" })).toMatchObject({ changedStocks: [], deletedStockIds: ["Gone"] });
+  });
+  it.each([false, true])("accepts 2001 stock initial/full refresh and validates the exact sent manifest, known=%s", async (hasKnown) => {
+    const response = snapshot(Array.from({ length: 2001 }, (_, i) => `s${i}`));
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(response)));
+    vi.stubGlobal("fetch", fetchMock);
+    const delta = await fetchStockNotesDelta(hasKnown ? response.currentManifest : null);
+    expect(delta.changedStocks).toHaveLength(2001);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ knownManifest: {} });
   });
 });

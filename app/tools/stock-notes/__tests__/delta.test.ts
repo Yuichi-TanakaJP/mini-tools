@@ -128,7 +128,7 @@ it("rejects a changed stock that lacks monitoring fields", () => {
 it("preserves false rather than coercing string values in changed monitoring", () => {
   const valid = delta();
   valid.changedStocks = [{ ...replacement, stock: { ...replacement.stock, creditMonitoringEnabled: false } }];
-  expect(parseStockNotesDelta(valid).changedStocks[0].stock.creditMonitoringEnabled).toBe(false);
+  expect(parseStockNotesDelta(valid, { s2: "rev-s2" }).changedStocks[0].stock.creditMonitoringEnabled).toBe(false);
   valid.changedStocks[0].stock.creditMonitoringEnabled = "false" as never;
   expect(() => parseStockNotesDelta(valid)).toThrow();
 });
@@ -136,9 +136,15 @@ it("preserves false rather than coercing string values in changed monitoring", (
 
 it("rejects even an empty delta without the current metadata version", () => {
   const current = delta({ changedStocks: [] });
-  expect(parseStockNotesDelta(current).changedStocks).toEqual([]);
+  expect(parseStockNotesDelta(current, current.currentManifest).changedStocks).toEqual([]);
   const legacy = { ...current } as Record<string, unknown>;
   delete legacy.monitoringMetadataVersion;
   expect(() => parseStockNotesDelta(legacy)).toThrow();
   expect(() => parseStockNotesDelta({ ...current, monitoringMetadataVersion: 0 })).toThrow();
+});
+
+
+it("bounds complete output manifests independently of the request limit", () => {
+  const currentManifest = Object.fromEntries(Array.from({ length: 100001 }, (_, i) => [`s${i}`, "revision"]));
+  expect(() => parseStockNotesDelta(delta({ currentManifest, changedStocks: [] }))).toThrow("manifest");
 });
