@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { fetchStocks, updateStockMonitoring } from "../data";
+import { updateStockMonitoring } from "../data";
 import { monitoringLabel, parseMonitoringMetadata } from "../monitoring";
 import StockMonitoringEditor from "../StockMonitoringEditor";
 
@@ -22,13 +22,6 @@ describe("stock monitoring metadata", () => {
   });
   it.each(["false", 0, 1, {}, undefined])("rejects malformed monitoring %j rather than treating it as OFF", (credit) => {
     expect(() => parseMonitoringMetadata([], credit)).toThrow();
-  });
-  it("reads metadata through the full-table fallback", async () => {
-    const raw = { id: "s1", code: "1234", name: "Example", category: "watch", category_changed_at: null, category_change_reason: "preserved", watch_purposes: ["growth"], credit_monitoring_enabled: false, created_at: "2026-01-01", updated_at: "2026-01-01" };
-    const client = { from: () => ({ select: () => ({ order: () => ({ range: () => ({ returns: async () => ({ data: [raw], count: 1, error: null }) }) }) }) }) } as unknown as SupabaseClient;
-    expect(await fetchStocks(client)).toMatchObject([{ watchPurposes: ["growth"], creditMonitoringEnabled: false, categoryChangeReason: "preserved" }]);
-    raw.credit_monitoring_enabled = "false" as never;
-    await expect(fetchStocks(client)).rejects.toThrow("信用残監視");
   });
   it("writes only monitoring metadata and timestamp, scoped to owner and stock", async () => {
     const values: Record<string, unknown>[] = [];

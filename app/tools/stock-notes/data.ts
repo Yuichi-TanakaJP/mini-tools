@@ -1,9 +1,7 @@
-// app/tools/stock-notes/data.ts
-// Supabase から stock-notes のテーブルを読み取り専用で取得する。
-// 書き込み（insert/update/delete）は行わない。
+// Read dashboard rows through one owner-scoped RPC snapshot.
+// Writes are limited to stock master registration/category/monitoring metadata.
 // - stock_notes_* は本人の行だけが RLS で見える（auth.uid() = user_id）。
 // - 保有は認証済み audience API から読み、Portfolioと選択ルールを共有する。
-import { readCompleteRows } from "./pagination";
 import { parseMonitoringMetadata } from "./monitoring";
 import type { StockMonitoringMetadata, StockMonitoringSnapshot } from "./types";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -12,12 +10,9 @@ import type { EarningsFoldEntry, StockNotesEarningsInfo } from "./earnings-types
 import { parseStockNotesDelta, type StockNotesDelta, type StockNotesManifest } from "./delta";
 import type {
   NewStockNoteInput,
-  StockNoteAction,
-  StockNoteAnalysis,
   StockNoteAnalysisBody,
   StockNoteCategory,
   StockNoteStock,
-  StockNoteThesis,
 } from "./types";
 
 type StockRow = {
@@ -32,51 +27,6 @@ type StockRow = {
   created_at: string;
   updated_at: string;
 };
-
-// body は一覧取得では絶対に select しない（最大4.5万文字・合計16万文字あるため）。
-type AnalysisRow = {
-  id: string;
-  stock_id: string;
-  analysis_type: StockNoteAnalysis["analysisType"];
-  conclusion: string | null;
-  evidence: string | null;
-  concerns: string | null;
-  source: string | null;
-  source_url: string | null;
-  analyzed_at: string;
-  created_at: string;
-};
-
-type ThesisRow = {
-  id: string;
-  stock_id: string;
-  view: StockNoteThesis["view"];
-  confidence: StockNoteThesis["confidence"];
-  thesis: unknown;
-  risks: unknown;
-  next_check: unknown;
-  buy_more_condition: string | null;
-  exit_condition: string | null;
-  as_of: string;
-  created_at: string;
-};
-
-type ActionRow = {
-  id: string;
-  stock_id: string;
-  action_type: string;
-  title: string;
-  detail: string | null;
-  trigger_condition: string | null;
-  due_date: string | null;
-  status: StockNoteAction["status"];
-  created_at: string;
-};
-
-function toStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((v): v is string => typeof v === "string");
-}
 
 /**
  * Supabase（PostgREST）から返るエラーが「セッション切れ（JWTの有効期限切れ・無効）」を
@@ -107,38 +57,6 @@ export function isSessionExpiredSupabaseError(error: unknown): boolean {
   return typeof err.message === "string" && /jwt expired/i.test(err.message);
 }
 
-export async function fetchStocks(supabase: SupabaseClient): Promise<StockNoteStock[]> {
-  const data = await readCompleteRows<StockRow>(supabase, "stock_notes_stocks", "id, code, name, category, category_changed_at, category_change_reason, watch_purposes, credit_monitoring_enabled, created_at, updated_at");
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    code: row.code,
-    name: row.name,
-    category: row.category,
-    categoryChangedAt: row.category_changed_at,
-    categoryChangeReason: row.category_change_reason,
-    ...parseMonitoringMetadata(row.watch_purposes, row.credit_monitoring_enabled),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }));
-}
-
-/** 一覧・タイムライン用。body は含めない。 */
-export async function fetchAnalyses(supabase: SupabaseClient): Promise<StockNoteAnalysis[]> {
-  const data = await readCompleteRows<AnalysisRow>(supabase, "stock_notes_analyses", "id, stock_id, analysis_type, conclusion, evidence, concerns, source, source_url, analyzed_at, created_at");
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    stockId: row.stock_id,
-    analysisType: row.analysis_type,
-    conclusion: row.conclusion,
-    evidence: row.evidence,
-    concerns: row.concerns,
-    source: row.source,
-    sourceUrl: row.source_url,
-    analyzedAt: row.analyzed_at,
-    createdAt: row.created_at,
-  }));
-}
-
 /** 会話原文（body）を明示操作時にだけ取得する。 */
 export async function fetchAnalysisBody(
   supabase: SupabaseClient,
@@ -153,37 +71,27 @@ export async function fetchAnalysisBody(
   return { id: data?.id ?? analysisId, body: data?.body ?? null };
 }
 
-export async function fetchTheses(supabase: SupabaseClient): Promise<StockNoteThesis[]> {
-  const data = await readCompleteRows<ThesisRow>(supabase, "stock_notes_theses", "id, stock_id, view, confidence, thesis, risks, next_check, buy_more_condition, exit_condition, as_of, created_at");
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    stockId: row.stock_id,
-    view: row.view,
-    confidence: row.confidence,
-    thesis: toStringArray(row.thesis),
-    risks: toStringArray(row.risks),
-    nextCheck: toStringArray(row.next_check),
-    buyMoreCondition: row.buy_more_condition,
-    exitCondition: row.exit_condition,
-    asOf: row.as_of,
-    createdAt: row.created_at,
-  }));
-}
-
-/** open のアクションだけを対象にする（アクション受信箱は未消化のみ表示するため）。 */
-export async function fetchOpenActions(supabase: SupabaseClient): Promise<StockNoteAction[]> {
-  const data = await readCompleteRows<ActionRow>(supabase, "stock_notes_actions", "id, stock_id, action_type, title, detail, trigger_condition, due_date, status, created_at", true);
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    stockId: row.stock_id,
-    actionType: row.action_type,
-    title: row.title,
-    detail: row.detail,
-    triggerCondition: row.trigger_condition,
-    dueDate: row.due_date,
-    status: row.status,
-    createdAt: row.created_at,
-  }));
+/** Each dashboard load shares one owner-JWT RPC response across its four readers. */
+export function createStockNotesSnapshotFetchers(supabase: SupabaseClient) {
+  let pending: Promise<StockNotesDelta> | undefined;
+  function snapshot(): Promise<StockNotesDelta> {
+    pending ??= (async () => {
+      const { data, error } = await supabase.rpc("get_stock_notes_delta", { p_known_manifest: {} });
+      if (error) throw error;
+      const delta = parseStockNotesDelta(data);
+      if (delta.deletedStockIds.length || delta.changedStocks.length !== Object.keys(delta.currentManifest).length) {
+        throw new Error("銘柄の完全なスナップショットを確認できません。");
+      }
+      return delta;
+    })();
+    return pending;
+  }
+  return {
+    fetchStocks: async () => (await snapshot()).changedStocks.map((bundle) => bundle.stock),
+    fetchAnalyses: async () => (await snapshot()).changedStocks.flatMap((bundle) => bundle.analyses),
+    fetchTheses: async () => (await snapshot()).changedStocks.flatMap((bundle) => bundle.theses),
+    fetchOpenActions: async () => (await snapshot()).changedStocks.flatMap((bundle) => bundle.actions),
+  };
 }
 
 /**

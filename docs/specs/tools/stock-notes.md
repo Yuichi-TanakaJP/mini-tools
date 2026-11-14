@@ -125,7 +125,7 @@
 
 - 完全なmanifestとの差分で存在しなくなった銘柄は、キャッシュと画面から削除する。これは `stock_notes_stocks` の行が消えた場合だけであり、`category = archived` では削除しない
 - APIエラーや不正なレスポンスでは差分を適用せず、表示中のキャッシュを維持する
-- 差分APIが失敗した場合は、従来のSupabase直接取得へフォールバックする。初回・旧形式キャッシュ（manifestなし）は差分APIから全銘柄を受け取り、manifestを作成する
+- 差分APIが失敗した場合は、同じmetadata対応RPCを本人JWTで直接呼び出す。旧RPCや分割table読取へはフォールバックしない。初回・旧形式キャッシュ（manifestなし）は差分APIから全銘柄を受け取り、manifestを作成する
 - 決算情報と保有リストはSupabase銘柄差分とは別のデータ源なので、従来どおり個別に取得する
 - 分析本文 `body` は一覧取得・Revision対象に含めず、「原文を表示」操作時に個別取得する
 
@@ -153,7 +153,7 @@
 - `stock_notes_stocks` / `stock_notes_analyses` / `stock_notes_theses` / `stock_notes_actions`（Supabase、RLS で本人の行のみ）
   - `stock_notes_analyses` の一覧・タイムライン取得では `body`（会話原文、最大4.5万文字）を select しない。「原文を表示」を押したときだけ `id` 指定で `select("id, body")` を再クエリする
   - `stock_notes_actions` は `status='open'` のみ取得する
-  - 4テーブルは個別クエリで取得し、`stock_id` で突き合わせる（SQLのjoinは使わない。理由は [decision-log](../../decision-log/2026-08-11-stock-notes-dashboard-design.md) 参照）
+  - 4テーブルは単一SQL STABLE・SECURITY INVOKERの`get_stock_notes_delta`で同じsnapshotから構築する。旧個別クエリ方式は同数入替による欠落を防げないため廃止した（[変更理由](../../decision-log/2026-11-14-stock-monitoring-metadata.md)）。
 - 保有: `/api/stock-notes/audience`。Portfolioと同じ公式ready snapshotを選択し、国内株式のquantity > 0をコード単位で重複排除する。
 - 次回決算日・前回決算日: `app/api/stock-notes/earnings/route.ts`（サーバールート）が `{market-info-api}/earnings-calendar/domestic/monthly/{YYYY-MM}`（未来側は当月＋翌月＋翌々月分、過去側は当月＋過去3ヶ月分。決算またぎ判定と前回決算表示の両方に使うため、四半期決算の間隔（約3ヶ月）を取りこぼさない範囲にしている）を全て `Promise.all` で並列取得し、銘柄コードごとに畳み込んで返す。クライアントは `app/tools/stock-notes/data.ts` の `fetchEarnings` からこのルートを叩く（Supabase ではなく通常の fetch）。呼び出し側（`app/tools/stock-notes/load.ts`）は stocks・holdings 取得後に確定する対象銘柄コード（保有＋分析済み、通常は数十件）を `?codes=` クエリで渡し、サーバー側でその銘柄だけに絞り込んでもらう（全銘柄を返すと実測1,039銘柄・約140KBになるため）。`codes` が空（=表示する銘柄が無い）場合はこのルートを呼ばない
 
@@ -247,11 +247,11 @@
 JWT/RLSの本人境界で、この2項目とupdated_atだけを更新する。0行更新・形式不正は失敗。旧キャッシュversion2を破棄し、直接読取と既存差分BFFの両方で新項目を取得する。
 同pathの保存操作でURL/historyは追加しない。編集中は通信なし、保存中は重複操作を無効化して「保存中…」、失敗時は入力を保持してalert、再保存または既存再取得で復旧する。通信時間は未計測。DB拡張→API→UIの順に配備する。
 
-旧get_stock_notes_delta RPCは新列の完全性を宣言しないため、monitoringMetadataVersion=1を宣言するまで既存4-table互換読取へfallbackする。旧RPCが変更0件を返しても信用残設定の完全性とは扱わない。当面はRPC確認1回＋4テーブルの全ページ読取となるが、互換fingerprintは新項目とupdatedAtを含むため更新を見落とさない。
+get_stock_notes_delta RPCはmonitoringMetadataVersion=1と新2項目を返すDB内の単一SQL snapshotを必須とする。BFFはこのRPCを1回呼び、本人JWTの直接復旧経路も同じRPCの1回の全件応答を4readerで共有する。旧RPC・失敗・形式欠損は取得失敗とし、4テーブル分割読取への互換fallbackは行わない。metadata列migration→metadata対応RPC migration→API/UIの順に配備する。revisionはmetadataを含むbundle全体から計算される。
 
 
 ### 独立レビューで追加した完全性・競合の保護
 
-- 直接読取と旧RPC互換読取のstocks/analyses/theses/open actionsすべてをid昇順でページ取得し、各ページのexact count、件数一致、重複、途中切断を検証する。サーバー上限がページ要求より小さくても実受信件数の続きから取得する。不完全な一覧でcomplete/deletedStockIdsを作らず、取得失敗として前回表示を維持する。これはDBの単一トランザクションsnapshotを保証するものではない。
+- stocks/analyses/theses/open actionsは単一SQL STABLE・SECURITY INVOKER RPCで同じDB snapshotから構築する。offsetページ間で件数が同じまま入替わっても、存在し続ける行の欠落や誤削除を作らない。旧RPCへ戻る場合、UIも旧実装へ戻す必要があり、旧応答を黙って採用しない。
 - 保存は編集開始時のupdated_atと元の2設定をCAS条件に含める。他画面の変更を片方の項目編集で巻き戻さない。未編集フォームは再取得に追従し、編集中のフォームは入力を保持して競合を表示、保存を停止する。「取得済みの最新設定を読み直す」で明示的に最新値を採用してから編集し直す。
 - current cache v3の各stockはwatchPurposes/creditMonitoringEnabled両方が必須。欠損を未指定に変換しない。client差分境界もmonitoringMetadataVersion=1を必須にし、変更0件の旧応答でも拒否する。明示されたnullのみ有効な未指定として扱う。

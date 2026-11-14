@@ -11,13 +11,10 @@ import { AUDIENCE_CHANGED } from "@/lib/portfolio/useAudience";
 import {
   deleteStockById,
   fetchAnalysisBody,
-  fetchAnalyses,
+  createStockNotesSnapshotFetchers,
   fetchEarnings,
   fetchHoldings,
-  fetchOpenActions,
   fetchStockNotesDelta,
-  fetchStocks,
-  fetchTheses,
   insertStock,
   isDuplicateStockError,
   isForeignKeyViolationError,
@@ -307,17 +304,14 @@ export default function ToolClient() {
   );
 
   /**
-   * 差分APIを優先し、APIが未デプロイ・一時障害などの場合は既存のSupabase直接取得へ戻す。
+   * 差分APIを優先し、障害時も同じ原子的RPCを本人JWTで直接呼び出す。
    * 差分APIが401を返した場合は、loadDashboardDataがunauthorizedを返すためフォールバックしない。
    */
   const loadDashboard = useCallback(
     async (baseData: DashboardData | null, knownManifest: StockNotesManifest | null) => {
       if (!supabase) return { status: "error" as const, message: "Supabase client is not available" };
       const commonFetchers = {
-        fetchStocks: () => fetchStocks(supabase),
-        fetchAnalyses: () => fetchAnalyses(supabase),
-        fetchTheses: () => fetchTheses(supabase),
-        fetchOpenActions: () => fetchOpenActions(supabase),
+        ...createStockNotesSnapshotFetchers(supabase),
         fetchHoldings,
         fetchEarnings,
       };
