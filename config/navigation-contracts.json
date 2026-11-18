@@ -1766,6 +1766,17 @@
         }
       ]
     },
+    "app/tools/stock-notes/AnnualCorrectionPanel.tsx": {
+      "transitions": [
+        "R29"
+      ],
+      "sites": [
+        {
+          "kind": "form-submit",
+          "signature": "onSubmit={load}"
+        }
+      ]
+    },
     "app/tools/stock-notes/ClientOnly.tsx": {
       "transitions": [
         "R29"
