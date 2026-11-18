@@ -3,6 +3,7 @@
 import Link from "@/components/navigation/Link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import AnnualCorrectionPanel from "./AnnualCorrectionPanel";
 import TabBar from "@/app/tools/_shared/TabBar";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSyncConfigured } from "@/lib/supabase/config";
@@ -722,6 +723,8 @@ export default function ToolClient() {
             stock-notes（カスタムGPT）に記録した銘柄分析と、Portfolioの保有判定を表示します。ウォッチはこの画面で管理します。銘柄の登録・分類変更・アーカイブはこの画面から行えます。分析・見立ての追加はこの画面からはできません（分析はGPTの領域です）。
           </p>
         </header>
+
+        {authReady && email && supabase && <AnnualCorrectionPanel key={userId} db={supabase} />}
 
         {!configured ? (
           <div style={card}>
