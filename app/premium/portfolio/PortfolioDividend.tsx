@@ -63,7 +63,7 @@ export default function PortfolioDividend({ projection, scopeLabel, breakdown, e
       ) : (
         <>
           <div style={{ fontSize: 12, color: "var(--color-text-muted)", lineHeight: 1.6 }}>
-            保有基準日 {date(data.asOf)} ／ 会社予想の最も新しい確認日 {date(data.latestForecastAsOf)} ／
+            保有株数の基準日 {date(data.asOf)} ／ 最新の配当予想公表日 {date(data.latestForecastAsOf)} ／
             明細取得 {data.coveredStocks}/{data.expectedStocks}銘柄 ／ {totalLabel}確認済み {coverage.confirmedCount}/{data.expectedStocks}銘柄{coverage.excludedCount > 0 ? ` ／ 年間集計対象外 ${coverage.excludedCount}銘柄` : ""}
           </div>
           {!isReady ? (

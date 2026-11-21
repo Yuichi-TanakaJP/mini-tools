@@ -80,11 +80,11 @@ export function selectDividendProjection(source: DomesticDividendProjection | un
       changeType: valid ? original.changeType : "not_comparable",
     });
   }
-  const at = Date.parse(source.asOf ?? "");
+  const at = source.forecastCutoff ?? Date.parse(source.asOf ?? "");
   const complete = source.sourceIntegrity === true && uniqueSource && scoped.length === selected.size
     && scoped.every((p) => p.cashProjectionStatus === "resolved" && p.annualGross !== null && p.annualGross >= 0
       && p.forecastDps !== null && p.forecastDps >= 0 && p.quantity !== null
-      && isUsableForecastDate(p, at, source.basis));
+      && isUsableForecastDate(p.forecastAsOf, at));
   const comparable = scoped.filter((p) => ["increase", "decrease", "unchanged"].includes(p.changeType ?? ""));
   const sum = (key: "annualGross" | "priorRunRateGross" | "rateEffectGross", rows = scoped) => rows.reduce((total, p) => total + (p[key] ?? 0), 0);
   const wholeSelected = selected.size === whole.size && [...selected].every(([id, quantity]) => quantity === whole.get(id));

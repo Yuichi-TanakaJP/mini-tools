@@ -67,6 +67,7 @@ export type DomesticDividendPosition = {
 export type DomesticDividendProjection = {
   sourceIntegrity?: boolean;
   basis?: "annual" | "reported_period";
+  forecastCutoff?: number;
   status: "no_snapshot" | "no_domestic_stocks" | "error" | "incomplete" | "ready";
   asOf: string | null;
   latestForecastAsOf: string | null;
@@ -112,11 +113,9 @@ export function emptyDomesticDividendProjection(
   };
 }
 
-export function isUsableForecastDate(row: DomesticDividendPosition, snapshotAt: number, basis: DomesticDividendProjection["basis"]) {
-  const published = Date.parse(row.forecastAsOf ?? "");
-  const months = row.forecastPeriodMonths ?? 0;
-  return Number.isFinite(published) && Number.isFinite(snapshotAt)
-    && (published <= snapshotAt || (basis === "reported_period" && Number.isInteger(months) && months > 0 && months < 12));
+export function isUsableForecastDate(publishedAt: string | null, cutoff: number) {
+  const published = Date.parse(publishedAt ?? "");
+  return Number.isFinite(published) && published <= cutoff;
 }
 
 /**
@@ -129,40 +128,50 @@ export function summarizeDomesticDividendProjection(
   domesticInstrumentIds: readonly string[],
   totals: DividendTotalsRow | null = null,
   basis: NonNullable<DomesticDividendProjection["basis"]> = "annual",
+  currentTime = Date.now(),
 ): DomesticDividendProjection {
   const expected = new Set(domesticInstrumentIds);
   if (expected.size === 0) {
     return { ...emptyDomesticDividendProjection("no_domestic_stocks", snapshot.asOf) };
   }
 
-  const positions: DomesticDividendPosition[] = rows.map((row) => ({
-    instrumentId: row.instrument_id,
-    ticker: row.ticker,
-    name: row.instrument_name,
-    quantity: amount(row.quantity),
-    actualDps: amount(row.latest_actual_dps),
-    forecastDps: row.cash_projection_status === "resolved" && !row.annual_projection_exclusion_reason ? amount(row.forecast_dps) : null,
-    rawForecastDps: amount(row.raw_forecast_dps),
-    cashProjectionStatus: row.cash_projection_status ?? null,
-    forecastAsOf: row.forecast_as_of,
-    forecastPeriodStart: row.forecast_period_start ?? null,
-    forecastPeriodEnd: row.forecast_period_end ?? null,
-    forecastPeriodMonths: amount(row.forecast_period_months ?? null),
-    reportedForecastDps: amount(row.reported_forecast_dps ?? null),
-    reportedForecastGross: amount(row.reported_forecast_dividend_gross ?? null),
-    annualExclusionReason: row.annual_projection_exclusion_reason ?? null,
-    comparisonExclusionReason: row.dividend_comparison_exclusion_reason ?? null,
-    annualGross: row.cash_projection_status === "resolved" && !row.annual_projection_exclusion_reason ? amount(row.projected_annual_dividend_gross) : null,
-    priorRunRateGross: row.dividend_comparison_exclusion_reason ? null : amount(row.prior_actual_run_rate_gross),
-    rateEffectGross: row.cash_projection_status === "resolved" && !row.annual_projection_exclusion_reason && !row.dividend_comparison_exclusion_reason ? amount(row.dividend_rate_effect_gross) : null,
-    changeType: row.dividend_comparison_exclusion_reason || row.annual_projection_exclusion_reason ? "not_comparable" : row.dividend_change_type,
-  }));
+  const snapshotAt = Date.parse(snapshot.asOf);
+  const forecastCutoff = basis === "reported_period" ? currentTime : snapshotAt;
+  const sourceAmount = (row: DividendProjectionRow) =>
+    row.cash_projection_status === "resolved" && !row.annual_projection_exclusion_reason
+      ? amount(row.projected_annual_dividend_gross) : null;
+  const positions: DomesticDividendPosition[] = rows.map((row) => {
+    const isPublished = basis !== "reported_period" || isUsableForecastDate(row.forecast_as_of, forecastCutoff);
+    const status = !isPublished && row.forecast_as_of ? "future_forecast" : row.cash_projection_status;
+    const usable = isPublished && status === "resolved" && !row.annual_projection_exclusion_reason;
+    return {
+      instrumentId: row.instrument_id,
+      ticker: row.ticker,
+      name: row.instrument_name,
+      quantity: amount(row.quantity),
+      actualDps: amount(row.latest_actual_dps),
+      forecastDps: usable ? amount(row.forecast_dps) : null,
+      rawForecastDps: isPublished ? amount(row.raw_forecast_dps) : null,
+      cashProjectionStatus: status ?? null,
+      forecastAsOf: isPublished ? row.forecast_as_of : null,
+      forecastPeriodStart: row.forecast_period_start ?? null,
+      forecastPeriodEnd: row.forecast_period_end ?? null,
+      forecastPeriodMonths: amount(row.forecast_period_months ?? null),
+      reportedForecastDps: isPublished ? amount(row.reported_forecast_dps ?? null) : null,
+      reportedForecastGross: isPublished ? amount(row.reported_forecast_dividend_gross ?? null) : null,
+      annualExclusionReason: row.annual_projection_exclusion_reason ?? null,
+      comparisonExclusionReason: row.dividend_comparison_exclusion_reason ?? null,
+      annualGross: isPublished ? sourceAmount(row) : null,
+      priorRunRateGross: row.dividend_comparison_exclusion_reason ? null : amount(row.prior_actual_run_rate_gross),
+      rateEffectGross: usable && !row.dividend_comparison_exclusion_reason ? amount(row.dividend_rate_effect_gross) : null,
+      changeType: !isPublished || row.dividend_comparison_exclusion_reason || row.annual_projection_exclusion_reason ? "not_comparable" : row.dividend_change_type,
+    };
+  });
 
   const sourceIds = rows.map((row) => row.instrument_id);
   const completeCoverage = rows.length === expected.size
     && new Set(sourceIds).size === expected.size
     && sourceIds.every((id) => expected.has(id));
-  const snapshotAt = Date.parse(snapshot.asOf);
   const consistentSnapshot = Number.isFinite(snapshotAt)
     && rows.every((row) => row.snapshot_id === snapshot.id
       && Date.parse(row.snapshot_as_of) === snapshotAt);
@@ -170,7 +179,7 @@ export function summarizeDomesticDividendProjection(
     row.annualGross !== null && row.forecastDps !== null && row.quantity !== null);
   // The selected view uses timestamps for forecasts; a missing date means
   // the projection cannot be certified fresh, even if an amount is present.
-  const hasAllSourceDates = positions.every((row) => isUsableForecastDate(row, snapshotAt, basis));
+  const hasAllSourceDates = positions.every((row) => isUsableForecastDate(row.forecastAsOf, forecastCutoff));
   const completeTotal = amount(totals?.projected_annual_dividend_gross ?? null);
   const validTotals = totals?.status === "resolved"
     && totals.snapshot_id === snapshot.id
@@ -179,8 +188,9 @@ export function summarizeDomesticDividendProjection(
     && amount(totals.confirmed_count) === expected.size
     && amount(totals.held_count) === 0
     && completeTotal !== null;
-  const knownAmounts = positions.filter((row) => row.annualGross !== null);
-  const sumKnown = knownAmounts.reduce((sum, row) => sum + row.annualGross!, 0);
+  // Reconcile database rows and totals before applying the display cutoff.
+  const knownAmounts = rows.map(sourceAmount).filter((value): value is number => value !== null);
+  const sumKnown = knownAmounts.reduce((sum, value) => sum + value, 0);
   const partial = amount(totals?.confirmed_partial_total ?? null);
   const partialMatches = knownAmounts.length === 0
     ? partial === null || partial === 0
@@ -211,6 +221,7 @@ export function summarizeDomesticDividendProjection(
     status: complete ? "ready" : "incomplete",
     sourceIntegrity,
     basis,
+    forecastCutoff,
     asOf: snapshot.asOf,
     latestForecastAsOf: positions.map((row) => row.forecastAsOf)
       .filter((value): value is string => Boolean(value))
