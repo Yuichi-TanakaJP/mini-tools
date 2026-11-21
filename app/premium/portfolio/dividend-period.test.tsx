@@ -119,3 +119,9 @@ it.each([
   const selected = selectDividendProjection(projection, all, [all[0]]);
   expect(dividendDisplay(selected)).toMatchObject({ completeTotal: 7500, excludedCount: 0 });
 });
+
+it("受取見込みの未確認行に公表額があっても、合計にも短期明細にも出さない", () => {
+  const projection = { ...source(), basis: "reported_period" as const };
+  expect(reportedPeriodDividend(projection, projection.positions[0])).toBeNull();
+  expect(dividendDisplay(projection)).toMatchObject({ confirmedGross: null, excludedCount: 0, unverifiedCount: 1 });
+});
