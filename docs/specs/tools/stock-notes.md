@@ -258,3 +258,11 @@ get_stock_notes_delta RPCはmonitoringMetadataVersion=1と新2項目を返すDB�
 
 - 差分応答は実際に送信したknownManifestと照合し、revisionが異なる/新規のIDとchangedStocks、消えたIDとdeletedStockIdsが集合として完全一致することをBFF・client両境界で検証する。更新欠落を新しいmanifestだけで確定しない。
 - 送信knownManifestは最大2,000件とし、それを超える場合はclient/BFFの共通正規化で{}（全件要求）にする。DB応答・cacheの完全なmanifest上限は別に100,000件とするため、2,001件以上の初回/再取得も利用できる。照合は正規化後の実送manifestを使う。
+
+### FCF・開示負債のスクリーニング
+
+- 認証済みダッシュボードのリンクから /tools/stock-notes/screening を開く。銘柄分類やPortfolioの保存先に依存しない。
+- MiniToolsのSupabaseサーバークライアントがCookieの有効なセッションを確認し、stock_notes_screen_edinet_fcf_debt_v1 をその利用者の権限で一度だけ実行する。Stock NotesのCompany Metricsが正本。ページに保存処理や永続キャッシュはなく、PWAはNetworkOnlyで処理する。
+- FCF下限・開示負債上限は百万円。整数9桁、小数6桁以内で指定でき、FCFは負値を指定できる。入力の空欄は絞り込みなし。負債の0は上限0として扱う。
+- 証券コード順に1ページ50件を表示する。次のページと先頭に戻る操作では絞り込みと基準時点を維持する。新しい条件の送信では先頭から取得する。
+- 期末・EDINET書類番号・開示負債の根拠を示す。注記に明示された該当なしは0と「該当なし（明示）」で表示する。取得失敗・未認証・条件に該当する銘柄がない状態はそれぞれを案内する。

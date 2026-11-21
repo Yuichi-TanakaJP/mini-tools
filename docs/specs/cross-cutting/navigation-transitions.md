@@ -105,6 +105,7 @@ JS/CSSの「追加/初回」はKiB。実際のFromがホーム以外の場合の
 | R37 | P・D | `/tools/yutai-expiry` | 64.5 / 287.9 | C2 | 認証/DBまたはlocal版（回数未計測） |
 | R38 | D（PoC、通常入口なし） | `/tools/yutai-expiry/scan-poc` | 6.6 / 230.1 | C1 | 入口API 0。画像送信は遷移外 |
 | R39 | P・D | `/tools/yutai-memo` | 37.2 / 260.6 | C2 | 認証/DBまたはlocal版、信用参照（回数未計測） |
+| R40 | 銘柄分析ダッシュボードの認証済み導線・D | `/tools/stock-notes/screening` | 未測定 | S3 | 既存セッション確認、認証後に所有者RPC1回 |
 <!-- /navigation-contracts:pages -->
 
 Profileは入口の表示責務に対応する。例えばC1のscan PoCは入口の予算であり、画像のアップロード/AI処理をこの予算へ含めない。Portfolioは入口/戻りの遷移境界のみを対象とし、意思決定やデータ契約の業務仕様は変更しない。
@@ -175,6 +176,7 @@ query変更は新たな39ページとして数えないが、操作単位のpend
 | X01 | `/account`のreset依頼 | メールの`/account/reset-password`→復帰先 | 認証メール/更新は操作。移動部分はTo profile | 認証の送信状態と移動中を分ける。自動再送なし |
 | X02 | local/DB toolsの認証案内a/reload | `/account`または同route再読込 | document GET。RSC遷移の予算と分ける | 意図を確認してLink化、必要な全画面reloadは維持 |
 | Q13 | テーマ詳細「本文を全文で読む」未取得/取得途中/失敗 | 同じ本文の次2,000文字／項目変更で未取得／409で最初から | ブラウザー→同origin proxy→stock-notes GET各1回/操作。本文最大2,000 Unicode文字（UTF-8最大8KB＋JSON metadata）。DB→APIは単一field全文。 | 即時pending、取得済み本文保持、12秒timeout・中断・同offset retry。版不一致は読み直し。統計未測定。 整形/原文はlocal切替、原文不変。日時付き選択、末尾完了と残数。追加時focus/scroll保持、先頭操作で見出しへfocus。 |
+| Q14 | FCF・開示負債の条件送信・ページ送り・失敗時の再読込 | 同じ画面の条件、先頭または次の明細 | 1遷移につき認証確認とRPC最大1回、50行と先読み1行。 | GETの条件変更は先頭へ戻る。基準時点・条件を保ったページ送りと同条件再試行。取得失敗・空・未認証を区別。計測値なし。 |
 | L90 | `/tools/investor-flow` 最新週/過去週を表示中 | 同画面の公開更新確認 | GET data。本文・分析・直近12/13週。目安100KB以下、10秒timeout。 | visible時60秒/復帰時。旧表示保持、失敗通知・retry、過去週固定、abort。 |
 <!-- /navigation-contracts:operations -->
 

@@ -724,6 +724,11 @@ export default function ToolClient() {
           </p>
         </header>
 
+        {authReady && email && (
+          <Link href="/tools/stock-notes/screening" prefetch={false} style={{ justifySelf: "start" }}>
+            FCF・開示負債を絞り込む →
+          </Link>
+        )}
         {authReady && email && supabase && <AnnualCorrectionPanel key={userId} db={supabase} />}
 
         {!configured ? (

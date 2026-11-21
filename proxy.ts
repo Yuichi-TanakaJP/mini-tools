@@ -11,5 +11,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/account/:path*", "/api/sync"],
+  matcher: ["/account/:path*", "/api/sync", "/tools/stock-notes/screening"],
 };
