@@ -137,6 +137,9 @@ export function summarizeDomesticDividendProjection(
 
   const snapshotAt = Date.parse(snapshot.asOf);
   const forecastCutoff = basis === "reported_period" ? currentTime : snapshotAt;
+  const sourceAmount = (row: DividendProjectionRow) =>
+    row.cash_projection_status === "resolved" && !row.annual_projection_exclusion_reason
+      ? amount(row.projected_annual_dividend_gross) : null;
   const positions: DomesticDividendPosition[] = rows.map((row) => {
     const isPublished = basis !== "reported_period" || isUsableForecastDate(row.forecast_as_of, forecastCutoff);
     const status = !isPublished && row.forecast_as_of ? "future_forecast" : row.cash_projection_status;
@@ -158,7 +161,7 @@ export function summarizeDomesticDividendProjection(
       reportedForecastGross: isPublished ? amount(row.reported_forecast_dividend_gross ?? null) : null,
       annualExclusionReason: row.annual_projection_exclusion_reason ?? null,
       comparisonExclusionReason: row.dividend_comparison_exclusion_reason ?? null,
-      annualGross: usable ? amount(row.projected_annual_dividend_gross) : null,
+      annualGross: isPublished ? sourceAmount(row) : null,
       priorRunRateGross: row.dividend_comparison_exclusion_reason ? null : amount(row.prior_actual_run_rate_gross),
       rateEffectGross: usable && !row.dividend_comparison_exclusion_reason ? amount(row.dividend_rate_effect_gross) : null,
       changeType: !isPublished || row.dividend_comparison_exclusion_reason || row.annual_projection_exclusion_reason ? "not_comparable" : row.dividend_change_type,
@@ -185,8 +188,9 @@ export function summarizeDomesticDividendProjection(
     && amount(totals.confirmed_count) === expected.size
     && amount(totals.held_count) === 0
     && completeTotal !== null;
-  const knownAmounts = positions.filter((row) => row.annualGross !== null);
-  const sumKnown = knownAmounts.reduce((sum, row) => sum + row.annualGross!, 0);
+  // Reconcile database rows and totals before applying the display cutoff.
+  const knownAmounts = rows.map(sourceAmount).filter((value): value is number => value !== null);
+  const sumKnown = knownAmounts.reduce((sum, value) => sum + value, 0);
   const partial = amount(totals?.confirmed_partial_total ?? null);
   const partialMatches = knownAmounts.length === 0
     ? partial === null || partial === 0

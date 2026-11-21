@@ -124,6 +124,18 @@ describe("国内株の配当予想（Stock Notes正本View）", () => {
     expect(html).not.toContain("2026/10/01");
   });
 
+  it("未公表分を表示から外しても、公表済み銘柄の小計を残す", () => {
+    const summary = summarizeDomesticDividendProjection([
+      row(), row({ instrument_id: "i2", forecast_as_of: "2026-10-01T00:00:00Z" }),
+    ], snapshot, ["i1", "i2"], totals({ holding_count: 2, confirmed_count: 2,
+      confirmed_partial_total: 12000, projected_annual_dividend_gross: 12000 }),
+    "reported_period", Date.parse("2026-09-30T00:00:00Z"));
+    expect(summary).toMatchObject({ status: "incomplete", sourceIntegrity: true, projectedAnnualGross: null });
+    const html = renderToStaticMarkup(createElement(PortfolioDividend, { projection: summary, expandDetails: true }));
+    expect(html).toContain("6,000");
+    expect(html).not.toContain("12,000");
+  });
+
   it("未ログイン・取込失敗・保有なしの状態を0円に偽装しない", () => {
     expect(emptyDomesticDividendProjection("no_snapshot").projectedAnnualGross).toBeNull();
     expect(emptyDomesticDividendProjection("error", snapshot.asOf).status).toBe("error");
