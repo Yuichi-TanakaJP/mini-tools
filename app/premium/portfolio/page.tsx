@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import CompanyGroupExposureCard from "./CompanyGroupExposureCard";
 import PortfolioWorkspace from "./PortfolioWorkspace";
+import ShortDividendRevisions, { loadShortDividendRevisions, type ShortDividendRevisionData } from "./ShortDividendRevisions";
 import { emptyCompanyGroupExposure, loadCompanyGroupExposure } from "./company-group-exposure";
 import { loadPortfolio, portfolioAuthRequired } from "./data";
 import { PREMIUM_COOKIE_NAME, verifyPremiumSession } from "@/lib/premium-auth";
@@ -26,6 +27,7 @@ export default async function PremiumPortfolioPage() {
   }
 
   let portfolio = portfolioAuthRequired();
+  let revisions: ShortDividendRevisionData | null = null;
   let companyGroupExposure = emptyCompanyGroupExposure();
   let companyGroupExposureError: string | null = null;
 
@@ -36,7 +38,10 @@ export default async function PremiumPortfolioPage() {
     } = await supabase.auth.getUser();
 
     if (user) {
-      portfolio = await loadPortfolio(supabase, user.id);
+      [portfolio, revisions] = await Promise.all([
+        loadPortfolio(supabase, user.id),
+        loadShortDividendRevisions(supabase, user.id).catch(() => ({ status: "unavailable" as const })),
+      ]);
       try {
         companyGroupExposure = await loadCompanyGroupExposure(supabase, portfolio.currentSnapshot?.id ?? null);
       } catch (error) {
@@ -59,6 +64,7 @@ export default async function PremiumPortfolioPage() {
             <CompanyGroupExposureCard exposure={companyGroupExposure} asOf={portfolio.currentSnapshot.asOf} />
           )
         ) : null} />
+        {revisions && <ShortDividendRevisions data={revisions} />}
       </section>
     </main>
   );
