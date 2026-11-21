@@ -114,9 +114,8 @@ export function emptyDomesticDividendProjection(
 
 export function isUsableForecastDate(row: DomesticDividendPosition, snapshotAt: number, basis: DomesticDividendProjection["basis"]) {
   const published = Date.parse(row.forecastAsOf ?? "");
-  const months = row.forecastPeriodMonths ?? 0;
-  return Number.isFinite(published) && Number.isFinite(snapshotAt)
-    && (published <= snapshotAt || (basis === "reported_period" && Number.isInteger(months) && months > 0 && months < 12));
+  const cutoff = basis === "reported_period" ? Date.now() : snapshotAt;
+  return Number.isFinite(published) && Number.isFinite(snapshotAt) && published <= cutoff;
 }
 
 /**

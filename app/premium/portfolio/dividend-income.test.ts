@@ -102,6 +102,24 @@ describe("国内株の配当予想（Stock Notes正本View）", () => {
     expect(summary.status).toBe("incomplete");
   });
 
+  it.each([12, 9])("%iか月予想は保有基準日より後に公表されても、保存済み株数で集計する", (months) => {
+    const summary = summarizeDomesticDividendProjection([
+      row({ forecast_as_of: "2026-09-25T00:00:00Z", forecast_period_months: months }),
+    ], snapshot, ["i1"], totals(), "reported_period");
+    expect(summary).toMatchObject({ status: "ready", projectedAnnualGross: 6000, asOf: snapshot.asOf });
+    const html = renderToStaticMarkup(createElement(PortfolioDividend, { projection: summary }));
+    expect(html).toContain("保有株数の基準日");
+    expect(html).toContain("最新の配当予想公表日");
+    expect(html).toContain("6,000");
+  });
+
+  it("まだ公表日を迎えていない予想は受取見込みに入れない", () => {
+    const summary = summarizeDomesticDividendProjection([
+      row({ forecast_as_of: new Date(Date.now() + 86400000).toISOString(), forecast_period_months: 9 }),
+    ], snapshot, ["i1"], totals(), "reported_period");
+    expect(summary).toMatchObject({ status: "incomplete", projectedAnnualGross: null });
+  });
+
   it("未ログイン・取込失敗・保有なしの状態を0円に偽装しない", () => {
     expect(emptyDomesticDividendProjection("no_snapshot").projectedAnnualGross).toBeNull();
     expect(emptyDomesticDividendProjection("error", snapshot.asOf).status).toBe("error");
