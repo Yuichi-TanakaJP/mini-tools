@@ -3,12 +3,12 @@ import { isUsableForecastDate, type DomesticDividendPosition, type DomesticDivid
 /** Display only verified annual amounts; a partial sum never certifies the full total. */
 export function dividendDisplay(projection: DomesticDividendProjection | undefined) {
   const usable = projection?.sourceIntegrity === true && ["ready", "incomplete"].includes(projection.status);
-  const at = Date.parse(projection?.asOf ?? "");
+  const at = projection?.forecastCutoff ?? Date.parse(projection?.asOf ?? "");
   const confirmed = usable ? projection.positions.filter((row) => row.cashProjectionStatus === "resolved" && !row.annualExclusionReason
     && row.annualGross !== null && Number.isFinite(row.annualGross) && row.annualGross >= 0
     && row.forecastDps !== null && Number.isFinite(row.forecastDps) && row.forecastDps >= 0
     && row.quantity !== null && Number.isFinite(row.quantity) && row.quantity >= 0
-    && isUsableForecastDate(row, at, projection.basis)) : [];
+    && isUsableForecastDate(row.forecastAsOf, at)) : [];
   const confirmedGross = confirmed.length > 0 ? confirmed.reduce((sum, row) => sum + row.annualGross!, 0) : null;
   const completeTotal = usable && projection.status === "ready" && projection.projectedAnnualGross !== null
     && Number.isFinite(projection.projectedAnnualGross) && projection.projectedAnnualGross >= 0
@@ -22,7 +22,7 @@ export function dividendDisplay(projection: DomesticDividendProjection | undefin
 
 /** A verified short-period disclosure is separate from a twelve-month projection. */
 export function reportedPeriodDividend(projection: DomesticDividendProjection | undefined, row: DomesticDividendPosition) {
-  const at = Date.parse(projection?.asOf ?? "");
+  const at = projection?.forecastCutoff ?? Date.parse(projection?.asOf ?? "");
   const start = Date.parse(row.forecastPeriodStart ?? "");
   const end = Date.parse(row.forecastPeriodEnd ?? "");
   const months = row.forecastPeriodMonths;
@@ -35,7 +35,7 @@ export function reportedPeriodDividend(projection: DomesticDividendProjection | 
   if (projection?.sourceIntegrity !== true || !["ready", "incomplete"].includes(projection.status)
     || !(inReceiptTotal || excludedFromAnnual)
     || months == null || !Number.isInteger(months) || months < 1 || months >= 12
-    || !Number.isFinite(start) || !Number.isFinite(end) || start >= end || !isUsableForecastDate(row, at, projection.basis)
+    || !Number.isFinite(start) || !Number.isFinite(end) || start >= end || !isUsableForecastDate(row.forecastAsOf, at)
     || row.quantity === null || !Number.isFinite(row.quantity) || row.quantity < 0
     || dps == null || !Number.isFinite(dps) || dps < 0 || gross == null || !Number.isFinite(gross) || gross < 0
     || Math.abs(gross - row.quantity * dps) > 0.01) return null;

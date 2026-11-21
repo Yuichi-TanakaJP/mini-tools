@@ -105,7 +105,7 @@ describe("国内株の配当予想（Stock Notes正本View）", () => {
   it.each([12, 9])("%iか月予想は保有基準日より後に公表されても、保存済み株数で集計する", (months) => {
     const summary = summarizeDomesticDividendProjection([
       row({ forecast_as_of: "2026-09-25T00:00:00Z", forecast_period_months: months }),
-    ], snapshot, ["i1"], totals(), "reported_period");
+    ], snapshot, ["i1"], totals(), "reported_period", Date.parse("2026-09-30T00:00:00Z"));
     expect(summary).toMatchObject({ status: "ready", projectedAnnualGross: 6000, asOf: snapshot.asOf });
     const html = renderToStaticMarkup(createElement(PortfolioDividend, { projection: summary }));
     expect(html).toContain("保有株数の基準日");
@@ -115,9 +115,13 @@ describe("国内株の配当予想（Stock Notes正本View）", () => {
 
   it("まだ公表日を迎えていない予想は受取見込みに入れない", () => {
     const summary = summarizeDomesticDividendProjection([
-      row({ forecast_as_of: new Date(Date.now() + 86400000).toISOString(), forecast_period_months: 9 }),
-    ], snapshot, ["i1"], totals(), "reported_period");
-    expect(summary).toMatchObject({ status: "incomplete", projectedAnnualGross: null });
+      row({ forecast_as_of: "2026-10-01T00:00:00Z", forecast_period_months: 9 }),
+    ], snapshot, ["i1"], totals(), "reported_period", Date.parse("2026-09-30T00:00:00Z"));
+    expect(summary).toMatchObject({ status: "incomplete", projectedAnnualGross: null, latestForecastAsOf: null });
+    expect(summary.positions[0]).toMatchObject({ forecastAsOf: null, forecastDps: null, annualGross: null });
+    const html = renderToStaticMarkup(createElement(PortfolioDividend, { projection: summary, expandDetails: true }));
+    expect(html).not.toContain("6,000");
+    expect(html).not.toContain("2026/10/01");
   });
 
   it("未ログイン・取込失敗・保有なしの状態を0円に偽装しない", () => {

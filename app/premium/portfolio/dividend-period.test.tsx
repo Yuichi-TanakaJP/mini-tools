@@ -101,7 +101,7 @@ it.each([
       annual_projection_exclusion_reason: null }),
   ], snapshot, ["i"], { snapshot_id: "s", snapshot_as_of: snapshot.asOf, holding_count: 1,
     confirmed_count: 1, held_count: 0, confirmed_partial_total: 30000,
-    projected_annual_dividend_gross: 30000, status: "resolved" }, "reported_period");
+    projected_annual_dividend_gross: 30000, status: "resolved" }, "reported_period", Date.parse("2026-11-21T00:00:00Z"));
   expect(dividendDisplay(projection)).toMatchObject({ confirmedGross: 30000, completeTotal: 30000, excludedCount: 0 });
   expect(projection.positions[0].changeType).toBe("not_comparable");
   const detail = renderToStaticMarkup(createElement(PortfolioDividend, { projection, expandDetails: true }));
