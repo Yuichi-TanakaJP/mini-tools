@@ -30,7 +30,8 @@ export function reportedPeriodDividend(projection: DomesticDividendProjection | 
   const gross = row.reportedForecastGross;
   const inReceiptTotal = projection?.basis === "reported_period" && row.cashProjectionStatus === "resolved"
     && row.annualGross !== null && row.annualGross === gross;
-  const excludedFromAnnual = row.annualExclusionReason === "non_annual_period" && row.annualGross === null;
+  const excludedFromAnnual = projection?.basis !== "reported_period"
+    && row.annualExclusionReason === "non_annual_period" && row.annualGross === null;
   if (projection?.sourceIntegrity !== true || !["ready", "incomplete"].includes(projection.status)
     || !(inReceiptTotal || excludedFromAnnual)
     || months == null || !Number.isInteger(months) || months < 1 || months >= 12
