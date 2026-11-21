@@ -39,9 +39,12 @@ export function reportedPeriodDividend(projection: DomesticDividendProjection | 
     || dps == null || !Number.isFinite(dps) || dps < 0 || gross == null || !Number.isFinite(gross) || gross < 0
     || Math.abs(gross - row.quantity * dps) > 0.01) return null;
   const startDate = new Date(start);
-  const expectedEnd = Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + months, 1) - 86400000;
+  const targetMonth = startDate.getUTCMonth() + months;
+  const targetMonthDays = new Date(Date.UTC(startDate.getUTCFullYear(), targetMonth + 1, 0)).getUTCDate();
+  const targetDay = inReceiptTotal ? Math.min(startDate.getUTCDate(), targetMonthDays) : 1;
+  const expectedEnd = Date.UTC(startDate.getUTCFullYear(), targetMonth, targetDay - 1);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(row.forecastPeriodStart!) || !/^\d{4}-\d{2}-\d{2}$/.test(row.forecastPeriodEnd!)
-    || startDate.getUTCDate() !== 1 || new Date(start).toISOString().slice(0, 10) !== row.forecastPeriodStart || expectedEnd !== end) return null;
+    || (!inReceiptTotal && startDate.getUTCDate() !== 1) || startDate.toISOString().slice(0, 10) !== row.forecastPeriodStart || expectedEnd !== end) return null;
   return { dps, gross, months, start: row.forecastPeriodStart!, end: row.forecastPeriodEnd! };
 }
 

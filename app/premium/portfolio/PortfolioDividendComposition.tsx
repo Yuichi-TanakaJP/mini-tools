@@ -44,12 +44,13 @@ function periodDate(value: string) {
 function ReportedPeriodDividends({ projection }: { projection: DomesticDividendProjection | undefined }) {
   const rows = projection?.positions.flatMap((row) => {
     const reported = reportedPeriodDividend(projection, row);
-    return reported && row.annualGross === null ? [{ row, reported }] : [];
+    return reported ? [{ row, reported }] : [];
   }) ?? [];
   if (rows.length === 0) return null;
-  return <section aria-label="年間集計対象外の公表予想" className={styles.reportedPeriods}>
+  const receipt = projection?.basis === "reported_period";
+  return <section aria-label={receipt ? "短期決算の公表予想" : "年間集計対象外の公表予想"} className={styles.reportedPeriods}>
     <h4 style={{ margin: 0 }}>対象期間付きの公表予想</h4>
-    <p style={{ margin: "6px 0 10px", fontSize: 12 }}>次の予想は確認済みですが12か月ではないため、上の年間合計・構成比・前年比には含めません。期間の引き延ばしは行いません。</p>
+    <p style={{ margin: "6px 0 10px", fontSize: 12 }}>{receipt ? "以下の配当は上の受取見込みに含まれています。" : "次の予想は確認済みですが12か月ではないため、上の年間合計・構成比・前年比には含めません。期間の引き延ばしは行いません。"}</p>
     {rows.map(({ row, reported }) => <div key={row.instrumentId} style={{ marginTop: 8, fontSize: 13, lineHeight: 1.7 }}>
       <strong>{row.ticker} {row.name}</strong><br />
       {periodDate(reported.start)}～{periodDate(reported.end)}（{reported.months}か月） ／ 対象期の予想額 <strong>{yen(reported.gross)}</strong> ／ 1株当たり {yen(reported.dps)}
