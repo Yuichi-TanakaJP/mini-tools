@@ -291,7 +291,7 @@ L01/L0: 同一pathの上部4カード→対応する資産／配当と正規軸�
 
 ### 配当対象期間と操作階層の整理（2026-11-01）
 
-L01/L0: 上部の表示対象カード→表示形式→分類条件の順へ配置を整理する。同じlocal stateを同renderで反映し、7軸の常時到達、範囲保持、解除、native button/aria-pressedを維持。クリックで新しい通信・URL/history・pendingを追加しない。期間付き公表額は取得済みpropsの検証済み値のみで描画し、未知・失敗・年額除外を区別する。初回DB読取のoptional列が42703の場合のみ同条件で既存列を再読取し、その分1回のreadが増える。権限拒否は従来errorから回復を案内する。回帰はdividend-period.test.tsx、data.test.tsとportfolio UAT。
+L01/L0: 上部の表示対象カード→表示形式→分類条件の順へ配置を整理する。同じlocal stateを同renderで反映し、7軸の常時到達、範囲保持、解除、native button/aria-pressedを維持。クリックで新しい通信・URL/history・pendingを追加しない。期間付き公表額は取得済みpropsの検証済み値のみで描画し、未知・失敗・年額除外を区別する。初回SSRは本人の現在スナップショットに対し、受取見込みの集計・明細ビューを読む。確認済みの短期決算分は対象期間を添えて合計に反映する。新ビューが未配備、列が不足、または権限拒否の場合は保有表示を続けて配当を取得失敗と表示する。画面を再読み込みすると同じ条件の読取を再試行する。回帰はdividend-period.test.tsx、data.test.tsとportfolio UAT。
 
 
 ### Portfolio外国株・ETF参考額（2026-11-03）

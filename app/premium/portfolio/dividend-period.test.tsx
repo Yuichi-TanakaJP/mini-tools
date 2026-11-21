@@ -87,3 +87,41 @@ describe("対象期の公表予想と年間合計の分離", () => {
     expect(dividendExclusionLabel("unknown")).toBe("比較条件が未確認");
   });
 });
+
+
+it.each([
+  ["2026-04-01", "2026-12-31", "2026/04/01"],
+  ["2026-04-15", "2027-01-14", "2026/04/15"],
+])("最新の9か月予想300円を保有株数で集計し、対象期間を表示する（%s）", (start, end, startLabel) => {
+  const projection = summarizeDomesticDividendProjection([
+    row({ ticker: "6890", forecast_as_of: "2026-11-16", forecast_dps: 300,
+      forecast_period_start: start, forecast_period_end: end,
+      raw_forecast_dps: 300, reported_forecast_dps: 300, reported_forecast_dividend_gross: 30000,
+      projected_annual_dividend_gross: 30000, cash_projection_status: "resolved",
+      annual_projection_exclusion_reason: null }),
+  ], snapshot, ["i"], { snapshot_id: "s", snapshot_as_of: snapshot.asOf, holding_count: 1,
+    confirmed_count: 1, held_count: 0, confirmed_partial_total: 30000,
+    projected_annual_dividend_gross: 30000, status: "resolved" }, "reported_period");
+  expect(dividendDisplay(projection)).toMatchObject({ confirmedGross: 30000, completeTotal: 30000, excludedCount: 0 });
+  expect(projection.positions[0].changeType).toBe("not_comparable");
+  const detail = renderToStaticMarkup(createElement(PortfolioDividend, { projection, expandDetails: true }));
+  const summary = renderToStaticMarkup(createElement(PortfolioIncomeSummary, { projection }));
+  expect(detail).toContain("9か月");
+  expect(detail).toContain("6890");
+  expect(detail).toContain(startLabel);
+  const graph = renderToStaticMarkup(createElement(PortfolioDividendComposition,
+    { groups: [], projection, dimensionLabel: "口座", selectedKey: null, onSelect: () => {} }));
+  expect(graph).toContain(startLabel);
+  expect(graph).toContain("上の受取見込みに含まれています");
+  expect(summary).toContain("配当受取見込み");
+  expect(summary).toContain("30,000");
+  const all = [position({ quantity: 25 }), position({ id: "p2", accountId: "b", quantity: 75 })];
+  const selected = selectDividendProjection(projection, all, [all[0]]);
+  expect(dividendDisplay(selected)).toMatchObject({ completeTotal: 7500, excludedCount: 0 });
+});
+
+it("受取見込みの未確認行に公表額があっても、合計にも短期明細にも出さない", () => {
+  const projection = { ...source(), basis: "reported_period" as const };
+  expect(reportedPeriodDividend(projection, projection.positions[0])).toBeNull();
+  expect(dividendDisplay(projection)).toMatchObject({ confirmedGross: null, excludedCount: 0, unverifiedCount: 1 });
+});

@@ -66,6 +66,7 @@ export type DomesticDividendPosition = {
 
 export type DomesticDividendProjection = {
   sourceIntegrity?: boolean;
+  basis?: "annual" | "reported_period";
   status: "no_snapshot" | "no_domestic_stocks" | "error" | "incomplete" | "ready";
   asOf: string | null;
   latestForecastAsOf: string | null;
@@ -111,6 +112,13 @@ export function emptyDomesticDividendProjection(
   };
 }
 
+export function isUsableForecastDate(row: DomesticDividendPosition, snapshotAt: number, basis: DomesticDividendProjection["basis"]) {
+  const published = Date.parse(row.forecastAsOf ?? "");
+  const months = row.forecastPeriodMonths ?? 0;
+  return Number.isFinite(published) && Number.isFinite(snapshotAt)
+    && (published <= snapshotAt || (basis === "reported_period" && Number.isInteger(months) && months > 0 && months < 12));
+}
+
 /**
  * Never present a sum of partial source rows as the portfolio-wide total.
  * A previous-actual DPS is not the user's historical cash receipt.
@@ -120,6 +128,7 @@ export function summarizeDomesticDividendProjection(
   snapshot: { id: string; asOf: string },
   domesticInstrumentIds: readonly string[],
   totals: DividendTotalsRow | null = null,
+  basis: NonNullable<DomesticDividendProjection["basis"]> = "annual",
 ): DomesticDividendProjection {
   const expected = new Set(domesticInstrumentIds);
   if (expected.size === 0) {
@@ -161,9 +170,7 @@ export function summarizeDomesticDividendProjection(
     row.annualGross !== null && row.forecastDps !== null && row.quantity !== null);
   // The selected view uses timestamps for forecasts; a missing date means
   // the projection cannot be certified fresh, even if an amount is present.
-  const hasAllSourceDates = positions.every((row) => row.forecastAsOf
-    && Number.isFinite(Date.parse(row.forecastAsOf))
-    && Date.parse(row.forecastAsOf) <= snapshotAt);
+  const hasAllSourceDates = positions.every((row) => isUsableForecastDate(row, snapshotAt, basis));
   const completeTotal = amount(totals?.projected_annual_dividend_gross ?? null);
   const validTotals = totals?.status === "resolved"
     && totals.snapshot_id === snapshot.id
@@ -203,6 +210,7 @@ export function summarizeDomesticDividendProjection(
   return {
     status: complete ? "ready" : "incomplete",
     sourceIntegrity,
+    basis,
     asOf: snapshot.asOf,
     latestForecastAsOf: positions.map((row) => row.forecastAsOf)
       .filter((value): value is string => Boolean(value))

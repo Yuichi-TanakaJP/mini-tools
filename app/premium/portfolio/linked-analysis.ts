@@ -1,6 +1,6 @@
 import { getPositionAllocationBucket, type PortfolioAllocationDimension, type PortfolioAllocationItem, type PortfolioAllocationScope } from "./allocation";
 import { reportedPeriodDividend } from "./dividend-display";
-import { emptyDomesticDividendProjection, type DomesticDividendPosition, type DomesticDividendProjection } from "./dividend-income";
+import { emptyDomesticDividendProjection, isUsableForecastDate, type DomesticDividendPosition, type DomesticDividendProjection } from "./dividend-income";
 import type { PortfolioInstrumentAnalysis, PortfolioPosition } from "./types";
 
 export type AnalysisGroup = PortfolioAllocationItem & {
@@ -84,7 +84,7 @@ export function selectDividendProjection(source: DomesticDividendProjection | un
   const complete = source.sourceIntegrity === true && uniqueSource && scoped.length === selected.size
     && scoped.every((p) => p.cashProjectionStatus === "resolved" && p.annualGross !== null && p.annualGross >= 0
       && p.forecastDps !== null && p.forecastDps >= 0 && p.quantity !== null
-      && p.forecastAsOf !== null && Number.isFinite(Date.parse(p.forecastAsOf)) && Date.parse(p.forecastAsOf) <= at);
+      && isUsableForecastDate(p, at, source.basis));
   const comparable = scoped.filter((p) => ["increase", "decrease", "unchanged"].includes(p.changeType ?? ""));
   const sum = (key: "annualGross" | "priorRunRateGross" | "rateEffectGross", rows = scoped) => rows.reduce((total, p) => total + (p[key] ?? 0), 0);
   const wholeSelected = selected.size === whole.size && [...selected].every(([id, quantity]) => quantity === whole.get(id));

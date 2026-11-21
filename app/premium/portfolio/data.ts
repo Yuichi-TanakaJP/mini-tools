@@ -343,38 +343,31 @@ async function loadDomesticDividends(
   const rows: DividendProjectionRow[] = [];
   try {
     const { data: totalRows, error: totalsError } = await supabase
-      .from("stock_notes_portfolio_dividend_totals_v")
-      .select("snapshot_id, snapshot_as_of, holding_count, confirmed_count, held_count, confirmed_partial_total, projected_annual_dividend_gross, status")
+      .from("stock_notes_portfolio_dividend_receipt_totals_v")
+      .select("snapshot_id, snapshot_as_of, holding_count, confirmed_count, held_count, confirmed_partial_total, projected_annual_dividend_gross:projected_receipt_gross, status")
       .eq("portfolio_id", portfolioId)
       .eq("snapshot_id", snapshot.id)
       .limit(2)
       .returns<DividendTotalsRow[]>();
     if (totalsError) return emptyDomesticDividendProjection("error", snapshot.asOf);
     const totals = totalRows?.length === 1 ? totalRows[0] : null;
-    const legacyColumns = "snapshot_id, snapshot_as_of, instrument_id, ticker, instrument_name, quantity, latest_actual_dps, forecast_dps, forecast_as_of, projected_annual_dividend_gross, prior_actual_run_rate_gross, dividend_rate_effect_gross, dividend_change_type, cash_projection_status, raw_forecast_dps, forecast_metric_basis_id, forecast_fact_basis_id";
-    const periodColumns = ", forecast_period_end, forecast_period_start, forecast_period_months, reported_forecast_dps, reported_forecast_dividend_gross, annual_projection_exclusion_reason, dividend_comparison_exclusion_reason";
-    let hasPeriodColumns = true;
+    const legacyColumns = "snapshot_id, snapshot_as_of, instrument_id, ticker, instrument_name, quantity, latest_actual_dps, forecast_dps:receipt_forecast_dps, forecast_as_of, projected_annual_dividend_gross:projected_receipt_gross, prior_actual_run_rate_gross, dividend_rate_effect_gross, dividend_change_type, cash_projection_status:receipt_status, raw_forecast_dps, forecast_metric_basis_id, forecast_fact_basis_id";
+    const periodColumns = ", forecast_period_end, forecast_period_start, forecast_period_months, reported_forecast_dps, reported_forecast_dividend_gross, annual_projection_exclusion_reason:receipt_exclusion_reason, dividend_comparison_exclusion_reason";
     for (let from = 0; from < 5000; from += dividendPageSize) {
-      const readPage = (withPeriod: boolean) => supabase
-        .from("stock_notes_portfolio_current_dividend_projection_v")
-        .select(legacyColumns + (withPeriod ? periodColumns : ""))
+      const result = await supabase
+        .from("stock_notes_portfolio_dividend_receipts_v")
+        .select(legacyColumns + periodColumns)
         .eq("portfolio_id", portfolioId)
         .eq("snapshot_id", snapshot.id)
         .order("instrument_id", { ascending: true })
         .range(from, from + dividendPageSize - 1)
         .returns<DividendProjectionRow[]>();
-      let result = await readPage(hasPeriodColumns);
-      // Older DB views keep their annual/source safeguards; only optional columns fall back.
-      if (hasPeriodColumns && result.error?.code === "42703") {
-        hasPeriodColumns = false;
-        result = await readPage(false);
-      }
       if (result.error) return emptyDomesticDividendProjection("error", snapshot.asOf);
       const data = result.data;
       const page = data ?? [];
       rows.push(...page);
       if (page.length < dividendPageSize) {
-        return summarizeDomesticDividendProjection(rows, snapshot, domesticIds, totals);
+        return summarizeDomesticDividendProjection(rows, snapshot, domesticIds, totals, "reported_period");
       }
     }
   } catch {
