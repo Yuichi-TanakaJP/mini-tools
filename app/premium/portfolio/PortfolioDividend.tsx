@@ -37,6 +37,8 @@ export default function PortfolioDividend({ projection, scopeLabel, breakdown, e
   expandDetails?: boolean;
 }) {
   const data = projection;
+  const receipt = data?.basis === "reported_period";
+  const totalLabel = receipt ? "受取見込み" : "年間集計";
   const isReady = data?.status === "ready";
   const coverage = dividendDisplay(data);
   const card = { background: "var(--color-bg-card)", border: "1px solid var(--color-border)", borderRadius: 12, padding: 18, minWidth: 0 };
@@ -56,22 +58,22 @@ export default function PortfolioDividend({ projection, scopeLabel, breakdown, e
         <p style={{ margin: 0 }}>対象の国内個別株がありません。配当0円の証明ではありません。</p>
       ) : data.status === "error" ? (
         <p role="status" style={{ margin: 0, color: "var(--color-warning)" }}>
-          配当データを読み取れませんでした。株数基準・年間合計は未確認です。0円とは扱いません。保有一覧の表示は継続できます。
+          配当データを読み取れませんでした。株数基準・合計は未確認です。0円とは扱いません。保有一覧の表示は継続できます。
         </p>
       ) : (
         <>
           <div style={{ fontSize: 12, color: "var(--color-text-muted)", lineHeight: 1.6 }}>
             保有基準日 {date(data.asOf)} ／ 会社予想の最も新しい確認日 {date(data.latestForecastAsOf)} ／
-            明細取得 {data.coveredStocks}/{data.expectedStocks}銘柄 ／ 年間集計確認済み {coverage.confirmedCount}/{data.expectedStocks}銘柄{coverage.excludedCount > 0 ? ` ／ 年間集計対象外 ${coverage.excludedCount}銘柄` : ""}
+            明細取得 {data.coveredStocks}/{data.expectedStocks}銘柄 ／ {totalLabel}確認済み {coverage.confirmedCount}/{data.expectedStocks}銘柄{coverage.excludedCount > 0 ? ` ／ 年間集計対象外 ${coverage.excludedCount}銘柄` : ""}
           </div>
           {!isReady ? (
             <p role="status" style={{ margin: 0, color: "var(--color-warning)" }}>
-              {dividendCoverageNote(coverage) || "配当の確認条件を満たしていません"}。年間合計は未確定です（12か月ベース）。対象期間付きの公表予想は明細で確認でき、年間額へ換算・加算しません。
+              {dividendCoverageNote(coverage) || "配当の確認条件を満たしていません"}。{receipt ? "全銘柄の受取見込みは未確定です。" : "年間合計は未確定です（12か月ベース）。対象期間付きの公表予想は明細で確認できます。"}
             </p>
           ) : null}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
             {[
-              ["年間予想配当", yen(data.projectedAnnualGross), "現在の保有数量 × 会社予想DPS"],
+              [receipt ? (coverage.completeTotal === null ? "配当受取見込み（確認済み分）" : "配当受取見込み") : "年間予想配当", yen(receipt ? coverage.completeTotal ?? coverage.confirmedGross : data.projectedAnnualGross), receipt ? "保有株数 × 公表された対象期の1株配当" : "現在の保有数量 × 会社予想DPS"],
               ["増配 / 減配", isReady ? data.increaseCount + " / " + data.decreaseCount + "銘柄" : "—", "据置 " + data.unchangedCount + " / 比較不可 " + data.notComparableCount],
               ["配当単価変化の寄与", yen(data.comparableRateEffectGross), "比較可能な" + data.comparableCount + "銘柄のみ。買増の効果は含めません"],
               ["直近実績DPS基準", yen(data.priorRunRateGross), "比較不可がある場合、全体値は出しません"],
@@ -96,7 +98,7 @@ export default function PortfolioDividend({ projection, scopeLabel, breakdown, e
               <table style={{ width: "100%", minWidth: 1050, borderCollapse: "collapse", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--color-border)", textAlign: "left" }}>
-                    {["銘柄", "数量", "直近実績DPS", "会社予想DPS", "対象期間", "対象期予想額", "年間集計", "年間予想", "増減区分・比較条件", "寄与額"].map((s) => (
+                    {["銘柄", "数量", "直近実績DPS", "会社予想DPS", "対象期間", "対象期予想額", totalLabel, receipt ? "集計額" : "年間予想", "増減区分・比較条件", "寄与額"].map((s) => (
                       <th key={s} scope="col" style={{ padding: "8px 6px" }}>{s}</th>
                     ))}
                   </tr>
@@ -126,7 +128,7 @@ export default function PortfolioDividend({ projection, scopeLabel, breakdown, e
               </table>
             </div>
             <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: "8px 0 0" }}>
-              配当単価変化の寄与額と、年間予想配当の前年差は同じではありません。
+              短期決算の配当は対象期の額を表示します。前年比は同じ長さの決算期で比較します。
               実際の受取額・税引後額は別の入金記録が必要です。
             </p>
           </details>

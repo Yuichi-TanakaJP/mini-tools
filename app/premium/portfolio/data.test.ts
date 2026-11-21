@@ -129,10 +129,10 @@ describe("portfolio data loader", () => {
           cost_basis: "1000", market_value: "1200", unrealized_pnl: "200",
           distribution_method: null },
       ], error: null },
-      stock_notes_portfolio_dividend_totals_v: { data: [{ snapshot_id: "s1", snapshot_as_of: date,
+      stock_notes_portfolio_dividend_receipt_totals_v: { data: [{ snapshot_id: "s1", snapshot_as_of: date,
         holding_count: "1", confirmed_count: "1", held_count: "0", confirmed_partial_total: "60",
         projected_annual_dividend_gross: "60", status: "resolved" }], error: null },
-      stock_notes_portfolio_current_dividend_projection_v: { data: [
+      stock_notes_portfolio_dividend_receipts_v: { data: [
         { snapshot_id: "s1", snapshot_as_of: date, instrument_id: "i1",
           ticker: "1111", instrument_name: "試験株", quantity: "10",
           latest_actual_dps: "5", forecast_dps: "6", raw_forecast_dps: "6",
@@ -149,7 +149,7 @@ describe("portfolio data loader", () => {
     });
   });
 
-  it.each(["stock_notes_portfolio_current_dividend_projection_v", "stock_notes_portfolio_dividend_totals_v"])("配当View %s が読めなくても保有一覧を破壊せず、ゼロ円と表示しない", async (failedView) => {
+  it.each(["stock_notes_portfolio_dividend_receipts_v", "stock_notes_portfolio_dividend_receipt_totals_v"])("配当View %s が読めなくても保有一覧を破壊せず、ゼロ円と表示しない", async (failedView) => {
     const date = "2026-09-21T04:08:00Z";
     const data = await loadPortfolio(stubClient({
       stock_notes_portfolios: { data: { id: "portfolio-1", name: "試験", base_currency: "JPY" }, error: null },
@@ -628,7 +628,7 @@ it.each([[null, false], [" ", false], ["2", true]])("元数量%sの既知/未取
 });
 
 
-it.each(["42703", "42501"])("期間列の段階配備はundefined_columnのみ既存契約へ戻す（%s）", async (code) => {
+it.each(["42703", "42501"])("集計列の不足や権限エラーを受取見込み額へフォールバックしない（%s）", async (code) => {
   const date = "2026-10-31T00:00:00Z";
   const queryLog: string[] = [];
   const data = await loadPortfolio(stubClient({
@@ -637,11 +637,11 @@ it.each(["42703", "42501"])("期間列の段階配備はundefined_columnのみ�
     stock_notes_portfolio_accounts: { data: [{ id: "a", account_name: "合成口座", account_type: "taxable", institution_name: "合成" }], error: null },
     stock_notes_portfolio_instruments: { data: [{ id: "i", asset_type: "domestic_stock", identifier: "SYNTHETIC", name: "合成株" }], error: null },
     stock_notes_portfolio_positions: { data: [{ id: "pos", snapshot_id: "s", account_id: "a", instrument_id: "i", quantity: "10", market_value: "100" }], error: null },
-    stock_notes_portfolio_dividend_totals_v: { data: [{ snapshot_id: "s", snapshot_as_of: date, holding_count: 1, confirmed_count: 1, held_count: 0, confirmed_partial_total: 20, projected_annual_dividend_gross: 20, status: "resolved" }], error: null },
-    stock_notes_portfolio_current_dividend_projection_v: { periodColumnsUnavailable: code, data: [{ snapshot_id: "s", snapshot_as_of: date, instrument_id: "i", ticker: "SYNTHETIC", instrument_name: "合成株", quantity: 10, forecast_dps: 2, raw_forecast_dps: 2, latest_actual_dps: null, cash_projection_status: "resolved", forecast_as_of: "2026-10-20", projected_annual_dividend_gross: 20, prior_actual_run_rate_gross: null, dividend_rate_effect_gross: null, dividend_change_type: "not_comparable" }], error: null },
+    stock_notes_portfolio_dividend_receipt_totals_v: { data: [{ snapshot_id: "s", snapshot_as_of: date, holding_count: 1, confirmed_count: 1, held_count: 0, confirmed_partial_total: 20, projected_annual_dividend_gross: 20, status: "resolved" }], error: null },
+    stock_notes_portfolio_dividend_receipts_v: { periodColumnsUnavailable: code, data: [{ snapshot_id: "s", snapshot_as_of: date, instrument_id: "i", ticker: "SYNTHETIC", instrument_name: "合成株", quantity: 10, forecast_dps: 2, raw_forecast_dps: 2, latest_actual_dps: null, cash_projection_status: "resolved", forecast_as_of: "2026-10-20", projected_annual_dividend_gross: 20, prior_actual_run_rate_gross: null, dividend_rate_effect_gross: null, dividend_change_type: "not_comparable" }], error: null },
   }, queryLog));
   expect(data.positions).toHaveLength(1);
-  expect(data.domesticDividends.status).toBe(code === "42703" ? "ready" : "error");
-  expect(queryLog.filter(entry => entry === "from=stock_notes_portfolio_current_dividend_projection_v")).toHaveLength(code === "42703" ? 2 : 1);
-  if (code === "42703") expect(data.domesticDividends.projectedAnnualGross).toBe(20);
+  expect(data.domesticDividends.status).toBe("error");
+  expect(queryLog.filter(entry => entry === "from=stock_notes_portfolio_dividend_receipts_v")).toHaveLength(1);
+  expect(data.domesticDividends.projectedAnnualGross).toBeNull();
 });

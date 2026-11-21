@@ -87,3 +87,26 @@ describe("対象期の公表予想と年間合計の分離", () => {
     expect(dividendExclusionLabel("unknown")).toBe("比較条件が未確認");
   });
 });
+
+
+it("最新の9か月予想300円を保有株数で集計し、対象期間を表示する", () => {
+  const projection = summarizeDomesticDividendProjection([
+    row({ ticker: "6890", forecast_as_of: "2026-11-16", forecast_dps: 300,
+      raw_forecast_dps: 300, reported_forecast_dps: 300, reported_forecast_dividend_gross: 30000,
+      projected_annual_dividend_gross: 30000, cash_projection_status: "resolved",
+      annual_projection_exclusion_reason: null }),
+  ], snapshot, ["i"], { snapshot_id: "s", snapshot_as_of: snapshot.asOf, holding_count: 1,
+    confirmed_count: 1, held_count: 0, confirmed_partial_total: 30000,
+    projected_annual_dividend_gross: 30000, status: "resolved" }, "reported_period");
+  expect(dividendDisplay(projection)).toMatchObject({ confirmedGross: 30000, completeTotal: 30000, excludedCount: 0 });
+  expect(projection.positions[0].changeType).toBe("not_comparable");
+  const detail = renderToStaticMarkup(createElement(PortfolioDividend, { projection, expandDetails: true }));
+  const summary = renderToStaticMarkup(createElement(PortfolioIncomeSummary, { projection }));
+  expect(detail).toContain("9か月");
+  expect(detail).toContain("6890");
+  expect(summary).toContain("配当受取見込み");
+  expect(summary).toContain("30,000");
+  const all = [position({ quantity: 25 }), position({ id: "p2", accountId: "b", quantity: 75 })];
+  const selected = selectDividendProjection(projection, all, [all[0]]);
+  expect(dividendDisplay(selected)).toMatchObject({ completeTotal: 7500, excludedCount: 0 });
+});

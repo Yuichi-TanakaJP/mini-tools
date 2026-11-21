@@ -69,7 +69,7 @@ export default function PortfolioHoldingsAnalysis({ data }: { data: PortfolioDat
         {projection?.status === "error" ? <p role="status">配当データの取得に失敗しました。金額は未確認です。</p> : !projection || projection.status === "no_snapshot" ? <p role="status">配当データは未取得です。</p> : projection.status === "no_domestic_stocks" ? <p role="status">この範囲に配当対象の国内個別株はありません。</p> : null}{!unavailable && dividendGroups.length > 0 ? <PortfolioDividendComposition groups={dividendGroups} projection={projection} dimensionLabel={portfolioAllocationDimensions[selection.dimension].label} selectedKey={selected?.key ?? null} onSelect={choose} /> : <p role="status">{unavailable ? "分類情報を取得できないため、配当の分類グラフは保留しています。他の軸へ切り替えられます。" : "対象の保有がありません。"}</p>}</section>
       </div> : null}
     </Card>
-    <div role="status" aria-live="polite" style={{ fontSize: 13, color: "var(--color-text-sub)", lineHeight: 1.6 }}>配当・商品構成の表示範囲：<strong>{scopeLabel}</strong>。上段の総資産評価額・年間予想配当は保有全体です。</div>
+    <div role="status" aria-live="polite" style={{ fontSize: 13, color: "var(--color-text-sub)", lineHeight: 1.6 }}>配当・商品構成の表示範囲：<strong>{scopeLabel}</strong>。上段の総資産評価額・配当見込みは保有全体です。</div>
     {view === "list" && content === "dividends" ? <PortfolioDividend projection={projection} scopeLabel={scopeLabel} expandDetails /> : null}
     {content === "dividends" ? <PortfolioForeignIncome projection={foreignProjection} view={view} scopeLabel={scopeLabel} /> : null}
     {view === "list" && content === "assets" ? <Card title="商品一覧">

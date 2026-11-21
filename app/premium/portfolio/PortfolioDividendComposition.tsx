@@ -18,7 +18,7 @@ export default function PortfolioDividendComposition({ groups, projection, dimen
   return <div aria-label="分類別の予想配当" className={styles.dividendComposition}>
     <div><h3 style={{ margin: 0, fontSize: 16 }}>{dimensionLabel}{dimensionLabel.endsWith("別") ? "" : "別"}の配当構成</h3>
       <p style={{ margin: "6px 0 0", color: "var(--color-text-sub)", fontSize: 12, lineHeight: 1.6 }}>
-        {total.confirmedGross === null ? "確認済みの年間予想額がないため、グラフは未表示です。" : <>確認済み予想配当 <strong>{yen(total.confirmedGross)}</strong> の内訳（国内株・税引前）。{total.missingCount > 0 ? `${dividendCoverageNote(total)}は金額・割合に含みません。この表示範囲の年間合計は未確定です。` : ""}{total.confirmedGross === 0 ? "確認済み額は0円のため、構成比はありません。" : "棒の長さ・割合は確認済み額を分母にしています。"}</>}
+        {total.confirmedGross === null ? "確認済みの配当予想額がないため、グラフは未表示です。" : <>確認済み予想配当 <strong>{yen(total.confirmedGross)}</strong> の内訳（国内株・税引前）。{total.missingCount > 0 ? `${dividendCoverageNote(total)}は金額・割合に含みません。この表示範囲の${projection?.basis === "reported_period" ? "受取見込み" : "年間合計"}は未確定です。` : ""}{total.confirmedGross === 0 ? "確認済み額は0円のため、構成比はありません。" : "棒の長さ・割合は確認済み額を分母にしています。"}</>}
       </p>
     </div>
     <div className={styles.dividendBars}>
@@ -44,7 +44,7 @@ function periodDate(value: string) {
 function ReportedPeriodDividends({ projection }: { projection: DomesticDividendProjection | undefined }) {
   const rows = projection?.positions.flatMap((row) => {
     const reported = reportedPeriodDividend(projection, row);
-    return reported ? [{ row, reported }] : [];
+    return reported && row.annualGross === null ? [{ row, reported }] : [];
   }) ?? [];
   if (rows.length === 0) return null;
   return <section aria-label="年間集計対象外の公表予想" className={styles.reportedPeriods}>
