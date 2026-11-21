@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import PortfolioDividend from "./PortfolioDividend";
+import { dividendDisplay } from "./dividend-display";
 import { describe, expect, it } from "vitest";
 import {
   emptyDomesticDividendProjection,
@@ -126,14 +127,15 @@ describe("国内株の配当予想（Stock Notes正本View）", () => {
 
   it("未公表分を表示から外しても、公表済み銘柄の小計を残す", () => {
     const summary = summarizeDomesticDividendProjection([
-      row(), row({ instrument_id: "i2", forecast_as_of: "2026-10-01T00:00:00Z" }),
+      row(), row({ instrument_id: "i2", forecast_as_of: "2026-10-01T00:00:00Z", projected_annual_dividend_gross: 8000 }),
     ], snapshot, ["i1", "i2"], totals({ holding_count: 2, confirmed_count: 2,
-      confirmed_partial_total: 12000, projected_annual_dividend_gross: 12000 }),
+      confirmed_partial_total: 14000, projected_annual_dividend_gross: 14000 }),
     "reported_period", Date.parse("2026-09-30T00:00:00Z"));
     expect(summary).toMatchObject({ status: "incomplete", sourceIntegrity: true, projectedAnnualGross: null });
     const html = renderToStaticMarkup(createElement(PortfolioDividend, { projection: summary, expandDetails: true }));
     expect(html).toContain("6,000");
-    expect(html).not.toContain("12,000");
+    expect(html).not.toContain("8,000");
+    expect(dividendDisplay(summary)).toMatchObject({ confirmedGross: 6000, completeTotal: null });
   });
 
   it("未ログイン・取込失敗・保有なしの状態を0円に偽装しない", () => {
