@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "@/components/navigation/Link";
+import { RevalidateOnRestore } from "./RevalidateOnRestore";
 import { DEBT_LABELS, loadScreening, PAGE_SIZE, SCREEN_PATH, screenHref, type ScreenFilters } from "./data";
 import styles from "./screening.module.css";
 
@@ -23,7 +23,7 @@ function FilterForm({ filters }: { filters: ScreenFilters }) {
         <input name="maxDebt" inputMode="decimal" maxLength={16} defaultValue={filters.maxDebt} />
       </label>
       <button type="submit">絞り込む</button>
-      <Link href="/tools/stock-notes/screening" prefetch={false}>条件をクリア</Link>
+      <a href="/tools/stock-notes/screening">条件をクリア</a>
     </form>
   );
 }
@@ -36,13 +36,13 @@ export default async function ScreeningPage({
   const result = await loadScreening(await searchParams);
   return (
     <main className={styles.main}>
-      <Link href="/tools/stock-notes" prefetch={false}>← 銘柄分析ダッシュボード</Link>
+      <a href="/tools/stock-notes">← 銘柄分析ダッシュボード</a>
       <header>
         <h1>FCF・開示負債</h1>
         <p>同じEDINET年次提出から確認できたFCFと、借入・社債・リースの開示残高を比較します。</p>
       </header>
       {result.state === "unauthorized" ? (
-        <p>銘柄を確認するには <Link href="/account">ログイン</Link>してください。</p>
+        <p>銘柄を確認するには <a href="/account">ログイン</a>してください。</p>
       ) : result.state === "unavailable" ? (
         <p role="status">この環境ではスクリーニングを利用できません。</p>
       ) : "filters" in result ? (
@@ -64,7 +64,7 @@ export default async function ScreeningPage({
                 : "表示できる銘柄はありません。"}
             </p>
           ) : (
-            <>
+            <RevalidateOnRestore>
               <p className={styles.summary}>証券コード順 · {result.rows.length}銘柄を表示 · 1ページ{PAGE_SIZE}件</p>
               <div className={styles.tableWrap} role="region" aria-label="財務スクリーニング結果" tabIndex={0}>
                 <table className={styles.table}>
@@ -92,12 +92,12 @@ export default async function ScreeningPage({
                   </tbody>
                 </table>
               </div>
-            </>
+            </RevalidateOnRestore>
           )}
           {result.state === "ready" && (result.filters.after || result.next) && (
             <nav className={styles.navigation} aria-label="結果のページ送り">
-              {result.filters.after && <Link href={screenHref(result.filters, "")} prefetch={false}>先頭へ</Link>}
-              {result.next && <Link href={screenHref(result.filters, result.next)} prefetch={false}>次のページ</Link>}
+              {result.filters.after && <a href={screenHref(result.filters, "")}>先頭へ</a>}
+              {result.next && <a href={screenHref(result.filters, result.next)}>次のページ</a>}
             </nav>
           )}
         </>

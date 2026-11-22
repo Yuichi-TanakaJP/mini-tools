@@ -98,7 +98,8 @@ function rpcRows(value: unknown, filters: ScreenFilters): ScreenRow[] | null {
       typeof source_as_of !== "string" || !Number.isFinite(Date.parse(source_as_of)) ||
       typeof debt_basis !== "string" || !Object.hasOwn(DEBT_LABELS, debt_basis) ||
       fcf === null || debt === null || debt < 0 ||
-      (debt_basis === "explicitly_not_applicable" ? debt !== 0 : debt === 0)
+      (debt_basis === "explicitly_not_applicable" && debt !== 0) ||
+      (debt_basis === "verified" && debt === 0)
     ) return null;
     prior = jpx_code;
     rows.push({

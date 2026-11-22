@@ -6,8 +6,11 @@ import { updateSession } from "@/lib/supabase/middleware";
 // 同期に関わるパスだけ Supabase セッションをリフレッシュする。
 // 未設定なら何もしない（既存挙動に影響なし）。
 export async function proxy(request: NextRequest) {
-  if (!isSyncConfigured()) return NextResponse.next();
-  return updateSession(request);
+  const response = isSyncConfigured() ? await updateSession(request) : NextResponse.next();
+  if (/^\/tools\/stock-notes\/screening\/?$/.test(request.nextUrl.pathname)) {
+    response.headers.set("Cache-Control", "private, no-cache, no-store, must-revalidate, max-age=0");
+  }
+  return response;
 }
 
 export const config = {

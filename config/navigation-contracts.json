@@ -1128,7 +1128,7 @@
       "tests": [
         "app/tools/stock-notes/screening/data.test.ts#binds exact signed values, freezes the cutoff across cursor pages and distinguishes an explicit zero",
         "app/tools/stock-notes/screening/data.test.ts#uses the last displayed row for page N+1 and does not expose the look-ahead row",
-        "app/tools/stock-notes/screening/data.test.ts#distinguishes empty, RPC failure, and an invalid zero result"
+        "app/tools/stock-notes/screening/data.test.ts#distinguishes an empty result from an RPC failure"
       ],
       "coverage": "unit"
     },
@@ -1863,10 +1863,13 @@
           "signature": "\"/premium/portfolio\""
         },
         {
-          "kind": "link",
+          "kind": "native-link",
           "signature": "\"/tools/stock-notes/screening\""
         }
-      ]
+      ],
+      "exceptions": {
+        "native-link": "Document navigation revalidates the session for the financial screen."
+      }
     },
     "app/tools/stock-notes/useStockNotesStockMaster.ts": {
       "transitions": [
@@ -2569,23 +2572,23 @@
           "signature": "action={SCREEN_PATH} method=\"get\" className={styles.filters}"
         },
         {
-          "kind": "link",
+          "kind": "native-link",
           "signature": "\"/account\""
         },
         {
-          "kind": "link",
+          "kind": "native-link",
           "signature": "\"/tools/stock-notes\""
         },
         {
-          "kind": "link",
+          "kind": "native-link",
           "signature": "\"/tools/stock-notes/screening\""
         },
         {
-          "kind": "link",
+          "kind": "native-link",
           "signature": "screenHref(result.filters, \"\")"
         },
         {
-          "kind": "link",
+          "kind": "native-link",
           "signature": "screenHref(result.filters, result.next)"
         },
         {
@@ -2594,7 +2597,22 @@
         }
       ],
       "exceptions": {
-        "native-link": "取得失敗時に同一URLへ再要求する文書遷移。Nextの同一href処理に依存しない。"
+        "native-link": "Document navigation revalidates the session, and retry requests the same URL."
+      }
+    },
+    "app/tools/stock-notes/screening/RevalidateOnRestore.tsx": {
+      "transitions": [
+        "R40",
+        "Q14"
+      ],
+      "sites": [
+        {
+          "kind": "document-navigation",
+          "signature": "window.location.reload()"
+        }
+      ],
+      "exceptions": {
+        "document-navigation": "Restore a fresh financial document instead of displaying the former session's results."
       }
     }
   },

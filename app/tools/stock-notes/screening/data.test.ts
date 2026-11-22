@@ -86,12 +86,26 @@ describe("EDINET screening navigation and access", () => {
     expect(mocks.rpc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ p_limit: 51 }));
   });
 
-  it("distinguishes empty, RPC failure, and an invalid zero result", async () => {
+  it("distinguishes an empty result from an RPC failure", async () => {
     mocks.rpc.mockResolvedValue({ data: [], error: null });
     expect(await loadScreening({}, now)).toMatchObject({ state: "ready", rows: [], next: null });
     mocks.rpc.mockResolvedValue({ data: null, error: { message: "private database error" } });
     expect(await loadScreening({}, now)).toMatchObject({ state: "failed" });
-    mocks.rpc.mockResolvedValue({ data: [{ ...row, debt_basis: "verified" }], error: null });
-    expect(await loadScreening({}, now)).toMatchObject({ state: "failed" });
+  });
+
+  it.each([
+    ["balance_sheet", "0", "ready"],
+    ["balance_sheet", "25", "ready"],
+    ["verified", "0", "failed"],
+    ["verified", "25", "ready"],
+    ["explicitly_not_applicable", "0", "ready"],
+    ["explicitly_not_applicable", "25", "failed"],
+  ])("validates %s debt of %s against the database contract", async (debt_basis, disclosed_debt_jpy_million, state) => {
+    mocks.rpc.mockResolvedValue({ data: [{ ...row, debt_basis, disclosed_debt_jpy_million }], error: null });
+    const result = await loadScreening({}, now);
+    expect(result.state).toBe(state);
+    if (result.state === "ready") {
+      expect(result.rows).toMatchObject([{ debt_basis, disclosed_debt_jpy_million: Number(disclosed_debt_jpy_million) }]);
+    }
   });
 });

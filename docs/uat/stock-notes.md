@@ -175,3 +175,5 @@ Stock NotesのEDINET照合済みメトリクスと読み取りRPCがある検証
 3. 51件以上に該当する条件で「次のページ」を押す。前ページと証券コードの重複がなく、条件は維持される。新しい条件を送信すると先頭へ移り、ブラウザーの戻る操作で元のURL条件に戻れる。
 4. 桁数超過、負の負債上限、同じクエリキーの複数指定を確認する。条件エラーが表示される。データなしと通信失敗の案内が区別され、取得失敗では同じ条件を再取得できる。
 5. 未ログインでの直リンク、データ未登録アカウントからの閲覧では、所有者のデータが表示されない。幅375pxでは結果表だけ横にスクロールできる。
+
+- Check HTML and RSC responses for `private, no-store`, including responses without cookie rotation. The service worker uses NetworkOnly for both URL spellings. Switch or sign out of the test account on a separate page, then go back to the screening page and confirm that only the current session can access results.

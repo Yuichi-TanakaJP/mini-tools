@@ -25,6 +25,7 @@ const withPWA = require("@ducanh2912/next-pwa").default({
           url.pathname.startsWith("/tools/yutai-dashboard/") ||
           url.pathname === "/premium/login" ||
           url.pathname === "/tools/stock-notes/screening" ||
+          url.pathname === "/tools/stock-notes/screening/" ||
           url.pathname === "/api/stock-notes/audience" ||
           url.pathname === "/api/yutai/stock-prices" ||
           url.pathname.startsWith("/api/yutai/stock-prices/") ||
