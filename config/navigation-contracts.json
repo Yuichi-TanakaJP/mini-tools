@@ -549,6 +549,21 @@
       "coverage": "entry-only"
     },
     {
+      "id": "R40",
+      "from": "銘柄分析ダッシュボードの認証済み導線・D",
+      "to": "`/tools/stock-notes/screening`",
+      "details": [
+        "未測定",
+        "S3",
+        "既存セッション確認、認証後に所有者RPC1回"
+      ],
+      "tests": [
+        "tests/ui-smoke/navigation.spec.ts#route entry and fallback: ${route}",
+        "app/tools/stock-notes/screening/data.test.ts#does not invoke the RPC for an unauthenticated request"
+      ],
+      "coverage": "partial"
+    },
+    {
       "id": "G01",
       "from": "任意ページのロゴ/メニューHome",
       "to": "`/`",
@@ -1101,6 +1116,21 @@
         "tests/ui-smoke/navigation.spec.ts#full text readability: slow and timeout retain text for retry"
       ],
       "coverage": "partial"
+    },
+    {
+      "id": "Q14",
+      "from": "FCF・開示負債の条件送信・ページ送り・失敗時の再読込",
+      "to": "同じ画面の条件、先頭または次の明細",
+      "details": [
+        "1遷移につき認証確認とRPC最大1回、50行と先読み1行。",
+        "GETの条件変更は先頭へ戻る。基準時点・条件を保ったページ送りと同条件再試行。取得失敗・空・未認証を区別。計測値なし。"
+      ],
+      "tests": [
+        "app/tools/stock-notes/screening/data.test.ts#binds exact signed values, freezes the cutoff across cursor pages and distinguishes an explicit zero",
+        "app/tools/stock-notes/screening/data.test.ts#uses the last displayed row for page N+1 and does not expose the look-ahead row",
+        "app/tools/stock-notes/screening/data.test.ts#distinguishes an empty result from an RPC failure"
+      ],
+      "coverage": "unit"
     },
     {
       "id": "L90",
@@ -1816,7 +1846,8 @@
     },
     "app/tools/stock-notes/ToolClient.tsx": {
       "transitions": [
-        "R29"
+        "R29",
+        "R40"
       ],
       "sites": [
         {
@@ -1830,8 +1861,15 @@
         {
           "kind": "link",
           "signature": "\"/premium/portfolio\""
+        },
+        {
+          "kind": "native-link",
+          "signature": "\"/tools/stock-notes/screening\""
         }
-      ]
+      ],
+      "exceptions": {
+        "native-link": "Document navigation revalidates the session for the financial screen."
+      }
     },
     "app/tools/stock-notes/useStockNotesStockMaster.ts": {
       "transitions": [
@@ -2522,6 +2560,60 @@
           "signature": "onSubmit={submit} style={{ display: \"grid\", gap: 10, borderTop: \"1px solid var(--color-border)\", paddingTop: 12 }} aria-label=\"注目目的・信用残監視\""
         }
       ]
+    },
+    "app/tools/stock-notes/screening/page.tsx": {
+      "transitions": [
+        "R40",
+        "Q14"
+      ],
+      "sites": [
+        {
+          "kind": "get-form",
+          "signature": "action={SCREEN_PATH} method=\"get\" className={styles.filters}"
+        },
+        {
+          "kind": "native-link",
+          "signature": "\"/account\""
+        },
+        {
+          "kind": "native-link",
+          "signature": "\"/tools/stock-notes\""
+        },
+        {
+          "kind": "native-link",
+          "signature": "\"/tools/stock-notes/screening\""
+        },
+        {
+          "kind": "native-link",
+          "signature": "screenHref(result.filters, \"\")"
+        },
+        {
+          "kind": "native-link",
+          "signature": "screenHref(result.filters, result.next)"
+        },
+        {
+          "kind": "native-link",
+          "signature": "screenHref(result.filters)"
+        }
+      ],
+      "exceptions": {
+        "native-link": "Document navigation revalidates the session, and retry requests the same URL."
+      }
+    },
+    "app/tools/stock-notes/screening/RevalidateOnRestore.tsx": {
+      "transitions": [
+        "R40",
+        "Q14"
+      ],
+      "sites": [
+        {
+          "kind": "document-navigation",
+          "signature": "window.location.reload()"
+        }
+      ],
+      "exceptions": {
+        "document-navigation": "Restore a fresh financial document instead of displaying the former session's results."
+      }
     }
   },
   "tables": [
